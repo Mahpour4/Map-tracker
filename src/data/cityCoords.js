@@ -1,0 +1,181 @@
+// Approximate city-center coordinates for geocoding stores without lat/lng
+// Format: 'CITY, STATE_ABBR': [latitude, longitude]
+const cityCoords = {
+  // Maryland - Prince George's County
+  'CLINTON, MD': [38.7649, -76.8984],
+  'LARGO, MD': [38.8976, -76.8303],
+  'FORESTVILLE, MD': [38.8488, -76.8747],
+  'LAUREL, MD': [39.0993, -76.8483],
+  'BOWIE, MD': [38.9430, -76.7312],
+  'COLLEGE PARK, MD': [38.9807, -76.9369],
+  'LANDOVER, MD': [38.9340, -76.8973],
+  'LANDOVER HILLS, MD': [38.9430, -76.8900],
+  'UPPER MARLBORO, MD': [38.8160, -76.7497],
+  'LANHAM, MD': [38.9690, -76.8614],
+  'ACCOKEEK, MD': [38.6736, -77.0209],
+  'CAPITOL HEIGHTS, MD': [38.8851, -76.9158],
+  'HYATTSVILLE, MD': [38.9559, -76.9453],
+  'JB ANDREWS, MD': [38.8108, -76.8660],
+  'JOINT BASE ANDREWS, MD': [38.8108, -76.8660],
+
+  // Maryland - Anne Arundel County
+  'PASADENA, MD': [39.1073, -76.5714],
+  'GLEN BURNIE, MD': [39.1626, -76.6247],
+  'ANNAPOLIS, MD': [38.9784, -76.4922],
+  'HANOVER, MD': [39.1929, -76.7242],
+  'ODENTON, MD': [39.0840, -76.7001],
+  'MARYLAND CITY, MD': [39.1020, -76.8135],
+  'GAMBRILLS, MD': [39.0671, -76.6654],
+
+  // Maryland - Howard County
+  'SCAGGSVILLE, MD': [39.1453, -76.8789],
+  'ELKRIDGE, MD': [39.2126, -76.7136],
+  'COLUMBIA, MD': [39.2037, -76.8610],
+
+  // Maryland - Montgomery County
+  'GERMANTOWN, MD': [39.1732, -77.2716],
+  'ROCKVILLE, MD': [39.0840, -77.1528],
+
+  // Maryland - Baltimore City
+  'BALTIMORE, MD': [39.2904, -76.6122],
+
+  // Maryland - Baltimore County
+  'NOTTINGHAM, MD': [39.3804, -76.4905],
+  'TIMONIUM, MD': [39.4370, -76.6199],
+  'COCKEYSVILLE, MD': [39.4812, -76.6438],
+  'RANDALLSTOWN, MD': [39.3667, -76.7948],
+  'MIDDLE RIVER, MD': [39.3343, -76.4394],
+  'ESSEX, MD': [39.3093, -76.4748],
+  'EDGEMERE, MD': [39.2285, -76.4536],
+  'PARKVILLE, MD': [39.3771, -76.5397],
+  'PHOENIX, MD': [39.5100, -76.5958],
+  'HUNT VALLEY, MD': [39.4984, -76.6413],
+  'OWINGS MILLS, MD': [39.4199, -76.7806],
+
+  // Maryland - Harford County
+  'ABINGDON, MD': [39.4618, -76.2858],
+  'EDGEWOOD, MD': [39.4187, -76.2945],
+  'JOPPA, MD': [39.4373, -76.3567],
+  'ABERDEEN, MD': [39.5093, -76.1641],
+  'BELCAMP, MD': [39.4707, -76.2443],
+  'BEL AIR, MD': [39.5359, -76.3483],
+  'FOREST HILL, MD': [39.5804, -76.3847],
+  'CARDIFF, MD': [39.5903, -76.4370],
+
+  // Maryland - Cecil County
+  'RISING SUN, MD': [39.6970, -76.0629],
+  'NORTH EAST, MD': [39.6001, -75.9414],
+  'PERRYVILLE, MD': [39.5601, -76.0714],
+
+  // Maryland - Carroll County
+  'TANEYTOWN, MD': [39.6559, -77.1740],
+  'WESTMINSTER, MD': [39.5754, -76.9958],
+  'FINKSBURG, MD': [39.4963, -76.8888],
+  'ELDERSBURG, MD': [39.4037, -76.9517],
+  'MT AIRY, MD': [39.3763, -77.1548],
+  'MOUNT AIRY, MD': [39.3763, -77.1548],
+  'WOODBINE, MD': [39.3327, -77.0639],
+
+  // Maryland - Frederick County
+  'NEW MARKET, MD': [39.3922, -77.2768],
+  'FREDERICK, MD': [39.4143, -77.4105],
+  'THURMONT, MD': [39.6237, -77.4108],
+
+  // Maryland - Southern Maryland
+  'LEONARDTOWN, MD': [38.2909, -76.6356],
+  'CHARLOTTE HALL, MD': [38.4800, -76.7781],
+  'BRYANS ROAD, MD': [38.6282, -77.0727],
+  'LA PLATA, MD': [38.5290, -76.9752],
+  'WALDORF, MD': [38.6246, -76.9191],
+
+  // Maryland - Western
+  'HAGERSTOWN, MD': [39.6418, -77.7200],
+  'SMITHSBURG, MD': [39.6548, -77.5728],
+  'HANCOCK, MD': [39.6978, -78.1797],
+
+  // Washington DC
+  'WASHINGTON, DC': [38.9072, -77.0369],
+
+  // Virginia - Northern Virginia
+  'STERLING, VA': [39.0064, -77.4286],
+  'DUMFRIES, VA': [38.5685, -77.3281],
+  'DALE CITY, VA': [38.6370, -77.3109],
+  'LAKE RIDGE, VA': [38.6820, -77.2996],
+  'MANASSAS, VA': [38.7509, -77.4753],
+  'WOODBRIDGE, VA': [38.6582, -77.2497],
+  'HERNDON, VA': [38.9696, -77.3861],
+  'LORTON, VA': [38.7042, -77.2275],
+  'FORT BELVOIR, VA': [38.7119, -77.1457],
+  'QUANTICO, VA': [38.5225, -77.2919],
+  'BEALETON, VA': [38.5718, -77.7639],
+  'WARRENTON, VA': [38.7135, -77.7953],
+  'LEESBURG, VA': [39.1157, -77.5636],
+  'FAIRFAX, VA': [38.8462, -77.3064],
+  'GAINESVILLE, VA': [38.7943, -77.6131],
+  'TYSONS, VA': [38.9187, -77.2311],
+  'ALEXANDRIA, VA': [38.8048, -77.0469],
+
+  // Virginia - Shenandoah Valley / Northern
+  'WINCHESTER, VA': [39.1857, -78.1633],
+  'STRASBURG, VA': [38.9884, -78.3585],
+  'WOODSTOCK, VA': [38.8821, -78.5065],
+  'FRONT ROYAL, VA': [38.9180, -78.1944],
+  'MARSHALL, VA': [38.8651, -77.8576],
+  'BERRYVILLE, VA': [39.1518, -77.9822],
+  'STEPHENS CITY, VA': [39.0835, -78.2130],
+  'FORT MYER, VA': [38.8800, -77.0800],
+  'VIRGINIA, VA': [38.8800, -77.0800], // Fort Myer entry
+
+  // West Virginia
+  'CHARLES TOWN, WV': [39.2890, -77.8600],
+  'BERKELEY, WV': [39.6263, -78.2271],
+  'SHEPHERDSTOWN, WV': [39.4318, -77.8039],
+  'MARTINSBURG, WV': [39.4563, -77.9639],
+  'MARTINSBURG, MD': [39.4563, -77.9639], // data has wrong state
+  'INWOOD, WV': [39.3576, -78.0400],
+  'FALLING WATERS, WV': [39.5664, -77.8352],
+  'HEDGESVILLE, WV': [39.5479, -77.9890],
+
+  // Delaware
+  'MILFORD, DE': [38.9126, -75.4279],
+  'MILTON, DE': [38.7776, -75.3093],
+  'LEWES, DE': [38.7745, -75.1394],
+  'DOVER, DE': [39.1582, -75.5244],
+  'SMYRNA, DE': [39.2998, -75.6046],
+  'MIDDLETOWN, DE': [39.4495, -75.7163],
+  'SEAFORD, DE': [38.6413, -75.6110],
+  'LAUREL, DE': [38.5562, -75.5713],
+  'GEORGETOWN, DE': [38.6904, -75.3857],
+  'MILLSBORO, DE': [38.5918, -75.2913],
+  'DELMAR, DE': [38.4565, -75.5773],
+  'OCEAN VIEW, DE': [38.5432, -75.0886],
+  'BETHANY BEACH, DE': [38.5394, -75.0554],
+  'SELBYVILLE, DE': [38.4605, -75.2210],
+  'BRIDGEVILLE, DE': [38.7426, -75.6044],
+  'CAMDEN, DE': [39.1134, -75.5417],
+
+  // Maryland - Eastern Shore
+  'OCEAN CITY, MD': [38.3365, -75.0849],
+  'SALISBURY, MD': [38.3607, -75.5994],
+  'PRINCESS ANNE, MD': [38.2040, -75.6887],
+  'CAMBRIDGE, MD': [38.5632, -76.0789],
+  'FRUITLAND, MD': [38.3223, -75.6199],
+  'MILLINGTON, MD': [39.2540, -75.8363],
+  'BERLIN, MD': [38.3226, -75.2177],
+  'CRISFIELD, MD': [37.9834, -75.8534],
+  'DENTON, MD': [38.8848, -75.8277],
+  'EASTON, MD': [38.7743, -76.0763],
+  'CHESTERTOWN, MD': [39.2090, -76.0697],
+  'STEVENSVILLE, MD': [38.9801, -76.3146],
+  'CENTERVILLE, MD': [39.0440, -76.0667],
+  'FEDERALSBURG, MD': [38.6940, -75.7727],
+  'LINKWOOD, MD': [38.5360, -75.9444],
+
+  // Virginia - Eastern Shore
+  'EXMORE, VA': [37.5326, -75.8228],
+  'CAPE CHARLES, VA': [37.2646, -75.9221],
+  'ONLEY, VA': [37.6921, -75.7407],
+  'OAK HALL, VA': [37.9397, -75.5708],
+};
+
+export default cityCoords;

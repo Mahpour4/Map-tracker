@@ -1,186 +1,39 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { getPolygonCenter } from '../utils/geoUtils';
 
-const ZONE_COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-];
-
-function parseBounds(text) {
-  try {
-    const lines = text.trim().split('\n');
-    return lines.map((line) => {
-      const [lat, lng] = line.split(',').map((s) => parseFloat(s.trim()));
-      if (isNaN(lat) || isNaN(lng)) throw new Error('Invalid coordinate');
-      return [lat, lng];
-    });
-  } catch {
-    return null;
-  }
-}
-
-function boundsToText(bounds) {
-  return bounds.map(([lat, lng]) => `${lat}, ${lng}`).join('\n');
-}
-
-function ZoneForm({ onSubmit, initial, onCancel, isSubZone }) {
-  const [form, setForm] = useState({
-    name: initial?.name || '',
-    color: initial?.color || ZONE_COLORS[Math.floor(Math.random() * ZONE_COLORS.length)],
-    boundsText: initial?.bounds ? boundsToText(initial.bounds) : '',
-  });
-  const [error, setError] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.name) {
-      setError('Name is required');
-      return;
-    }
-    const bounds = parseBounds(form.boundsText);
-    if (!bounds || bounds.length < 3) {
-      setError('Enter at least 3 coordinates (lat, lng per line)');
-      return;
-    }
-    setError('');
-    onSubmit({ name: form.name, color: form.color, bounds });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="zone-form">
-      <input
-        type="text"
-        placeholder={isSubZone ? 'Sub-zone name' : 'Zone name'}
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-        required
-      />
-      <div className="form-row">
-        <label>Color:</label>
-        <div className="color-picker">
-          {ZONE_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`color-swatch ${form.color === c ? 'active' : ''}`}
-              style={{ background: c }}
-              onClick={() => setForm({ ...form, color: c })}
-            />
-          ))}
-        </div>
-      </div>
-      <textarea
-        placeholder="Coordinates (one per line)&#10;lat, lng&#10;34.10, -118.40&#10;34.10, -118.20&#10;34.00, -118.20"
-        value={form.boundsText}
-        onChange={(e) => setForm({ ...form, boundsText: e.target.value })}
-        rows={5}
-      />
-      {error && <p className="form-error">{error}</p>}
-      <div className="form-actions">
-        <button type="submit" className="btn btn-primary">
-          {initial ? 'Update' : isSubZone ? 'Add Sub-zone' : 'Add Zone'}
-        </button>
-        {onCancel && (
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            Cancel
-          </button>
-        )}
-      </div>
-    </form>
-  );
+function getPolygonCenter(bounds) {
+  const latSum = bounds.reduce((sum, p) => sum + p[0], 0);
+  const lngSum = bounds.reduce((sum, p) => sum + p[1], 0);
+  return [latSum / bounds.length, lngSum / bounds.length];
 }
 
 function SubZoneCard({ subZone, zone }) {
-  const { deleteSubZone, updateSubZone, selectSubZone, setMapView, state } =
-    useApp();
-  const [editing, setEditing] = useState(false);
+  const { selectSubZone, setMapView, state } = useApp();
   const isSelected = state.selectedSubZone === subZone.id;
-
-  const storesInSubZone = state.stores.filter(
-    (s) => s.subZoneId === subZone.id
-  );
-
-  if (editing) {
-    return (
-      <div className="subzone-card">
-        <ZoneForm
-          initial={subZone}
-          isSubZone
-          onSubmit={(updated) => {
-            updateSubZone(zone.id, { ...subZone, ...updated });
-            setEditing(false);
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      </div>
-    );
-  }
+  const storesInSubZone = state.stores.filter((s) => s.subZoneId === subZone.id);
 
   return (
     <div
       className={`subzone-card ${isSelected ? 'selected' : ''}`}
       onClick={() => {
         selectSubZone(subZone.id);
-        setMapView(getPolygonCenter(subZone.bounds), 14);
+        setMapView(getPolygonCenter(subZone.bounds), 12);
       }}
     >
       <div className="subzone-header">
-        <div
-          className="color-dot"
-          style={{ background: subZone.color }}
-        />
+        <div className="color-dot" style={{ background: subZone.color }} />
         <span className="subzone-name">{subZone.name}</span>
-        <span className="count-badge small">{storesInSubZone.length} stores</span>
-      </div>
-      <div className="subzone-actions">
-        <button
-          className="btn btn-xs btn-secondary"
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditing(true);
-          }}
-        >
-          Edit
-        </button>
-        <button
-          className="btn btn-xs btn-danger"
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteSubZone(zone.id, subZone.id);
-          }}
-        >
-          Delete
-        </button>
+        <span className="count-badge small">{storesInSubZone.length}</span>
       </div>
     </div>
   );
 }
 
 function ZoneCard({ zone }) {
-  const { deleteZone, updateZone, selectZone, addSubZone, setMapView, state } =
-    useApp();
-  const [editing, setEditing] = useState(false);
-  const [addingSub, setAddingSub] = useState(false);
+  const { selectZone, setMapView, state } = useApp();
   const [expanded, setExpanded] = useState(false);
   const isSelected = state.selectedZone === zone.id;
-
   const storesInZone = state.stores.filter((s) => s.zoneId === zone.id);
-
-  if (editing) {
-    return (
-      <div className={`zone-card ${isSelected ? 'selected' : ''}`}>
-        <ZoneForm
-          initial={zone}
-          onSubmit={(updated) => {
-            updateZone({ ...zone, ...updated });
-            setEditing(false);
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className={`zone-card ${isSelected ? 'selected' : ''}`}>
@@ -188,7 +41,7 @@ function ZoneCard({ zone }) {
         className="zone-card-header"
         onClick={() => {
           selectZone(zone.id);
-          setMapView(getPolygonCenter(zone.bounds), 13);
+          setMapView(getPolygonCenter(zone.bounds), 10);
         }}
       >
         <div className="zone-title-row">
@@ -197,7 +50,9 @@ function ZoneCard({ zone }) {
         </div>
         <div className="zone-meta">
           <span className="count-badge">{storesInZone.length} stores</span>
-          <span className="count-badge">{zone.subZones.length} sub-zones</span>
+          {zone.subZones.length > 0 && (
+            <span className="count-badge">{zone.subZones.length} sub-zones</span>
+          )}
         </div>
       </div>
 
@@ -208,38 +63,7 @@ function ZoneCard({ zone }) {
         >
           {expanded ? 'Collapse' : 'Expand'}
         </button>
-        <button
-          className="btn btn-xs btn-secondary"
-          onClick={() => setEditing(true)}
-        >
-          Edit
-        </button>
-        <button
-          className="btn btn-xs btn-primary"
-          onClick={() => setAddingSub(!addingSub)}
-        >
-          + Sub-zone
-        </button>
-        <button
-          className="btn btn-xs btn-danger"
-          onClick={() => deleteZone(zone.id)}
-        >
-          Delete
-        </button>
       </div>
-
-      {addingSub && (
-        <div className="subzone-form-wrapper">
-          <ZoneForm
-            isSubZone
-            onSubmit={(subZone) => {
-              addSubZone(zone.id, subZone);
-              setAddingSub(false);
-            }}
-            onCancel={() => setAddingSub(false)}
-          />
-        </div>
-      )}
 
       {expanded && (
         <div className="subzone-list">
@@ -252,11 +76,17 @@ function ZoneCard({ zone }) {
           )}
           {storesInZone.length > 0 && (
             <div className="zone-stores-summary">
-              <h5>Stores in zone:</h5>
+              <h5>Stores in this zone ({storesInZone.length}):</h5>
               <ul>
-                {storesInZone.map((s) => (
-                  <li key={s.id}>{s.name}</li>
+                {storesInZone.slice(0, 10).map((s) => (
+                  <li key={s.id}>
+                    {s.name}
+                    <span className="store-city-inline"> - {s.city}, {s.state}</span>
+                  </li>
                 ))}
+                {storesInZone.length > 10 && (
+                  <li className="more-text">...and {storesInZone.length - 10} more</li>
+                )}
               </ul>
             </div>
           )}
@@ -267,44 +97,52 @@ function ZoneCard({ zone }) {
 }
 
 export default function ZonePanel() {
-  const { state, addZone } = useApp();
-  const { zones } = state;
-  const [showForm, setShowForm] = useState(false);
+  const { state, selectZone, setMapView } = useApp();
+  const { zones, selectedZone } = state;
 
   const totalSubZones = zones.reduce((sum, z) => sum + z.subZones.length, 0);
+  const sortedZones = [...zones].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="zone-panel">
       <div className="panel-header">
-        <h3>Zones</h3>
+        <h3>Zones & Regions</h3>
         <span className="count-badge">
-          {zones.length} zones, {totalSubZones} sub-zones
+          {zones.length} zones
         </span>
       </div>
 
-      <button
-        className="btn btn-primary add-zone-btn"
-        onClick={() => setShowForm(!showForm)}
-      >
-        {showForm ? 'Cancel' : '+ Add Zone'}
-      </button>
-
-      {showForm && (
-        <ZoneForm
-          onSubmit={(zone) => {
-            addZone(zone);
-            setShowForm(false);
+      {selectedZone && (
+        <button
+          className="btn btn-secondary btn-sm clear-zone-btn"
+          onClick={() => {
+            selectZone(null);
+            setMapView([39.0, -76.8], 8);
           }}
-          onCancel={() => setShowForm(false)}
-        />
+        >
+          Clear selection (show all)
+        </button>
       )}
 
+      <div className="zone-stats">
+        <div className="stat-item">
+          <span className="stat-value">{zones.length}</span>
+          <span className="stat-label">Regions</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{totalSubZones}</span>
+          <span className="stat-label">Sub-zones</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{state.stores.length}</span>
+          <span className="stat-label">Total stores</span>
+        </div>
+      </div>
+
       <div className="zone-list">
-        {zones.length === 0 ? (
-          <p className="empty-text">No zones defined</p>
-        ) : (
-          zones.map((zone) => <ZoneCard key={zone.id} zone={zone} />)
-        )}
+        {sortedZones.map((zone) => (
+          <ZoneCard key={zone.id} zone={zone} />
+        ))}
       </div>
     </div>
   );

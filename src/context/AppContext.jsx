@@ -1,39 +1,50 @@
 import { createContext, useContext, useReducer, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones } from '../data/sampleData';
-import { autoAssignStores } from '../utils/geoUtils';
 
 const AppContext = createContext();
 
 const initialState = {
-  stores: autoAssignStores(sampleStores, sampleZones),
+  stores: sampleStores,
   zones: sampleZones,
   selectedStore: null,
   selectedZone: null,
   selectedSubZone: null,
-  sidebarTab: 'stores', // 'stores' | 'zones'
-  mapCenter: [34.05, -118.30],
-  mapZoom: 12,
+  sidebarTab: 'stores',
+  searchTerm: '',
+  filterRegion: 'all',
+  filterType: 'all',
+  mapCenter: [39.0, -76.8],
+  mapZoom: 8,
 };
+
+function reassignStores(stores, zones) {
+  return stores.map((store) => {
+    const zone = zones.find((z) => z.name === store.region);
+    if (zone) {
+      const subZone = zone.subZones.find((sz) => sz.name === store.territory);
+      return {
+        ...store,
+        zoneId: zone.id,
+        subZoneId: subZone ? subZone.id : null,
+      };
+    }
+    return { ...store, zoneId: null, subZoneId: null };
+  });
+}
 
 function reducer(state, action) {
   switch (action.type) {
     case 'ADD_STORE': {
       const newStore = { id: uuidv4(), ...action.payload };
-      const updatedStores = autoAssignStores(
-        [...state.stores, newStore],
-        state.zones
-      );
-      return { ...state, stores: updatedStores };
+      const updatedStores = [...state.stores, newStore];
+      return { ...state, stores: reassignStores(updatedStores, state.zones) };
     }
     case 'UPDATE_STORE': {
       const updatedStores = state.stores.map((s) =>
         s.id === action.payload.id ? { ...s, ...action.payload } : s
       );
-      return {
-        ...state,
-        stores: autoAssignStores(updatedStores, state.zones),
-      };
+      return { ...state, stores: reassignStores(updatedStores, state.zones) };
     }
     case 'DELETE_STORE':
       return {
@@ -43,16 +54,12 @@ function reducer(state, action) {
           state.selectedStore === action.payload ? null : state.selectedStore,
       };
     case 'ADD_ZONE': {
-      const newZone = {
-        id: uuidv4(),
-        subZones: [],
-        ...action.payload,
-      };
+      const newZone = { id: uuidv4(), subZones: [], ...action.payload };
       const newZones = [...state.zones, newZone];
       return {
         ...state,
         zones: newZones,
-        stores: autoAssignStores(state.stores, newZones),
+        stores: reassignStores(state.stores, newZones),
       };
     }
     case 'UPDATE_ZONE': {
@@ -62,7 +69,7 @@ function reducer(state, action) {
       return {
         ...state,
         zones: newZones,
-        stores: autoAssignStores(state.stores, newZones),
+        stores: reassignStores(state.stores, newZones),
       };
     }
     case 'DELETE_ZONE': {
@@ -70,7 +77,7 @@ function reducer(state, action) {
       return {
         ...state,
         zones: newZones,
-        stores: autoAssignStores(state.stores, newZones),
+        stores: reassignStores(state.stores, newZones),
         selectedZone:
           state.selectedZone === action.payload ? null : state.selectedZone,
       };
@@ -86,7 +93,7 @@ function reducer(state, action) {
       return {
         ...state,
         zones: newZones,
-        stores: autoAssignStores(state.stores, newZones),
+        stores: reassignStores(state.stores, newZones),
       };
     }
     case 'UPDATE_SUBZONE': {
@@ -104,7 +111,7 @@ function reducer(state, action) {
       return {
         ...state,
         zones: newZones,
-        stores: autoAssignStores(state.stores, newZones),
+        stores: reassignStores(state.stores, newZones),
       };
     }
     case 'DELETE_SUBZONE': {
@@ -117,7 +124,7 @@ function reducer(state, action) {
       return {
         ...state,
         zones: newZones,
-        stores: autoAssignStores(state.stores, newZones),
+        stores: reassignStores(state.stores, newZones),
         selectedSubZone:
           state.selectedSubZone === subZoneId ? null : state.selectedSubZone,
       };
@@ -130,6 +137,12 @@ function reducer(state, action) {
       return { ...state, selectedSubZone: action.payload };
     case 'SET_SIDEBAR_TAB':
       return { ...state, sidebarTab: action.payload };
+    case 'SET_SEARCH':
+      return { ...state, searchTerm: action.payload };
+    case 'SET_FILTER_REGION':
+      return { ...state, filterRegion: action.payload };
+    case 'SET_FILTER_TYPE':
+      return { ...state, filterType: action.payload };
     case 'SET_MAP_VIEW':
       return {
         ...state,
@@ -198,6 +211,18 @@ export function AppProvider({ children }) {
     ),
     setSidebarTab: useCallback(
       (tab) => dispatch({ type: 'SET_SIDEBAR_TAB', payload: tab }),
+      []
+    ),
+    setSearch: useCallback(
+      (term) => dispatch({ type: 'SET_SEARCH', payload: term }),
+      []
+    ),
+    setFilterRegion: useCallback(
+      (region) => dispatch({ type: 'SET_FILTER_REGION', payload: region }),
+      []
+    ),
+    setFilterType: useCallback(
+      (type) => dispatch({ type: 'SET_FILTER_TYPE', payload: type }),
       []
     ),
     setMapView: useCallback(

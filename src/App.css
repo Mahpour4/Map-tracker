@@ -538,6 +538,87 @@ textarea {
   color: var(--text-muted);
 }
 
+/* ============ Search ============ */
+.search-input {
+  margin-bottom: 8px;
+}
+
+/* ============ Store Meta ============ */
+.store-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.meta-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.last-visited {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.results-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+/* ============ Zone Stats ============ */
+.zone-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  background: #f8fafc;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clear-zone-btn {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.store-city-inline {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.more-text {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 11px;
+}
+
 /* ============ Misc ============ */
 .empty-text {
   font-size: 13px;

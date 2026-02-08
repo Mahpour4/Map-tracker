@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -10,9 +10,7 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import { useApp } from '../context/AppContext';
-import { getPolygonCenter } from '../utils/geoUtils';
 
-// Fix default marker icon issue with webpack/vite
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -23,13 +21,21 @@ L.Icon.Default.mergeOptions({
     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
+const typeColors = {
+  'food-lion': '#ef4444',
+  'shoppers': '#3b82f6',
+  'wegmans': '#8b5cf6',
+  'walmart': '#f59e0b',
+  'giant-martins': '#f97316',
+  'weis': '#06b6d4',
+  'redners': '#ec4899',
+  'acme': '#22c55e',
+  'geresbecks': '#14b8a6',
+  'other': '#6b7280',
+};
+
 function createStoreIcon(type, isSelected) {
-  const colors = {
-    supermarket: '#ef4444',
-    grocery: '#22c55e',
-    convenience: '#f59e0b',
-  };
-  const color = colors[type] || '#6b7280';
+  const color = typeColors[type] || typeColors.other;
   const size = isSelected ? 14 : 10;
   const border = isSelected ? '3px solid #1e3a5f' : '2px solid #fff';
 
@@ -56,9 +62,26 @@ function MapUpdater({ center, zoom }) {
   return null;
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return 'Never';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export default function MapView() {
   const { state, selectStore, selectZone, selectSubZone } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom } = state;
+
+  const visibleZones = useMemo(() => {
+    if (selectedZone) {
+      return zones.filter((z) => z.id === selectedZone);
+    }
+    return zones.filter((z) => z.name !== 'Unassigned');
+  }, [zones, selectedZone]);
 
   return (
     <MapContainer
@@ -73,17 +96,17 @@ export default function MapView() {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* Render zones */}
-      {zones.map((zone) => (
+      {/* Render zone polygons */}
+      {visibleZones.map((zone) => (
         <Polygon
           key={zone.id}
           positions={zone.bounds}
           pathOptions={{
             color: zone.color,
             fillColor: zone.color,
-            fillOpacity: selectedZone === zone.id ? 0.3 : 0.1,
-            weight: selectedZone === zone.id ? 3 : 2,
-            dashArray: selectedZone === zone.id ? null : '5 5',
+            fillOpacity: selectedZone === zone.id ? 0.2 : 0.05,
+            weight: selectedZone === zone.id ? 3 : 1,
+            dashArray: selectedZone === zone.id ? null : '8 4',
           }}
           eventHandlers={{
             click: () => selectZone(zone.id),
@@ -95,8 +118,8 @@ export default function MapView() {
         </Polygon>
       ))}
 
-      {/* Render sub-zones */}
-      {zones.map((zone) =>
+      {/* Render sub-zone polygons */}
+      {visibleZones.map((zone) =>
         zone.subZones.map((subZone) => (
           <Polygon
             key={subZone.id}
@@ -104,7 +127,7 @@ export default function MapView() {
             pathOptions={{
               color: subZone.color,
               fillColor: subZone.color,
-              fillOpacity: selectedSubZone === subZone.id ? 0.4 : 0.15,
+              fillOpacity: selectedSubZone === subZone.id ? 0.3 : 0.1,
               weight: selectedSubZone === subZone.id ? 3 : 1,
             }}
             eventHandlers={{
@@ -136,35 +159,35 @@ export default function MapView() {
             <div className="store-popup">
               <strong>{store.name}</strong>
               <br />
-              <span className="popup-address">{store.address}</span>
+              <span className="popup-address">
+                {store.address}, {store.city}, {store.state} {store.zip}
+              </span>
               <br />
               <span
                 className="popup-type"
                 style={{
-                  background:
-                    store.type === 'supermarket'
-                      ? '#fee2e2'
-                      : store.type === 'grocery'
-                      ? '#dcfce7'
-                      : '#fef3c7',
-                  color:
-                    store.type === 'supermarket'
-                      ? '#991b1b'
-                      : store.type === 'grocery'
-                      ? '#166534'
-                      : '#92400e',
+                  background: (typeColors[store.type] || '#6b7280') + '20',
+                  color: typeColors[store.type] || '#6b7280',
                 }}
               >
                 {store.type}
               </span>
-              {store.zoneId && (
+              {store.region && store.region !== 'Unassigned' && (
                 <>
                   <br />
-                  <span className="popup-zone">
-                    Zone: {zones.find((z) => z.id === store.zoneId)?.name || 'Unknown'}
-                  </span>
+                  <span className="popup-zone">Region: {store.region}</span>
                 </>
               )}
+              {store.routeNumber && (
+                <>
+                  <br />
+                  <span className="popup-zone">Route: {store.routeNumber}</span>
+                </>
+              )}
+              <br />
+              <span className="popup-zone">
+                Last visited: {formatDate(store.lastVisited)}
+              </span>
             </div>
           </Popup>
         </Marker>

@@ -1,160 +1,104 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 
-const STORE_TYPES = ['supermarket', 'grocery', 'convenience'];
+const STORE_TYPES = [
+  'food-lion', 'shoppers', 'wegmans', 'walmart', 'giant-martins',
+  'weis', 'redners', 'acme', 'geresbecks', 'other',
+];
 
-function StoreForm({ onSubmit, initial, onCancel }) {
-  const [form, setForm] = useState(
-    initial || {
-      name: '',
-      address: '',
-      lat: '',
-      lng: '',
-      type: 'grocery',
-    }
-  );
+const typeLabels = {
+  'food-lion': 'Food Lion',
+  'shoppers': 'Shoppers/ShopRite',
+  'wegmans': 'Wegmans',
+  'walmart': 'Walmart',
+  'giant-martins': 'Giant/Martins',
+  'weis': 'Weis',
+  'redners': 'Redners',
+  'acme': 'Acme',
+  'geresbecks': 'Geresbecks',
+  'other': 'Other',
+};
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.name || !form.lat || !form.lng) return;
-    onSubmit({
-      ...form,
-      lat: parseFloat(form.lat),
-      lng: parseFloat(form.lng),
-    });
-    if (!initial) {
-      setForm({ name: '', address: '', lat: '', lng: '', type: 'grocery' });
-    }
-  };
+const typeColors = {
+  'food-lion': { bg: '#fee2e2', text: '#991b1b' },
+  'shoppers': { bg: '#dbeafe', text: '#1e40af' },
+  'wegmans': { bg: '#ede9fe', text: '#5b21b6' },
+  'walmart': { bg: '#fef3c7', text: '#92400e' },
+  'giant-martins': { bg: '#ffedd5', text: '#9a3412' },
+  'weis': { bg: '#cffafe', text: '#155e75' },
+  'redners': { bg: '#fce7f3', text: '#9d174d' },
+  'acme': { bg: '#dcfce7', text: '#166534' },
+  'geresbecks': { bg: '#ccfbf1', text: '#115e59' },
+  'other': { bg: '#f3f4f6', text: '#374151' },
+};
 
-  return (
-    <form onSubmit={handleSubmit} className="store-form">
-      <input
-        type="text"
-        placeholder="Store name"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-        required
-      />
-      <input
-        type="text"
-        placeholder="Address"
-        value={form.address}
-        onChange={(e) => setForm({ ...form, address: e.target.value })}
-      />
-      <div className="form-row">
-        <input
-          type="number"
-          step="any"
-          placeholder="Latitude"
-          value={form.lat}
-          onChange={(e) => setForm({ ...form, lat: e.target.value })}
-          required
-        />
-        <input
-          type="number"
-          step="any"
-          placeholder="Longitude"
-          value={form.lng}
-          onChange={(e) => setForm({ ...form, lng: e.target.value })}
-          required
-        />
-      </div>
-      <select
-        value={form.type}
-        onChange={(e) => setForm({ ...form, type: e.target.value })}
-      >
-        {STORE_TYPES.map((t) => (
-          <option key={t} value={t}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </option>
-        ))}
-      </select>
-      <div className="form-actions">
-        <button type="submit" className="btn btn-primary">
-          {initial ? 'Update' : 'Add Store'}
-        </button>
-        {onCancel && (
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            Cancel
-          </button>
-        )}
-      </div>
-    </form>
-  );
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
-function StoreCard({ store, zones }) {
-  const { selectStore, deleteStore, updateStore, setMapView, state } = useApp();
-  const [editing, setEditing] = useState(false);
+function StoreCard({ store }) {
+  const { selectStore, deleteStore, setMapView, state } = useApp();
   const isSelected = state.selectedStore === store.id;
+  const tc = typeColors[store.type] || typeColors.other;
 
-  const zone = zones.find((z) => z.id === store.zoneId);
-  const subZone = zone?.subZones.find((sz) => sz.id === store.subZoneId);
-
-  const typeColors = {
-    supermarket: { bg: '#fee2e2', text: '#991b1b' },
-    grocery: { bg: '#dcfce7', text: '#166534' },
-    convenience: { bg: '#fef3c7', text: '#92400e' },
-  };
-  const typeColor = typeColors[store.type] || { bg: '#f3f4f6', text: '#374151' };
-
-  if (editing) {
-    return (
-      <div className={`store-card ${isSelected ? 'selected' : ''}`}>
-        <StoreForm
-          initial={store}
-          onSubmit={(updated) => {
-            updateStore({ ...store, ...updated });
-            setEditing(false);
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      </div>
-    );
-  }
+  const zone = state.zones.find((z) => z.id === store.zoneId);
 
   return (
     <div
       className={`store-card ${isSelected ? 'selected' : ''}`}
       onClick={() => {
         selectStore(store.id);
-        setMapView([store.lat, store.lng], 15);
+        setMapView([store.lat, store.lng], 14);
       }}
     >
       <div className="store-card-header">
         <h4>{store.name}</h4>
         <span
           className="store-type-badge"
-          style={{ background: typeColor.bg, color: typeColor.text }}
+          style={{ background: tc.bg, color: tc.text }}
         >
-          {store.type}
+          {typeLabels[store.type] || store.type}
         </span>
       </div>
-      {store.address && <p className="store-address">{store.address}</p>}
-      <p className="store-coords">
-        {store.lat.toFixed(4)}, {store.lng.toFixed(4)}
+
+      <p className="store-address">
+        {store.address}, {store.city}, {store.state} {store.zip}
       </p>
+
+      <div className="store-meta-row">
+        {store.storeNumber && (
+          <span className="meta-tag">#{store.storeNumber}</span>
+        )}
+        {store.routeNumber && store.routeNumber !== '0' && (
+          <span className="meta-tag">Route {store.routeNumber}</span>
+        )}
+        {store.driver && (
+          <span className="meta-tag">{store.driver}</span>
+        )}
+      </div>
+
       <div className="store-zone-info">
-        {zone ? (
-          <span className="zone-badge" style={{ borderColor: zone.color }}>
+        {zone && zone.name !== 'Unassigned' ? (
+          <span className="zone-badge" style={{ borderColor: zone.color, color: zone.color }}>
             {zone.name}
-            {subZone && ` > ${subZone.name}`}
           </span>
         ) : (
           <span className="zone-badge unassigned">Unassigned</span>
         )}
+        {store.lastVisited && (
+          <span className="last-visited">
+            Visited {formatDate(store.lastVisited)}
+          </span>
+        )}
       </div>
+
       <div className="store-card-actions">
-        <button
-          className="btn btn-sm btn-secondary"
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditing(true);
-          }}
-        >
-          Edit
-        </button>
         <button
           className="btn btn-sm btn-danger"
           onClick={(e) => {
@@ -162,7 +106,7 @@ function StoreCard({ store, zones }) {
             deleteStore(store.id);
           }}
         >
-          Delete
+          Remove
         </button>
       </div>
     </div>
@@ -170,63 +114,84 @@ function StoreCard({ store, zones }) {
 }
 
 export default function StorePanel() {
-  const { state, addStore } = useApp();
-  const { stores, zones } = state;
-  const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const { state, setSearch, setFilterRegion, setFilterType } = useApp();
+  const { stores, zones, searchTerm, filterRegion, filterType } = state;
+  const [showAdd, setShowAdd] = useState(false);
 
-  const filteredStores =
-    filter === 'all'
-      ? stores
-      : filter === 'unassigned'
-      ? stores.filter((s) => !s.zoneId)
-      : stores.filter((s) => s.type === filter);
+  const regions = useMemo(() => {
+    const set = new Set(stores.map((s) => s.region));
+    return Array.from(set).sort();
+  }, [stores]);
 
-  const storeCount = stores.length;
-  const assignedCount = stores.filter((s) => s.zoneId).length;
+  const filteredStores = useMemo(() => {
+    let result = stores;
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(term) ||
+          s.city.toLowerCase().includes(term) ||
+          s.address.toLowerCase().includes(term) ||
+          (s.storeNumber || '').toLowerCase().includes(term)
+      );
+    }
+
+    if (filterRegion !== 'all') {
+      result = result.filter((s) => s.region === filterRegion);
+    }
+
+    if (filterType !== 'all') {
+      result = result.filter((s) => s.type === filterType);
+    }
+
+    return result;
+  }, [stores, searchTerm, filterRegion, filterType]);
+
+  const assignedCount = stores.filter((s) => s.zoneId && s.region !== 'Unassigned').length;
 
   return (
     <div className="store-panel">
       <div className="panel-header">
         <h3>Stores</h3>
         <span className="count-badge">
-          {assignedCount}/{storeCount} assigned
+          {assignedCount}/{stores.length} assigned
         </span>
       </div>
 
+      <input
+        type="text"
+        placeholder="Search stores by name, city, address..."
+        value={searchTerm}
+        onChange={(e) => setSearch(e.target.value)}
+        className="search-input"
+      />
+
       <div className="panel-filters">
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="all">All stores</option>
-          <option value="unassigned">Unassigned</option>
-          {STORE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </option>
+        <select value={filterRegion} onChange={(e) => setFilterRegion(e.target.value)}>
+          <option value="all">All regions</option>
+          {regions.map((r) => (
+            <option key={r} value={r}>{r}</option>
           ))}
         </select>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => setShowForm(!showForm)}
-        >
-          {showForm ? 'Cancel' : '+ Add'}
-        </button>
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+          <option value="all">All types</option>
+          {STORE_TYPES.map((t) => (
+            <option key={t} value={t}>{typeLabels[t]}</option>
+          ))}
+        </select>
       </div>
 
-      {showForm && (
-        <StoreForm
-          onSubmit={(store) => {
-            addStore(store);
-            setShowForm(false);
-          }}
-        />
-      )}
+      <div className="results-count">
+        Showing {filteredStores.length} of {stores.length} stores
+      </div>
 
       <div className="store-list">
         {filteredStores.length === 0 ? (
-          <p className="empty-text">No stores found</p>
+          <p className="empty-text">No stores match your filters</p>
         ) : (
           filteredStores.map((store) => (
-            <StoreCard key={store.id} store={store} zones={zones} />
+            <StoreCard key={store.id} store={store} />
           ))
         )}
       </div>
