@@ -284,6 +284,12 @@ textarea {
   font-weight: 600;
 }
 
+.store-index {
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-right: 2px;
+}
+
 .store-type-badge {
   font-size: 10px;
   font-weight: 600;

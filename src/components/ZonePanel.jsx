@@ -78,15 +78,12 @@ function ZoneCard({ zone, zoneNumber }) {
             <div className="zone-stores-summary">
               <h5>Stores in this zone ({storesInZone.length}):</h5>
               <ul>
-                {storesInZone.slice(0, 10).map((s) => (
+                {storesInZone.map((s, i) => (
                   <li key={s.id}>
-                    {s.name}
+                    <span className="store-index">{i + 1}.</span> {s.name}
                     <span className="store-city-inline"> - {s.city}, {s.state}</span>
                   </li>
                 ))}
-                {storesInZone.length > 10 && (
-                  <li className="more-text">...and {storesInZone.length - 10} more</li>
-                )}
               </ul>
             </div>
           )}

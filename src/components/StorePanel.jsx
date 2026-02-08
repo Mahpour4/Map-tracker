@@ -42,7 +42,7 @@ function formatDate(dateStr) {
   });
 }
 
-function StoreCard({ store }) {
+function StoreCard({ store, index }) {
   const { selectStore, deleteStore, setMapView, state } = useApp();
   const isSelected = state.selectedStore === store.id;
   const tc = typeColors[store.type] || typeColors.other;
@@ -58,7 +58,7 @@ function StoreCard({ store }) {
       }}
     >
       <div className="store-card-header">
-        <h4>{store.name}</h4>
+        <h4><span className="store-index">{index}.</span> {store.name}</h4>
         <span
           className="store-type-badge"
           style={{ background: tc.bg, color: tc.text }}
@@ -190,8 +190,8 @@ export default function StorePanel() {
         {filteredStores.length === 0 ? (
           <p className="empty-text">No stores match your filters</p>
         ) : (
-          filteredStores.map((store) => (
-            <StoreCard key={store.id} store={store} />
+          filteredStores.map((store, i) => (
+            <StoreCard key={store.id} store={store} index={i + 1} />
           ))
         )}
       </div>
