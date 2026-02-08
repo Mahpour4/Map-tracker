@@ -29,7 +29,7 @@ function SubZoneCard({ subZone, zone }) {
   );
 }
 
-function ZoneCard({ zone }) {
+function ZoneCard({ zone, zoneNumber }) {
   const { selectZone, setMapView, state } = useApp();
   const [expanded, setExpanded] = useState(false);
   const isSelected = state.selectedZone === zone.id;
@@ -45,7 +45,7 @@ function ZoneCard({ zone }) {
         }}
       >
         <div className="zone-title-row">
-          <div className="color-dot" style={{ background: zone.color }} />
+          <span className="zone-number" style={{ background: zone.color }}>{zoneNumber}</span>
           <h4>{zone.name}</h4>
         </div>
         <div className="zone-meta">
@@ -140,8 +140,8 @@ export default function ZonePanel() {
       </div>
 
       <div className="zone-list">
-        {sortedZones.map((zone) => (
-          <ZoneCard key={zone.id} zone={zone} />
+        {sortedZones.map((zone, index) => (
+          <ZoneCard key={zone.id} zone={zone} zoneNumber={index + 1} />
         ))}
       </div>
     </div>

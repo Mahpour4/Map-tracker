@@ -76,12 +76,18 @@ export default function MapView() {
   const { state, selectStore, selectZone, selectSubZone } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom } = state;
 
+  // Sort zones alphabetically and assign numbers (matching sidebar)
+  const numberedZones = useMemo(() => {
+    const sorted = [...zones].sort((a, b) => a.name.localeCompare(b.name));
+    return sorted.map((z, i) => ({ ...z, zoneNumber: i + 1 }));
+  }, [zones]);
+
   const visibleZones = useMemo(() => {
     if (selectedZone) {
-      return zones.filter((z) => z.id === selectedZone);
+      return numberedZones.filter((z) => z.id === selectedZone);
     }
-    return zones.filter((z) => z.name !== 'Unassigned');
-  }, [zones, selectedZone]);
+    return numberedZones.filter((z) => z.name !== 'Unassigned');
+  }, [numberedZones, selectedZone]);
 
   return (
     <MapContainer
@@ -113,7 +119,7 @@ export default function MapView() {
           }}
         >
           <Tooltip permanent direction="center" className="zone-label">
-            {zone.name}
+            <span className="zone-number-badge">{zone.zoneNumber}</span> {zone.name}
           </Tooltip>
         </Polygon>
       ))}
