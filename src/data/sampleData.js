@@ -101,6 +101,36 @@ const zoneColors = {
   'Unassigned': '#9ca3af',
 };
 
+// ── Eastern Shore subsection groupings ──────────────────────────────────────
+const easternShoreSubsections = {
+  'Chestertown': 'Upper Shore',
+  'Centerville': 'Upper Shore',
+  'Millington': 'Upper Shore',
+  'Stevensville': 'Upper Shore',
+  'Denton': 'Upper Shore',
+  'Easton': 'Mid Shore',
+  'Cambridge': 'Mid Shore',
+  'Federalsburg': 'Mid Shore',
+  'MD': 'Mid Shore',
+  'Salisbury': 'Lower Shore',
+  'SALISBURY': 'Lower Shore',
+  'Fruitland': 'Lower Shore',
+  'Princess Anne': 'Lower Shore',
+  'Crisfield': 'Lower Shore',
+  'Ocean City': 'Ocean City & Coastal',
+  'Berlin': 'Ocean City & Coastal',
+  'BERLIN': 'Ocean City & Coastal',
+  'Dover': 'Dover Area',
+};
+
+const easternShoreSubColors = {
+  'Upper Shore': '#0f766e',
+  'Mid Shore': '#14b8a6',
+  'Lower Shore': '#2dd4bf',
+  'Ocean City & Coastal': '#5eead4',
+  'Dover Area': '#99f6e4',
+};
+
 function detectStoreType(name) {
   const n = (name || '').toLowerCase();
   if (n.includes('walmart')) return 'walmart';
@@ -159,7 +189,16 @@ function buildZonesFromStores(stores) {
     regionMap[region].stores.push(store);
 
     const territory = store.territory;
-    if (territory && territory !== region && territory !== 'Unassigned') {
+
+    // For Eastern Shore Maryland, group territories into subsections
+    if (region === 'Eastern Shore Maryland') {
+      const subsection = easternShoreSubsections[territory] || 'Lower Shore';
+      store._subsection = subsection;
+      if (!regionMap[region].territories[subsection]) {
+        regionMap[region].territories[subsection] = [];
+      }
+      regionMap[region].territories[subsection].push(store);
+    } else if (territory && territory !== region && territory !== 'Unassigned') {
       if (!regionMap[region].territories[territory]) {
         regionMap[region].territories[territory] = [];
       }
@@ -179,10 +218,16 @@ function buildZonesFromStores(stores) {
     Object.entries(data.territories).forEach(([terrName, terrStores]) => {
       const subBounds = computeBounds(terrStores);
       if (!subBounds) return;
+
+      // Use specific colors for Eastern Shore subsections
+      const subColor = regionName === 'Eastern Shore Maryland'
+        ? (easternShoreSubColors[terrName] || adjustColor(color, 40))
+        : adjustColor(color, 40);
+
       subZones.push({
         id: `sz-${regionName}-${terrName}`.replace(/[^a-zA-Z0-9-]/g, '_'),
         name: terrName,
-        color: adjustColor(color, 40),
+        color: subColor,
         bounds: subBounds,
         storeCount: terrStores.length,
       });
@@ -241,9 +286,19 @@ sampleStores.forEach((store) => {
   const zone = sampleZones.find((z) => z.name === store.region);
   if (zone) {
     store.zoneId = zone.id;
-    const subZone = zone.subZones.find((sz) => sz.name === store.territory);
-    if (subZone) {
-      store.subZoneId = subZone.id;
+
+    // For Eastern Shore, match by subsection grouping
+    if (store.region === 'Eastern Shore Maryland') {
+      const subsection = store._subsection || easternShoreSubsections[store.territory] || 'Lower Shore';
+      const subZone = zone.subZones.find((sz) => sz.name === subsection);
+      if (subZone) {
+        store.subZoneId = subZone.id;
+      }
+    } else {
+      const subZone = zone.subZones.find((sz) => sz.name === store.territory);
+      if (subZone) {
+        store.subZoneId = subZone.id;
+      }
     }
   }
 });

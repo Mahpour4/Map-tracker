@@ -74,7 +74,33 @@ function formatDate(dateStr) {
 
 export default function MapView() {
   const { state, selectStore, selectZone, selectSubZone } = useApp();
-  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom } = state;
+  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType } = state;
+
+  // Filter stores to match sidebar filters
+  const filteredStores = useMemo(() => {
+    let result = stores;
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(term) ||
+          s.city.toLowerCase().includes(term) ||
+          s.address.toLowerCase().includes(term) ||
+          (s.storeNumber || '').toLowerCase().includes(term)
+      );
+    }
+
+    if (filterRegion !== 'all') {
+      result = result.filter((s) => s.region === filterRegion);
+    }
+
+    if (filterType !== 'all') {
+      result = result.filter((s) => s.type === filterType);
+    }
+
+    return result;
+  }, [stores, searchTerm, filterRegion, filterType]);
 
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
@@ -151,8 +177,8 @@ export default function MapView() {
         ))
       )}
 
-      {/* Render store markers */}
-      {stores.map((store) => (
+      {/* Render store markers (filtered to match sidebar) */}
+      {filteredStores.map((store) => (
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}

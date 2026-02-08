@@ -18,11 +18,38 @@ const initialState = {
   mapZoom: 8,
 };
 
+const easternShoreSubsections = {
+  'Chestertown': 'Upper Shore',
+  'Centerville': 'Upper Shore',
+  'Millington': 'Upper Shore',
+  'Stevensville': 'Upper Shore',
+  'Denton': 'Upper Shore',
+  'Easton': 'Mid Shore',
+  'Cambridge': 'Mid Shore',
+  'Federalsburg': 'Mid Shore',
+  'MD': 'Mid Shore',
+  'Salisbury': 'Lower Shore',
+  'SALISBURY': 'Lower Shore',
+  'Fruitland': 'Lower Shore',
+  'Princess Anne': 'Lower Shore',
+  'Crisfield': 'Lower Shore',
+  'Ocean City': 'Ocean City & Coastal',
+  'Berlin': 'Ocean City & Coastal',
+  'BERLIN': 'Ocean City & Coastal',
+  'Dover': 'Dover Area',
+};
+
 function reassignStores(stores, zones) {
   return stores.map((store) => {
     const zone = zones.find((z) => z.name === store.region);
     if (zone) {
-      const subZone = zone.subZones.find((sz) => sz.name === store.territory);
+      let subZone;
+      if (store.region === 'Eastern Shore Maryland') {
+        const subsection = easternShoreSubsections[store.territory] || 'Lower Shore';
+        subZone = zone.subZones.find((sz) => sz.name === subsection);
+      } else {
+        subZone = zone.subZones.find((sz) => sz.name === store.territory);
+      }
       return {
         ...store,
         zoneId: zone.id,
