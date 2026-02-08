@@ -102,7 +102,12 @@ function StoreCard({ store, index }) {
           className="btn btn-sm btn-danger"
           onClick={(e) => {
             e.stopPropagation();
-            deleteStore(store.id);
+            const pwd = prompt('Enter password to remove this store:');
+            if (pwd === '1234') {
+              deleteStore(store.id);
+            } else if (pwd !== null) {
+              alert('Incorrect password');
+            }
           }}
         >
           Remove
