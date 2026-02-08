@@ -38,9 +38,10 @@ function createStoreIcon(type, isSelected) {
   const color = typeColors[type] || typeColors.other;
   const size = isSelected ? 14 : 10;
   const border = isSelected ? '3px solid #1e3a5f' : '2px solid #fff';
+  const blinkClass = isSelected ? 'marker-blink' : '';
 
   return L.divIcon({
-    className: 'custom-marker',
+    className: `custom-marker ${blinkClass}`,
     html: `<div style="
       width: ${size}px;
       height: ${size}px;
@@ -73,7 +74,7 @@ function formatDate(dateStr) {
 }
 
 export default function MapView() {
-  const { state, selectStore, selectZone, selectSubZone } = useApp();
+  const { state, selectStore, selectZone, selectSubZone, setMapView } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType } = state;
 
   // Filter stores to match sidebar filters
@@ -184,7 +185,13 @@ export default function MapView() {
           position={[store.lat, store.lng]}
           icon={createStoreIcon(store.type, selectedStore === store.id)}
           eventHandlers={{
-            click: () => selectStore(store.id),
+            click: () => {
+              if (selectedStore === store.id) {
+                setMapView([store.lat, store.lng], 16);
+              } else {
+                selectStore(store.id);
+              }
+            },
           }}
         >
           <Popup>

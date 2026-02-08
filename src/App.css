@@ -409,6 +409,16 @@ textarea {
   vertical-align: middle;
 }
 
+/* ============ Marker blink animation ============ */
+.marker-blink > div {
+  animation: blink-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes blink-pulse {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.25; transform: scale(1.6); }
+}
+
 .zone-meta {
   display: flex;
   gap: 6px;

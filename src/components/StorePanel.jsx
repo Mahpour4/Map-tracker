@@ -54,7 +54,6 @@ function StoreCard({ store, index }) {
       className={`store-card ${isSelected ? 'selected' : ''}`}
       onClick={() => {
         selectStore(store.id);
-        setMapView([store.lat, store.lng], 14);
       }}
     >
       <div className="store-card-header">
