@@ -104,8 +104,8 @@ export default function MapView() {
           pathOptions={{
             color: zone.color,
             fillColor: zone.color,
-            fillOpacity: selectedZone === zone.id ? 0.2 : 0.05,
-            weight: selectedZone === zone.id ? 3 : 1,
+            fillOpacity: selectedZone === zone.id ? 0.45 : 0.25,
+            weight: selectedZone === zone.id ? 3 : 2,
             dashArray: selectedZone === zone.id ? null : '8 4',
           }}
           eventHandlers={{
@@ -127,8 +127,8 @@ export default function MapView() {
             pathOptions={{
               color: subZone.color,
               fillColor: subZone.color,
-              fillOpacity: selectedSubZone === subZone.id ? 0.3 : 0.1,
-              weight: selectedSubZone === subZone.id ? 3 : 1,
+              fillOpacity: selectedSubZone === subZone.id ? 0.5 : 0.3,
+              weight: selectedSubZone === subZone.id ? 3 : 2,
             }}
             eventHandlers={{
               click: (e) => {
