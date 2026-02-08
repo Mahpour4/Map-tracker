@@ -74,8 +74,20 @@ function formatDate(dateStr) {
 }
 
 export default function MapView() {
-  const { state, selectStore, selectZone, selectSubZone, setMapView } = useApp();
+  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType } = state;
+
+  const hasActiveFilters = searchTerm || filterRegion !== 'all' || filterType !== 'all' || selectedStore || selectedZone || selectedSubZone;
+
+  function resetAll() {
+    setSearch('');
+    setFilterRegion('all');
+    setFilterType('all');
+    selectStore(null);
+    selectZone(null);
+    selectSubZone(null);
+    setMapView([39.0, -76.8], 8);
+  }
 
   // Filter stores to match sidebar filters
   const filteredStores = useMemo(() => {
@@ -117,6 +129,12 @@ export default function MapView() {
   }, [numberedZones, selectedZone]);
 
   return (
+    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      {hasActiveFilters && (
+        <button className="map-clear-btn" onClick={resetAll}>
+          Clear Filters &amp; Reset
+        </button>
+      )}
     <MapContainer
       center={mapCenter}
       zoom={mapZoom}
@@ -232,5 +250,6 @@ export default function MapView() {
         </Marker>
       ))}
     </MapContainer>
+    </div>
   );
 }

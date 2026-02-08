@@ -409,6 +409,30 @@ textarea {
   vertical-align: middle;
 }
 
+/* ============ Map clear button ============ */
+.map-clear-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  padding: 8px 16px;
+  background: #fff;
+  color: var(--text);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.map-clear-btn:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
 /* ============ Marker blink animation ============ */
 .marker-blink > div {
   animation: blink-pulse 0.6s ease-in-out infinite alternate;
