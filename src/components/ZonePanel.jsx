@@ -30,7 +30,7 @@ function SubZoneCard({ subZone, zone }) {
 }
 
 function ZoneCard({ zone, zoneNumber }) {
-  const { selectZone, setMapView, state } = useApp();
+  const { selectZone, selectStore, setMapView, state } = useApp();
   const [expanded, setExpanded] = useState(false);
   const isSelected = state.selectedZone === zone.id;
   const storesInZone = state.stores.filter((s) => s.zoneId === zone.id);
@@ -79,7 +79,11 @@ function ZoneCard({ zone, zoneNumber }) {
               <h5>Stores in this zone ({storesInZone.length}):</h5>
               <ul>
                 {storesInZone.map((s, i) => (
-                  <li key={s.id}>
+                  <li
+                    key={s.id}
+                    className={`zone-store-item ${state.selectedStore === s.id ? 'active' : ''}`}
+                    onClick={() => selectStore(s.id)}
+                  >
                     <span className="store-index">{i + 1}.</span> {s.name}
                     <span className="store-city-inline"> - {s.city}, {s.state}</span>
                   </li>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -76,6 +76,16 @@ function formatDate(dateStr) {
 export default function MapView() {
   const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType } = state;
+
+  // Auto-deselect store after 10 seconds of blinking
+  const blinkTimer = useRef(null);
+  useEffect(() => {
+    if (blinkTimer.current) clearTimeout(blinkTimer.current);
+    if (selectedStore) {
+      blinkTimer.current = setTimeout(() => selectStore(null), 10000);
+    }
+    return () => { if (blinkTimer.current) clearTimeout(blinkTimer.current); };
+  }, [selectedStore, selectStore]);
 
   const hasActiveFilters = searchTerm || filterRegion !== 'all' || filterType !== 'all' || selectedStore || selectedZone || selectedSubZone;
 

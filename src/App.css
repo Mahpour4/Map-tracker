@@ -681,6 +681,22 @@ textarea {
   font-size: 11px;
 }
 
+.zone-store-item {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.zone-store-item:hover {
+  background: #e0f2fe;
+}
+
+.zone-store-item.active {
+  background: #bfdbfe;
+  font-weight: 600;
+}
+
 .more-text {
   color: var(--text-muted);
   font-style: italic;
