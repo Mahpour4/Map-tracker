@@ -125,6 +125,10 @@ const cityCoords = {
   'STEPHENS CITY, VA': [39.0835, -78.2130],
   'FORT MYER, VA': [38.8800, -77.0800],
   'VIRGINIA, VA': [38.8800, -77.0800], // Fort Myer entry
+  'SOUTH RIDING, VA': [38.9210, -77.5040],
+  'RESTON, VA': [38.9687, -77.3411],
+  'CENTREVILLE, VA': [38.8401, -77.4291],
+  'BURKE, VA': [38.7934, -77.2716],
 
   // West Virginia
   'CHARLES TOWN, WV': [39.2890, -77.8600],
