@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -32,6 +32,19 @@ const typeColors = {
   'acme': '#22c55e',
   'geresbecks': '#14b8a6',
   'other': '#6b7280',
+};
+
+const typeLabels = {
+  'food-lion': 'Food Lion',
+  'shoppers': 'Shoppers',
+  'wegmans': 'Wegmans',
+  'walmart': 'Walmart',
+  'giant-martins': 'Giant/Martins',
+  'weis': 'Weis',
+  'redners': 'Redners',
+  'acme': 'Acme',
+  'geresbecks': 'Geresbecks',
+  'other': 'Other',
 };
 
 function createStoreIcon(type, isSelected) {
@@ -74,8 +87,10 @@ function formatDate(dateStr) {
 }
 
 export default function MapView() {
-  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute } = useApp();
+  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute } = state;
+
+  const [hiddenZones, setHiddenZones] = useState(new Set());
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -87,7 +102,37 @@ export default function MapView() {
     return () => { if (blinkTimer.current) clearTimeout(blinkTimer.current); };
   }, [selectedStore, selectStore]);
 
-  const hasActiveFilters = searchTerm || filterRegion !== 'all' || filterType !== 'all' || filterRoute !== 'all' || selectedStore || selectedZone || selectedSubZone;
+  // Available routes for popup assign dropdown
+  const routes = useMemo(() => {
+    const set = new Set(stores.map((s) => s.routeNumber).filter((r) => r && r !== '0'));
+    return Array.from(set).sort((a, b) => {
+      const na = parseInt(a), nb = parseInt(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+  }, [stores]);
+
+  function hideZone(zoneId) {
+    setHiddenZones((prev) => {
+      const next = new Set(prev);
+      next.add(zoneId);
+      return next;
+    });
+  }
+
+  function showZone(zoneId) {
+    setHiddenZones((prev) => {
+      const next = new Set(prev);
+      next.delete(zoneId);
+      return next;
+    });
+  }
+
+  function showAllZones() {
+    setHiddenZones(new Set());
+  }
+
+  const hasActiveFilters = searchTerm || filterRegion !== 'all' || filterType !== 'all' || filterRoute !== 'all' || selectedStore || selectedZone || selectedSubZone || hiddenZones.size > 0;
 
   function resetAll() {
     setSearch('');
@@ -97,6 +142,7 @@ export default function MapView() {
     selectStore(null);
     selectZone(null);
     selectSubZone(null);
+    setHiddenZones(new Set());
     setMapView([39.0, -76.8], 8);
   }
 
@@ -136,12 +182,24 @@ export default function MapView() {
     return sorted.map((z, i) => ({ ...z, zoneNumber: i + 1 }));
   }, [zones]);
 
-  const visibleZones = useMemo(() => {
-    if (selectedZone) {
-      return numberedZones.filter((z) => z.id === selectedZone);
-    }
+  // Store count per zone (from filtered stores)
+  const storeCountByZone = useMemo(() => {
+    const counts = {};
+    filteredStores.forEach((s) => {
+      if (s.zoneId) {
+        counts[s.zoneId] = (counts[s.zoneId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [filteredStores]);
 
+  const visibleZones = useMemo(() => {
     let result = numberedZones.filter((z) => z.name !== 'Unassigned');
+
+    // Filter out manually hidden zones
+    if (hiddenZones.size > 0) {
+      result = result.filter((z) => !hiddenZones.has(z.id));
+    }
 
     // When any filter is active, only show zones that contain matching stores
     const hasFilter = searchTerm || filterRegion !== 'all' || filterType !== 'all' || filterRoute !== 'all';
@@ -153,7 +211,13 @@ export default function MapView() {
     }
 
     return result;
-  }, [numberedZones, selectedZone, searchTerm, filterRegion, filterType, filterRoute, filteredStores]);
+  }, [numberedZones, hiddenZones, searchTerm, filterRegion, filterType, filterRoute, filteredStores]);
+
+  // Hidden zones list for the reopen panel
+  const hiddenZonesList = useMemo(() => {
+    if (hiddenZones.size === 0) return [];
+    return numberedZones.filter((z) => hiddenZones.has(z.id));
+  }, [numberedZones, hiddenZones]);
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
@@ -162,6 +226,34 @@ export default function MapView() {
           Clear Filters &amp; Reset
         </button>
       )}
+
+      {/* Hidden zones reopen panel */}
+      {hiddenZonesList.length > 0 && (
+        <div className="hidden-zones-panel">
+          <div className="hidden-zones-header">
+            <span>Hidden Zones ({hiddenZonesList.length})</span>
+            <button className="btn btn-xs" onClick={showAllZones}>Show All</button>
+          </div>
+          {hiddenZonesList.map((z) => (
+            <div key={z.id} className="hidden-zone-item" onClick={() => showZone(z.id)}>
+              <span className="zone-number-badge small" style={{ background: z.color, border: `2px solid ${z.color}` }}>{z.zoneNumber}</span>
+              <span>{z.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Store type color legend */}
+      <div className="map-legend">
+        <div className="legend-title">Store Types</div>
+        {Object.entries(typeColors).map(([type, color]) => (
+          <div key={type} className="legend-item">
+            <span className="legend-dot" style={{ background: color }} />
+            <span>{typeLabels[type] || type}</span>
+          </div>
+        ))}
+      </div>
+
     <MapContainer
       center={mapCenter}
       zoom={mapZoom}
@@ -187,7 +279,13 @@ export default function MapView() {
             dashArray: selectedZone === zone.id ? null : '8 4',
           }}
           eventHandlers={{
-            click: () => selectZone(zone.id),
+            click: (e) => {
+              selectZone(selectedZone === zone.id ? null : zone.id);
+              if (selectedZone !== zone.id) {
+                const map = e.target._map;
+                map.fitBounds(zone.bounds, { padding: [50, 50] });
+              }
+            },
             mouseover: (e) => {
               e.target.setStyle({ fillOpacity: selectedZone === zone.id ? 0.55 : 0.4 });
             },
@@ -198,12 +296,20 @@ export default function MapView() {
         >
           <Tooltip
             permanent
+            interactive
             direction="center"
             className="zone-label"
             offset={[0, 0]}
           >
+            <span
+              className="zone-close-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                hideZone(zone.id);
+              }}
+            >&times;</span>
             <span className="zone-number-badge" style={{ background: zone.color, border: `2px solid ${zone.color}` }}>{zone.zoneNumber}</span>
-            <span className="zone-name-label">{zone.name}</span>
+            <span className="zone-name-label">{zone.name} ({storeCountByZone[zone.id] || 0})</span>
           </Tooltip>
         </Polygon>
       ))}
@@ -225,6 +331,8 @@ export default function MapView() {
                 L.DomEvent.stopPropagation(e);
                 selectZone(zone.id);
                 selectSubZone(subZone.id);
+                const map = e.target._map;
+                map.fitBounds(subZone.bounds, { padding: [50, 50] });
               },
               mouseover: (e) => {
                 e.target.setStyle({ fillOpacity: selectedSubZone === subZone.id ? 0.6 : 0.45 });
@@ -290,6 +398,31 @@ export default function MapView() {
               <span className="popup-zone">
                 Last visited: {formatDate(store.lastVisited)}
               </span>
+              <div className="popup-actions">
+                {store.routeNumber && store.routeNumber !== '0' ? (
+                  <button
+                    className="btn btn-xs btn-warning"
+                    onClick={() => updateStore({ id: store.id, routeNumber: '0' })}
+                  >
+                    Unassign Route
+                  </button>
+                ) : (
+                  <select
+                    className="popup-route-select"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        updateStore({ id: store.id, routeNumber: e.target.value });
+                      }
+                    }}
+                  >
+                    <option value="">Assign route...</option>
+                    {routes.map((r) => (
+                      <option key={r} value={r}>Route {r}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
           </Popup>
         </Marker>
