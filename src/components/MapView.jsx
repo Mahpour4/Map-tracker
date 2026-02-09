@@ -74,8 +74,8 @@ function formatDate(dateStr) {
 }
 
 export default function MapView() {
-  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType } = useApp();
-  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType } = state;
+  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute } = useApp();
+  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute } = state;
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -87,12 +87,13 @@ export default function MapView() {
     return () => { if (blinkTimer.current) clearTimeout(blinkTimer.current); };
   }, [selectedStore, selectStore]);
 
-  const hasActiveFilters = searchTerm || filterRegion !== 'all' || filterType !== 'all' || selectedStore || selectedZone || selectedSubZone;
+  const hasActiveFilters = searchTerm || filterRegion !== 'all' || filterType !== 'all' || filterRoute !== 'all' || selectedStore || selectedZone || selectedSubZone;
 
   function resetAll() {
     setSearch('');
     setFilterRegion('all');
     setFilterType('all');
+    setFilterRoute('all');
     selectStore(null);
     selectZone(null);
     selectSubZone(null);
@@ -122,8 +123,12 @@ export default function MapView() {
       result = result.filter((s) => s.type === filterType);
     }
 
+    if (filterRoute !== 'all') {
+      result = result.filter((s) => s.routeNumber === filterRoute);
+    }
+
     return result;
-  }, [stores, searchTerm, filterRegion, filterType]);
+  }, [stores, searchTerm, filterRegion, filterType, filterRoute]);
 
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
@@ -173,8 +178,14 @@ export default function MapView() {
             click: () => selectZone(zone.id),
           }}
         >
-          <Tooltip permanent direction="center" className="zone-label">
-            <span className="zone-number-badge">{zone.zoneNumber}</span> {zone.name}
+          <Tooltip
+            permanent
+            direction="center"
+            className="zone-label"
+            offset={[0, 0]}
+          >
+            <span className="zone-number-badge" style={{ background: zone.color, border: `2px solid ${zone.color}` }}>{zone.zoneNumber}</span>
+            <span className="zone-name-label">{zone.name}</span>
           </Tooltip>
         </Polygon>
       ))}

@@ -14,6 +14,7 @@ const initialState = {
   searchTerm: '',
   filterRegion: 'all',
   filterType: 'all',
+  filterRoute: 'all',
   mapCenter: [39.0, -76.8],
   mapZoom: 8,
 };
@@ -170,6 +171,8 @@ function reducer(state, action) {
       return { ...state, filterRegion: action.payload };
     case 'SET_FILTER_TYPE':
       return { ...state, filterType: action.payload };
+    case 'SET_FILTER_ROUTE':
+      return { ...state, filterRoute: action.payload };
     case 'SET_MAP_VIEW':
       return {
         ...state,
@@ -250,6 +253,10 @@ export function AppProvider({ children }) {
     ),
     setFilterType: useCallback(
       (type) => dispatch({ type: 'SET_FILTER_TYPE', payload: type }),
+      []
+    ),
+    setFilterRoute: useCallback(
+      (route) => dispatch({ type: 'SET_FILTER_ROUTE', payload: route }),
       []
     ),
     setMapView: useCallback(

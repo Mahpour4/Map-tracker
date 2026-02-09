@@ -118,13 +118,22 @@ function StoreCard({ store, index }) {
 }
 
 export default function StorePanel() {
-  const { state, setSearch, setFilterRegion, setFilterType } = useApp();
-  const { stores, zones, searchTerm, filterRegion, filterType } = state;
+  const { state, setSearch, setFilterRegion, setFilterType, setFilterRoute } = useApp();
+  const { stores, zones, searchTerm, filterRegion, filterType, filterRoute } = state;
   const [showAdd, setShowAdd] = useState(false);
 
   const regions = useMemo(() => {
     const set = new Set(stores.map((s) => s.region));
     return Array.from(set).sort();
+  }, [stores]);
+
+  const routes = useMemo(() => {
+    const set = new Set(stores.map((s) => s.routeNumber).filter((r) => r && r !== '0'));
+    return Array.from(set).sort((a, b) => {
+      const na = parseInt(a), nb = parseInt(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
   }, [stores]);
 
   const filteredStores = useMemo(() => {
@@ -149,8 +158,12 @@ export default function StorePanel() {
       result = result.filter((s) => s.type === filterType);
     }
 
+    if (filterRoute !== 'all') {
+      result = result.filter((s) => s.routeNumber === filterRoute);
+    }
+
     return result;
-  }, [stores, searchTerm, filterRegion, filterType]);
+  }, [stores, searchTerm, filterRegion, filterType, filterRoute]);
 
   const assignedCount = stores.filter((s) => s.zoneId && s.region !== 'Unassigned').length;
 
@@ -182,6 +195,12 @@ export default function StorePanel() {
           <option value="all">All types</option>
           {STORE_TYPES.map((t) => (
             <option key={t} value={t}>{typeLabels[t]}</option>
+          ))}
+        </select>
+        <select value={filterRoute} onChange={(e) => setFilterRoute(e.target.value)}>
+          <option value="all">All routes</option>
+          {routes.map((r) => (
+            <option key={r} value={r}>Route {r}</option>
           ))}
         </select>
       </div>
