@@ -1,10 +1,10 @@
 ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Visited
-02342,02342,Shoppers 2342,6300 Coventry Way,Clinton,MD,20735,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,
+02342,02342,Shoppers 2342,6300 Coventry Way,Clinton,MD,20735,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,0,0,
 02347,02347,Shoppers 2347,3441 Fort Meade Rd,Maryland City,MD,20724,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,
 02353,02353,Shoppers 2353,806 Largo Center Dr,Largo,MD,20774,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,
 02377,02377,Shoppers 2377,2950 Donnell Dr,Forestville,MD,20747,207,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,2025-10-23 20:25:01
 02379,02379,Shoppers 2379,13600 Baltimore Ave Suite100,LAUREL,MD,20707,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,
-02383,02383,Shoppers 2383,10501 Martin Luther King Jr. Hwy,Bowie,MD,20720,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,
+02383,02383,Shoppers 2383,10501 Martin Luther King Jr. Hwy,Bowie,MD,20720,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,0,0,
 02650,02650,Shoppers 2650,4720 CHERRY HILL RD,COLLEGE PARK,MD,20740,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,
 02692,02692,Shoppers 2692,7051 MLKING HWY,LANDOVER,MD,,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,0,0,
 07,07,Wegmans 07,45131 COLUMBIA PLACE,STERLING,VA,20166,,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,,,2025-09-17 13:05:57
@@ -60,25 +60,21 @@ ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Regio
 62,2655,Food Lion 2517,2655 Anapolis Rd,Hanover,MD,21076,207,Route 100 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,2025-10-21 11:22:01
 63,1474,Food Lion 1474,8741 Piney Orchard Pkwy,Odenton,MD,21113,207,Route 100 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,2025-11-19 12:27:26
 64,MEA-7573,Shoppers Fort meade,3441 Fort Meade Rd,Maryland City,MD,20724,108,Route 100 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,2025-10-23 10:44:52
-65,2501,Food Lion,8300 ICE CRYSTAL DR,Scaggsville,MD,20723,100,Route 100 Driver,Howard County,Howard County,Howard County,,,
+65,2501,Food Lion,8300 ICE CRYSTAL DR,Scaggsville,MD,20723,207,Route 207 Driver,Howard County,Howard County,Howard County,,,
 66,287,Weis,6551 Waterloo Rd,Elkridge,MD,21075,100,Route 100 Driver,Howard County,Howard County,Howard County,,,
 67,56,Wegmans 56,20600 Seneca Meadows Pkwy,Germantown,MD,20874,207,Route 100 Driver,Montgomery County,Montgomery County,Montgomery County,,,2025-10-23 12:37:57
 68,CASH-MD-1,Shoppers,18066 Mateny Rd,Germantown,MD,20874,100,Route 100 Driver,Montgomery County,Montgomery County,Montgomery County,,,
 69,1661,Food Lion 1661,845 ROCKVILLE PIKE,Rockville,MD,20852,108,Route 100 Driver,Montgomery County,Montgomery County,Montgomery County,,,2025-10-29 11:56:41
 70,1414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,Maryland,20772,207,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,2025-11-19 12:27:10
 71,WEG-40,Wegmans 40,9001 McHugh Dr,Lanham,MD,20706,207,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,2025-10-23 20:24:00
-72,2342,Shoppers 2623,6300 Coventry Way,Clinton,MD,20735,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,2025-09-04 10:25:53
 73,276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,2025-10-23 20:18:55
 74,2566,Food Lion 2566,12675 Laurel Bowie Rd,Laurel,MD,20708,207,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,2025-11-19 12:33:25
 75,1662,Food Lion,410 SANDY SPRINGS RD,Laurel,MD,20707,207,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,2025-11-04 10:53:38
 76,2650,Shoppers,4720 CHERRY HILL RD,College Park,MD,20740,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
-77,CASH-MD-2,Weis,1684 STARKEY AVE,JB Andrews,MD,20762,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
-78,CASH-MD-3,Shoppers,2950 Donnell Dr,Forestville,MD,20747,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
 79,CASH-MD-4,Shoppers,5820 Silver Hill Rd,Forestville,MD,20747,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
 80,CASH-MD-5,Shoppers,4801 Marlboro Pike,Capitol Heights,MD,20743,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
-81,CASH-MD-6,Walmart,6210 Annapolis Rd,Landover Hills,MD,20784,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
-82,CASH-MD-7,Shoppers,7790 RIVERDALE RD,Hyattsville,MD,20784,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
-83,CASH-MD-8,Shoppers,10501 Martin Luther King Jr Hwy,Bowie,MD,20720,100,Route 100 Driver,Prince George's County,Prince George's County,Prince George's County,,,
+81,CASH-MD-6,Walmart,6210 Annapolis Rd,Landover Hills,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,,,
+82,CASH-MD-7,Shoppers,7790 RIVERDALE RD,Hyattsville,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,,,
 84,656,Food Lion 656,40955 MERCHANT LN,LEONARDTOWN,Maryland,20650,207,Route 100 Driver,Southern Maryland,Southern Maryland,Southern Maryland,,,2025-11-12 10:24:15
 85,1319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,Maryland,20622,207,Route 100 Driver,Southern Maryland,Southern Maryland,Southern Maryland,,,2025-10-29 11:00:11
 86,1316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,Maryland,20616,207,Route 100 Driver,Southern Maryland,Southern Maryland,Southern Maryland,,,2025-11-19 12:31:38
@@ -96,7 +92,6 @@ ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Regio
 98,CASH-MD-10,Walmart,6721 Chesapeake Center Dr,Glen Burnie,MD,21060,104,Route 104 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,
 99,1543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,Maryland,21061,104,Route 104 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,2025-10-23 19:52:07
 CASH-DE-5,CASH-DE-5,Hockers,34960 Atlantic Ave,Ocean View,DE,19970,110,Route 110 Driver,Delaware,Ocean View,Ocean View,38.5432,-75.0886,
-CASH-VA-107-1,CASH-VA-107-1,Wegmans,8297 Stonewall Shops Square,Gainesville,Virginia,20155,207,Route 207 Driver,Northern Virginia,Northern Virginia,Northern Virginia,,,2025-09-25 16:36:55
 DE-1153-DE-19,1153,Food Lion 1153,12158 BRITTINGHAM LN,Princess Anne,MD,21853,206,Route 206 Driver,Eastern Shore Maryland,Princess Anne,Princess Anne,,,2025-11-24 12:33:52
 DE-1158-DE-20,1158,Food Lion 1158,6 WASHINGTON ST,Cambridge,MD,21613,110,Route 110 Driver,Eastern Shore Maryland,Cambridge,Cambridge,,,2025-11-19 12:01:27
 DE-1179-DE-21,1179,Food Lion 1179,4092 LANKFORD HWY,Exmore,VA,23350,110,Route 110 Driver,Virginia Eastern Shore,Exmore,Exmore,,,2025-10-22 18:01:39
@@ -179,7 +174,6 @@ GTW06104,GTW06104,Giant 6104,1729 Dual Hwy,Hagerstown,MD,21740,101,Route 101 Dri
 GTW06275,GTW06275,Giant 6275,1650 C Wesel Blvd,Hagerstown,MD,21740,101,Route 101 Driver,Maryland Western,Maryland Western,Maryland Western,,,
 GTW06444,GTW06444,Giant 6444,18726 N Pointe Dr,Hagerstown,MD,21742,101,Route 101 Driver,Maryland Western,Maryland Western,Maryland Western,,,
 GTW06556,GTW06556,Giant 6556,22401 Jefferson Blvd,Smithsburg,MD,21783,101,Route 101 Driver,Maryland Western,Maryland Western,Maryland Western,,,
-MIL-7,MIL-7,Joint Base Andrews,1832 Robert M Bond Dr,Joint Base Andrews,MD,20762,207,,,,,,,,
 MTW06078,MTW06078,Martins 6078,1950 S Pleasant Valley Rd,Winchester,VA,22601,101,Route 101 Driver,Virginia Northern,Virginia Northern,Virginia Northern,,,
 MTW06102,MTW06102,Martins 6102,190 Flowing Spring Rd,Charles Town,WV,25414,101,Route 101 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,,,
 MTW06107,MTW06107,Martins 6107,901 Foxcroft Ave,Martinsburg,WV,25401,101,Route 101 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,,,
@@ -226,3 +220,12 @@ FLW02597,02597,Food Lion 2597,6306 HOADLEY RD,Manassas,VA,20112,209,Route 209 Dr
 MISC0209,MISC0209,Misc Cash 209,,,,,209,Route 209 Driver,Northern Virginia,,,,,
 WGW00049,00049,Wegmans 049,7505 HILLTOP VILLAGE CTR DR,Alexandria,VA,22315,209,Route 209 Driver,Northern Virginia,Alexandria,Alexandria,,,2025-12-05
 WGW00055,00055,Wegmans 055,14801 DINING WAY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,,,2025-11-13
+CASH0543,CASH0543,Marlton Spirits,9518 Crain Hwy,Upper Marlboro,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,,,
+CMW00001,CMW00001,Comm Bolling AFB 0001,185 CHAPPIE JAMES BLVD,Bolling AFB,DC,20032,207,Route 207 Driver,Washington DC,Washington DC,Washington DC,,,
+CMW05119,CMW05119,Comm Andrew AFB 5119,1684 STARKEY AVE,JB Andrews,MD,20762,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,,,
+CMW05222,CMW05222,Comm Ft Meade 5222,2786 MACARTHUR RD,Fort Meade,MD,20755,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,
+CMW05241,CMW05241,Bolling commissary,185 Chappie James Blvd,Washington,DC,20032,207,Route 207 Driver,Washington DC,Washington DC,Washington DC,,,
+CMW5024,CMW5024,Comm Ft Patuxent 5024,22155 Cuddihy Rd,Patuxent River,MD,20670,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,,,
+MISC0207,MISC0207,Misc Cash 207,,,,,207,Route 207 Driver,,,,,,
+WAW01985,WAW01985,Walmart 1985,3549 Russett Green East,Laurel,MD,20724,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,
+WAW03490,WAW03490,Walmart 3490,7081 Arundel Mills Circle,Hanover,MD,21076,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,,,

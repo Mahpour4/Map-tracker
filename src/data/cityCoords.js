@@ -26,6 +26,7 @@ const cityCoords = {
   'ODENTON, MD': [39.0840, -76.7001],
   'MARYLAND CITY, MD': [39.1020, -76.8135],
   'GAMBRILLS, MD': [39.0671, -76.6654],
+  'FORT MEADE, MD': [39.1087, -76.7434],
 
   // Maryland - Howard County
   'SCAGGSVILLE, MD': [39.1453, -76.8789],
@@ -87,6 +88,7 @@ const cityCoords = {
   'BRYANS ROAD, MD': [38.6282, -77.0727],
   'LA PLATA, MD': [38.5290, -76.9752],
   'WALDORF, MD': [38.6246, -76.9191],
+  'PATUXENT RIVER, MD': [38.2856, -76.4283],
 
   // Maryland - Western
   'HAGERSTOWN, MD': [39.6418, -77.7200],
@@ -95,6 +97,7 @@ const cityCoords = {
 
   // Washington DC
   'WASHINGTON, DC': [38.9072, -77.0369],
+  'BOLLING AFB, DC': [38.8396, -77.0130],
 
   // Virginia - Northern Virginia
   'STERLING, VA': [39.0064, -77.4286],
