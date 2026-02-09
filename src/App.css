@@ -185,6 +185,16 @@ html, body, #root {
   background: #fef2f2;
 }
 
+.btn-warning {
+  background: white;
+  color: #d97706;
+  border-color: #d97706;
+}
+
+.btn-warning:hover {
+  background: #fffbeb;
+}
+
 .btn-sm {
   padding: 5px 10px;
   font-size: 12px;
@@ -337,6 +347,19 @@ textarea {
   display: flex;
   gap: 6px;
   margin-top: 8px;
+  align-items: center;
+}
+
+.route-assign-select {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--primary);
+  background: #eff6ff;
+  cursor: pointer;
+  min-width: 0;
 }
 
 /* ============ Zone Cards ============ */

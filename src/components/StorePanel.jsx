@@ -42,10 +42,11 @@ function formatDate(dateStr) {
   });
 }
 
-function StoreCard({ store, index }) {
-  const { selectStore, deleteStore, setMapView, state } = useApp();
+function StoreCard({ store, index, routes }) {
+  const { selectStore, deleteStore, updateStore, setMapView, state } = useApp();
   const isSelected = state.selectedStore === store.id;
   const tc = typeColors[store.type] || typeColors.other;
+  const isUnassignedRoute = !store.routeNumber || store.routeNumber === '0';
 
   const zone = state.zones.find((z) => z.id === store.zoneId);
 
@@ -98,6 +99,33 @@ function StoreCard({ store, index }) {
       </div>
 
       <div className="store-card-actions">
+        {isUnassignedRoute ? (
+          <select
+            className="route-assign-select"
+            value=""
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              if (e.target.value) {
+                updateStore({ id: store.id, routeNumber: e.target.value });
+              }
+            }}
+          >
+            <option value="">Assign to route...</option>
+            {routes.map((r) => (
+              <option key={r} value={r}>Route {r}</option>
+            ))}
+          </select>
+        ) : (
+          <button
+            className="btn btn-sm btn-warning"
+            onClick={(e) => {
+              e.stopPropagation();
+              updateStore({ id: store.id, routeNumber: '0' });
+            }}
+          >
+            Unassign
+          </button>
+        )}
         <button
           className="btn btn-sm btn-danger"
           onClick={(e) => {
@@ -159,7 +187,11 @@ export default function StorePanel() {
     }
 
     if (filterRoute !== 'all') {
-      result = result.filter((s) => s.routeNumber === filterRoute);
+      if (filterRoute === '0') {
+        result = result.filter((s) => !s.routeNumber || s.routeNumber === '0');
+      } else {
+        result = result.filter((s) => s.routeNumber === filterRoute);
+      }
     }
 
     return result;
@@ -199,6 +231,7 @@ export default function StorePanel() {
         </select>
         <select value={filterRoute} onChange={(e) => setFilterRoute(e.target.value)}>
           <option value="all">All routes</option>
+          <option value="0">Unassigned</option>
           {routes.map((r) => (
             <option key={r} value={r}>Route {r}</option>
           ))}
@@ -214,7 +247,7 @@ export default function StorePanel() {
           <p className="empty-text">No stores match your filters</p>
         ) : (
           filteredStores.map((store, i) => (
-            <StoreCard key={store.id} store={store} index={i + 1} />
+            <StoreCard key={store.id} store={store} index={i + 1} routes={routes} />
           ))
         )}
       </div>
