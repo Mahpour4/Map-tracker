@@ -140,8 +140,19 @@ export default function MapView() {
     if (selectedZone) {
       return numberedZones.filter((z) => z.id === selectedZone);
     }
-    return numberedZones.filter((z) => z.name !== 'Unassigned');
-  }, [numberedZones, selectedZone]);
+
+    let result = numberedZones.filter((z) => z.name !== 'Unassigned');
+
+    // When a route is selected, only show zones containing stores on that route
+    if (filterRoute !== 'all') {
+      const zoneIdsWithRouteStores = new Set(
+        filteredStores.map((s) => s.zoneId).filter(Boolean)
+      );
+      result = result.filter((z) => zoneIdsWithRouteStores.has(z.id));
+    }
+
+    return result;
+  }, [numberedZones, selectedZone, filterRoute, filteredStores]);
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
@@ -176,6 +187,12 @@ export default function MapView() {
           }}
           eventHandlers={{
             click: () => selectZone(zone.id),
+            mouseover: (e) => {
+              e.target.setStyle({ fillOpacity: selectedZone === zone.id ? 0.55 : 0.4 });
+            },
+            mouseout: (e) => {
+              e.target.setStyle({ fillOpacity: selectedZone === zone.id ? 0.45 : 0.25 });
+            },
           }}
         >
           <Tooltip
@@ -207,6 +224,12 @@ export default function MapView() {
                 L.DomEvent.stopPropagation(e);
                 selectZone(zone.id);
                 selectSubZone(subZone.id);
+              },
+              mouseover: (e) => {
+                e.target.setStyle({ fillOpacity: selectedSubZone === subZone.id ? 0.6 : 0.45 });
+              },
+              mouseout: (e) => {
+                e.target.setStyle({ fillOpacity: selectedSubZone === subZone.id ? 0.5 : 0.3 });
               },
             }}
           >
