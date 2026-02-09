@@ -143,16 +143,17 @@ export default function MapView() {
 
     let result = numberedZones.filter((z) => z.name !== 'Unassigned');
 
-    // When a route is selected, only show zones containing stores on that route
-    if (filterRoute !== 'all') {
-      const zoneIdsWithRouteStores = new Set(
+    // When any filter is active, only show zones that contain matching stores
+    const hasFilter = searchTerm || filterRegion !== 'all' || filterType !== 'all' || filterRoute !== 'all';
+    if (hasFilter) {
+      const zoneIdsWithStores = new Set(
         filteredStores.map((s) => s.zoneId).filter(Boolean)
       );
-      result = result.filter((z) => zoneIdsWithRouteStores.has(z.id));
+      result = result.filter((z) => zoneIdsWithStores.has(z.id));
     }
 
     return result;
-  }, [numberedZones, selectedZone, filterRoute, filteredStores]);
+  }, [numberedZones, selectedZone, searchTerm, filterRegion, filterType, filterRoute, filteredStores]);
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
