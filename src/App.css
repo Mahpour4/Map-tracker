@@ -57,6 +57,103 @@ html, body, #root {
   color: var(--text);
 }
 
+/* ============ GitHub Sync ============ */
+.github-sync {
+  margin-top: 8px;
+}
+
+.sync-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sync-icon {
+  font-size: 10px;
+}
+
+.sync-icon.spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sync-label {
+  font-size: 11px;
+}
+
+.sync-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.sync-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+
+.sync-btn:hover {
+  background: #f1f5f9;
+  color: var(--text);
+  border-color: var(--primary);
+}
+
+.sync-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sync-error {
+  font-size: 10px;
+  color: var(--danger);
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.github-settings {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.github-settings input {
+  margin-top: 4px;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.settings-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.settings-connected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .sidebar-tabs {
   display: flex;
   border-bottom: 1px solid var(--border);

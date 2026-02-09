@@ -1,6 +1,7 @@
-import { createContext, useContext, useReducer, useCallback } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { sampleStores, sampleZones } from '../data/sampleData';
+import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
+import { fetchStoresCsv, saveStoresCsv, getToken } from '../services/githubService';
 
 const AppContext = createContext();
 
@@ -17,6 +18,8 @@ const initialState = {
   filterRoute: 'all',
   mapCenter: [39.0, -76.8],
   mapZoom: 8,
+  syncStatus: 'idle', // idle | loading | saving | saved | error
+  syncError: null,
 };
 
 const easternShoreSubsections = {
@@ -63,16 +66,22 @@ function reassignStores(stores, zones) {
 
 function reducer(state, action) {
   switch (action.type) {
+    case 'LOAD_FROM_GITHUB': {
+      const { stores, zones } = action.payload;
+      return { ...state, stores, zones, syncStatus: 'saved', syncError: null };
+    }
+    case 'SET_SYNC_STATUS':
+      return { ...state, syncStatus: action.payload.status, syncError: action.payload.error || null };
     case 'ADD_STORE': {
       const newStore = { id: uuidv4(), ...action.payload };
       const updatedStores = [...state.stores, newStore];
-      return { ...state, stores: reassignStores(updatedStores, state.zones) };
+      return { ...state, stores: reassignStores(updatedStores, state.zones), syncStatus: 'idle' };
     }
     case 'UPDATE_STORE': {
       const updatedStores = state.stores.map((s) =>
         s.id === action.payload.id ? { ...s, ...action.payload } : s
       );
-      return { ...state, stores: reassignStores(updatedStores, state.zones) };
+      return { ...state, stores: reassignStores(updatedStores, state.zones), syncStatus: 'idle' };
     }
     case 'DELETE_STORE':
       return {
@@ -80,6 +89,7 @@ function reducer(state, action) {
         stores: state.stores.filter((s) => s.id !== action.payload),
         selectedStore:
           state.selectedStore === action.payload ? null : state.selectedStore,
+        syncStatus: 'idle',
       };
     case 'ADD_ZONE': {
       const newZone = { id: uuidv4(), subZones: [], ...action.payload };
@@ -186,6 +196,75 @@ function reducer(state, action) {
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const saveTimer = useRef(null);
+  const prevStoresRef = useRef(state.stores);
+
+  // Load from GitHub on mount if token is configured
+  useEffect(() => {
+    if (!getToken()) return;
+    dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'loading' } });
+    fetchStoresCsv()
+      .then(({ content }) => {
+        const { stores, zones } = processStoresFromCsv(content);
+        dispatch({ type: 'LOAD_FROM_GITHUB', payload: { stores, zones } });
+      })
+      .catch((err) => {
+        console.error('Failed to load from GitHub:', err);
+        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+      });
+  }, []);
+
+  // Auto-save to GitHub when stores change (debounced 2s)
+  useEffect(() => {
+    if (!getToken()) return;
+    if (state.syncStatus === 'loading') return;
+    // Skip if stores haven't actually changed (initial load, etc.)
+    if (prevStoresRef.current === state.stores) return;
+    prevStoresRef.current = state.stores;
+
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'saving' } });
+      const csv = storesToCsv(state.stores);
+      saveStoresCsv(csv)
+        .then(() => {
+          dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'saved' } });
+        })
+        .catch((err) => {
+          console.error('Failed to save to GitHub:', err);
+          dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+        });
+    }, 2000);
+
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [state.stores, state.syncStatus]);
+
+  // Manual sync trigger
+  const syncFromGithub = useCallback(() => {
+    if (!getToken()) return;
+    dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'loading' } });
+    fetchStoresCsv()
+      .then(({ content }) => {
+        const { stores, zones } = processStoresFromCsv(content);
+        dispatch({ type: 'LOAD_FROM_GITHUB', payload: { stores, zones } });
+      })
+      .catch((err) => {
+        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+      });
+  }, []);
+
+  const saveToGithub = useCallback(() => {
+    if (!getToken()) return;
+    dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'saving' } });
+    const csv = storesToCsv(state.stores);
+    saveStoresCsv(csv)
+      .then(() => {
+        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'saved' } });
+      })
+      .catch((err) => {
+        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+      });
+  }, [state.stores]);
 
   const actions = {
     addStore: useCallback(
@@ -264,6 +343,8 @@ export function AppProvider({ children }) {
         dispatch({ type: 'SET_MAP_VIEW', payload: { center, zoom } }),
       []
     ),
+    syncFromGithub,
+    saveToGithub,
   };
 
   return (

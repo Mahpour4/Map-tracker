@@ -281,6 +281,90 @@ function adjustColor(hex, amount) {
 // ── Build & export ──────────────────────────────────────────────────────────
 export const sampleZones = buildZonesFromStores(sampleStores);
 
+// ── Exported helpers for GitHub sync ────────────────────────────────────────
+export function processStoresFromCsv(csvText) {
+  const rows = parseCSV(csvText);
+  coordCounter = {};
+  const stores = rows
+    .map((row) => {
+      const coords = geocode(row);
+      if (!coords) return null;
+      return {
+        id: row.ID || row['Store Number'],
+        storeNumber: row['Store Number'],
+        name: row['Store Name'],
+        address: row.Address,
+        city: row.City,
+        state: normalizeState(row.State),
+        zip: row['Zip Code'],
+        lat: coords[0],
+        lng: coords[1],
+        routeNumber: row['Route Number'],
+        driver: row.Driver,
+        region: row.Region || 'Unassigned',
+        territory: row.Territory || 'Unassigned',
+        subTerritory: row['Sub-Territory'] || 'Unassigned',
+        lastVisited: row['Last Visited'] || null,
+        type: detectStoreType(row['Store Name']),
+        zoneId: null,
+        subZoneId: null,
+      };
+    })
+    .filter(Boolean);
+
+  const zones = buildZonesFromStores(stores);
+  stores.forEach((store) => {
+    const zone = zones.find((z) => z.name === store.region);
+    if (zone) {
+      store.zoneId = zone.id;
+      if (store.region === 'Eastern Shore Maryland') {
+        const subsection = easternShoreSubsections[store.territory] || 'Lower Shore';
+        const subZone = zone.subZones.find((sz) => sz.name === subsection);
+        if (subZone) store.subZoneId = subZone.id;
+      } else {
+        const subZone = zone.subZones.find((sz) => sz.name === store.territory);
+        if (subZone) store.subZoneId = subZone.id;
+      }
+    }
+  });
+
+  return { stores, zones };
+}
+
+const CSV_HEADER = 'ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Visited';
+
+function escapeCsvField(val) {
+  const s = String(val || '');
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+export function storesToCsv(stores) {
+  const lines = [CSV_HEADER];
+  stores.forEach((s) => {
+    lines.push([
+      escapeCsvField(s.id),
+      escapeCsvField(s.storeNumber),
+      escapeCsvField(s.name),
+      escapeCsvField(s.address),
+      escapeCsvField(s.city),
+      escapeCsvField(s.state),
+      escapeCsvField(s.zip),
+      escapeCsvField(s.routeNumber),
+      escapeCsvField(s.driver),
+      escapeCsvField(s.region),
+      escapeCsvField(s.territory),
+      escapeCsvField(s.subTerritory),
+      escapeCsvField(s.lat),
+      escapeCsvField(s.lng),
+      escapeCsvField(s.lastVisited || ''),
+    ].join(','));
+  });
+  return lines.join('\n') + '\n';
+}
+
 // Assign stores to zones by region matching
 sampleStores.forEach((store) => {
   const zone = sampleZones.find((z) => z.name === store.region);
