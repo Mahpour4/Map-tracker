@@ -67,6 +67,7 @@ const cityCoords = {
   'RISING SUN, MD': [39.6970, -76.0629],
   'NORTH EAST, MD': [39.6001, -75.9414],
   'PERRYVILLE, MD': [39.5601, -76.0714],
+  'HAVRE DE GRACE, MD': [39.5493, -76.0916],
 
   // Maryland - Carroll County
   'TANEYTOWN, MD': [39.6559, -77.1740],
