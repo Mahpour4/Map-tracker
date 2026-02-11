@@ -47,24 +47,71 @@ const typeLabels = {
   'other': 'Other',
 };
 
-function createStoreIcon(type, isSelected) {
-  const color = typeColors[type] || typeColors.other;
+const recencyTiers = [
+  { label: '0-7 days', color: '#22c55e', maxDays: 7, pulse: null },
+  { label: '8-10 days', color: '#3b82f6', maxDays: 10, pulse: null },
+  { label: '11-15 days', color: '#eab308', maxDays: 15, pulse: 'pulse-slow' },
+  { label: '16-30 days', color: '#f97316', maxDays: 30, pulse: 'pulse-medium' },
+  { label: '30+ days', color: '#ef4444', maxDays: Infinity, pulse: 'pulse-fast' },
+];
+const neverVisitedTier = { label: 'Never visited', color: '#9ca3af', pulse: 'pulse-fast' };
+
+function getDaysSinceVisit(lastVisited) {
+  if (!lastVisited) return null;
+  const visited = new Date(lastVisited);
+  if (isNaN(visited.getTime())) return null;
+  const now = new Date();
+  return Math.floor((now - visited) / (1000 * 60 * 60 * 24));
+}
+
+function getRecencyTier(lastVisited) {
+  const days = getDaysSinceVisit(lastVisited);
+  if (days === null) return neverVisitedTier;
+  for (const tier of recencyTiers) {
+    if (days <= tier.maxDays) return tier;
+  }
+  return recencyTiers[recencyTiers.length - 1];
+}
+
+function createStoreIcon(type, isSelected, visitMode, lastVisited) {
+  const baseColor = visitMode
+    ? getRecencyTier(lastVisited).color
+    : (typeColors[type] || typeColors.other);
   const size = isSelected ? 14 : 10;
   const border = isSelected ? '3px solid #1e3a5f' : '2px solid #fff';
   const blinkClass = isSelected ? 'marker-blink' : '';
+  const tier = visitMode ? getRecencyTier(lastVisited) : null;
+  const pulseClass = (visitMode && tier && tier.pulse) ? tier.pulse : '';
+  const pulseRing = pulseClass
+    ? `<div class="${pulseClass}" style="
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: ${size + 16}px;
+        height: ${size + 16}px;
+        border-radius: 50%;
+        border: 2px solid ${baseColor};
+        pointer-events: none;
+      "></div>`
+    : '';
 
   return L.divIcon({
     className: `custom-marker ${blinkClass}`,
-    html: `<div style="
-      width: ${size}px;
-      height: ${size}px;
-      background: ${color};
-      border-radius: 50%;
-      border: ${border};
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    "></div>`,
-    iconSize: [size + 6, size + 6],
-    iconAnchor: [(size + 6) / 2, (size + 6) / 2],
+    html: `<div style="position:relative; display:flex; align-items:center; justify-content:center; width:${size + 20}px; height:${size + 20}px;">
+      ${pulseRing}
+      <div style="
+        width: ${size}px;
+        height: ${size}px;
+        background: ${baseColor};
+        border-radius: 50%;
+        border: ${border};
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        position: relative;
+        z-index: 2;
+      "></div>
+    </div>`,
+    iconSize: [size + 20, size + 20],
+    iconAnchor: [(size + 20) / 2, (size + 20) / 2],
   });
 }
 
@@ -79,11 +126,17 @@ function MapUpdater({ center, zoom }) {
 function formatDate(dateStr) {
   if (!dateStr) return 'Never';
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', {
+  if (isNaN(d.getTime())) return 'Never';
+  const formatted = d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
+  const days = getDaysSinceVisit(dateStr);
+  if (days === null) return formatted;
+  if (days === 0) return `${formatted} (today)`;
+  if (days === 1) return `${formatted} (1 day ago)`;
+  return `${formatted} (${days} days ago)`;
 }
 
 export default function MapView() {
@@ -91,6 +144,7 @@ export default function MapView() {
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute } = state;
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
+  const [visitMode, setVisitMode] = useState(false);
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -243,15 +297,46 @@ export default function MapView() {
         </div>
       )}
 
-      {/* Store type color legend */}
+      {/* Visit Status Toggle */}
+      <div className="visit-mode-toggle">
+        <label className="toggle-label">
+          <input
+            type="checkbox"
+            checked={visitMode}
+            onChange={(e) => setVisitMode(e.target.checked)}
+          />
+          <span className="toggle-slider"></span>
+          <span className="toggle-text">Visit Status</span>
+        </label>
+      </div>
+
+      {/* Legend - switches between store types and visit recency */}
       <div className="map-legend">
-        <div className="legend-title">Store Types</div>
-        {Object.entries(typeColors).map(([type, color]) => (
-          <div key={type} className="legend-item">
-            <span className="legend-dot" style={{ background: color }} />
-            <span>{typeLabels[type] || type}</span>
-          </div>
-        ))}
+        {visitMode ? (
+          <>
+            <div className="legend-title">Visit Recency</div>
+            {recencyTiers.map((tier) => (
+              <div key={tier.label} className="legend-item">
+                <span className={`legend-dot ${tier.pulse || ''}`} style={{ background: tier.color }} />
+                <span>{tier.label}</span>
+              </div>
+            ))}
+            <div className="legend-item">
+              <span className={`legend-dot ${neverVisitedTier.pulse}`} style={{ background: neverVisitedTier.color }} />
+              <span>{neverVisitedTier.label}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="legend-title">Store Types</div>
+            {Object.entries(typeColors).map(([type, color]) => (
+              <div key={type} className="legend-item">
+                <span className="legend-dot" style={{ background: color }} />
+                <span>{typeLabels[type] || type}</span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
     <MapContainer
@@ -354,7 +439,7 @@ export default function MapView() {
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
-          icon={createStoreIcon(store.type, selectedStore === store.id)}
+          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, store.lastVisited)}
           eventHandlers={{
             click: () => {
               if (selectedStore === store.id) {
@@ -397,6 +482,17 @@ export default function MapView() {
               <br />
               <span className="popup-zone">
                 Last visited: {formatDate(store.lastVisited)}
+              </span>
+              <br />
+              <span
+                className="popup-visit-badge"
+                style={{
+                  background: getRecencyTier(store.lastVisited).color + '20',
+                  color: getRecencyTier(store.lastVisited).color,
+                  borderColor: getRecencyTier(store.lastVisited).color,
+                }}
+              >
+                {getRecencyTier(store.lastVisited).label}
               </span>
               <div className="popup-actions">
                 {store.routeNumber && store.routeNumber !== '0' ? (

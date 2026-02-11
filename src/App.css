@@ -992,3 +992,350 @@ textarea {
 .sidebar-content::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ============ Page Navigation ============ */
+.page-nav {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.page-nav-btn {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.page-nav-btn:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.page-nav-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* ============ Visit Mode Toggle ============ */
+.visit-mode-toggle {
+  position: absolute;
+  bottom: 30px;
+  left: 12px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  user-select: none;
+}
+
+.toggle-label input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 36px;
+  height: 20px;
+  background: #cbd5e1;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-label input:checked + .toggle-slider {
+  background: var(--primary);
+}
+
+.toggle-label input:checked + .toggle-slider::after {
+  transform: translateX(16px);
+}
+
+/* ============ Pulse Animations ============ */
+@keyframes pulse-ring-slow {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+@keyframes pulse-ring-medium {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+@keyframes pulse-ring-fast {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+.pulse-slow {
+  animation: pulse-ring-slow 3s ease-out infinite;
+}
+
+.pulse-medium {
+  animation: pulse-ring-medium 2s ease-out infinite;
+}
+
+.pulse-fast {
+  animation: pulse-ring-fast 1s ease-out infinite;
+}
+
+/* Legend dots can pulse too */
+.legend-dot.pulse-slow {
+  animation: legend-pulse 3s ease-in-out infinite;
+}
+
+.legend-dot.pulse-medium {
+  animation: legend-pulse 2s ease-in-out infinite;
+}
+
+.legend-dot.pulse-fast {
+  animation: legend-pulse 1s ease-in-out infinite;
+}
+
+@keyframes legend-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* ============ Popup Visit Badge ============ */
+.popup-visit-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid;
+  margin-top: 4px;
+}
+
+/* ============ Route Leaderboard ============ */
+.leaderboard {
+  height: 100%;
+  overflow-y: auto;
+  padding: 60px 24px 24px;
+  background: var(--bg);
+}
+
+.leaderboard-header {
+  margin-bottom: 20px;
+}
+
+.leaderboard-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.leaderboard-title-row h2 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.overall-grade {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 2px solid;
+}
+
+.overall-grade-letter {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.overall-grade-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.leaderboard-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sort-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sort-btn:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.sort-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.leaderboard-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.lb-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.leaderboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.route-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+  transition: all 0.15s;
+}
+
+.route-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.12);
+}
+
+.route-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.route-rank {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-muted);
+  min-width: 28px;
+}
+
+.route-info {
+  flex: 1;
+}
+
+.route-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.route-store-count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.route-grade-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.grade-letter {
+  font-size: 18px;
+  font-weight: 800;
+  color: white;
+  line-height: 1;
+}
+
+.grade-score {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1;
+}
+
+.route-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  gap: 1px;
+}
+
+.bar-seg {
+  min-width: 3px;
+  border-radius: 2px;
+  transition: flex 0.3s;
+}
+
+.route-tier-counts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tier-count {
+  font-size: 11px;
+  font-weight: 700;
+}
