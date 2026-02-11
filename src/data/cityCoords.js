@@ -36,6 +36,7 @@ const cityCoords = {
   // Maryland - Montgomery County
   'GERMANTOWN, MD': [39.1732, -77.2716],
   'ROCKVILLE, MD': [39.0840, -77.1528],
+  'SILVER SPRING, MD': [39.0024, -77.0189],
 
   // Maryland - Baltimore City
   'BALTIMORE, MD': [39.2904, -76.6122],
@@ -52,6 +53,7 @@ const cityCoords = {
   'PHOENIX, MD': [39.5100, -76.5958],
   'HUNT VALLEY, MD': [39.4984, -76.6413],
   'OWINGS MILLS, MD': [39.4199, -76.7806],
+  'PIKESVILLE, MD': [39.3743, -76.7225],
 
   // Maryland - Harford County
   'ABINGDON, MD': [39.4618, -76.2858],
