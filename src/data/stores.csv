@@ -1,9 +1,9 @@
 ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Visited
 SFW02342,SFW02342,Shoppers 2342,6300 Coventry Way,Clinton,MD,20735,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.7649,-76.8984,2026-02-10
 02353,02353,Shoppers 2353,806 Largo Center Dr,Largo,MD,20774,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.8976,-76.8303,
-02377,02377,Shoppers 2377,2950 Donnell Dr,Forestville,MD,20747,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8488,-76.8747,2025-10-23 20:25:01
+SFW02377,02377,Shoppers 2377,2950 Donnell Dr,Forestville,MD,20747,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8488,-76.8747,2026-02-12
 02379,02379,Shoppers 2379,13600 Baltimore Ave Suite100,LAUREL,MD,20707,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,39.0993,-76.8483,
-02383,02383,Shoppers 2383,10501 Martin Luther King Jr. Hwy,Bowie,MD,20720,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.943,-76.7312,
+SFW02383,02383,Shoppers 2383,10501 Martin Luther King Jr. Hwy,Bowie,MD,20720,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.943,-76.7312,2025-05-02
 02650,02650,Shoppers 2650,4720 CHERRY HILL RD,COLLEGE PARK,MD,20740,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.9807,-76.9369,
 02692,02692,Shoppers 2692,7051 MLKING HWY,LANDOVER,MD,,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.934,-76.8973,
 07,07,Wegmans 07,45131 COLUMBIA PLACE,STERLING,VA,20166,,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.0064,-77.4286,2025-09-17 13:05:57
@@ -50,27 +50,27 @@ FLW01412,01412,Food Lion 1412,8508 LIBERTY RD,Randallstown,MD,21133,204,Route 20
 54,54,Wegmans 54,7830 WORMANS MILL RD,FREDERICK,MD,21703,201,Route 201 Driver,Maryland Central,Maryland Central,Maryland Central,39.40543673022289,-77.412062833599,
 WGW00060,WGW00060,Wegmans 60,1413 SOUTH MAIN CHAPEL WAY,GAMBRILLS,MD,21054,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.0671,-76.6654,2025-08-15
 61,5167,HQCNEL ANNAPOLIS,694 KINCAID RD,Annapolis,MD,21402,211,Route 211 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,38.9784,-76.4922,
-62,2655,Food Lion 2517,2655 Anapolis Rd,Hanover,MD,21076,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1929,-76.7242,2025-10-21 11:22:01
+FLW02517,02517,Food Lion 2517,2655 Anapolis Rd,Hanover,MD,21076,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1929,-76.7242,2026-01-30
 FLW01474,01474,Food Lion 1474,8741 Piney Orchard Pkwy,Odenton,MD,21113,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,39.084,-76.7001,2026-02-09
 64,MEA-7573,Shoppers Fort meade,3441 Fort Meade Rd,Maryland City,MD,20724,0,Route 108 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.10226146722824,-76.81648858409427,2025-10-23 10:44:52
-65,2501,Food Lion,8300 ICE CRYSTAL DR,Scaggsville,MD,20723,207,Route 207 Driver,Howard County,Howard County,Howard County,39.1453,-76.8789,
+FLW02501,02501,Food Lion,8300 ICE CRYSTAL DR,Scaggsville,MD,20723,207,Route 207 Driver,Howard County,Howard County,Howard County,39.1453,-76.8789,2026-02-05
 66,287,Weis,6551 Waterloo Rd,Elkridge,MD,21075,200,Route 200 Driver,Howard County,Howard County,Howard County,39.2126,-76.7136,
 67,56,Wegmans 56,20600 Seneca Meadows Pkwy,Germantown,MD,20874,0,Wegmans Route Driver,Montgomery County,Montgomery County,Montgomery County,39.1732,-77.2716,2025-10-23 12:37:57
 68,CASH-MD-1,Shoppers,18066 Mateny Rd,Germantown,MD,20874,200,Route 200 Driver,Montgomery County,Montgomery County,Montgomery County,39.17346146722824,-77.27458858409427,
 FLW01661,FLW01661,Food Lion 1661,845 ROCKVILLE PIKE,Rockville,MD,20852,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.084,-77.1528,2026-02-12
 FLW01414,01414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.816,-76.7497,2026-02-09
-71,WEG-40,Wegmans 40,9001 McHugh Dr,Lanham,MD,20706,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.969,-76.8614,2025-10-23 20:24:00
-73,276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.6736,-77.0209,2025-10-23 20:18:55
-74,2566,Food Lion 2566,12675 Laurel Bowie Rd,Laurel,MD,20708,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.09956146722824,-76.85128858409426,2025-11-19 12:33:25
-75,1662,Food Lion,410 SANDY SPRINGS RD,Laurel,MD,20707,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.102952568574054,-76.84353987995824,2025-11-04 10:53:38
+WGW00040,00040,Wegmans 40,9001 McHugh Dr,Lanham,MD,20706,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.969,-76.8614,2025-09-16
+WMW00276,00276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.6736,-77.0209,2026-02-12
+FLW02566,02566,Food Lion 2566,12675 Laurel Bowie Rd,Laurel,MD,20708,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.09956146722824,-76.85128858409426,2026-02-05
+FLW01662,01662,Food Lion,410 SANDY SPRINGS RD,Laurel,MD,20707,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.102952568574054,-76.84353987995824,2026-02-05
 79,CASH-MD-4,Shoppers,5820 Silver Hill Rd,Forestville,MD,20747,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.84906146722824,-76.87768858409427,
 80,CASH-MD-5,Shoppers,4801 Marlboro Pike,Capitol Heights,MD,20743,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.8851,-76.9158,
 81,CASH-MD-6,Walmart,6210 Annapolis Rd,Landover Hills,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.943,-76.89,
 82,CASH-MD-7,Shoppers,7790 RIVERDALE RD,Hyattsville,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9559,-76.9453,
 FLW00656,00656,Food Lion 656,40955 MERCHANT LN,LEONARDTOWN,MD,20650,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2909,-76.6356,2026-02-11
 FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.48,-76.7781,2026-02-11
-86,1316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6282,-77.0727,2025-11-19 12:31:38
-87,278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.529,-76.9752,2025-11-19 12:34:21
+FLW01316,01316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6282,-77.0727,2026-02-12
+WMW00278,00278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.529,-76.9752,2025-11-13
 FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6246,-76.9191,2026-02-10
 FLW02547,02547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.62486146722824,-76.92208858409427,2026-02-10
 90,41,Wegmans,Ridge Square NW,Washington,DC,20016,200,Route 200 Driver,Washington DC,Washington DC,Washington DC,38.9072,-77.0369,
@@ -209,14 +209,14 @@ FLW02518,02518,Food Lion 2518,12420 DILLINGHAM SQ,Lake Ridge,VA,22192,209,Route 
 FLW02597,02597,Food Lion 2597,6306 HOADLEY RD,Manassas,VA,20112,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.754552568574056,-77.47053987995825,2026-02-06
 WGW00049,00049,Wegmans 049,7505 HILLTOP VILLAGE CTR DR,Alexandria,VA,22315,209,Route 209 Driver,Northern Virginia,Alexandria,Alexandria,38.8048,-77.0469,2025-12-05
 WGW00055,00055,Wegmans 055,14801 DINING WAY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.661852568574055,-77.24493987995825,2025-11-13
-CASH0543,CASH0543,Marlton Spirits,9518 Crain Hwy,Upper Marlboro,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.816261467228244,-76.75268858409427,
-CMW00001,CMW00001,Comm Bolling AFB 0001,185 CHAPPIE JAMES BLVD,Bolling AFB,DC,20032,207,Route 207 Driver,Washington DC,Washington DC,Washington DC,38.8396,-77.013,
+CASH0543,CASH0543,Marlton Spirits,9518 Crain Hwy,Upper Marlboro,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.816261467228244,-76.75268858409427,2025-11-12
+CMW00001,CMW00001,Comm Bolling AFB 0001,185 CHAPPIE JAMES BLVD,Bolling AFB,DC,20032,207,Route 207 Driver,Washington DC,Washington DC,Washington DC,38.8396,-77.013,2026-01-05
 CMW05119,CMW05119,Comm Andrew AFB 5119,1684 STARKEY AVE,JB Andrews,MD,20762,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8108,-76.866,2026-02-10
-CMW05222,CMW05222,Comm Ft Meade 5222,2786 MACARTHUR RD,Fort Meade,MD,20755,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1087,-76.7434,
-CMW05241,CMW05241,Bolling commissary,185 Chappie James Blvd,Washington,DC,20032,207,Route 207 Driver,Washington DC,Washington DC,Washington DC,38.907461467228245,-77.03988858409427,
+CMW05222,CMW05222,Comm Ft Meade 5222,2786 MACARTHUR RD,Fort Meade,MD,20755,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1087,-76.7434,2026-01-20
+CMW05241,CMW05241,Bolling commissary,185 Chappie James Blvd,Washington,DC,20032,207,Route 207 Driver,Washington DC,Washington DC,Washington DC,38.907461467228245,-77.03988858409427,2026-02-12
 CMW5024,CMW5024,Comm Ft Patuxent 5024,22155 Cuddihy Rd,Patuxent River,MD,20670,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2856,-76.4283,
-WAW01985,WAW01985,Walmart 1985,3549 Russett Green East,Laurel,MD,20724,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.09043673022289,-76.84986283359899,
-WAW03490,WAW03490,Walmart 3490,7081 Arundel Mills Circle,Hanover,MD,21076,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.193161467228244,-76.72718858409426,
+WAW01985,WAW01985,Walmart 1985,3549 Russett Green East,Laurel,MD,20724,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.09043673022289,-76.84986283359899,2025-04-22
+WAW03490,WAW03490,Walmart 3490,7081 Arundel Mills Circle,Hanover,MD,21076,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.193161467228244,-76.72718858409426,2026-01-16
 CASH0520,CASH0520,Dagmar Hotel,50 Summit Ave,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.65192069734976,-77.72644759530016,2026-02-09
 CASH0545,CASH0545,Sandy Jaks LLC,14407 Hollow RD,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.69806146722824,-78.18268858409427,
 CASH1111,CASH1111,40 West Deli,15142 National Pike,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.637917714323464,-77.70551111260566,
