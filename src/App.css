@@ -1217,6 +1217,14 @@ textarea {
   background: #6b7280;
 }
 
+.stale-toggle-btn {
+  background: #ef4444;
+}
+
+.stale-toggle-btn.zones-hidden {
+  background: #9ca3af;
+}
+
 .toggle-label {
   display: flex;
   align-items: center;

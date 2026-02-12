@@ -429,6 +429,15 @@ export default function MapView() {
         >
           {zonesOff ? 'Show Zones' : 'Hide Zones'}
         </button>
+        {filterRoute !== 'all' && staleStores.length > 0 && (
+          <button
+            className={`zone-toggle-btn stale-toggle-btn ${staleCollapsed ? 'zones-hidden' : ''}`}
+            onClick={() => setStaleCollapsed(!staleCollapsed)}
+            title={staleCollapsed ? 'Show stale stores panel' : 'Hide stale stores panel'}
+          >
+            {staleCollapsed ? `Show Stale (${staleStores.length})` : 'Hide Stale'}
+          </button>
+        )}
       </div>
 
       {/* Legend - switches between store types and visit recency */}
