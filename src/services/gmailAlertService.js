@@ -128,16 +128,20 @@ async function gmailFetch(path, params = {}) {
  * @returns {Promise<Array>} Array of parsed alert objects.
  */
 export async function fetchAlertEmails(afterDate, maxResults = 100) {
-  // Search by subject pattern — more reliable than exact sender match
-  let query = `from:MailAgent subject:"Service Alert created for"`;
+  // Search by subject only — sendgrid routing can cause from: filter issues
+  let query = `subject:"Service Alert created for"`;
   if (afterDate) {
     query += ` after:${afterDate}`;
   }
+
+  console.log('[Gmail] Search query:', query);
 
   const listResult = await gmailFetch('/users/me/messages', {
     q: query,
     maxResults,
   });
+
+  console.log('[Gmail] Messages found:', listResult.messages?.length || 0);
 
   if (!listResult.messages || listResult.messages.length === 0) {
     return [];
