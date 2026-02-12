@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 
 const STORE_TYPES = [
   'food-lion', 'shoppers', 'wegmans', 'walmart', 'giant-martins',
-  'weis', 'redners', 'acme', 'geresbecks', 'other',
+  'weis', 'redners', 'acme', 'geresbecks', 'military', 'other',
 ];
 
 const typeLabels = {
@@ -16,6 +16,7 @@ const typeLabels = {
   'redners': 'Redners',
   'acme': 'Acme',
   'geresbecks': 'Geresbecks',
+  'military': 'Military',
   'other': 'Other',
 };
 
@@ -29,6 +30,7 @@ const typeColors = {
   'redners': { bg: '#fce7f3', text: '#9d174d' },
   'acme': { bg: '#dcfce7', text: '#166534' },
   'geresbecks': { bg: '#ccfbf1', text: '#115e59' },
+  'military': { bg: '#e0e7ff', text: '#3730a3' },
   'other': { bg: '#f3f4f6', text: '#374151' },
 };
 

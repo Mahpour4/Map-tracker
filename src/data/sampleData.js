@@ -131,8 +131,9 @@ const easternShoreSubColors = {
   'Dover Area': '#99f6e4',
 };
 
-function detectStoreType(name) {
+function detectStoreType(name, id) {
   const n = (name || '').toLowerCase();
+  if ((id || '').startsWith('CMW') || n.includes('comm ') || n.includes('commissary')) return 'military';
   if (n.includes('walmart')) return 'walmart';
   if (n.includes('wegmans')) return 'wegmans';
   if (n.includes('food lion')) return 'food-lion';
@@ -170,7 +171,7 @@ export const sampleStores = rawRows
       territory: row.Territory || 'Unassigned',
       subTerritory: row['Sub-Territory'] || 'Unassigned',
       lastVisited: row['Last Visited'] || null,
-      type: detectStoreType(row['Store Name']),
+      type: detectStoreType(row['Store Name'], row.ID),
       zoneId: null,
       subZoneId: null,
     };
@@ -305,7 +306,7 @@ export function processStoresFromCsv(csvText) {
         territory: row.Territory || 'Unassigned',
         subTerritory: row['Sub-Territory'] || 'Unassigned',
         lastVisited: row['Last Visited'] || null,
-        type: detectStoreType(row['Store Name']),
+        type: detectStoreType(row['Store Name'], row.ID),
         zoneId: null,
         subZoneId: null,
       };

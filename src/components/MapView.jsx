@@ -31,6 +31,7 @@ const typeColors = {
   'redners': '#ec4899',
   'acme': '#22c55e',
   'geresbecks': '#14b8a6',
+  'military': '#4f46e5',
   'other': '#6b7280',
 };
 
@@ -44,6 +45,7 @@ const typeLabels = {
   'redners': 'Redners',
   'acme': 'Acme',
   'geresbecks': 'Geresbecks',
+  'military': 'Military',
   'other': 'Other',
 };
 
