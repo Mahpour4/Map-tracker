@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import visitHistoryData from '../data/visitHistory';
 
@@ -99,8 +99,10 @@ export default function VisitHistory() {
   const [sortDir, setSortDir] = useState('desc');
   const [editingId, setEditingId] = useState(null);
   const [editDate, setEditDate] = useState('');
+  const [editPos, setEditPos] = useState(null);
   const [viewDate, setViewDate] = useState('');
   const [visitVersion, setVisitVersion] = useState(0);
+  const editDateRef = useRef(null);
 
   // Column resizing
   const defaultWidths = { status: 24, name: 180, city: 110, route: 44, type: 52, lastVisit: 74, days: 44, prevVisit: 74, thirdVisit: 74, grade: 48, actions: 30 };
@@ -139,6 +141,28 @@ export default function VisitHistory() {
     document.addEventListener('mouseup', onUp);
   }, [colWidths]);
 
+  // Auto-open the native calendar when edit popup shows
+  useEffect(() => {
+    if (editingId && editDateRef.current) {
+      setTimeout(() => {
+        try { editDateRef.current.showPicker(); } catch (_) { /* browser may not support */ }
+      }, 50);
+    }
+  }, [editingId]);
+
+  const openEdit = useCallback((storeId, e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setEditPos({ top: rect.bottom + 4, left: rect.right - 200 });
+    setEditingId(storeId);
+    setEditDate(new Date().toISOString().split('T')[0]);
+  }, []);
+
+  const closeEdit = useCallback(() => {
+    setEditingId(null);
+    setEditDate('');
+    setEditPos(null);
+  }, []);
+
   const handleAddVisit = useCallback((storeId) => {
     if (!editDate) return;
     const ymd = toYMD(editDate);
@@ -156,10 +180,9 @@ export default function VisitHistory() {
       const newest = allDates[allDates.length - 1];
       updateStore({ ...store, lastVisited: newest });
     }
-    setEditingId(null);
-    setEditDate('');
+    closeEdit();
     setVisitVersion((v) => v + 1);
-  }, [editDate, stores, updateStore]);
+  }, [editDate, stores, updateStore, closeEdit]);
 
   const routes = useMemo(() => {
     const set = new Set();
@@ -472,25 +495,11 @@ export default function VisitHistory() {
                     </span>
                   </td>
                   <td className="vh2-td-actions">
-                    {editingId === row.id ? (
-                      <div className="vh2-edit-inline">
-                        <input
-                          type="date"
-                          className="vh2-edit-date"
-                          value={editDate}
-                          onChange={(e) => setEditDate(e.target.value)}
-                          autoFocus
-                        />
-                        <button className="vh2-edit-save" onClick={() => handleAddVisit(row.id)} disabled={!editDate}>&#10003;</button>
-                        <button className="vh2-edit-cancel" onClick={() => { setEditingId(null); setEditDate(''); }}>&times;</button>
-                      </div>
-                    ) : (
-                      <button
-                        className="vh2-add-visit-btn"
-                        title="Add visit date"
-                        onClick={() => { setEditingId(row.id); setEditDate(new Date().toISOString().split('T')[0]); }}
-                      >+</button>
-                    )}
+                    <button
+                      className={`vh2-add-visit-btn ${editingId === row.id ? 'active' : ''}`}
+                      title="Add visit date"
+                      onClick={(e) => editingId === row.id ? closeEdit() : openEdit(row.id, e)}
+                    >+</button>
                   </td>
                 </tr>
               );
@@ -505,6 +514,26 @@ export default function VisitHistory() {
         Showing {sorted.length} of {tableData.length} stores
         {' '}| Regular stores: 7-day cycle | CASH stops: 14-day cycle
       </div>
+
+      {editingId && editPos && (
+        <>
+          <div className="vh2-edit-backdrop" onClick={closeEdit}></div>
+          <div className="vh2-edit-popup" style={{ top: editPos.top, left: Math.max(8, editPos.left) }}>
+            <div className="vh2-edit-popup-label">Add visit for: <strong>{stores.find(s => s.id === editingId)?.name || editingId}</strong></div>
+            <div className="vh2-edit-popup-row">
+              <input
+                ref={editDateRef}
+                type="date"
+                className="vh2-edit-date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+              />
+              <button className="vh2-edit-save" onClick={() => handleAddVisit(editingId)} disabled={!editDate}>Save</button>
+              <button className="vh2-edit-cancel" onClick={closeEdit}>Cancel</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

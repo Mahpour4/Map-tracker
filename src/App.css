@@ -1838,53 +1838,66 @@ textarea {
   transition: all 0.15s;
 }
 
-.vh2-add-visit-btn:hover {
+.vh2-add-visit-btn:hover,
+.vh2-add-visit-btn.active {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
 }
 
-/* Inline edit */
-.vh2-edit-inline {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
+/* Edit popup (fixed overlay) */
+.vh2-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.vh2-edit-popup {
+  position: fixed;
+  z-index: 100;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 3px 5px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  white-space: nowrap;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  min-width: 240px;
+}
+
+.vh2-edit-popup-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.vh2-edit-popup-label strong {
+  color: var(--text);
+}
+
+.vh2-edit-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .vh2-edit-date {
-  padding: 2px 4px;
+  padding: 6px 8px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 11px;
+  border-radius: 6px;
+  font-size: 13px;
   background: var(--bg);
   color: var(--text);
-  width: 120px;
+  flex: 1;
 }
 
 .vh2-edit-save {
   background: #22c55e;
   color: white;
   border: none;
-  border-radius: 4px;
-  width: 22px;
-  height: 22px;
-  font-size: 13px;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
 }
 
 .vh2-edit-save:disabled {
@@ -1896,15 +1909,10 @@ textarea {
   background: none;
   color: var(--text-muted);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  width: 22px;
-  height: 22px;
-  font-size: 15px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
 }
 
 .vh2-edit-cancel:hover {
