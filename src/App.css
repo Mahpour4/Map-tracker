@@ -947,11 +947,17 @@ textarea {
   flex-direction: column;
 }
 
+.stale-panel.collapsed {
+  max-height: none;
+}
+
 .stale-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
   border-bottom: 1px solid var(--border);
 }
 
@@ -959,6 +965,17 @@ textarea {
   font-size: 12px;
   font-weight: 700;
   color: var(--text);
+}
+
+.stale-panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stale-panel-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 .stale-panel-count {
@@ -992,6 +1009,11 @@ textarea {
 .stale-panel-item.active {
   background: #eff6ff;
   border-left-color: var(--primary);
+}
+
+.stale-item-index {
+  color: var(--text-muted);
+  margin-right: 2px;
 }
 
 .stale-item-name {

@@ -147,6 +147,7 @@ export default function MapView() {
   const [visitMode, setVisitMode] = useState(false);
   const [zonesOff, setZonesOff] = useState(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
+  const [staleCollapsed, setStaleCollapsed] = useState(false);
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -359,37 +360,44 @@ export default function MapView() {
 
       {/* Stale Stores Panel */}
       {filterRoute !== 'all' && staleStores.length > 0 && (
-        <div className="stale-panel">
-          <div className="stale-panel-header">
+        <div className={`stale-panel ${staleCollapsed ? 'collapsed' : ''}`}>
+          <div className="stale-panel-header" onClick={() => setStaleCollapsed(!staleCollapsed)}>
             <span className="stale-panel-title">
               Stale Stores — {filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`}
               {filterType !== 'all' && ` (${typeLabels[filterType] || filterType})`}
             </span>
-            <span className="stale-panel-count">{staleStores.length}</span>
+            <div className="stale-panel-header-right">
+              <span className="stale-panel-count">{staleStores.length}</span>
+              <span className="stale-panel-chevron">{staleCollapsed ? '\u25BC' : '\u25B2'}</span>
+            </div>
           </div>
-          <div className="stale-panel-list">
-            {staleStores.map((s) => (
-              <div
-                key={s.id}
-                className={`stale-panel-item ${selectedStore === s.id ? 'active' : ''}`}
-                onClick={() => {
-                  selectStore(s.id);
-                  setMapView([s.lat, s.lng], 14);
-                }}
-              >
-                <div className="stale-item-name">{s.id} — {s.name}</div>
-                <div className="stale-item-detail">
-                  {s.city}
-                  <span className="stale-item-days" style={{ color: getRecencyTier(s.lastVisited).color }}>
-                    {s.daysSince === null ? 'Never' : `${s.daysSince}d ago`}
-                  </span>
-                </div>
+          {!staleCollapsed && (
+            <>
+              <div className="stale-panel-list">
+                {staleStores.map((s, i) => (
+                  <div
+                    key={s.id}
+                    className={`stale-panel-item ${selectedStore === s.id ? 'active' : ''}`}
+                    onClick={() => {
+                      selectStore(s.id);
+                      setMapView([s.lat, s.lng], 14);
+                    }}
+                  >
+                    <div className="stale-item-name"><span className="stale-item-index">{i + 1}.</span> {s.id} — {s.name}</div>
+                    <div className="stale-item-detail">
+                      {s.city}
+                      <span className="stale-item-days" style={{ color: getRecencyTier(s.lastVisited).color }}>
+                        {s.daysSince === null ? 'Never' : `${s.daysSince}d ago`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <button className="stale-panel-copy" onClick={copyStaleMessage}>
-            Copy WhatsApp Message
-          </button>
+              <button className="stale-panel-copy" onClick={copyStaleMessage}>
+                Copy WhatsApp Message
+              </button>
+            </>
+          )}
         </div>
       )}
 
