@@ -128,7 +128,8 @@ async function gmailFetch(path, params = {}) {
  * @returns {Promise<Array>} Array of parsed alert objects.
  */
 export async function fetchAlertEmails(afterDate, maxResults = 100) {
-  let query = `from:${ALERT_SENDER} subject:"Service Alert"`;
+  // Search by subject pattern — more reliable than exact sender match
+  let query = `from:MailAgent subject:"Service Alert created for"`;
   if (afterDate) {
     query += ` after:${afterDate}`;
   }
