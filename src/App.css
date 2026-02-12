@@ -1560,10 +1560,8 @@ textarea {
 }
 
 .vh2-table {
-  width: 100%;
   border-collapse: collapse;
   font-size: 12px;
-  table-layout: fixed;
 }
 
 .vh2-table thead {
@@ -1589,6 +1587,27 @@ textarea {
 .vh2-th-status { width: 24px; }
 .vh2-th-sortable { cursor: pointer; }
 .vh2-th-sortable:hover { background: #334155; }
+
+.vh2-table th {
+  position: relative;
+}
+
+.vh2-resize {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  z-index: 3;
+}
+
+.vh2-resize:hover,
+.vh2-resize:active {
+  background: #60a5fa;
+}
 
 .vh2-sort-arrow {
   font-size: 10px;

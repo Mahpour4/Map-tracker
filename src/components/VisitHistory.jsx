@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import visitHistoryData from '../data/visitHistory';
 
@@ -84,6 +84,33 @@ export default function VisitHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortCol, setSortCol] = useState('days');
   const [sortDir, setSortDir] = useState('desc');
+
+  // Column resizing
+  const defaultWidths = { status: 24, name: 180, city: 110, route: 44, type: 52, lastVisit: 74, days: 44, prevVisit: 74, thirdVisit: 74, grade: 48 };
+  const [colWidths, setColWidths] = useState(() => ({ ...defaultWidths }));
+  const resizeRef = useRef(null);
+
+  const onResizeStart = useCallback((col, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startW = colWidths[col];
+    resizeRef.current = { col, startX, startW };
+
+    const onMove = (ev) => {
+      if (!resizeRef.current) return;
+      const diff = ev.clientX - resizeRef.current.startX;
+      const newW = Math.max(30, resizeRef.current.startW + diff);
+      setColWidths((prev) => ({ ...prev, [resizeRef.current.col]: newW }));
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [colWidths]);
 
   const routes = useMemo(() => {
     const set = new Set();
@@ -261,18 +288,30 @@ export default function VisitHistory() {
       </div>
 
       <div className="vh2-table-wrap">
-        <table className="vh2-table">
+        <table className="vh2-table" style={{ tableLayout: 'fixed', width: Object.values(colWidths).reduce((a, b) => a + b, 0) }}>
+          <colgroup>
+            <col style={{ width: colWidths.status }} />
+            <col style={{ width: colWidths.name }} />
+            <col style={{ width: colWidths.city }} />
+            <col style={{ width: colWidths.route }} />
+            <col style={{ width: colWidths.type }} />
+            <col style={{ width: colWidths.lastVisit }} />
+            <col style={{ width: colWidths.days }} />
+            <col style={{ width: colWidths.prevVisit }} />
+            <col style={{ width: colWidths.thirdVisit }} />
+            <col style={{ width: colWidths.grade }} />
+          </colgroup>
           <thead>
             <tr>
               <th className="vh2-th-status"></th>
-              <th className="vh2-th-sortable" onClick={() => handleSort('name')}>Store <SortArrow col="name" /></th>
-              <th className="vh2-th-sortable" onClick={() => handleSort('city')}>City <SortArrow col="city" /></th>
-              <th className="vh2-th-sortable" onClick={() => handleSort('route')}>Rte <SortArrow col="route" /></th>
-              <th className="vh2-th-sortable" onClick={() => handleSort('type')}>Type <SortArrow col="type" /></th>
-              <th className="vh2-th-sortable" onClick={() => handleSort('days')}>Last Visit <SortArrow col="days" /></th>
-              <th>Days</th>
-              <th>Prev Visit</th>
-              <th>3rd Visit</th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('name')}>Store <SortArrow col="name" /><span className="vh2-resize" onMouseDown={(e) => onResizeStart('name', e)}></span></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('city')}>City <SortArrow col="city" /><span className="vh2-resize" onMouseDown={(e) => onResizeStart('city', e)}></span></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('route')}>Rte <SortArrow col="route" /><span className="vh2-resize" onMouseDown={(e) => onResizeStart('route', e)}></span></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('type')}>Type <SortArrow col="type" /><span className="vh2-resize" onMouseDown={(e) => onResizeStart('type', e)}></span></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('days')}>Last Visit <SortArrow col="days" /><span className="vh2-resize" onMouseDown={(e) => onResizeStart('lastVisit', e)}></span></th>
+              <th>Days<span className="vh2-resize" onMouseDown={(e) => onResizeStart('days', e)}></span></th>
+              <th>Prev Visit<span className="vh2-resize" onMouseDown={(e) => onResizeStart('prevVisit', e)}></span></th>
+              <th>3rd Visit<span className="vh2-resize" onMouseDown={(e) => onResizeStart('thirdVisit', e)}></span></th>
               <th className="vh2-th-sortable" onClick={() => handleSort('grade')}>Grade <SortArrow col="grade" /></th>
             </tr>
           </thead>
