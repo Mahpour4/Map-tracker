@@ -209,7 +209,13 @@ export default function VisitHistory() {
     return stores
       .filter((s) => s.routeNumber && s.routeNumber !== '0')
       .map((s) => {
-        const history = (visitHistoryData[s.id] || []).slice().sort().reverse();
+        // Merge visitHistory.js dates with the store's lastVisited from stores.csv
+        const dates = new Set(visitHistoryData[s.id] || []);
+        if (s.lastVisited) {
+          const csvDate = toYMD(s.lastVisited);
+          if (csvDate) dates.add(csvDate);
+        }
+        const history = [...dates].sort().reverse();
         const lastVisit = history[0] || null;
         const prevVisit = history[1] || null;
         const thirdVisit = history[2] || null;
