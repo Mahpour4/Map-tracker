@@ -145,6 +145,7 @@ export default function MapView() {
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(false);
+  const [zonesOff, setZonesOff] = useState(false);
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -178,12 +179,28 @@ export default function MapView() {
     setHiddenZones((prev) => {
       const next = new Set(prev);
       next.delete(zoneId);
+      if (next.size === 0) setZonesOff(false);
       return next;
     });
   }
 
   function showAllZones() {
     setHiddenZones(new Set());
+    setZonesOff(false);
+  }
+
+  function hideAllZones() {
+    const allZoneIds = new Set(zones.filter(z => z.name !== 'Unassigned').map(z => z.id));
+    setHiddenZones(allZoneIds);
+    setZonesOff(true);
+  }
+
+  function toggleAllZones() {
+    if (zonesOff) {
+      showAllZones();
+    } else {
+      hideAllZones();
+    }
   }
 
   const hasActiveFilters = searchTerm || filterRegion !== 'all' || filterType !== 'all' || filterRoute !== 'all' || selectedStore || selectedZone || selectedSubZone || hiddenZones.size > 0;
@@ -197,6 +214,7 @@ export default function MapView() {
     selectZone(null);
     selectSubZone(null);
     setHiddenZones(new Set());
+    setZonesOff(false);
     setMapView([39.0, -76.8], 8);
   }
 
@@ -281,8 +299,8 @@ export default function MapView() {
         </button>
       )}
 
-      {/* Hidden zones reopen panel */}
-      {hiddenZonesList.length > 0 && (
+      {/* Hidden zones reopen panel (hidden when bulk toggle is off) */}
+      {hiddenZonesList.length > 0 && !zonesOff && (
         <div className="hidden-zones-panel">
           <div className="hidden-zones-header">
             <span>Hidden Zones ({hiddenZonesList.length})</span>
@@ -297,17 +315,27 @@ export default function MapView() {
         </div>
       )}
 
-      {/* Visit Status Toggle */}
+      {/* Visit Status Toggle + Zone Toggle */}
       <div className="visit-mode-toggle">
         <label className="toggle-label">
           <input
             type="checkbox"
             checked={visitMode}
-            onChange={(e) => setVisitMode(e.target.checked)}
+            onChange={(e) => {
+              setVisitMode(e.target.checked);
+              if (e.target.checked) hideAllZones();
+            }}
           />
           <span className="toggle-slider"></span>
           <span className="toggle-text">Visit Status</span>
         </label>
+        <button
+          className={`zone-toggle-btn ${zonesOff ? 'zones-hidden' : ''}`}
+          onClick={toggleAllZones}
+          title={zonesOff ? 'Show all zones' : 'Hide all zones'}
+        >
+          {zonesOff ? 'Show Zones' : 'Hide Zones'}
+        </button>
       </div>
 
       {/* Legend - switches between store types and visit recency */}
