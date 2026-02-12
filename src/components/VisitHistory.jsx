@@ -88,7 +88,17 @@ export default function VisitHistory() {
   // Column resizing
   const defaultWidths = { status: 24, name: 180, city: 110, route: 44, type: 52, lastVisit: 74, days: 44, prevVisit: 74, thirdVisit: 74, grade: 48 };
   const [colWidths, setColWidths] = useState(() => ({ ...defaultWidths }));
+  const [tableScale, setTableScale] = useState(100);
   const resizeRef = useRef(null);
+  const tableWrapRef = useRef(null);
+
+  const applyScale = useCallback((pct) => {
+    setTableScale(pct);
+    const scale = pct / 100;
+    const scaled = {};
+    Object.entries(defaultWidths).forEach(([k, v]) => { scaled[k] = Math.round(v * scale); });
+    setColWidths(scaled);
+  }, []);
 
   const onResizeStart = useCallback((col, e) => {
     e.preventDefault();
@@ -287,7 +297,28 @@ export default function VisitHistory() {
         </div>
       </div>
 
-      <div className="vh2-table-wrap">
+      <div className="vh2-scale-bar">
+        <span className="vh2-scale-label">Table width</span>
+        {[50, 75, 85, 100].map((pct) => (
+          <button
+            key={pct}
+            className={`vh2-scale-btn ${tableScale === pct ? 'active' : ''}`}
+            onClick={() => applyScale(pct)}
+          >
+            {pct}%
+          </button>
+        ))}
+        <button className="vh2-scale-btn fill" onClick={() => {
+          if (!tableWrapRef.current) return;
+          const wrapW = tableWrapRef.current.clientWidth - 2;
+          const baseTotal = Object.values(defaultWidths).reduce((a, b) => a + b, 0);
+          const pct = Math.round((wrapW / baseTotal) * 100);
+          applyScale(pct);
+        }}>Fill</button>
+        <button className="vh2-scale-btn" onClick={() => applyScale(100)}>Reset</button>
+      </div>
+
+      <div className="vh2-table-wrap" ref={tableWrapRef}>
         <table className="vh2-table" style={{ tableLayout: 'fixed', width: Object.values(colWidths).reduce((a, b) => a + b, 0) }}>
           <colgroup>
             <col style={{ width: colWidths.status }} />
