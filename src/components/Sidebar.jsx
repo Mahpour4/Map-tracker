@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import StorePanel from './StorePanel';
 import ZonePanel from './ZonePanel';
+import AlertPanel from './AlertPanel';
 import { getToken, setToken, clearToken, testConnection } from '../services/githubService';
 
 function GithubSync() {
@@ -171,9 +172,32 @@ export default function Sidebar() {
         >
           Zones
         </button>
+        <button
+          className={`tab-btn ${sidebarTab === 'alerts' ? 'active' : ''}`}
+          onClick={() => setSidebarTab('alerts')}
+        >
+          Alerts
+          {state.alerts.filter(a => {
+            const store = state.stores.find(s => s.id === a.storeId);
+            if (!store || !a.dateReceived) return true;
+            const lv = (store.lastVisited || '').split('T')[0].split(' ')[0];
+            return !lv || lv < a.dateReceived;
+          }).length > 0 && (
+            <span className="alert-badge-count">
+              {state.alerts.filter(a => {
+                const store = state.stores.find(s => s.id === a.storeId);
+                if (!store || !a.dateReceived) return true;
+                const lv = (store.lastVisited || '').split('T')[0].split(' ')[0];
+                return !lv || lv < a.dateReceived;
+              }).length}
+            </span>
+          )}
+        </button>
       </div>
       <div className="sidebar-content">
-        {sidebarTab === 'stores' ? <StorePanel /> : <ZonePanel />}
+        {sidebarTab === 'stores' && <StorePanel />}
+        {sidebarTab === 'zones' && <ZonePanel />}
+        {sidebarTab === 'alerts' && <AlertPanel />}
       </div>
     </aside>
   );

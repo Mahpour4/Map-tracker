@@ -34,11 +34,64 @@ function getStatusCounts(stores) {
   return counts;
 }
 
+function getDaysBetween(dateA, dateB) {
+  if (!dateA || !dateB) return null;
+  const a = new Date(dateA);
+  const b = new Date(dateB);
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+  return Math.floor((b - a) / (1000 * 60 * 60 * 24));
+}
+
+function getAlertStats(alerts, stores) {
+  const storeMap = {};
+  stores.forEach(s => { storeMap[s.id] = s; });
+
+  let total = 0;
+  let resolved = 0;
+  let unresolved = 0;
+  let totalResponseDays = 0;
+  let responseCount = 0;
+
+  alerts.forEach(a => {
+    total++;
+    const store = storeMap[a.storeId];
+    if (!store || !a.dateReceived) {
+      unresolved++;
+      return;
+    }
+    const lv = (store.lastVisited || '').split('T')[0].split(' ')[0];
+    if (lv && lv >= a.dateReceived) {
+      resolved++;
+      const days = getDaysBetween(a.dateReceived, lv);
+      if (days !== null) {
+        totalResponseDays += days;
+        responseCount++;
+      }
+    } else {
+      unresolved++;
+    }
+  });
+
+  const avgResponse = responseCount > 0 ? Math.round(totalResponseDays / responseCount) : null;
+  return { total, resolved, unresolved, avgResponse };
+}
+
 export default function RouteLeaderboard() {
   const { state } = useApp();
-  const { stores } = state;
+  const { stores, alerts } = state;
   const [sortAsc, setSortAsc] = useState(false);
   const [expanded, setExpanded] = useState(null);
+
+  // Group alerts by route
+  const alertsByRoute = useMemo(() => {
+    const map = {};
+    alerts.forEach(a => {
+      const route = a.routeNumber || '0';
+      if (!map[route]) map[route] = [];
+      map[route].push(a);
+    });
+    return map;
+  }, [alerts]);
 
   const routeData = useMemo(() => {
     const routeMap = {};
@@ -58,6 +111,8 @@ export default function RouteLeaderboard() {
       const counts = getStatusCounts(required);
       const coverage = total > 0 ? Math.round((counts.onTrack / total) * 100) : 0;
       const grade = getGrade(coverage);
+      const routeAlerts = alertsByRoute[route] || [];
+      const alertStats = getAlertStats(routeAlerts, stores);
       return {
         route,
         required,
@@ -67,9 +122,11 @@ export default function RouteLeaderboard() {
         counts,
         coverage,
         grade,
+        alertStats,
+        alerts: routeAlerts,
       };
     });
-  }, [stores]);
+  }, [stores, alertsByRoute]);
 
   const sorted = useMemo(() => {
     const s = [...routeData];
@@ -88,6 +145,10 @@ export default function RouteLeaderboard() {
     return { totalReq, totalOnTrack, pct, grade: getGrade(pct) };
   }, [routeData]);
 
+  const overallAlertStats = useMemo(() => {
+    return getAlertStats(alerts, stores);
+  }, [alerts, stores]);
+
   return (
     <div className="leaderboard">
       <div className="leaderboard-header">
@@ -102,6 +163,29 @@ export default function RouteLeaderboard() {
         <div className="lb-subtitle">
           Weekly coverage — stores visited within 7 days (CASH stops excluded)
         </div>
+
+        {/* Overall Alert Stats */}
+        {overallAlertStats.total > 0 && (
+          <div className="lb-alert-summary">
+            <span className="lb-alert-title">Service Alerts</span>
+            <div className="lb-alert-stats">
+              <span className="lb-alert-stat">
+                <span className="lb-alert-val" style={{ color: '#ef4444' }}>{overallAlertStats.unresolved}</span> open
+              </span>
+              <span className="lb-alert-stat">
+                <span className="lb-alert-val" style={{ color: '#22c55e' }}>{overallAlertStats.resolved}</span> resolved
+              </span>
+              <span className="lb-alert-stat">
+                <span className="lb-alert-val">{overallAlertStats.total}</span> total
+              </span>
+              {overallAlertStats.avgResponse !== null && (
+                <span className="lb-alert-stat">
+                  <span className="lb-alert-val">{overallAlertStats.avgResponse}d</span> avg response
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="leaderboard-controls">
           <button
@@ -129,7 +213,7 @@ export default function RouteLeaderboard() {
 
       <div className="leaderboard-grid">
         {sorted.map((r, idx) => {
-          const { grade, counts } = r;
+          const { grade, counts, alertStats: as } = r;
           const rank = idx + 1;
           const isExpanded = expanded === r.route;
 
@@ -187,6 +271,19 @@ export default function RouteLeaderboard() {
                 {counts.never > 0 && <span className="tier-count" style={{ color: '#9ca3af' }}>{counts.never} never</span>}
               </div>
 
+              {/* Alert stats per route */}
+              {as.total > 0 && (
+                <div className="route-alert-row">
+                  <span className="route-alert-icon">!</span>
+                  <span className="route-alert-text">
+                    {as.total} alert{as.total !== 1 ? 's' : ''}
+                    {as.unresolved > 0 && <span style={{ color: '#ef4444' }}> ({as.unresolved} open)</span>}
+                    {as.resolved > 0 && <span style={{ color: '#22c55e' }}> ({as.resolved} resolved)</span>}
+                    {as.avgResponse !== null && <span className="route-alert-avg"> avg {as.avgResponse}d response</span>}
+                  </span>
+                </div>
+              )}
+
               {isExpanded && (
                 <div className="route-store-list">
                   {r.required
@@ -208,11 +305,17 @@ export default function RouteLeaderboard() {
                         else if (days <= 30) { statusColor = '#ef4444'; statusText = `${days}d ago`; }
                         else { statusColor = '#7f1d1d'; statusText = `${days}d ago`; }
                       }
+                      const storeAlerts = r.alerts.filter(a => a.storeId === s.id);
                       return (
                         <div key={s.id} className="route-store-item">
                           <span className="store-status-dot" style={{ background: statusColor }}></span>
                           <span className="store-item-name">{s.name}</span>
                           <span className="store-item-city">{s.city}</span>
+                          {storeAlerts.length > 0 && (
+                            <span className="store-alert-badge" title={`${storeAlerts.length} alert(s)`}>
+                              !{storeAlerts.length}
+                            </span>
+                          )}
                           <span className="store-item-days" style={{ color: statusColor }}>{statusText}</span>
                         </div>
                       );

@@ -1,10 +1,12 @@
 const REPO_OWNER = 'Mahpour4';
 const REPO_NAME = 'Map-tracker';
 const FILE_PATH = 'src/data/stores.csv';
+const ALERTS_FILE_PATH = 'src/data/alerts.csv';
 const API_BASE = 'https://api.github.com';
 
 const TOKEN_KEY = 'github_pat';
 const SHA_KEY = 'github_file_sha';
+const ALERTS_SHA_KEY = 'github_alerts_sha';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -116,6 +118,90 @@ export async function saveStoresCsv(csvContent, message) {
 
   const data = await res.json();
   saveSha(data.content.sha);
+  return data;
+}
+
+// ---- Alerts CSV (GitHub sync) ----
+
+function getAlertsSha() {
+  return localStorage.getItem(ALERTS_SHA_KEY) || '';
+}
+
+function saveAlertsSha(sha) {
+  localStorage.setItem(ALERTS_SHA_KEY, sha);
+}
+
+export async function fetchAlertsCsv() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
+    { headers: headers() }
+  );
+
+  if (res.status === 404) {
+    // File doesn't exist yet — return empty
+    return { content: '', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveAlertsSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveAlertsCsv(csvContent, message) {
+  let sha = getAlertsSha();
+
+  // Try to get existing SHA if we don't have one
+  if (!sha) {
+    try {
+      const current = await fetchAlertsCsv();
+      sha = current.sha;
+    } catch {
+      // File may not exist yet, that's ok
+    }
+  }
+
+  const encoded = btoa(unescape(encodeURIComponent(csvContent)));
+
+  const body = {
+    message: message || 'Update alerts.csv from Map Tracker app',
+    content: encoded,
+  };
+  if (sha) body.sha = sha;
+
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
+    {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      const fresh = await fetchAlertsCsv();
+      const retryBody = { ...body, sha: fresh.sha };
+      const retryRes = await fetch(
+        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
+        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
+      );
+      if (!retryRes.ok) throw new Error('Failed to save alerts after retry');
+      const retryData = await retryRes.json();
+      saveAlertsSha(retryData.content.sha);
+      return retryData;
+    }
+    throw new Error(err.message || `GitHub save failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  saveAlertsSha(data.content.sha);
   return data;
 }
 

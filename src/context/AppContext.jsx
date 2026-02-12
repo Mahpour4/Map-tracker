@@ -1,7 +1,8 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
-import { fetchStoresCsv, saveStoresCsv, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, getToken } from '../services/githubService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected } from '../services/gmailAlertService';
 
 const AppContext = createContext();
 
@@ -20,6 +21,9 @@ const initialState = {
   mapZoom: 8,
   syncStatus: 'idle', // idle | loading | saving | saved | error
   syncError: null,
+  alerts: [],
+  alertSyncStatus: 'idle', // idle | loading | saving | saved | error
+  alertSyncError: null,
 };
 
 const easternShoreSubsections = {
@@ -189,6 +193,12 @@ function reducer(state, action) {
         mapCenter: action.payload.center,
         mapZoom: action.payload.zoom,
       };
+    case 'LOAD_ALERTS':
+      return { ...state, alerts: action.payload, alertSyncStatus: 'saved', alertSyncError: null };
+    case 'SET_ALERTS':
+      return { ...state, alerts: action.payload, alertSyncStatus: 'idle' };
+    case 'SET_ALERT_SYNC_STATUS':
+      return { ...state, alertSyncStatus: action.payload.status, alertSyncError: action.payload.error || null };
     default:
       return state;
   }
@@ -265,6 +275,97 @@ export function AppProvider({ children }) {
         dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
       });
   }, [state.stores]);
+
+  // Load alerts from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchAlertsCsv()
+      .then(({ content }) => {
+        if (content) {
+          const alerts = parseAlertsCsv(content);
+          dispatch({ type: 'LOAD_ALERTS', payload: alerts });
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load alerts:', err);
+      });
+  }, []);
+
+  // Auto-save alerts to GitHub when they change
+  const prevAlertsRef = useRef(state.alerts);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevAlertsRef.current === state.alerts) return;
+    prevAlertsRef.current = state.alerts;
+    if (state.alerts.length === 0) return;
+
+    dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saving' } });
+    const csv = alertsToCsv(state.alerts);
+    saveAlertsCsv(csv)
+      .then(() => {
+        dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
+      })
+      .catch((err) => {
+        console.error('Failed to save alerts:', err);
+        dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+      });
+  }, [state.alerts]);
+
+  // Fetch new alerts from Gmail and merge with existing
+  const fetchGmailAlerts = useCallback(async () => {
+    if (!isGmailConnected()) throw new Error('Not connected to Gmail');
+    dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
+
+    try {
+      // Find the most recent alert date to only fetch new ones
+      const existingDates = state.alerts.map(a => a.dateReceived).filter(Boolean).sort();
+      const afterDate = existingDates.length > 0 ? existingDates[existingDates.length - 1] : undefined;
+
+      const newAlerts = await fetchAlertEmails(afterDate);
+
+      // Deduplicate by refNumber
+      const existingRefs = new Set(state.alerts.map(a => a.refNumber));
+      const uniqueNew = newAlerts.filter(a => !existingRefs.has(a.refNumber));
+
+      // Match each new alert to a store
+      uniqueNew.forEach(alert => {
+        const store = matchAlertToStore(alert, state.stores);
+        if (store) {
+          alert.storeId = store.id;
+          alert.routeNumber = store.routeNumber || '';
+        }
+      });
+
+      if (uniqueNew.length > 0) {
+        const merged = [...state.alerts, ...uniqueNew];
+        dispatch({ type: 'SET_ALERTS', payload: merged });
+      } else {
+        dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
+      }
+
+      return uniqueNew.length;
+    } catch (err) {
+      dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+      throw err;
+    }
+  }, [state.alerts, state.stores]);
+
+  const syncAlertsFromGithub = useCallback(() => {
+    if (!getToken()) return;
+    dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
+    fetchAlertsCsv()
+      .then(({ content }) => {
+        if (content) {
+          const alerts = parseAlertsCsv(content);
+          dispatch({ type: 'LOAD_ALERTS', payload: alerts });
+        } else {
+          dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
+        }
+      })
+      .catch((err) => {
+        dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+      });
+  }, []);
 
   const actions = {
     addStore: useCallback(
@@ -345,6 +446,8 @@ export function AppProvider({ children }) {
     ),
     syncFromGithub,
     saveToGithub,
+    fetchGmailAlerts,
+    syncAlertsFromGithub,
   };
 
   return (
