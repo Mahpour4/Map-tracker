@@ -3,6 +3,7 @@ import { AppProvider } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
 import RouteLeaderboard from './components/RouteLeaderboard';
+import VisitHistory from './components/VisitHistory';
 import './App.css';
 
 function App() {
@@ -26,8 +27,16 @@ function App() {
             >
               Route Leaderboard
             </button>
+            <button
+              className={`page-nav-btn ${page === 'visits' ? 'active' : ''}`}
+              onClick={() => setPage('visits')}
+            >
+              Visit History
+            </button>
           </div>
-          {page === 'map' ? <MapView /> : <RouteLeaderboard />}
+          {page === 'map' && <MapView />}
+          {page === 'leaderboard' && <RouteLeaderboard />}
+          {page === 'visits' && <VisitHistory />}
         </main>
       </div>
     </AppProvider>
