@@ -80,7 +80,7 @@ const TYPE_LABELS = {
   CMW: 'Commissary', WMW: 'Walmart', WAW: 'Walmart', AMW: 'Acme',
   RDW: 'Redners', WGW: 'Wegmans', SFW: 'Shoppers', BGW: 'B Green',
   FDW: 'Food Depot', KFW: 'K Food', HF: 'HF', IND: 'Independent',
-  CASH: 'Cash Stop', SV: 'Storage', MISC: 'Misc',
+  CASH: 'Cash Stop', SV: 'Seven Mile', MISC: 'Misc',
 };
 
 export default function VisitHistory() {
