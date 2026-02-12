@@ -189,6 +189,8 @@ export default function StorePanel() {
     if (filterRoute !== 'all') {
       if (filterRoute === '0') {
         result = result.filter((s) => !s.routeNumber || s.routeNumber === '0');
+      } else if (filterRoute === 'MIL') {
+        result = result.filter((s) => s.id.startsWith('CMW'));
       } else {
         result = result.filter((s) => s.routeNumber === filterRoute);
       }
@@ -232,6 +234,7 @@ export default function StorePanel() {
         <select value={filterRoute} onChange={(e) => setFilterRoute(e.target.value)}>
           <option value="all">All routes</option>
           <option value="0">Unassigned</option>
+          <option value="MIL">Military (All)</option>
           {routes.map((r) => (
             <option key={r} value={r}>Route {r}</option>
           ))}

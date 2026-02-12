@@ -243,7 +243,11 @@ export default function MapView() {
     }
 
     if (filterRoute !== 'all') {
-      result = result.filter((s) => s.routeNumber === filterRoute);
+      if (filterRoute === 'MIL') {
+        result = result.filter((s) => s.id.startsWith('CMW'));
+      } else {
+        result = result.filter((s) => s.routeNumber === filterRoute);
+      }
     }
 
     return result;
@@ -314,11 +318,13 @@ export default function MapView() {
     const typeLabel = filterType !== 'all'
       ? ` (${typeLabels[filterType] || filterType})`
       : '';
-    let msg = `Route ${filterRoute}${typeLabel} - ${staleStores.length} store${staleStores.length === 1 ? '' : 's'} out of date\n`;
+    const routeLabel = filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`;
+    let msg = `${routeLabel}${typeLabel} - ${staleStores.length} store${staleStores.length === 1 ? '' : 's'} out of date\n`;
     staleStores.forEach((s, i) => {
       const lastVisit = s.lastVisited ? formatDate(s.lastVisited).split(' (')[0] : 'Never';
       const daysText = s.daysSince === null ? 'Never visited' : `${s.daysSince} days`;
-      msg += `${i + 1}. ${s.id}, ${s.name}, ${s.city}, Last visit: ${lastVisit}, ${daysText}\n`;
+      const routeInfo = filterRoute === 'MIL' && s.routeNumber ? ` (Rt ${s.routeNumber})` : '';
+      msg += `${i + 1}. ${s.id}, ${s.name}${routeInfo}, ${s.city}, Last visit: ${lastVisit}, ${daysText}\n`;
     });
     msg += `Please visit before the end of this week`;
     navigator.clipboard.writeText(msg).then(() => {
@@ -356,7 +362,7 @@ export default function MapView() {
         <div className="stale-panel">
           <div className="stale-panel-header">
             <span className="stale-panel-title">
-              Stale Stores — Route {filterRoute}
+              Stale Stores — {filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`}
               {filterType !== 'all' && ` (${typeLabels[filterType] || filterType})`}
             </span>
             <span className="stale-panel-count">{staleStores.length}</span>
