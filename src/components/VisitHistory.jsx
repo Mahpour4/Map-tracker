@@ -24,6 +24,11 @@ function formatShortDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function toYMD(dateStr) {
+  if (!dateStr) return null;
+  return dateStr.split('T')[0].split(' ')[0];
+}
+
 function getVisitGrade(daysSince, intervals, targetDays) {
   if (daysSince === null) return { letter: 'F', color: '#9ca3af', label: 'Never' };
 
@@ -84,7 +89,7 @@ const TYPE_LABELS = {
 };
 
 export default function VisitHistory() {
-  const { state } = useApp();
+  const { state, updateStore } = useApp();
   const { stores } = state;
   const [filterRoute, setFilterRoute] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -92,9 +97,13 @@ export default function VisitHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortCol, setSortCol] = useState('days');
   const [sortDir, setSortDir] = useState('desc');
+  const [editingId, setEditingId] = useState(null);
+  const [editDate, setEditDate] = useState('');
+  const [viewDate, setViewDate] = useState('');
+  const [visitVersion, setVisitVersion] = useState(0);
 
   // Column resizing
-  const defaultWidths = { status: 24, name: 180, city: 110, route: 44, type: 52, lastVisit: 74, days: 44, prevVisit: 74, thirdVisit: 74, grade: 48 };
+  const defaultWidths = { status: 24, name: 180, city: 110, route: 44, type: 52, lastVisit: 74, days: 44, prevVisit: 74, thirdVisit: 74, grade: 48, actions: 30 };
   const [colWidths, setColWidths] = useState(() => ({ ...defaultWidths }));
   const [tableScale, setTableScale] = useState(100);
   const resizeRef = useRef(null);
@@ -129,6 +138,28 @@ export default function VisitHistory() {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   }, [colWidths]);
+
+  const handleAddVisit = useCallback((storeId) => {
+    if (!editDate) return;
+    const ymd = toYMD(editDate);
+    if (!ymd) return;
+    // Update visit history in memory
+    if (!visitHistoryData[storeId]) visitHistoryData[storeId] = [];
+    if (!visitHistoryData[storeId].includes(ymd)) {
+      visitHistoryData[storeId].push(ymd);
+      visitHistoryData[storeId].sort();
+    }
+    // Update store's lastVisited (triggers GitHub sync)
+    const store = stores.find((s) => s.id === storeId);
+    if (store) {
+      const allDates = visitHistoryData[storeId].slice().sort();
+      const newest = allDates[allDates.length - 1];
+      updateStore({ ...store, lastVisited: newest });
+    }
+    setEditingId(null);
+    setEditDate('');
+    setVisitVersion((v) => v + 1);
+  }, [editDate, stores, updateStore]);
 
   const routes = useMemo(() => {
     const set = new Set();
@@ -189,21 +220,29 @@ export default function VisitHistory() {
           grade,
           status,
           totalVisits: history.length,
+          allDates: history,
         };
       });
-  }, [stores]);
+  }, [stores, visitVersion]);
+
+  // Visits on selected date
+  const viewDateCount = useMemo(() => {
+    if (!viewDate) return 0;
+    return tableData.filter((row) => row.allDates.includes(viewDate)).length;
+  }, [tableData, viewDate]);
 
   // Apply filters
   const filtered = useMemo(() => {
     const search = searchTerm.toLowerCase();
     return tableData.filter((row) => {
+      if (viewDate && !row.allDates.includes(viewDate)) return false;
       if (filterRoute !== 'all' && row.route !== filterRoute) return false;
       if (filterStatus !== 'all' && row.status !== filterStatus) return false;
       if (filterType !== 'all' && row.prefix !== filterType) return false;
       if (search && !row.name.toLowerCase().includes(search) && !row.city.toLowerCase().includes(search) && !row.id.toLowerCase().includes(search)) return false;
       return true;
     });
-  }, [tableData, filterRoute, filterStatus, filterType, searchTerm]);
+  }, [tableData, filterRoute, filterStatus, filterType, searchTerm, viewDate]);
 
   // Sort
   const sorted = useMemo(() => {
@@ -330,6 +369,21 @@ export default function VisitHistory() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            <div className="vh2-date-picker">
+              <label className="vh2-filter-label" style={{ marginRight: 4 }}>View date</label>
+              <input
+                type="date"
+                className="vh2-date-input"
+                value={viewDate}
+                onChange={(e) => setViewDate(e.target.value)}
+              />
+              {viewDate && (
+                <>
+                  <span className="vh2-date-count">{viewDateCount} visited</span>
+                  <button className="vh2-date-clear" onClick={() => setViewDate('')}>&times;</button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -368,6 +422,7 @@ export default function VisitHistory() {
             <col style={{ width: colWidths.prevVisit }} />
             <col style={{ width: colWidths.thirdVisit }} />
             <col style={{ width: colWidths.grade }} />
+            <col style={{ width: colWidths.actions }} />
           </colgroup>
           <thead>
             <tr>
@@ -381,6 +436,7 @@ export default function VisitHistory() {
               <th>Prev Visit<span className="vh2-resize" onMouseDown={(e) => onResizeStart('prevVisit', e)}></span></th>
               <th>3rd Visit<span className="vh2-resize" onMouseDown={(e) => onResizeStart('thirdVisit', e)}></span></th>
               <th className="vh2-th-sortable" onClick={() => handleSort('grade')}>Grade <SortArrow col="grade" /></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -414,6 +470,27 @@ export default function VisitHistory() {
                     <span className="vh2-grade-badge" style={{ background: row.grade.color + '20', color: row.grade.color }}>
                       {row.grade.letter}
                     </span>
+                  </td>
+                  <td className="vh2-td-actions">
+                    {editingId === row.id ? (
+                      <div className="vh2-edit-inline">
+                        <input
+                          type="date"
+                          className="vh2-edit-date"
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          autoFocus
+                        />
+                        <button className="vh2-edit-save" onClick={() => handleAddVisit(row.id)} disabled={!editDate}>&#10003;</button>
+                        <button className="vh2-edit-cancel" onClick={() => { setEditingId(null); setEditDate(''); }}>&times;</button>
+                      </div>
+                    ) : (
+                      <button
+                        className="vh2-add-visit-btn"
+                        title="Add visit date"
+                        onClick={() => { setEditingId(row.id); setEditDate(new Date().toISOString().split('T')[0]); }}
+                      >+</button>
+                    )}
                   </td>
                 </tr>
               );

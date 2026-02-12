@@ -1765,6 +1765,153 @@ textarea {
   font-size: 14px;
 }
 
+/* Date picker filter */
+.vh2-date-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.vh2-date-input {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.vh2-date-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.vh2-date-clear {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.vh2-date-clear:hover {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Add visit button */
+.vh2-td-actions {
+  width: 30px;
+  text-align: center;
+  overflow: visible;
+  position: relative;
+}
+
+.vh2-add-visit-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s;
+}
+
+.vh2-add-visit-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Inline edit */
+.vh2-edit-inline {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  white-space: nowrap;
+}
+
+.vh2-edit-date {
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  background: var(--bg);
+  color: var(--text);
+  width: 120px;
+}
+
+.vh2-edit-save {
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.vh2-edit-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vh2-edit-cancel {
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.vh2-edit-cancel:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
 .vh2-footer {
   padding: 8px 0;
   font-size: 11px;
