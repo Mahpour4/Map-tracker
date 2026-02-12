@@ -927,6 +927,136 @@ textarea {
   background: #eff6ff;
 }
 
+.hidden-zones-panel.shifted-right {
+  left: 284px;
+}
+
+/* ============ Stale Stores Panel ============ */
+.stale-panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  width: 260px;
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.stale-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stale-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stale-panel-count {
+  background: var(--danger);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.stale-panel-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.stale-panel-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.stale-panel-item:hover {
+  background: #fef2f2;
+}
+
+.stale-panel-item.active {
+  background: #eff6ff;
+  border-left-color: var(--primary);
+}
+
+.stale-item-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stale-item-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.stale-item-days {
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.stale-panel-copy {
+  padding: 8px 12px;
+  margin: 6px 10px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #25d366;
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.stale-panel-copy:hover {
+  opacity: 0.85;
+}
+
+/* Copied flash notification */
+.copied-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  animation: flash-fade 2s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes flash-fade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .zone-number-badge.small {
   width: 18px;
   height: 18px;

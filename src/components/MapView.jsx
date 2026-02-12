@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -146,6 +146,7 @@ export default function MapView() {
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(false);
   const [zonesOff, setZonesOff] = useState(false);
+  const [copiedFlash, setCopiedFlash] = useState(false);
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -291,6 +292,41 @@ export default function MapView() {
     return numberedZones.filter((z) => hiddenZones.has(z.id));
   }, [numberedZones, hiddenZones]);
 
+  // Stale stores: >7 days since visit (only when route filter active)
+  const staleStores = useMemo(() => {
+    if (filterRoute === 'all') return [];
+    return filteredStores
+      .map((s) => {
+        const days = getDaysSinceVisit(s.lastVisited);
+        return { ...s, daysSince: days };
+      })
+      .filter((s) => s.daysSince === null || s.daysSince > 7)
+      .sort((a, b) => {
+        if (a.daysSince === null && b.daysSince === null) return 0;
+        if (a.daysSince === null) return -1;
+        if (b.daysSince === null) return 1;
+        return b.daysSince - a.daysSince;
+      });
+  }, [filteredStores, filterRoute]);
+
+  const copyStaleMessage = useCallback(() => {
+    if (staleStores.length === 0) return;
+    const typeLabel = filterType !== 'all'
+      ? ` (${typeLabels[filterType] || filterType})`
+      : '';
+    let msg = `Route ${filterRoute}${typeLabel} - ${staleStores.length} store${staleStores.length === 1 ? '' : 's'} out of date\n`;
+    staleStores.forEach((s, i) => {
+      const lastVisit = s.lastVisited ? formatDate(s.lastVisited).split(' (')[0] : 'Never';
+      const daysText = s.daysSince === null ? 'Never visited' : `${s.daysSince} days`;
+      msg += `${i + 1}. ${s.id}, ${s.name}, ${s.city}, Last visit: ${lastVisit}, ${daysText}\n`;
+    });
+    msg += `Please visit before the end of this week`;
+    navigator.clipboard.writeText(msg).then(() => {
+      setCopiedFlash(true);
+      setTimeout(() => setCopiedFlash(false), 2000);
+    });
+  }, [staleStores, filterRoute, filterType]);
+
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       {hasActiveFilters && (
@@ -301,7 +337,7 @@ export default function MapView() {
 
       {/* Hidden zones reopen panel (hidden when bulk toggle is off) */}
       {hiddenZonesList.length > 0 && !zonesOff && (
-        <div className="hidden-zones-panel">
+        <div className={`hidden-zones-panel ${filterRoute !== 'all' && staleStores.length > 0 ? 'shifted-right' : ''}`}>
           <div className="hidden-zones-header">
             <span>Hidden Zones ({hiddenZonesList.length})</span>
             <button className="btn btn-xs" onClick={showAllZones}>Show All</button>
@@ -313,6 +349,47 @@ export default function MapView() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Stale Stores Panel */}
+      {filterRoute !== 'all' && staleStores.length > 0 && (
+        <div className="stale-panel">
+          <div className="stale-panel-header">
+            <span className="stale-panel-title">
+              Stale Stores — Route {filterRoute}
+              {filterType !== 'all' && ` (${typeLabels[filterType] || filterType})`}
+            </span>
+            <span className="stale-panel-count">{staleStores.length}</span>
+          </div>
+          <div className="stale-panel-list">
+            {staleStores.map((s) => (
+              <div
+                key={s.id}
+                className={`stale-panel-item ${selectedStore === s.id ? 'active' : ''}`}
+                onClick={() => {
+                  selectStore(s.id);
+                  setMapView([s.lat, s.lng], 14);
+                }}
+              >
+                <div className="stale-item-name">{s.id} — {s.name}</div>
+                <div className="stale-item-detail">
+                  {s.city}
+                  <span className="stale-item-days" style={{ color: getRecencyTier(s.lastVisited).color }}>
+                    {s.daysSince === null ? 'Never' : `${s.daysSince}d ago`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="stale-panel-copy" onClick={copyStaleMessage}>
+            Copy WhatsApp Message
+          </button>
+        </div>
+      )}
+
+      {/* Copied flash */}
+      {copiedFlash && (
+        <div className="copied-flash">Message copied to clipboard</div>
       )}
 
       {/* Visit Status Toggle + Zone Toggle */}
