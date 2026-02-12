@@ -1340,6 +1340,97 @@ textarea {
   font-weight: 700;
 }
 
+.lb-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.route-coverage-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.coverage-fraction {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.coverage-fraction strong {
+  font-weight: 800;
+}
+
+.coverage-label {
+  font-size: 12px;
+}
+
+.route-card-expanded {
+  grid-column: 1 / -1;
+}
+
+.route-store-list {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.route-store-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.store-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.store-item-name {
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.store-item-city {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.store-item-days {
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+  min-width: 50px;
+  text-align: right;
+}
+
+.route-cash-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+
+.cash-section-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* ============ Visit History Page ============ */
 .visit-history {
   padding: 24px;
