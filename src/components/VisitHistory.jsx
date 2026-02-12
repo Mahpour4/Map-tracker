@@ -2,46 +2,89 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import visitHistoryData from '../data/visitHistory';
 
-function getMonthDays(year, month) {
-  return new Date(year, month + 1, 0).getDate();
+function isCashStop(store) {
+  return store.id.toLowerCase().startsWith('cash');
 }
 
-function getFirstDayOfWeek(year, month) {
-  return new Date(year, month, 1).getDay();
+function getStorePrefix(id) {
+  const m = (id || '').match(/^([A-Za-z]+)/);
+  return m ? m[1].toUpperCase() : '?';
 }
 
-function formatDate(year, month, day) {
-  const mm = String(month + 1).padStart(2, '0');
-  const dd = String(day).padStart(2, '0');
-  return `${year}-${mm}-${dd}`;
+function getDaysBetween(dateA, dateB) {
+  if (!dateA || !dateB) return null;
+  const a = new Date(dateA);
+  const b = new Date(dateB);
+  return Math.abs(Math.floor((a - b) / (1000 * 60 * 60 * 24)));
 }
 
-const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+function formatShortDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getVisitGrade(daysSince, intervals, targetDays) {
+  if (daysSince === null) return { letter: 'F', color: '#9ca3af', label: 'Never' };
+
+  // Weight: current gap matters most, then recent history
+  const scores = [];
+
+  // Current gap score
+  if (daysSince <= targetDays) scores.push(100);
+  else if (daysSince <= targetDays * 1.5) scores.push(70);
+  else if (daysSince <= targetDays * 2) scores.push(40);
+  else if (daysSince <= targetDays * 3) scores.push(15);
+  else scores.push(0);
+
+  // Historical interval scores
+  intervals.forEach((gap) => {
+    if (gap <= targetDays) scores.push(100);
+    else if (gap <= targetDays * 1.5) scores.push(70);
+    else if (gap <= targetDays * 2) scores.push(40);
+    else scores.push(10);
+  });
+
+  // Weighted average: current gap = 50%, history = 50%
+  const currentScore = scores[0];
+  const historyScores = scores.slice(1);
+  const histAvg = historyScores.length > 0
+    ? historyScores.reduce((a, b) => a + b, 0) / historyScores.length
+    : currentScore;
+  const avg = Math.round(currentScore * 0.6 + histAvg * 0.4);
+
+  if (avg >= 85) return { letter: 'A', color: '#22c55e', label: 'A' };
+  if (avg >= 65) return { letter: 'B', color: '#3b82f6', label: 'B' };
+  if (avg >= 45) return { letter: 'C', color: '#eab308', label: 'C' };
+  if (avg >= 25) return { letter: 'D', color: '#f97316', label: 'D' };
+  return { letter: 'F', color: '#ef4444', label: 'F' };
+}
+
+function getRowStatus(daysSince, targetDays) {
+  if (daysSince === null) return 'never';
+  if (daysSince <= targetDays) return 'ontrack';
+  if (daysSince <= targetDays * 2) return 'missed';
+  return 'overdue';
+}
+
+const TYPE_COLORS = {
+  FLW: '#16a34a', SRW: '#7c3aed', MTW: '#0891b2', GTW: '#0891b2',
+  CMW: '#6366f1', WMW: '#2563eb', WAW: '#2563eb', AMW: '#dc2626',
+  RDW: '#b91c1c', WGW: '#059669', SFW: '#8b5cf6', BGW: '#a16207',
+  FDW: '#0d9488', KFW: '#ea580c', HF: '#64748b', IND: '#78716c',
+  CASH: '#d97706', SV: '#6b7280', MISC: '#94a3b8',
+};
 
 export default function VisitHistory() {
   const { state } = useApp();
   const { stores } = state;
-
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
-  const [selectedDay, setSelectedDay] = useState(null);
   const [filterRoute, setFilterRoute] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortCol, setSortCol] = useState('days');
+  const [sortDir, setSortDir] = useState('desc');
 
-  // Build store lookup by ID
-  const storeMap = useMemo(() => {
-    const map = {};
-    stores.forEach((s) => {
-      map[s.id] = s;
-    });
-    return map;
-  }, [stores]);
-
-  // Get all routes for the filter dropdown
   const routes = useMemo(() => {
     const set = new Set();
     stores.forEach((s) => {
@@ -50,161 +93,166 @@ export default function VisitHistory() {
     return [...set].sort((a, b) => Number(a) - Number(b));
   }, [stores]);
 
-  // Filter visit history for the selected month
-  const monthData = useMemo(() => {
-    const daysInMonth = getMonthDays(year, month);
-    const dayMap = {}; // day number → [{ storeId, storeName, routeNumber }]
-    const storeVisitsThisMonth = {}; // storeId → [day numbers]
-
-    Object.entries(visitHistoryData).forEach(([storeId, dates]) => {
-      dates.forEach((dateStr) => {
-        const [y, m, d] = dateStr.split('-').map(Number);
-        if (y === year && m - 1 === month) {
-          const dayNum = d;
-          if (!dayMap[dayNum]) dayMap[dayNum] = [];
-          const store = storeMap[storeId];
-          dayMap[dayNum].push({
-            storeId,
-            storeName: store ? store.name : storeId,
-            routeNumber: store ? store.routeNumber : '?',
-          });
-          if (!storeVisitsThisMonth[storeId]) storeVisitsThisMonth[storeId] = [];
-          storeVisitsThisMonth[storeId].push(dayNum);
-        }
-      });
+  const storeTypes = useMemo(() => {
+    const set = new Set();
+    stores.forEach((s) => {
+      const p = getStorePrefix(s.id);
+      if (p !== '?') set.add(p);
     });
+    return [...set].sort();
+  }, [stores]);
 
-    return { dayMap, storeVisitsThisMonth, daysInMonth };
-  }, [year, month, storeMap]);
+  // Build full store table with visit data
+  const tableData = useMemo(() => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
 
-  // Stores grouped by route for the month, applying filters
-  const routeGroups = useMemo(() => {
-    const groups = {};
+    return stores
+      .filter((s) => s.routeNumber && s.routeNumber !== '0')
+      .map((s) => {
+        const history = (visitHistoryData[s.id] || []).slice().sort().reverse();
+        const lastVisit = history[0] || null;
+        const prevVisit = history[1] || null;
+        const thirdVisit = history[2] || null;
+
+        const daysSince = lastVisit ? getDaysBetween(today, lastVisit) : null;
+
+        // Calculate intervals between visits
+        const intervals = [];
+        if (lastVisit && prevVisit) intervals.push(getDaysBetween(lastVisit, prevVisit));
+        if (prevVisit && thirdVisit) intervals.push(getDaysBetween(prevVisit, thirdVisit));
+
+        const isCash = isCashStop(s);
+        const targetDays = isCash ? 14 : 7;
+        const grade = getVisitGrade(daysSince, intervals, targetDays);
+        const status = getRowStatus(daysSince, targetDays);
+        const prefix = getStorePrefix(s.id);
+
+        return {
+          id: s.id,
+          name: s.name,
+          city: s.city || '',
+          route: s.routeNumber,
+          prefix,
+          isCash,
+          targetDays,
+          lastVisit,
+          prevVisit,
+          thirdVisit,
+          daysSince,
+          intervals,
+          grade,
+          status,
+          totalVisits: history.length,
+        };
+      });
+  }, [stores]);
+
+  // Apply filters
+  const filtered = useMemo(() => {
     const search = searchTerm.toLowerCase();
-
-    Object.entries(monthData.storeVisitsThisMonth).forEach(([storeId, days]) => {
-      const store = storeMap[storeId];
-      const routeNum = store ? store.routeNumber : '0';
-      const name = store ? store.name : storeId;
-
-      if (filterRoute !== 'all' && routeNum !== filterRoute) return;
-      if (search && !name.toLowerCase().includes(search) && !storeId.toLowerCase().includes(search)) return;
-
-      if (!groups[routeNum]) groups[routeNum] = [];
-      groups[routeNum].push({
-        storeId,
-        name,
-        routeNumber: routeNum,
-        days: days.sort((a, b) => a - b),
-      });
+    return tableData.filter((row) => {
+      if (filterRoute !== 'all' && row.route !== filterRoute) return false;
+      if (filterStatus !== 'all' && row.status !== filterStatus) return false;
+      if (filterType !== 'all' && row.prefix !== filterType) return false;
+      if (search && !row.name.toLowerCase().includes(search) && !row.city.toLowerCase().includes(search) && !row.id.toLowerCase().includes(search)) return false;
+      return true;
     });
+  }, [tableData, filterRoute, filterStatus, filterType, searchTerm]);
 
-    // Sort stores within each route by name
-    Object.values(groups).forEach((g) => g.sort((a, b) => a.name.localeCompare(b.name)));
-
-    return Object.entries(groups).sort(([a], [b]) => Number(a) - Number(b));
-  }, [monthData, storeMap, filterRoute, searchTerm]);
+  // Sort
+  const sorted = useMemo(() => {
+    const rows = [...filtered];
+    rows.sort((a, b) => {
+      let cmp = 0;
+      switch (sortCol) {
+        case 'name': cmp = a.name.localeCompare(b.name); break;
+        case 'city': cmp = a.city.localeCompare(b.city); break;
+        case 'route': cmp = Number(a.route) - Number(b.route); break;
+        case 'type': cmp = a.prefix.localeCompare(b.prefix); break;
+        case 'days': {
+          const da = a.daysSince ?? 9999;
+          const db = b.daysSince ?? 9999;
+          cmp = da - db;
+          break;
+        }
+        case 'grade': {
+          const order = { A: 1, B: 2, C: 3, D: 4, F: 5 };
+          cmp = (order[a.grade.letter] || 5) - (order[b.grade.letter] || 5);
+          break;
+        }
+        default: cmp = 0;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return rows;
+  }, [filtered, sortCol, sortDir]);
 
   // Summary stats
   const stats = useMemo(() => {
-    const uniqueStores = Object.keys(monthData.storeVisitsThisMonth).length;
-    let totalVisits = 0;
-    Object.values(monthData.storeVisitsThisMonth).forEach((days) => {
-      totalVisits += days.length;
-    });
-    const routesCovered = new Set();
-    Object.keys(monthData.storeVisitsThisMonth).forEach((storeId) => {
-      const store = storeMap[storeId];
-      if (store && store.routeNumber && store.routeNumber !== '0') {
-        routesCovered.add(store.routeNumber);
-      }
-    });
-    return { uniqueStores, totalVisits, routesCovered: routesCovered.size };
-  }, [monthData, storeMap]);
+    const onTrack = tableData.filter((r) => r.status === 'ontrack').length;
+    const missed = tableData.filter((r) => r.status === 'missed').length;
+    const overdue = tableData.filter((r) => r.status === 'overdue').length;
+    const never = tableData.filter((r) => r.status === 'never').length;
+    return { total: tableData.length, onTrack, missed, overdue, never };
+  }, [tableData]);
 
-  // Stores visited on selected day
-  const selectedDayStores = useMemo(() => {
-    if (!selectedDay) return [];
-    const entries = monthData.dayMap[selectedDay] || [];
-    const filtered = entries.filter((e) => {
-      if (filterRoute !== 'all' && e.routeNumber !== filterRoute) return false;
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        if (!e.storeName.toLowerCase().includes(search) && !e.storeId.toLowerCase().includes(search)) return false;
-      }
-      return true;
-    });
-    return filtered.sort((a, b) => a.storeName.localeCompare(b.storeName));
-  }, [selectedDay, monthData, filterRoute, searchTerm]);
-
-  function prevMonth() {
-    if (month === 0) { setMonth(11); setYear(year - 1); }
-    else setMonth(month - 1);
-    setSelectedDay(null);
+  function handleSort(col) {
+    if (sortCol === col) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir(col === 'days' ? 'desc' : 'asc'); }
   }
 
-  function nextMonth() {
-    if (month === 11) { setMonth(0); setYear(year + 1); }
-    else setMonth(month + 1);
-    setSelectedDay(null);
-  }
-
-  // Calendar rendering
-  const firstDay = getFirstDayOfWeek(year, month);
-  const daysInMonth = monthData.daysInMonth;
-  const calendarCells = [];
-
-  for (let i = 0; i < firstDay; i++) {
-    calendarCells.push({ day: null, count: 0 });
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    const visits = monthData.dayMap[d] || [];
-    calendarCells.push({ day: d, count: visits.length });
-  }
-
-  const maxCount = Math.max(1, ...calendarCells.map((c) => c.count));
+  const SortArrow = ({ col }) => {
+    if (sortCol !== col) return <span className="vh2-sort-arrow inactive">&#8597;</span>;
+    return <span className="vh2-sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>;
+  };
 
   return (
-    <div className="visit-history">
-      <div className="vh-header">
-        <div className="vh-title-row">
+    <div className="vh2">
+      <div className="vh2-header">
+        <div className="vh2-title-row">
           <h2>Visit History</h2>
-          <div className="vh-stats">
-            <div className="vh-stat">
-              <span className="vh-stat-num">{stats.uniqueStores}</span>
-              <span className="vh-stat-label">Stores</span>
-            </div>
-            <div className="vh-stat">
-              <span className="vh-stat-num">{stats.totalVisits}</span>
-              <span className="vh-stat-label">Visits</span>
-            </div>
-            <div className="vh-stat">
-              <span className="vh-stat-num">{stats.routesCovered}</span>
-              <span className="vh-stat-label">Routes</span>
-            </div>
+          <div className="vh2-stats">
+            <div className="vh2-stat green">{stats.onTrack}<span>on track</span></div>
+            <div className="vh2-stat orange">{stats.missed}<span>missed</span></div>
+            <div className="vh2-stat red">{stats.overdue}<span>overdue</span></div>
+            <div className="vh2-stat gray">{stats.never}<span>never</span></div>
           </div>
         </div>
-        <div className="vh-controls">
-          <div className="vh-month-nav">
-            <button className="vh-nav-btn" onClick={prevMonth}>&laquo;</button>
-            <span className="vh-month-label">{monthNames[month]} {year}</span>
-            <button className="vh-nav-btn" onClick={nextMonth}>&raquo;</button>
+
+        <div className="vh2-filters">
+          <div className="vh2-filter-group">
+            <span className="vh2-filter-label">Status</span>
+            {[
+              { key: 'all', label: 'All', count: stats.total },
+              { key: 'ontrack', label: 'On Track', count: stats.onTrack },
+              { key: 'missed', label: 'Missed', count: stats.missed },
+              { key: 'overdue', label: 'Overdue', count: stats.overdue },
+              { key: 'never', label: 'Never', count: stats.never },
+            ].map((f) => (
+              <button
+                key={f.key}
+                className={`vh2-filter-btn ${filterStatus === f.key ? 'active' : ''} ${f.key}`}
+                onClick={() => setFilterStatus(f.key)}
+              >
+                {f.label} ({f.count})
+              </button>
+            ))}
           </div>
-          <div className="vh-filters">
-            <select
-              className="vh-select"
-              value={filterRoute}
-              onChange={(e) => setFilterRoute(e.target.value)}
-            >
+
+          <div className="vh2-filter-row">
+            <select className="vh2-select" value={filterRoute} onChange={(e) => setFilterRoute(e.target.value)}>
               <option value="all">All Routes</option>
-              {routes.map((r) => (
-                <option key={r} value={r}>Route {r}</option>
-              ))}
+              {routes.map((r) => <option key={r} value={r}>Route {r}</option>)}
+            </select>
+            <select className="vh2-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <option value="all">All Types</option>
+              {storeTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <input
               type="text"
-              className="vh-search"
-              placeholder="Search stores..."
+              className="vh2-search"
+              placeholder="Search name, city, ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -212,96 +260,66 @@ export default function VisitHistory() {
         </div>
       </div>
 
-      <div className="vh-body">
-        <div className="vh-calendar-section">
-          <div className="vh-calendar">
-            <div className="vh-cal-header">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                <div key={d} className="vh-cal-day-name">{d}</div>
-              ))}
-            </div>
-            <div className="vh-cal-grid">
-              {calendarCells.map((cell, i) => {
-                if (cell.day === null) {
-                  return <div key={`empty-${i}`} className="vh-cal-cell empty"></div>;
-                }
-                const intensity = cell.count > 0 ? Math.max(0.15, cell.count / maxCount) : 0;
-                const isSelected = selectedDay === cell.day;
-                const isToday = cell.day === now.getDate() && month === now.getMonth() && year === now.getFullYear();
-                return (
-                  <div
-                    key={cell.day}
-                    className={`vh-cal-cell ${cell.count > 0 ? 'has-visits' : ''} ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
-                    onClick={() => cell.count > 0 && setSelectedDay(isSelected ? null : cell.day)}
-                    style={cell.count > 0 ? { '--visit-intensity': intensity } : {}}
-                  >
-                    <span className="vh-cal-date">{cell.day}</span>
-                    {cell.count > 0 && (
-                      <span className="vh-cal-count">{cell.count}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {selectedDay && (
-            <div className="vh-day-detail">
-              <h3>
-                {monthNames[month]} {selectedDay} — {selectedDayStores.length} visit{selectedDayStores.length !== 1 ? 's' : ''}
-              </h3>
-              <div className="vh-day-list">
-                {selectedDayStores.map((s) => (
-                  <div key={s.storeId} className="vh-day-item">
-                    <span className="vh-day-route">R{s.routeNumber}</span>
-                    <span className="vh-day-store">{s.storeName}</span>
-                    <span className="vh-day-id">{s.storeId}</span>
-                  </div>
-                ))}
-                {selectedDayStores.length === 0 && (
-                  <div className="vh-empty">No visits match your filters</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="vh-routes-section">
-          <h3 className="vh-routes-title">
-            Visits by Route — {monthNames[month]} {year}
-          </h3>
-          {routeGroups.length === 0 && (
-            <div className="vh-empty">No visits recorded this month{filterRoute !== 'all' ? ' for this route' : ''}</div>
-          )}
-          {routeGroups.map(([route, storeEntries]) => (
-            <div key={route} className="vh-route-group">
-              <div className="vh-route-header">
-                <span className="vh-route-name">Route {route}</span>
-                <span className="vh-route-count">
-                  {storeEntries.length} store{storeEntries.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="vh-route-stores">
-                {storeEntries.map((entry) => (
-                  <div key={entry.storeId} className="vh-store-row">
-                    <span className="vh-store-name">{entry.name}</span>
-                    <span className="vh-store-dates">
-                      {entry.days.map((d) => (
-                        <span
-                          key={d}
-                          className={`vh-date-chip ${selectedDay === d ? 'active' : ''}`}
-                          onClick={() => setSelectedDay(selectedDay === d ? null : d)}
-                        >
-                          {d}
-                        </span>
-                      ))}
+      <div className="vh2-table-wrap">
+        <table className="vh2-table">
+          <thead>
+            <tr>
+              <th className="vh2-th-status"></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('name')}>Store <SortArrow col="name" /></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('city')}>City <SortArrow col="city" /></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('route')}>Rte <SortArrow col="route" /></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('type')}>Type <SortArrow col="type" /></th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('days')}>Last Visit <SortArrow col="days" /></th>
+              <th>Days</th>
+              <th>Prev Visit</th>
+              <th>3rd Visit</th>
+              <th className="vh2-th-sortable" onClick={() => handleSort('grade')}>Grade <SortArrow col="grade" /></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row, idx) => {
+              const rowClass = `vh2-row vh2-row-${row.status} ${idx % 2 === 0 ? 'even' : 'odd'}`;
+              return (
+                <tr key={row.id} className={rowClass}>
+                  <td className="vh2-td-status">
+                    <span className="vh2-status-dot" style={{
+                      background: row.status === 'ontrack' ? '#22c55e'
+                        : row.status === 'missed' ? '#f97316'
+                        : row.status === 'overdue' ? '#ef4444'
+                        : '#9ca3af'
+                    }}></span>
+                  </td>
+                  <td className="vh2-td-name" title={row.id}>{row.name}</td>
+                  <td className="vh2-td-city">{row.city}</td>
+                  <td className="vh2-td-route">{row.route}</td>
+                  <td className="vh2-td-type">
+                    <span className="vh2-type-badge" style={{ background: (TYPE_COLORS[row.prefix] || '#64748b') + '20', color: TYPE_COLORS[row.prefix] || '#64748b' }}>
+                      {row.prefix}
                     </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+                  </td>
+                  <td className="vh2-td-date">{formatShortDate(row.lastVisit)}</td>
+                  <td className="vh2-td-days" style={{ color: row.status === 'ontrack' ? '#22c55e' : row.status === 'missed' ? '#f97316' : row.status === 'overdue' ? '#ef4444' : '#9ca3af' }}>
+                    {row.daysSince !== null ? `${row.daysSince}d` : '—'}
+                  </td>
+                  <td className="vh2-td-date">{formatShortDate(row.prevVisit)}</td>
+                  <td className="vh2-td-date">{formatShortDate(row.thirdVisit)}</td>
+                  <td className="vh2-td-grade">
+                    <span className="vh2-grade-badge" style={{ background: row.grade.color + '20', color: row.grade.color }}>
+                      {row.grade.letter}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {sorted.length === 0 && (
+          <div className="vh2-empty">No stores match your filters</div>
+        )}
+      </div>
+      <div className="vh2-footer">
+        Showing {sorted.length} of {tableData.length} stores
+        {' '}| Regular stores: 7-day cycle | CASH stops: 14-day cycle
       </div>
     </div>
   );
