@@ -75,6 +75,14 @@ const TYPE_COLORS = {
   CASH: '#d97706', SV: '#6b7280', MISC: '#94a3b8',
 };
 
+const TYPE_LABELS = {
+  FLW: 'Food Lion', SRW: 'ShopRite', MTW: 'Martins', GTW: 'Giant',
+  CMW: 'Commissary', WMW: 'Walmart', WAW: 'Walmart', AMW: 'Acme',
+  RDW: 'Redners', WGW: 'Wegmans', SFW: 'Shoppers', BGW: 'B Green',
+  FDW: 'Food Depot', KFW: 'K Food', HF: 'HF', IND: 'Independent',
+  CASH: 'Cash Stop', SV: 'SV', MISC: 'Misc',
+};
+
 export default function VisitHistory() {
   const { state } = useApp();
   const { stores } = state;
@@ -234,6 +242,18 @@ export default function VisitHistory() {
     return { total: tableData.length, onTrack, missed, overdue, never };
   }, [tableData]);
 
+  // Chain type counts for quick filter buttons
+  const chainCounts = useMemo(() => {
+    const counts = {};
+    tableData.forEach((r) => {
+      counts[r.prefix] = (counts[r.prefix] || 0) + 1;
+    });
+    // Sort by count descending, keep top chains + always include CASH
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([prefix, count]) => ({ prefix, count, label: TYPE_LABELS[prefix] || prefix }));
+  }, [tableData]);
+
   function handleSort(col) {
     if (sortCol === col) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir(col === 'days' ? 'desc' : 'asc'); }
@@ -277,14 +297,31 @@ export default function VisitHistory() {
             ))}
           </div>
 
+          <div className="vh2-filter-group">
+            <span className="vh2-filter-label">Chain</span>
+            <button
+              className={`vh2-chain-btn ${filterType === 'all' ? 'active' : ''}`}
+              onClick={() => setFilterType('all')}
+              style={filterType === 'all' ? { background: 'var(--primary)', color: 'white', borderColor: 'var(--primary)' } : {}}
+            >All</button>
+            {chainCounts.map(({ prefix, count, label }) => (
+              <button
+                key={prefix}
+                className={`vh2-chain-btn ${filterType === prefix ? 'active' : ''}`}
+                onClick={() => setFilterType(filterType === prefix ? 'all' : prefix)}
+                style={filterType === prefix
+                  ? { background: TYPE_COLORS[prefix] || '#64748b', color: 'white', borderColor: TYPE_COLORS[prefix] || '#64748b' }
+                  : { color: TYPE_COLORS[prefix] || '#64748b', borderColor: (TYPE_COLORS[prefix] || '#64748b') + '40' }}
+              >
+                {label} <span className="vh2-chain-count">{count}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="vh2-filter-row">
             <select className="vh2-select" value={filterRoute} onChange={(e) => setFilterRoute(e.target.value)}>
               <option value="all">All Routes</option>
               {routes.map((r) => <option key={r} value={r}>Route {r}</option>)}
-            </select>
-            <select className="vh2-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="all">All Types</option>
-              {storeTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <input
               type="text"

@@ -1523,6 +1523,26 @@ textarea {
 .vh2-filter-btn.active.overdue { background: #ef4444; color: white; border-color: #ef4444; }
 .vh2-filter-btn.active.never { background: #64748b; color: white; border-color: #64748b; }
 
+.vh2-chain-btn {
+  padding: 3px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-card);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.vh2-chain-btn:hover { filter: brightness(0.95); }
+
+.vh2-chain-count {
+  font-size: 10px;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
 .vh2-filter-row {
   display: flex;
   gap: 6px;
