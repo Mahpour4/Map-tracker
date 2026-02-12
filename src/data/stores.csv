@@ -11,22 +11,22 @@ ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Regio
 07540,07540,Shoppers 7540,5457 BALTIMORE NATIONAL PIKE,BALTIMORE,MD,21229,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,39.2904,-76.6122,
 07568,07568,Shoppers 7568,2000 GWYNNS FALLS PKWY,BALTIMORE,MD,21215,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,39.29066146722824,-76.61518858409427,
 07573,07573,Shoppers 7573,5600 THE ALAMEDA,BALTIMORE,MD,21239,100,Route 100 Driver,Unassigned,Unassigned,Unassigned,39.29405256857405,-76.60743987995825,
-100,1668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,104,Route 104 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1073,-76.5714,2025-10-23 19:52:48
-101,CASH-MD-11,Geresbecks G-1,7931 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,104,Route 104 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1626,-76.6247,2025-10-30 10:55:44
-102,53,Wegmans 53,21 Wegmans Blvd,Abingdon,MD,21009,104,Route 104 Driver,Harford County,Harford County,Harford County,39.4618,-76.2858,2025-10-22 21:10:04
+100,1668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1073,-76.5714,2025-10-23 19:52:48
+101,CASH-MD-11,Geresbecks G-1,7931 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1626,-76.6247,2025-10-30 10:55:44
+102,53,Wegmans 53,21 Wegmans Blvd,Abingdon,MD,21009,204,Route 204 Driver,Harford County,Harford County,Harford County,39.4618,-76.2858,2025-10-22 21:10:04
 103,1547,Food Lion 1547,2250 HANSON RD,EDGEWOOD,MD,21040,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4187,-76.2945,2025-10-23 11:10:56
 104,RED-40,Redners 40,1002 JOPPA FARM RD,Joppa,MD,21085,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4373,-76.3567,2026-02-11
-105,1413,Food Lion 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,104,Route 104 Driver,Baltimore County,Baltimore County,Baltimore County,39.3804,-76.4905,2025-10-23 19:56:23
-106,542,Shop Rite 542,37 W AYLESBURY RD,TIMONIUM,MD,21093,104,Route 104 Driver,Baltimore County,Baltimore County,Baltimore County,39.437,-76.6199,2025-10-22 21:11:59
+105,1413,Food Lion 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3804,-76.4905,2025-10-23 19:56:23
+106,542,Shop Rite 542,37 W AYLESBURY RD,TIMONIUM,MD,21093,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.437,-76.6199,2025-10-22 21:11:59
 107,1664,Food Lion 1664,122 CRANBROOK RD,COCKEYSVILLE,MD,21030,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.4812,-76.6438,2026-02-11
-108,CASH-MD-12,Walmart,1 Frankel Wy,Cockeysville,MD,21030,104,Route 104 Driver,Baltimore County,Baltimore County,Baltimore County,39.48146146722824,-76.64678858409427,
-109,568,Shop Rite 568,4601 LIBERTY HEIGHTS AVE,Baltimore,MD,21207,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.28153673022289,-76.613762833599,2025-10-23 09:40:55
-110,7568,Shoppers,2000 GWYNNS FALLS PKWY,Baltimore,MD,21215,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.300520697349754,-76.61864759530016,
-111,Al-7573,Shoppers,5600 THE ALAMEDA,Baltimore,MD,21239,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.28651771432346,-76.59771111260567,
-112,CASH-MD-13,Lucky 7 EZ Mart,4419 York Rd,Baltimore,MD,21212,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.282088524961765,-76.6281661949972,
-113,CASH-MD-14,Royal Star,1152 E North Ave,Baltimore,MD,21202,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.3101335450365,-76.60501757699016,
-114,CASH-MD-15,Almonte Market,2332 E Hoffman St,Baltimore,MD,21213,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.268226891219726,-76.60301559762324,2025-09-03 12:57:24
-115,CASH-MD-16,H&P,3859 Elmley Ave,Baltimore,MD,21213,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.301810693067,-76.63667031025,
+108,CASH-MD-12,Walmart,1 Frankel Wy,Cockeysville,MD,21030,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.48146146722824,-76.64678858409427,
+109,568,Shop Rite 568,4601 LIBERTY HEIGHTS AVE,Baltimore,MD,21207,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.28153673022289,-76.613762833599,2025-10-23 09:40:55
+110,7568,Shoppers,2000 GWYNNS FALLS PKWY,Baltimore,MD,21215,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.300520697349754,-76.61864759530016,
+111,Al-7573,Shoppers,5600 THE ALAMEDA,Baltimore,MD,21239,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.28651771432346,-76.59771111260567,
+112,CASH-MD-13,Lucky 7 EZ Mart,4419 York Rd,Baltimore,MD,21212,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.282088524961765,-76.6281661949972,
+113,CASH-MD-14,Royal Star,1152 E North Ave,Baltimore,MD,21202,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3101335450365,-76.60501757699016,
+114,CASH-MD-15,Almonte Market,2332 E Hoffman St,Baltimore,MD,21213,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.268226891219726,-76.60301559762324,2025-09-03 12:57:24
+115,CASH-MD-16,H&P,3859 Elmley Ave,Baltimore,MD,21213,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.301810693067,-76.63667031025,
 116,CASH-MD-17,Giant Martin 116,24 Rising Sun Town Ctr,Rising Sun,MD,21911,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.697,-76.0629,2025-10-23 19:57:52
 117,1363,Food Lion 1363,2500 W Pulasky HWY,North East,MD,21901,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.6001,-75.9414,2025-10-23 19:58:31
 118,2630,Food Lion 2630,5301 Pulasky HWY,Perryville,MD,21903,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.5601,-76.0714,2025-10-23 19:59:08
@@ -36,19 +36,19 @@ ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Regio
 122,547,Shop Rite,223 N Main St,Bel Air,MD,21014,214,Route 214 Driver,Harford County,Harford County,Harford County,39.53616146722824,-76.35128858409426,
 123,545,Shop Rite,2101 ROCK SPRING RD,Forest Hill,MD,21050,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5804,-76.3847,
 124,555,Shop Rite,1606 DOOLEY RD,Cardiff,MD,21160,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5903,-76.437,
-126,1423,Food Lion 1423,2458 CHURCHVILLE RD,Bel Air,MD,21015,104,Route 104 Driver,Harford County,Harford County,Harford County,39.53955256857405,-76.34353987995824,2025-10-23 20:00:00
-127,CASH-MD-19,Redners,2126 N Fountain Green Rd,Bel Air,MD,21015,104,Route 104 Driver,Harford County,Harford County,Harford County,39.52703673022289,-76.34986283359899,
-129,950,Food Lion,511 E BALTIMORE ST,TANEYTOWN,MD,21787,104,Route 104 Driver,Carroll County,Carroll County,Carroll County,39.6559,-77.174,2025-09-03 14:53:44
-130,2587,Food Lion 2587,140 ENGLAR RD,WESTMINSTER,MD,21157,104,Route 104 Driver,Carroll County,Carroll County,Carroll County,39.5754,-76.9958,2025-10-31 12:27:36
-131,2193,Food Lion 2193,3000 GAMBER RD,FINKSBURG,MD,21048,104,Route 104 Driver,Carroll County,Carroll County,Carroll County,39.4963,-76.8888,2025-10-31 12:29:33
-132,CASH-MD-20,Martins Giant 132,1320 Londontown Blvd,Eldersburg,MD,21784,104,Route 104 Driver,Carroll County,Carroll County,Carroll County,39.4037,-76.9517,2025-10-31 14:16:46
-133,1238,Food Lion 1238,11800 OLD NATIONAL PIKE,NEW MARKET,MD,21774,104,Route 104 Driver,Frederick County,Frederick County,Frederick County,39.3922,-77.2768,2025-11-19 13:52:10
-134,1442,Food Lion,6920 CRESTWOOD BLVD,FREDERICK,MD,21703,104,Route 104 Driver,Frederick County,Frederick County,Frederick County,39.4143,-77.4105,2025-12-03 13:57:21
+126,1423,Food Lion 1423,2458 CHURCHVILLE RD,Bel Air,MD,21015,204,Route 204 Driver,Harford County,Harford County,Harford County,39.53955256857405,-76.34353987995824,2025-10-23 20:00:00
+127,CASH-MD-19,Redners,2126 N Fountain Green Rd,Bel Air,MD,21015,204,Route 204 Driver,Harford County,Harford County,Harford County,39.52703673022289,-76.34986283359899,
+129,950,Food Lion,511 E BALTIMORE ST,TANEYTOWN,MD,21787,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.6559,-77.174,2025-09-03 14:53:44
+130,2587,Food Lion 2587,140 ENGLAR RD,WESTMINSTER,MD,21157,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.5754,-76.9958,2025-10-31 12:27:36
+131,2193,Food Lion 2193,3000 GAMBER RD,FINKSBURG,MD,21048,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4963,-76.8888,2025-10-31 12:29:33
+132,CASH-MD-20,Martins Giant 132,1320 Londontown Blvd,Eldersburg,MD,21784,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4037,-76.9517,2025-10-31 14:16:46
+133,1238,Food Lion 1238,11800 OLD NATIONAL PIKE,NEW MARKET,MD,21774,204,Route 204 Driver,Frederick County,Frederick County,Frederick County,39.3922,-77.2768,2025-11-19 13:52:10
+134,1442,Food Lion,6920 CRESTWOOD BLVD,FREDERICK,MD,21703,204,Route 204 Driver,Frederick County,Frederick County,Frederick County,39.4143,-77.4105,2025-12-03 13:57:21
 135,1162,Food Lion,2060 YELLOW SPRING RD,FREDERICK,MD,21702,110,Route 104 Driver,Frederick County,Frederick County,Frederick County,39.41456146722824,-77.41348858409427,2025-09-04 14:13:45
-136,CASH-MD-21,Wegmans,7830 Wormans Mill Rd,Frederick,MD,21701,104,Route 104 Driver,Frederick County,Frederick County,Frederick County,39.41795256857405,-77.40573987995825,
-137,2551,Walmart,209 E Ridgeville Blvd,Mt Airy,MD,21771,104,Route 104 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,
-138,1465,Food Lion 1465,1312 S MAIN ST STE 4,MOUNT AIRY,MD,21771,104,Route 104 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,2025-10-31 12:29:18
-139,2611,Food Lion 2611,705 LISBON CENTER DR,WOODBINE,MD,21797,104,Route 104 Driver,Carroll County,Carroll County,Carroll County,39.3327,-77.0639,2025-11-12 10:53:09
+136,CASH-MD-21,Wegmans,7830 Wormans Mill Rd,Frederick,MD,21701,204,Route 204 Driver,Frederick County,Frederick County,Frederick County,39.41795256857405,-77.40573987995825,
+137,2551,Walmart,209 E Ridgeville Blvd,Mt Airy,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,
+138,1465,Food Lion 1465,1312 S MAIN ST STE 4,MOUNT AIRY,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,2025-10-31 12:29:18
+139,2611,Food Lion 2611,705 LISBON CENTER DR,WOODBINE,MD,21797,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3327,-77.0639,2025-11-12 10:53:09
 14,14,Wegmans 14,122 SHAWAN RD,HUNT VALLEY,MD,21030,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.4984,-76.6413,
 140,1412,Food Lion 1412,8508 LIBERTY RD,Randallstown,MD,21133,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3667,-76.7948,2026-02-11
 47,47,Wegmans 47,8855 MCGRAW RD,COLUMBIA,MD,21045,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.2037,-76.861,
@@ -81,14 +81,14 @@ ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Regio
 89,2547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 100 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.62486146722824,-76.92208858409427,2025-11-19 12:28:20
 90,41,Wegmans,Ridge Square NW,Washington,DC,20016,100,Route 100 Driver,Washington DC,Washington DC,Washington DC,38.9072,-77.0369,
 91,1405,Food Lion 1405,1413 FUSELAGE AVE,MIDDLE RIVER,MD,21220,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3343,-76.4394,2026-02-11
-92,CASH-MD-9,Geresbecks,2109 Eastern Blvd,Baltimore,MD,21220,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.299421173985124,-76.58358849147756,
+92,CASH-MD-9,Geresbecks,2109 Eastern Blvd,Baltimore,MD,21220,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.299421173985124,-76.58358849147756,
 93,7533,Shoppers,1200 EASTERN BLVD,Essex,MD,21221,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3093,-76.4748,
 94,1653,Food Lion 1653,1565 HYDE PARK RD,ESSEX,MD,21221,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.30956146722824,-76.47778858409427,2025-10-23 19:54:39
-95,96,Redners 96,7938 EASTERN AVE,BALTIMORE,MD,21224,104,Route 104 Driver,Baltimore City,Baltimore City,Baltimore City,39.26182116167511,-76.6287,2025-10-23 19:55:44
-96,2560,Food Lion 2560,7514 N POINT RD,EDGEMERE,MD,21219,104,Route 104 Driver,Baltimore County,Baltimore County,Baltimore County,39.2285,-76.4536,2025-10-22 21:08:23
-97,2559,Food Lion 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,104,Route 104 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.16286146722824,-76.62768858409427,2025-10-23 19:51:12
-98,CASH-MD-10,Walmart,6721 Chesapeake Center Dr,Glen Burnie,MD,21060,104,Route 104 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.16625256857405,-76.61993987995825,
-99,1543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,MD,21061,104,Route 104 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.15373673022289,-76.626262833599,2025-10-23 19:52:07
+95,96,Redners 96,7938 EASTERN AVE,BALTIMORE,MD,21224,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.26182116167511,-76.6287,2025-10-23 19:55:44
+96,2560,Food Lion 2560,7514 N POINT RD,EDGEMERE,MD,21219,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2285,-76.4536,2025-10-22 21:08:23
+97,2559,Food Lion 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.16286146722824,-76.62768858409427,2025-10-23 19:51:12
+98,CASH-MD-10,Walmart,6721 Chesapeake Center Dr,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.16625256857405,-76.61993987995825,
+99,1543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.15373673022289,-76.626262833599,2025-10-23 19:52:07
 CASH-DE-5,CASH-DE-5,Hockers,34960 Atlantic Ave,Ocean View,DE,19970,110,Route 110 Driver,Delaware,Ocean View,Ocean View,38.5432,-75.0886,
 DE-1153-DE-19,1153,Food Lion 1153,12158 BRITTINGHAM LN,Princess Anne,MD,21853,206,Route 206 Driver,Eastern Shore Maryland,Princess Anne,Princess Anne,38.204,-75.6887,2025-11-24 12:33:52
 DE-1158-DE-20,1158,Food Lion 1158,6 WASHINGTON ST,Cambridge,MD,21613,110,Route 110 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.5632,-76.0789,2025-11-19 12:01:27
@@ -150,21 +150,21 @@ DE-DE-58,DE-58,Redners,2500 S DUPONT HWY,Camden,DE,19934,110,Route 110 Driver,De
 DE-DE-820,DE-820,Acme 820,611 RAILROAD AVE,Centerville,MD,21617,110,Route 110 Driver,Eastern Shore Maryland,Centerville,Centerville,39.04426146722824,-76.06968858409427,2025-11-19 12:03:52
 DE-DE-821,DE-821,Acme,711 Washington Ave,Chestertown,MD,21620,110,Route 110 Driver,Eastern Shore Maryland,Chestertown,Chestertown,39.209261467228245,-76.07268858409427,
 DE-DE-896,DE-896,Acme 896,751 S SALISBURY BLVD,SALISBURY,MD,21801,110,Route 110 Driver,Eastern Shore Maryland,SALISBURY,SALISBURY,38.35183673022289,-75.600962833599,2025-10-22 21:37:30
-1216,1216,Food Lion 1216,231 Tippin Dr,Thurmont,MD,21788,104,Jose,Unassigned,Unassigned,Unassigned,39.6237,-77.4108,2026-01-13 13:02:15
+1216,1216,Food Lion 1216,231 Tippin Dr,Thurmont,MD,21788,204,Jose,Unassigned,Unassigned,Unassigned,39.6237,-77.4108,2026-01-13 13:02:15
 1528,1528,Food Lion 1528,2004 MIDWAY DR,Milford,DE,19963,110,Route 110 Driver,Delaware,Milford,Milford,38.91625256857405,-75.42313987995824,2025-09-15 12:10:29
 16,16,Wegmans 16,11620 MONUMENT DRIVE,FAIRFAX,VA,22030,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,38.8462,-77.3064,
 40,40,Wegmans 40,9001 MCHUGH DRIVE,LANHAM,MD,20706,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,38.96926146722824,-76.86438858409427,
 42,42,Wegmans 42,8297 STONEWALL SHOPS SQUARE,GAINESVILLE,VA,20155,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.7943,-77.6131,
 44,44,Wegmans 44,101 CROSSTRAIL BLVD SE,LEESBURG,VA,20175,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.1157,-77.5636,
 563,563,Shop Rite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.51026146722824,-76.59878858409427,
-567,567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,104,Route 104 Driver,Baltimore County,Unassigned,Unassigned,39.3771,-76.5397,
+567,567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,204,Route 204 Driver,Baltimore County,Unassigned,Unassigned,39.3771,-76.5397,
 FDW06264,FDW06264,Fort Detrick Comm 6264,1510 Porter St,Frederick,MD,21702,201,Route 201 Driver,Maryland Central,Maryland Central,Maryland Central,39.42442069734975,-77.41694759530016,
 FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8821,-78.5065,2026-02-11
 FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9884,-78.3585,2026-02-11
 FLW00663,FLW00663,Food Lion Store 663,96 Somerset Blvd,Charles Town,WV,25414,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.289,-77.86,
 FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.6263,-78.2271,2025-10-24 11:30:12
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4318,-77.8039,
-FLW01442,FLW01442,Food Lion 1442,6920 Crestwood Blvd,Frederick,MD,21703,104,Route 101 Driver,Maryland Central,Maryland Central,Maryland Central,39.41041771432346,-77.39601111260566,2026-01-13 13:02:41
+FLW01442,FLW01442,Food Lion 1442,6920 Crestwood Blvd,Frederick,MD,21703,204,Route 204 Driver,Maryland Central,Maryland Central,Maryland Central,39.41041771432346,-77.39601111260566,2026-01-13 13:02:41
 FLW02194,FLW02194,Food Lion Store 2194,78 Worchester Dr,Falling Waters,WV,25419,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.5664,-77.8352,
 FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6978,-78.1797,
 FLW02257,FLW02257,Food Lion 2257,130 Duella Dr,Inwood,WV,25428,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.3576,-78.04,
