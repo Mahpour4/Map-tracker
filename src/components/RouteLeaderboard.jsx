@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import visitHistory from '../data/visitHistory';
 
 function isCashStop(store) {
   return store.id.toLowerCase().startsWith('cash');
@@ -42,6 +43,57 @@ function getDaysBetween(dateA, dateB) {
   return Math.floor((b - a) / (1000 * 60 * 60 * 24));
 }
 
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+const DAY_OFFSETS = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
+
+function getMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  return d.toISOString().split('T')[0];
+}
+
+function getDayDate(weekOf, day) {
+  const d = new Date(weekOf + 'T00:00:00');
+  d.setDate(d.getDate() + DAY_OFFSETS[day]);
+  return d.toISOString().split('T')[0];
+}
+
+function getScheduleAdherence(schedules, route) {
+  const currentWeek = getMonday(new Date());
+  const key = `${route}_${currentWeek}`;
+  const schedule = schedules[key];
+  if (!schedule) return null;
+
+  let total = 0, exact = 0, sameWeek = 0, missed = 0, future = 0;
+  const today = new Date().toISOString().split('T')[0];
+
+  DAYS.forEach(day => {
+    (schedule[day] || []).forEach(item => {
+      total++;
+      const scheduledDate = getDayDate(currentWeek, day);
+      const weekEnd = getDayDate(currentWeek, 'friday');
+      const visits = visitHistory[item.storeId] || [];
+
+      if (visits.includes(scheduledDate)) {
+        exact++;
+      } else {
+        const sameWeekVisit = visits.find(v => v >= currentWeek && v <= weekEnd);
+        if (sameWeekVisit) sameWeek++;
+        else if (scheduledDate > today) future++;
+        else missed++;
+      }
+    });
+  });
+
+  if (total === 0) return null;
+  const completed = exact + sameWeek;
+  const scorable = total - future;
+  const adherence = scorable > 0 ? Math.round((completed / scorable) * 100) : 0;
+  return { total, exact, sameWeek, missed, future, completed, adherence };
+}
+
 function getAlertStats(alerts, stores) {
   const storeMap = {};
   stores.forEach(s => { storeMap[s.id] = s; });
@@ -78,7 +130,7 @@ function getAlertStats(alerts, stores) {
 
 export default function RouteLeaderboard() {
   const { state } = useApp();
-  const { stores, alerts } = state;
+  const { stores, alerts, schedules } = state;
   const [sortAsc, setSortAsc] = useState(false);
   const [expanded, setExpanded] = useState(null);
 
@@ -113,6 +165,7 @@ export default function RouteLeaderboard() {
       const grade = getGrade(coverage);
       const routeAlerts = alertsByRoute[route] || [];
       const alertStats = getAlertStats(routeAlerts, stores);
+      const adherence = getScheduleAdherence(schedules, route);
       return {
         route,
         required,
@@ -124,9 +177,10 @@ export default function RouteLeaderboard() {
         grade,
         alertStats,
         alerts: routeAlerts,
+        adherence,
       };
     });
-  }, [stores, alertsByRoute]);
+  }, [stores, alertsByRoute, schedules]);
 
   const sorted = useMemo(() => {
     const s = [...routeData];
@@ -148,6 +202,26 @@ export default function RouteLeaderboard() {
   const overallAlertStats = useMemo(() => {
     return getAlertStats(alerts, stores);
   }, [alerts, stores]);
+
+  const overallScheduleStats = useMemo(() => {
+    let total = 0, exact = 0, sameWeek = 0, missed = 0, future = 0;
+    let scheduledRoutes = 0;
+    routeData.forEach(r => {
+      if (r.adherence) {
+        scheduledRoutes++;
+        total += r.adherence.total;
+        exact += r.adherence.exact;
+        sameWeek += r.adherence.sameWeek;
+        missed += r.adherence.missed;
+        future += r.adherence.future;
+      }
+    });
+    if (total === 0) return null;
+    const completed = exact + sameWeek;
+    const scorable = total - future;
+    const adherence = scorable > 0 ? Math.round((completed / scorable) * 100) : 0;
+    return { total, exact, sameWeek, missed, future, completed, adherence, scheduledRoutes };
+  }, [routeData]);
 
   return (
     <div className="leaderboard">
@@ -183,6 +257,32 @@ export default function RouteLeaderboard() {
                   <span className="lb-alert-val">{overallAlertStats.avgResponse}d</span> avg response
                 </span>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Schedule Adherence Summary */}
+        {overallScheduleStats && (
+          <div className="lb-schedule-summary">
+            <span className="lb-schedule-title">Schedule Adherence (This Week)</span>
+            <div className="lb-schedule-stats">
+              <span className="lb-schedule-stat">
+                <span className="lb-schedule-val" style={{ color: overallScheduleStats.adherence >= 80 ? '#22c55e' : overallScheduleStats.adherence >= 50 ? '#f97316' : '#ef4444' }}>
+                  {overallScheduleStats.adherence}%
+                </span> adherence
+              </span>
+              <span className="lb-schedule-stat">
+                <span className="lb-schedule-val" style={{ color: '#22c55e' }}>{overallScheduleStats.exact}</span> on time
+              </span>
+              <span className="lb-schedule-stat">
+                <span className="lb-schedule-val" style={{ color: '#3b82f6' }}>{overallScheduleStats.sameWeek}</span> same week
+              </span>
+              <span className="lb-schedule-stat">
+                <span className="lb-schedule-val" style={{ color: '#ef4444' }}>{overallScheduleStats.missed}</span> missed
+              </span>
+              <span className="lb-schedule-stat">
+                <span className="lb-schedule-val">{overallScheduleStats.scheduledRoutes}</span> routes scheduled
+              </span>
             </div>
           </div>
         )}
@@ -281,6 +381,24 @@ export default function RouteLeaderboard() {
                     {as.resolved > 0 && <span style={{ color: '#22c55e' }}> ({as.resolved} resolved)</span>}
                     {as.avgResponse !== null && <span className="route-alert-avg"> avg {as.avgResponse}d response</span>}
                   </span>
+                </div>
+              )}
+
+              {/* Schedule adherence per route */}
+              {r.adherence && (
+                <div className="route-schedule-row">
+                  <span className="route-schedule-icon">📅</span>
+                  <span>
+                    <strong>{r.adherence.adherence}%</strong> adherence
+                    ({r.adherence.exact} on time, {r.adherence.sameWeek} same week
+                    {r.adherence.missed > 0 && <span style={{ color: '#ef4444' }}>, {r.adherence.missed} missed</span>})
+                  </span>
+                  <div className="route-schedule-bar">
+                    {r.adherence.exact > 0 && <div className="bar-seg" style={{ background: '#22c55e', flex: r.adherence.exact }}></div>}
+                    {r.adherence.sameWeek > 0 && <div className="bar-seg" style={{ background: '#3b82f6', flex: r.adherence.sameWeek }}></div>}
+                    {r.adherence.missed > 0 && <div className="bar-seg" style={{ background: '#ef4444', flex: r.adherence.missed }}></div>}
+                    {r.adherence.future > 0 && <div className="bar-seg" style={{ background: '#e5e7eb', flex: r.adherence.future }}></div>}
+                  </div>
                 </div>
               )}
 

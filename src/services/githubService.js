@@ -2,11 +2,13 @@ const REPO_OWNER = 'Mahpour4';
 const REPO_NAME = 'Map-tracker';
 const FILE_PATH = 'src/data/stores.csv';
 const ALERTS_FILE_PATH = 'src/data/alerts.csv';
+const SCHEDULES_FILE_PATH = 'src/data/schedules.json';
 const API_BASE = 'https://api.github.com';
 
 const TOKEN_KEY = 'github_pat';
 const SHA_KEY = 'github_file_sha';
 const ALERTS_SHA_KEY = 'github_alerts_sha';
+const SCHEDULES_SHA_KEY = 'github_schedules_sha';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -202,6 +204,82 @@ export async function saveAlertsCsv(csvContent, message) {
 
   const data = await res.json();
   saveAlertsSha(data.content.sha);
+  return data;
+}
+
+// ---- Schedules JSON (GitHub sync) ----
+
+function getSchedulesSha() {
+  return localStorage.getItem(SCHEDULES_SHA_KEY) || '';
+}
+
+function saveSchedulesSha(sha) {
+  localStorage.setItem(SCHEDULES_SHA_KEY, sha);
+}
+
+export async function fetchSchedulesJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
+    { headers: headers() }
+  );
+
+  if (res.status === 404) {
+    return { content: '{}', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveSchedulesSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveSchedulesJson(jsonContent, message) {
+  let sha = getSchedulesSha();
+
+  if (!sha) {
+    try {
+      const current = await fetchSchedulesJson();
+      sha = current.sha;
+    } catch { /* file may not exist */ }
+  }
+
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+
+  const body = {
+    message: message || 'Update schedules.json from Map Tracker app',
+    content: encoded,
+  };
+  if (sha) body.sha = sha;
+
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
+    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      const fresh = await fetchSchedulesJson();
+      const retryBody = { ...body, sha: fresh.sha };
+      const retryRes = await fetch(
+        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
+        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
+      );
+      if (!retryRes.ok) throw new Error('Failed to save schedules after retry');
+      const retryData = await retryRes.json();
+      saveSchedulesSha(retryData.content.sha);
+      return retryData;
+    }
+    throw new Error(err.message || `GitHub save failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  saveSchedulesSha(data.content.sha);
   return data;
 }
 

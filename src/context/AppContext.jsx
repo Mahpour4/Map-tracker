@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected } from '../services/gmailAlertService';
 
 const AppContext = createContext();
@@ -24,6 +24,7 @@ const initialState = {
   alerts: [],
   alertSyncStatus: 'idle', // idle | loading | saving | saved | error
   alertSyncError: null,
+  schedules: {}, // { "route_weekOf": { monday: [...], ... } }
 };
 
 const easternShoreSubsections = {
@@ -199,6 +200,12 @@ function reducer(state, action) {
       return { ...state, alerts: action.payload, alertSyncStatus: 'idle' };
     case 'SET_ALERT_SYNC_STATUS':
       return { ...state, alertSyncStatus: action.payload.status, alertSyncError: action.payload.error || null };
+    case 'LOAD_SCHEDULES':
+      return { ...state, schedules: action.payload };
+    case 'SET_SCHEDULE': {
+      const { key, schedule } = action.payload;
+      return { ...state, schedules: { ...state.schedules, [key]: schedule } };
+    }
     default:
       return state;
   }
@@ -367,6 +374,44 @@ export function AppProvider({ children }) {
       });
   }, []);
 
+  // Load schedules from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchSchedulesJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          dispatch({ type: 'LOAD_SCHEDULES', payload: data });
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load schedules:', err);
+      });
+  }, []);
+
+  // Save schedule to GitHub
+  const saveSchedule = useCallback((key, scheduleData) => {
+    dispatch({ type: 'SET_SCHEDULE', payload: { key, schedule: scheduleData } });
+  }, []);
+
+  // Auto-save schedules to GitHub when they change
+  const prevSchedulesRef = useRef(state.schedules);
+  const schedulesSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevSchedulesRef.current === state.schedules) return;
+    prevSchedulesRef.current = state.schedules;
+    if (Object.keys(state.schedules).length === 0) return;
+
+    if (schedulesSaveTimer.current) clearTimeout(schedulesSaveTimer.current);
+    schedulesSaveTimer.current = setTimeout(() => {
+      saveSchedulesJson(JSON.stringify(state.schedules))
+        .catch((err) => console.error('Failed to save schedules:', err));
+    }, 2000);
+
+    return () => { if (schedulesSaveTimer.current) clearTimeout(schedulesSaveTimer.current); };
+  }, [state.schedules]);
+
   const actions = {
     addStore: useCallback(
       (store) => dispatch({ type: 'ADD_STORE', payload: store }),
@@ -448,6 +493,7 @@ export function AppProvider({ children }) {
     saveToGithub,
     fetchGmailAlerts,
     syncAlertsFromGithub,
+    saveSchedule,
   };
 
   return (

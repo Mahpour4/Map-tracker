@@ -2784,3 +2784,154 @@ textarea {
   outline: none;
 }
 
+/* ============ Schedule Compliance ============ */
+.schedule-compliance-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.compliance-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.compliance-pct {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.compliance-val {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.compliance-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.compliance-bar-track {
+  flex: 1;
+  min-width: 120px;
+  height: 10px;
+  display: flex;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #e5e7eb;
+}
+
+.compliance-bar-seg {
+  transition: flex 0.3s ease;
+}
+
+.compliance-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border: 1.5px solid;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.compliance-visit-date {
+  font-size: 8px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.schedule-stop-compliance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+/* Compliance status border indicators on stop cards */
+.schedule-stop.compliance-exact {
+  border-left: 3px solid #22c55e;
+}
+.schedule-stop.compliance-sameWeek {
+  border-left: 3px solid #3b82f6;
+}
+.schedule-stop.compliance-missed {
+  border-left: 3px solid #ef4444;
+}
+.schedule-stop.compliance-future {
+  border-left: 3px solid #e5e7eb;
+}
+
+/* ============ Leaderboard Schedule Adherence ============ */
+.route-schedule-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.route-schedule-icon {
+  font-size: 12px;
+}
+
+.route-schedule-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #e5e7eb;
+  flex: 1;
+  max-width: 80px;
+}
+
+.route-schedule-bar .bar-seg {
+  height: 100%;
+}
+
+.lb-schedule-summary {
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+  margin-top: 8px;
+}
+
+.lb-schedule-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.lb-schedule-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lb-schedule-stat {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.lb-schedule-val {
+  font-weight: 700;
+}
+
