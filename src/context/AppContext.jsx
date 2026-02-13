@@ -342,28 +342,23 @@ export function AppProvider({ children }) {
       });
   }, [state.alerts]);
 
-  // Fetch new alerts from Gmail and merge with existing
+  // Fetch new alerts from Gmail — clears existing and replaces with today's
   // Returns { newCount, rawMessages } for debug display
   const fetchGmailAlerts = useCallback(async () => {
     if (!isGmailConnected()) throw new Error('Not connected to Gmail');
+
+    // Clear existing alerts before fetching
+    dispatch({ type: 'SET_ALERTS', payload: [] });
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
 
     try {
-      // Default to today's date — only fetch today's alerts
+      // Only fetch today's alerts
       const today = new Date().toISOString().split('T')[0];
-      const existingDates = state.alerts.map(a => a.dateReceived).filter(Boolean).sort();
-      const lastKnown = existingDates.length > 0 ? existingDates[existingDates.length - 1] : undefined;
-      // Use whichever is more recent: last known alert date or today
-      const afterDate = lastKnown && lastKnown > today ? lastKnown : today;
 
-      const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(afterDate);
+      const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(today);
 
-      // Deduplicate by refNumber
-      const existingRefs = new Set(state.alerts.map(a => a.refNumber));
-      const uniqueNew = newAlerts.filter(a => !existingRefs.has(a.refNumber));
-
-      // Match each new alert to a store
-      uniqueNew.forEach(alert => {
+      // Match each alert to a store
+      newAlerts.forEach(alert => {
         const store = matchAlertToStore(alert, state.stores);
         if (store) {
           alert.storeId = store.id;
@@ -371,19 +366,18 @@ export function AppProvider({ children }) {
         }
       });
 
-      if (uniqueNew.length > 0) {
-        const merged = [...state.alerts, ...uniqueNew];
-        dispatch({ type: 'SET_ALERTS', payload: merged });
+      if (newAlerts.length > 0) {
+        dispatch({ type: 'SET_ALERTS', payload: newAlerts });
       } else {
         dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
       }
 
-      return { newCount: uniqueNew.length, rawMessages };
+      return { newCount: newAlerts.length, rawMessages };
     } catch (err) {
       dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
       throw err;
     }
-  }, [state.alerts, state.stores]);
+  }, [state.stores]);
 
   const syncAlertsFromGithub = useCallback(() => {
     if (!getToken()) return;
