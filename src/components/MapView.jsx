@@ -148,6 +148,7 @@ export default function MapView() {
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(false);
   const [zonesOff, setZonesOff] = useState(false);
+  const [hideCash, setHideCash] = useState(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
   const [staleCollapsed, setStaleCollapsed] = useState(false);
 
@@ -253,8 +254,12 @@ export default function MapView() {
       }
     }
 
+    if (hideCash) {
+      result = result.filter((s) => s.type !== 'other');
+    }
+
     return result;
-  }, [stores, searchTerm, filterRegion, filterType, filterRoute]);
+  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash]);
 
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
@@ -429,6 +434,15 @@ export default function MapView() {
         >
           {zonesOff ? 'Show Zones' : 'Hide Zones'}
         </button>
+        {visitMode && (
+          <button
+            className={`zone-toggle-btn ${hideCash ? 'zones-hidden' : ''}`}
+            onClick={() => setHideCash(!hideCash)}
+            title={hideCash ? 'Show cash stops' : 'Hide cash stops from visit status'}
+          >
+            {hideCash ? 'Show Cash' : 'Hide Cash'}
+          </button>
+        )}
         {filterRoute !== 'all' && staleStores.length > 0 && (
           <button
             className={`zone-toggle-btn stale-toggle-btn ${staleCollapsed ? 'zones-hidden' : ''}`}
