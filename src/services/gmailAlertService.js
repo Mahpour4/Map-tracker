@@ -150,6 +150,7 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
   // Fetch messages in parallel batches for speed
   const BATCH_SIZE = 10;
   const alerts = [];
+  const rawMessages = []; // Debug: track all fetched subjects
   const messages = listResult.messages;
 
   for (let i = 0; i < messages.length; i += BATCH_SIZE) {
@@ -165,29 +166,33 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
 
     for (const result of results) {
       if (result.status !== 'fulfilled') {
-        console.warn('Failed to fetch message:', result.reason);
+        rawMessages.push({ id: null, subject: null, date: null, parsed: false, error: String(result.reason) });
         continue;
       }
       const { id, detail } = result.value;
       const subjectHeader = detail.payload?.headers?.find(h => h.name === 'Subject');
       const dateHeader = detail.payload?.headers?.find(h => h.name === 'Date');
+      const subject = subjectHeader?.value || '';
+      const date = dateHeader ? parseDateHeader(dateHeader.value) : '';
 
       if (subjectHeader) {
-        const parsed = parseAlertSubject(subjectHeader.value);
+        const parsed = parseAlertSubject(subject);
         if (parsed) {
           parsed.emailId = id;
-          parsed.dateReceived = dateHeader ? parseDateHeader(dateHeader.value) : '';
+          parsed.dateReceived = date;
           alerts.push(parsed);
-        } else if (alerts.length === 0 && i === 0) {
-          // Log first unparsed subject to help debug regex issues
-          console.warn('[Gmail] Subject did not match parser:', subjectHeader.value);
+          rawMessages.push({ id, subject, date, parsed: true });
+        } else {
+          rawMessages.push({ id, subject, date, parsed: false });
         }
+      } else {
+        rawMessages.push({ id, subject: '(no subject header)', date, parsed: false });
       }
     }
   }
 
-  console.log('[Gmail] Alerts parsed:', alerts.length);
-  return alerts;
+  console.log('[Gmail] Alerts parsed:', alerts.length, '/', rawMessages.length, 'messages');
+  return { alerts, rawMessages };
 }
 
 // ---- Alert subject parsing ----

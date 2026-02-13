@@ -340,6 +340,7 @@ export function AppProvider({ children }) {
   }, [state.alerts]);
 
   // Fetch new alerts from Gmail and merge with existing
+  // Returns { newCount, rawMessages } for debug display
   const fetchGmailAlerts = useCallback(async () => {
     if (!isGmailConnected()) throw new Error('Not connected to Gmail');
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
@@ -349,7 +350,7 @@ export function AppProvider({ children }) {
       const existingDates = state.alerts.map(a => a.dateReceived).filter(Boolean).sort();
       const afterDate = existingDates.length > 0 ? existingDates[existingDates.length - 1] : undefined;
 
-      const newAlerts = await fetchAlertEmails(afterDate);
+      const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(afterDate);
 
       // Deduplicate by refNumber
       const existingRefs = new Set(state.alerts.map(a => a.refNumber));
@@ -371,7 +372,7 @@ export function AppProvider({ children }) {
         dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
       }
 
-      return uniqueNew.length;
+      return { newCount: uniqueNew.length, rawMessages };
     } catch (err) {
       dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
       throw err;

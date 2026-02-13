@@ -41,6 +41,8 @@ export default function AlertPanel() {
   const [fetchResult, setFetchResult] = useState(null);
   const [filterRoute, setFilterRoute] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugData, setDebugData] = useState(null);
 
   const connected = isGmailConnected();
   const hasClientId = !!getGoogleClientId();
@@ -114,9 +116,11 @@ export default function AlertPanel() {
   async function handleFetchAlerts() {
     setFetching(true);
     setFetchResult(null);
+    setDebugData(null);
     try {
-      const count = await fetchGmailAlerts();
-      setFetchResult({ success: `Fetched ${count} new alert${count !== 1 ? 's' : ''}` });
+      const { newCount, rawMessages } = await fetchGmailAlerts();
+      setFetchResult({ success: `Fetched ${newCount} new alert${newCount !== 1 ? 's' : ''}` });
+      setDebugData(rawMessages);
     } catch (err) {
       setFetchResult({ error: err.message });
     }
@@ -286,6 +290,35 @@ export default function AlertPanel() {
           ))
         )}
       </div>
+
+      {/* Debug: raw email data */}
+      {debugData && (
+        <div className="alert-debug-section">
+          <button
+            className="alert-debug-toggle"
+            onClick={() => setShowDebug(!showDebug)}
+          >
+            {showDebug ? 'Hide' : 'Show'} Raw Data ({debugData.filter(m => m.parsed).length}/{debugData.length} parsed)
+          </button>
+
+          {showDebug && (
+            <div className="alert-debug-list">
+              {debugData.map((msg, i) => (
+                <div key={msg.id || i} className={`alert-debug-row ${msg.parsed ? 'parsed' : 'failed'}`}>
+                  <div className="alert-debug-status">
+                    <span className={`alert-debug-badge ${msg.parsed ? 'ok' : 'fail'}`}>
+                      {msg.parsed ? 'OK' : 'FAIL'}
+                    </span>
+                    <span className="alert-debug-index">#{i + 1}</span>
+                    {msg.date && <span className="alert-debug-date">{msg.date}</span>}
+                  </div>
+                  <div className="alert-debug-subject">{msg.error || msg.subject}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

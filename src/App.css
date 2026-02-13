@@ -2472,6 +2472,103 @@ textarea {
   font-weight: 600;
 }
 
+/* Alert debug view */
+.alert-debug-section {
+  margin-top: 12px;
+  border-top: 1px solid #333;
+  padding-top: 8px;
+}
+
+.alert-debug-toggle {
+  width: 100%;
+  padding: 6px 10px;
+  background: #1a1a2e;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.alert-debug-toggle:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.alert-debug-list {
+  margin-top: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alert-debug-row {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  border-left: 3px solid;
+}
+
+.alert-debug-row.parsed {
+  background: #0a2e1a;
+  border-color: #22c55e;
+}
+
+.alert-debug-row.failed {
+  background: #2e0a0a;
+  border-color: #ef4444;
+}
+
+.alert-debug-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.alert-debug-badge {
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.alert-debug-badge.ok {
+  background: #22c55e;
+  color: #000;
+}
+
+.alert-debug-badge.fail {
+  background: #ef4444;
+  color: #fff;
+}
+
+.alert-debug-index {
+  color: #64748b;
+}
+
+.alert-debug-date {
+  color: #64748b;
+  margin-left: auto;
+}
+
+.alert-debug-subject {
+  color: #cbd5e1;
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.alert-debug-row.failed .alert-debug-subject {
+  color: #fca5a5;
+}
+
 /* Alert badge on sidebar tab */
 .alert-badge-count {
   display: inline-flex;
