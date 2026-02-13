@@ -194,12 +194,17 @@ export default function AlertLog() {
 
   function handleDownloadImage(e, imgData) {
     e.stopPropagation();
-    const a = document.createElement('a');
-    a.href = imgData.dataUri;
-    a.download = imgData.filename || 'alert-image.jpg';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (imgData.isExternal) {
+      // External URL — open in new tab for manual save
+      window.open(imgData.dataUri, '_blank');
+    } else {
+      const a = document.createElement('a');
+      a.href = imgData.dataUri;
+      a.download = imgData.filename || 'alert-image.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   }
 
   async function handleFetchByDate() {

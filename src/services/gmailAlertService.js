@@ -275,17 +275,35 @@ function decodeBase64Url(data) {
   return b64;
 }
 
-function findEmailParts(part, results = { images: [] }) {
-  if (!part) return results;
-  const headers = (part.headers || []).reduce((acc, h) => {
-    acc[h.name.toLowerCase()] = h.value;
-    return acc;
-  }, {});
+function decodeBase64UrlToText(data) {
+  const b64 = decodeBase64Url(data);
+  const bin = atob(b64);
+  const bytes = Uint8Array.from(bin, ch => ch.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+}
 
-  // Inline image (CID-referenced attachment)
+function findEmailParts(part, results = { html: null, images: [] }) {
+  if (!part) return results;
+
+  // HTML body
+  if (part.mimeType === 'text/html' && part.body?.data) {
+    results.html = decodeBase64UrlToText(part.body.data);
+  }
+
+  // Image with attachmentId (needs separate fetch)
   if (part.mimeType?.startsWith('image/') && part.body?.attachmentId) {
     results.images.push({
       attachmentId: part.body.attachmentId,
+      mimeType: part.mimeType,
+      filename: part.filename || 'image.jpg',
+    });
+  }
+
+  // Small inline image (data is directly in body.data, no attachmentId)
+  if (part.mimeType?.startsWith('image/') && part.body?.data && !part.body.attachmentId) {
+    const base64 = decodeBase64Url(part.body.data);
+    results.images.push({
+      inlineDataUri: `data:${part.mimeType};base64,${base64}`,
       mimeType: part.mimeType,
       filename: part.filename || 'image.jpg',
     });
@@ -295,6 +313,26 @@ function findEmailParts(part, results = { images: [] }) {
     part.parts.forEach(child => findEmailParts(child, results));
   }
   return results;
+}
+
+/**
+ * Extract image URLs from HTML body (src attributes from img tags).
+ */
+function extractImagesFromHtml(html) {
+  const images = [];
+  // Match <img src="..."> — capture the URL
+  const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+  let match;
+  while ((match = imgRegex.exec(html)) !== null) {
+    const src = match[1];
+    // Skip tiny tracking pixels and icons (often 1x1)
+    if (src.startsWith('data:image/') && src.length > 500) {
+      images.push({ inlineDataUri: src, mimeType: 'image/png', filename: 'image.png' });
+    } else if (src.startsWith('http') && !src.includes('tracking') && !src.includes('pixel')) {
+      images.push({ externalUrl: src, mimeType: 'image/png', filename: 'image.png' });
+    }
+  }
+  return images;
 }
 
 /**
@@ -308,17 +346,45 @@ export async function fetchAlertImage(emailId) {
   });
 
   const parts = findEmailParts(detail.payload);
-  if (parts.images.length === 0) return null;
+  console.log('[Gmail Image] Parts found:', parts.images.length, 'images, html:', !!parts.html);
 
-  // Fetch the first (primary) image attachment
-  const img = parts.images[0];
-  const attData = await gmailFetch(
-    `/users/me/messages/${emailId}/attachments/${img.attachmentId}`
-  );
+  // Strategy 1: Use MIME attachment images
+  if (parts.images.length > 0) {
+    const img = parts.images[0];
 
-  const base64 = decodeBase64Url(attData.data);
-  const dataUri = `data:${img.mimeType};base64,${base64}`;
-  return { dataUri, filename: img.filename, mimeType: img.mimeType };
+    // Already have inline data (small image embedded in body.data)
+    if (img.inlineDataUri) {
+      return { dataUri: img.inlineDataUri, filename: img.filename, mimeType: img.mimeType };
+    }
+
+    // Fetch attachment binary
+    if (img.attachmentId) {
+      const attData = await gmailFetch(
+        `/users/me/messages/${emailId}/attachments/${img.attachmentId}`
+      );
+      const base64 = decodeBase64Url(attData.data);
+      const dataUri = `data:${img.mimeType};base64,${base64}`;
+      return { dataUri, filename: img.filename, mimeType: img.mimeType };
+    }
+  }
+
+  // Strategy 2: Extract images from HTML body
+  if (parts.html) {
+    const htmlImages = extractImagesFromHtml(parts.html);
+    console.log('[Gmail Image] HTML images found:', htmlImages.length);
+    if (htmlImages.length > 0) {
+      const img = htmlImages[0];
+      if (img.inlineDataUri) {
+        return { dataUri: img.inlineDataUri, filename: img.filename, mimeType: img.mimeType };
+      }
+      if (img.externalUrl) {
+        // Return the URL directly — the browser can load it
+        return { dataUri: img.externalUrl, filename: 'alert-image.png', mimeType: 'image/png', isExternal: true };
+      }
+    }
+  }
+
+  return null;
 }
 
 // ---- Store matching ----
