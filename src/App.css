@@ -1328,6 +1328,65 @@ textarea {
   margin-top: 4px;
 }
 
+/* ============ Popup Visit Date Picker ============ */
+.popup-visit-clickable {
+  cursor: pointer;
+  border-bottom: 1px dashed #94a3b8;
+  transition: color 0.15s;
+}
+.popup-visit-clickable:hover {
+  color: var(--primary);
+}
+.popup-visit-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 2px;
+}
+.popup-visit-date-input {
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: none;
+  width: 130px;
+}
+.popup-visit-date-input:focus {
+  border-color: var(--primary);
+}
+.popup-visit-save-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.popup-visit-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.popup-visit-save-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+.popup-visit-cancel-btn {
+  font-size: 14px;
+  padding: 1px 6px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.popup-visit-cancel-btn:hover {
+  background: #fee2e2;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
 /* ============ Route Leaderboard ============ */
 .leaderboard {
   height: 100%;

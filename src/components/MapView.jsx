@@ -10,6 +10,7 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import { useApp } from '../context/AppContext';
+import visitHistoryData from '../data/visitHistory';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -151,6 +152,9 @@ export default function MapView() {
   const [hideCash, setHideCash] = useState(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
   const [staleCollapsed, setStaleCollapsed] = useState(false);
+  const [popupEditId, setPopupEditId] = useState(null);
+  const [popupEditDate, setPopupEditDate] = useState('');
+  const popupDateRef = useRef(null);
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -340,6 +344,33 @@ export default function MapView() {
       setTimeout(() => setCopiedFlash(false), 2000);
     });
   }, [staleStores, filterRoute, filterType]);
+
+  const openPopupEdit = useCallback((storeId) => {
+    setPopupEditId(storeId);
+    setPopupEditDate(new Date().toISOString().split('T')[0]);
+    setTimeout(() => {
+      try { popupDateRef.current?.showPicker(); } catch (_) {}
+    }, 50);
+  }, []);
+
+  const handlePopupVisit = useCallback((storeId) => {
+    if (!popupEditDate) return;
+    const ymd = popupEditDate.split('T')[0].split(' ')[0];
+    if (!ymd) return;
+    if (!visitHistoryData[storeId]) visitHistoryData[storeId] = [];
+    if (!visitHistoryData[storeId].includes(ymd)) {
+      visitHistoryData[storeId].push(ymd);
+      visitHistoryData[storeId].sort();
+    }
+    const store = stores.find((s) => s.id === storeId);
+    if (store) {
+      const allDates = visitHistoryData[storeId].slice().sort();
+      const newest = allDates[allDates.length - 1];
+      updateStore({ ...store, lastVisited: newest });
+    }
+    setPopupEditId(null);
+    setPopupEditDate('');
+  }, [popupEditDate, stores, updateStore]);
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
@@ -624,9 +655,26 @@ export default function MapView() {
                 </>
               )}
               <br />
-              <span className="popup-zone">
+              <span
+                className="popup-zone popup-visit-clickable"
+                onClick={() => popupEditId === store.id ? setPopupEditId(null) : openPopupEdit(store.id)}
+                title="Click to add visit date"
+              >
                 Last visited: {formatDate(store.lastVisited)}
               </span>
+              {popupEditId === store.id && (
+                <div className="popup-visit-edit">
+                  <input
+                    ref={popupDateRef}
+                    type="date"
+                    className="popup-visit-date-input"
+                    value={popupEditDate}
+                    onChange={(e) => setPopupEditDate(e.target.value)}
+                  />
+                  <button className="popup-visit-save-btn" onClick={() => handlePopupVisit(store.id)} disabled={!popupEditDate}>Save</button>
+                  <button className="popup-visit-cancel-btn" onClick={() => setPopupEditId(null)}>&times;</button>
+                </div>
+              )}
               <br />
               <span
                 className="popup-visit-badge"
