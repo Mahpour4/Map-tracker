@@ -312,10 +312,11 @@ export default function VisitHistory() {
     const overdue = tableData.filter((r) => r.status === 'overdue').length;
     const never = tableData.filter((r) => r.status === 'never').length;
 
-    // Overall grade: average all store scores
+    // Overall grade: average scores excluding never-visited stores (may be seasonal)
     let overallGrade = { letter: '—', color: '#9ca3af', score: 0 };
-    if (tableData.length > 0) {
-      const avgScore = Math.round(tableData.reduce((sum, r) => sum + r.grade.score, 0) / tableData.length);
+    const gradedStores = tableData.filter((r) => r.status !== 'never');
+    if (gradedStores.length > 0) {
+      const avgScore = Math.round(gradedStores.reduce((sum, r) => sum + r.grade.score, 0) / gradedStores.length);
       if (avgScore >= 85) overallGrade = { letter: 'A', color: '#22c55e', score: avgScore };
       else if (avgScore >= 65) overallGrade = { letter: 'B', color: '#3b82f6', score: avgScore };
       else if (avgScore >= 45) overallGrade = { letter: 'C', color: '#eab308', score: avgScore };
@@ -453,10 +454,11 @@ export default function VisitHistory() {
       overdue: rows.filter(r => r.status === 'overdue').length,
       never: rows.filter(r => r.status === 'never').length,
     };
-    // Compute overall grade for PDF
+    // Compute overall grade for PDF (exclude never-visited stores)
     let pdfGradeLetter = '—';
-    if (rows.length > 0) {
-      const avg = Math.round(rows.reduce((s, r) => s + r.grade.score, 0) / rows.length);
+    const pdfGradedRows = rows.filter(r => r.status !== 'never');
+    if (pdfGradedRows.length > 0) {
+      const avg = Math.round(pdfGradedRows.reduce((s, r) => s + r.grade.score, 0) / pdfGradedRows.length);
       if (avg >= 85) pdfGradeLetter = 'A';
       else if (avg >= 65) pdfGradeLetter = 'B';
       else if (avg >= 45) pdfGradeLetter = 'C';
