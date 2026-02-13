@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
 import RouteLeaderboard from './components/RouteLeaderboard';
 import VisitHistory from './components/VisitHistory';
+import RouteSchedule from './components/RouteSchedule';
 import './App.css';
 
 function App() {
@@ -33,10 +34,17 @@ function App() {
             >
               Visit History
             </button>
+            <button
+              className={`page-nav-btn ${page === 'schedule' ? 'active' : ''}`}
+              onClick={() => setPage('schedule')}
+            >
+              Route Schedule
+            </button>
           </div>
           {page === 'map' && <MapView />}
           {page === 'leaderboard' && <RouteLeaderboard />}
           {page === 'visits' && <VisitHistory />}
+          {page === 'schedule' && <RouteSchedule />}
         </main>
       </div>
     </AppProvider>
