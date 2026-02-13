@@ -146,8 +146,100 @@ function detectStoreType(name, id) {
   return 'other';
 }
 
+// ── Old ID → New ID migration map (applied at parse time) ─────────────────
+const OLD_ID_MAP = {
+  // Food Lion
+  '103':'FLW01547','117':'FLW01363','130':'FLW02587','139':'FLW02611','94':'FLW01653',
+  '105':'FLW01413','126':'FLW01423','129':'FLW00950','131':'FLW02193','133':'FLW01238',
+  '135':'FLW01162','138':'FLW01465','96':'FLW02560','97':'FLW02559','1216':'FLW01216',
+  // Wegmans
+  '07':'WGW00007','14':'WGW00014','42':'WGW00042','44':'WGW00044','47':'WGW00047',
+  '54':'WGW00054','90':'WGW00041','102':'WGW00053','40':'WGW00040','67':'WGW00056',
+  '136':'WGW00054',
+  // Shoppers
+  '02353':'SFW02353','02379':'SFW02379','02650':'SFW02650','07540':'SFW07540',
+  '93':'SFW07533','110':'SFW07568','111':'SFW07573','68':'SFW00068','79':'SFW00079',
+  '80':'SFW00080','64':'SFW07573M','02692':'SFW02692',
+  // ShopRite
+  '106':'SRW00542','119':'SRW00548','120':'SRW00551','121':'SRW00549',
+  '122':'SRW00547','123':'SRW00545','124':'SRW00555','563':'SRW00563',
+  // Weis / Redners
+  '66':'WMW00287','95':'RDW00096','Redner-54':'RDW00054',
+  // Walmart
+  '108':'WAW00108','137':'WAW02551','98':'WAW00098','Wal-2':'WAW01736',
+  // Giant / Geresbecks / Military
+  '132':'GTW00132','101':'GBW00001','92':'GBW00002','g-3':'GBW00003','61':'CMW05167',
+  // Independent / Misc
+  '112':'IND00201','114':'IND00202','115':'IND00203','NB-01':'IND00204',
+  'cash-de-101':'IND00205','CASH-DE-5':'IND20001','S121':'MISC0121',
+  // Old DE- format
+  'DE-246-DE-11':'FLW00246','DE-397-DE-12':'FLW00397','DE-658-DE-14':'FLW00658',
+  'DE-698-DE-15':'FLW00698','DE-1158-DE-20':'FLW01158','DE-1268-DE-24':'FLW01268',
+  'DE-1297-DE-26':'FLW01297','DE-1313-DE-27':'FLW01313','DE-2117-DE-33':'FLW02117',
+  'DE-2123-DE-34':'FLW02123','DE-2521-DE-38':'FLW02521','DE-2614-DE-41':'FLW02614',
+  'DE-DE-18':'RDW00018','DE-DE-2522':'FLW02522','DE-DE-272':'WMW00272',
+  'DE-DE-2836':'AMW02836','DE-DE-293':'AMW00293','DE-DE-3816':'AMW03816',
+  'DE-DE-3841':'AMW03841','DE-DE-49':'RDW00049','DE-DE-820':'AMW00820','DE-DE-821':'AMW00821',
+  'DE-CASH-DE-1':'IND00101','DE-CASH-DE-2':'AMW02679','DE-CASH-DE-3':'IND00102',
+  'DE-CASH-DE-6':'IND20000','DE-CASH-DE-8':'IND00103','DE-CASH-DE-9':'IND00104',
+  'DE-CASH-DE-10':'IND00105','DE-CASH-DE-11':'IND00106','DE-CASH-DE-12':'IND00107',
+  'DE-CASH-DE-14':'RDW00056','DE-CASH-DE-17':'IND00108',
+};
+const NEW_ID_SET = new Set(Object.values(OLD_ID_MAP));
+
+// Migrate old ID and deduplicate: if both old and new-format rows exist, keep the one with data
+function migrateAndDedup(rows) {
+  const seen = {};
+  const result = [];
+  for (const row of rows) {
+    const rawId = row.ID || row['Store Number'];
+    const newId = OLD_ID_MAP[rawId];
+    if (newId) {
+      row.ID = newId;
+      row['Store Number'] = newId;
+      // Update name if it looks generic
+      const name = (row['Store Name'] || '').toLowerCase();
+      if (!name && newId) row['Store Name'] = newId;
+    }
+    const id = row.ID || row['Store Number'];
+    if (seen[id]) {
+      // Keep the one with more recent lastVisited or with coordinates
+      const prev = seen[id];
+      const prevDate = prev['Last Visited'] || '';
+      const curDate = row['Last Visited'] || '';
+      if (curDate > prevDate) {
+        // Current row is newer — replace, but keep coords from prev if current is missing
+        if (!row.Latitude && prev.Latitude) { row.Latitude = prev.Latitude; row.Longitude = prev.Longitude; }
+        if ((!row.Region || row.Region === 'Unassigned') && prev.Region && prev.Region !== 'Unassigned') {
+          row.Region = prev.Region; row.Territory = prev.Territory; row['Sub-Territory'] = prev['Sub-Territory'];
+        }
+        seen[id] = row;
+      } else {
+        // Previous row is newer or same — keep prev, but copy coords/region if missing
+        if (!prev.Latitude && row.Latitude) { prev.Latitude = row.Latitude; prev.Longitude = row.Longitude; }
+        if ((!prev.Region || prev.Region === 'Unassigned') && row.Region && row.Region !== 'Unassigned') {
+          prev.Region = row.Region; prev.Territory = row.Territory; prev['Sub-Territory'] = row['Sub-Territory'];
+        }
+      }
+      continue;
+    }
+    seen[id] = row;
+    result.push(row);
+  }
+  // Replace with deduped rows (seen values in original order)
+  const dedupResult = [];
+  const added = new Set();
+  for (const row of result) {
+    const id = row.ID || row['Store Number'];
+    if (added.has(id)) continue;
+    added.add(id);
+    dedupResult.push(seen[id]);
+  }
+  return dedupResult;
+}
+
 // ── Process all store data ──────────────────────────────────────────────────
-const rawRows = parseCSV(storesCsv);
+const rawRows = migrateAndDedup(parseCSV(storesCsv));
 coordCounter = {};
 
 export const sampleStores = rawRows
@@ -284,7 +376,7 @@ export const sampleZones = buildZonesFromStores(sampleStores);
 
 // ── Exported helpers for GitHub sync ────────────────────────────────────────
 export function processStoresFromCsv(csvText) {
-  const rows = parseCSV(csvText);
+  const rows = migrateAndDedup(parseCSV(csvText));
   coordCounter = {};
   const stores = rows
     .map((row) => {
