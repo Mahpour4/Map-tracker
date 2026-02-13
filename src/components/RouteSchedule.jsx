@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import visitHistory from '../data/visitHistory';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 const DAY_LABELS = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday' };
@@ -278,7 +278,7 @@ export default function RouteSchedule() {
         ];
       });
 
-      doc.autoTable({
+      const table = autoTable(doc, {
         startY: yPos,
         head: [['#', 'Store ID', 'Store Name', 'Address', 'Last Visit', 'Days', 'Status', 'Notes']],
         body: tableData,
@@ -307,7 +307,7 @@ export default function RouteSchedule() {
         },
       });
 
-      yPos = doc.lastAutoTable.finalY + 8;
+      yPos = table.finalY + 8;
     });
 
     const pageCount = doc.internal.getNumberOfPages();
