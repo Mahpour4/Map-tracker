@@ -52,12 +52,18 @@ export default function AlertLog() {
     return map;
   }, [stores]);
 
-  // Enrich alerts with store data and status
+  // Enrich alerts with store data, status, and days since service
   const enrichedAlerts = useMemo(() => {
+    const now = new Date().toISOString().split('T')[0];
     return alerts.map(a => {
       const store = storeMap[a.storeId];
       const statusInfo = getAlertStatus(a, store);
-      return { ...a, store, ...statusInfo };
+      let daysSinceService = null;
+      if (store?.lastVisited) {
+        const visited = store.lastVisited.split('T')[0].split(' ')[0];
+        daysSinceService = getDaysBetween(visited, now);
+      }
+      return { ...a, store, ...statusInfo, daysSinceService };
     }).sort((a, b) => {
       if (a.status !== b.status) {
         if (a.status === 'unresolved') return -1;
@@ -324,10 +330,11 @@ export default function AlertLog() {
                         <th style={{ width: 36 }}></th>
                         <th>Store</th>
                         <th>City</th>
-                        <th>Vendor</th>
+                        <th>Last Service</th>
                         <th>Ref #</th>
                         <th>Date</th>
                         <th>Response</th>
+                        <th>Email</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -347,7 +354,11 @@ export default function AlertLog() {
                               </td>
                               <td className="al-cell-store">{a.storeName} #{a.storeNumber}</td>
                               <td>{a.city}</td>
-                              <td>{a.vendor}</td>
+                              <td className="al-cell-service">
+                                {a.daysSinceService !== null
+                                  ? <span style={{ color: a.daysSinceService > 14 ? '#ef4444' : a.daysSinceService > 7 ? '#f97316' : '#16a34a', fontWeight: 600 }}>{a.daysSinceService}d ago</span>
+                                  : <span style={{ color: '#9ca3af' }}>Never</span>}
+                              </td>
                               <td className="al-cell-ref">{a.refNumber}</td>
                               <td>{formatDate(a.dateReceived)}</td>
                               <td style={{ color: a.color, fontWeight: 600 }}>
@@ -356,6 +367,20 @@ export default function AlertLog() {
                                   : a.status === 'unresolved'
                                   ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
                                   : 'No match'}
+                              </td>
+                              <td>
+                                {a.emailId && (
+                                  <a
+                                    className="al-email-link"
+                                    href={`https://mail.google.com/mail/u/0/#inbox/${a.emailId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Open email in Gmail"
+                                  >
+                                    Open
+                                  </a>
+                                )}
                               </td>
                               <td>
                                 <div className="al-action-btns">
@@ -385,7 +410,7 @@ export default function AlertLog() {
                             </tr>
                             {isImgOpen && (
                               <tr className="al-image-row">
-                                <td colSpan={8}>
+                                <td colSpan={9}>
                                   <div className="al-image-container">
                                     {imgData?.loading && <span className="al-image-loading">Loading image...</span>}
                                     {imgData?.error && <span className="al-image-error">{imgData.error}</span>}
