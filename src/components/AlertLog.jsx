@@ -32,15 +32,18 @@ function formatDate(dateStr) {
 }
 
 export default function AlertLog() {
-  const { state, selectStore, setMapView, setPage, setFilterRoute, loadAlertImage } = useApp();
+  const { state, selectStore, setMapView, setPage, setFilterRoute, loadAlertImage, fetchGmailAlerts } = useApp();
   const { alerts, stores, alertImages } = state;
 
+  const today = new Date().toISOString().split('T')[0];
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterVendor, setLocalFilterVendor] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRoutes, setExpandedRoutes] = useState(null); // null = auto (expand unresolved)
   const [expandedImage, setExpandedImage] = useState(null); // emailId of alert with open image
+  const [alertDate, setAlertDate] = useState(today);
+  const [fetching, setFetching] = useState(false);
 
   // Build store lookup
   const storeMap = useMemo(() => {
@@ -199,12 +202,38 @@ export default function AlertLog() {
     document.body.removeChild(a);
   }
 
+  async function handleFetchByDate() {
+    setFetching(true);
+    try {
+      await fetchGmailAlerts(alertDate);
+    } catch (err) {
+      console.error('Failed to fetch alerts:', err);
+    }
+    setFetching(false);
+  }
+
   return (
     <div className="al-page">
       {/* Header */}
       <div className="al-header">
         <div className="al-title-row">
           <h2>Alert Log</h2>
+          <div className="al-date-picker">
+            <input
+              type="date"
+              className="al-date-input"
+              value={alertDate}
+              max={today}
+              onChange={(e) => setAlertDate(e.target.value)}
+            />
+            <button
+              className="al-btn-fetch"
+              onClick={handleFetchByDate}
+              disabled={fetching}
+            >
+              {fetching ? 'Fetching...' : 'Fetch Alerts'}
+            </button>
+          </div>
           <div className="al-stats">
             <span className="al-stat red">{stats.open} <span>Open</span></span>
             <span className="al-stat green">{stats.resolved} <span>Resolved</span></span>

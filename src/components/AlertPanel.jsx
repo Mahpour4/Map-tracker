@@ -41,6 +41,7 @@ export default function AlertPanel() {
   const [fetchResult, setFetchResult] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
   const [debugData, setDebugData] = useState(null);
+  const [alertDate, setAlertDate] = useState(new Date().toISOString().split('T')[0]);
 
   const connected = isGmailConnected();
   const hasClientId = !!getGoogleClientId();
@@ -98,8 +99,8 @@ export default function AlertPanel() {
     setFetchResult(null);
     setDebugData(null);
     try {
-      const { newCount, rawMessages } = await fetchGmailAlerts();
-      setFetchResult({ success: `Fetched ${newCount} new alert${newCount !== 1 ? 's' : ''}` });
+      const { newCount, rawMessages } = await fetchGmailAlerts(alertDate);
+      setFetchResult({ success: `Fetched ${newCount} alert${newCount !== 1 ? 's' : ''} for ${alertDate}` });
       setDebugData(rawMessages);
     } catch (err) {
       setFetchResult({ error: err.message });
@@ -128,13 +129,22 @@ export default function AlertPanel() {
         </div>
         <div className="alert-gmail-actions">
           {connected && (
-            <button
-              className="btn btn-xs btn-primary"
-              onClick={handleFetchAlerts}
-              disabled={fetching}
-            >
-              {fetching ? 'Fetching...' : 'Fetch Alerts'}
-            </button>
+            <>
+              <input
+                type="date"
+                className="alert-date-input"
+                value={alertDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setAlertDate(e.target.value)}
+              />
+              <button
+                className="btn btn-xs btn-primary"
+                onClick={handleFetchAlerts}
+                disabled={fetching}
+              >
+                {fetching ? 'Fetching...' : 'Fetch'}
+              </button>
+            </>
           )}
           <button
             className="btn btn-xs"

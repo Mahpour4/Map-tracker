@@ -2294,7 +2294,18 @@ textarea {
 
 .alert-gmail-actions {
   display: flex;
+  align-items: center;
   gap: 4px;
+}
+
+.alert-date-input {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  background: var(--bg-card);
+  color: var(--text);
+  width: 120px;
 }
 
 .alert-fetch-result {
@@ -3627,6 +3638,51 @@ textarea {
   font-size: 20px;
   font-weight: 700;
   color: var(--text);
+}
+
+/* Date picker */
+.al-date-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.al-date-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.al-date-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  border-color: var(--primary);
+}
+
+.al-btn-fetch {
+  padding: 6px 16px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.al-btn-fetch:hover {
+  background: var(--primary-hover);
+}
+
+.al-btn-fetch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .al-stats {

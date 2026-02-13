@@ -347,9 +347,10 @@ export function AppProvider({ children }) {
       });
   }, [state.alerts]);
 
-  // Fetch new alerts from Gmail — clears existing and replaces with today's
+  // Fetch new alerts from Gmail — clears existing and replaces
+  // @param {string} [date] - YYYY-MM-DD date to fetch alerts for (defaults to today)
   // Returns { newCount, rawMessages } for debug display
-  const fetchGmailAlerts = useCallback(async () => {
+  const fetchGmailAlerts = useCallback(async (date) => {
     if (!isGmailConnected()) throw new Error('Not connected to Gmail');
 
     // Clear existing alerts before fetching
@@ -357,10 +358,9 @@ export function AppProvider({ children }) {
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
 
     try {
-      // Only fetch today's alerts
-      const today = new Date().toISOString().split('T')[0];
+      const afterDate = date || new Date().toISOString().split('T')[0];
 
-      const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(today);
+      const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(afterDate);
 
       // Match each alert to a store
       newAlerts.forEach(alert => {
