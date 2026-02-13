@@ -156,17 +156,8 @@ export async function fetchAlertsCsv() {
 }
 
 export async function saveAlertsCsv(csvContent, message) {
-  let sha = getAlertsSha();
-
-  // Try to get existing SHA if we don't have one
-  if (!sha) {
-    try {
-      const current = await fetchAlertsCsv();
-      sha = current.sha;
-    } catch {
-      // File may not exist yet, that's ok
-    }
-  }
+  // Use cached SHA if available; if not, GitHub will create the file (no SHA needed)
+  const sha = getAlertsSha();
 
   const encoded = btoa(unescape(encodeURIComponent(csvContent)));
 

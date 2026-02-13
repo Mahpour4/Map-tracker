@@ -147,31 +147,43 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
     return [];
   }
 
-  // Fetch each message to get subject and date
+  // Fetch messages in parallel batches for speed
+  const BATCH_SIZE = 10;
   const alerts = [];
-  for (const msg of listResult.messages) {
-    try {
-      const detail = await gmailFetch(`/users/me/messages/${msg.id}`, {
-        format: 'metadata',
-        metadataHeaders: 'Subject,Date',
-      });
+  const messages = listResult.messages;
 
+  for (let i = 0; i < messages.length; i += BATCH_SIZE) {
+    const batch = messages.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(msg =>
+        gmailFetch(`/users/me/messages/${msg.id}`, {
+          format: 'metadata',
+          metadataHeaders: 'Subject,Date',
+        }).then(detail => ({ id: msg.id, detail }))
+      )
+    );
+
+    for (const result of results) {
+      if (result.status !== 'fulfilled') {
+        console.warn('Failed to fetch message:', result.reason);
+        continue;
+      }
+      const { id, detail } = result.value;
       const subjectHeader = detail.payload?.headers?.find(h => h.name === 'Subject');
       const dateHeader = detail.payload?.headers?.find(h => h.name === 'Date');
 
       if (subjectHeader) {
         const parsed = parseAlertSubject(subjectHeader.value);
         if (parsed) {
-          parsed.emailId = msg.id;
+          parsed.emailId = id;
           parsed.dateReceived = dateHeader ? parseDateHeader(dateHeader.value) : '';
           alerts.push(parsed);
         }
       }
-    } catch (e) {
-      console.warn('Failed to fetch message:', msg.id, e);
     }
   }
 
+  console.log('[Gmail] Alerts parsed:', alerts.length);
   return alerts;
 }
 

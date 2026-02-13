@@ -239,6 +239,8 @@ export function AppProvider({ children }) {
     fetchStoresCsv()
       .then(({ content }) => {
         const { stores, zones } = processStoresFromCsv(content);
+        // Update ref BEFORE dispatch so auto-save effect sees no change
+        prevStoresRef.current = stores;
         dispatch({ type: 'LOAD_FROM_GITHUB', payload: { stores, zones } });
       })
       .catch((err) => {
@@ -299,9 +301,12 @@ export function AppProvider({ children }) {
       });
   }, [state.stores]);
 
-  // Load alerts from GitHub on mount
+  // Load alerts from GitHub on mount (skip if file has never been saved)
   useEffect(() => {
     if (!getToken()) return;
+    // If we've never saved alerts, the file doesn't exist yet — skip the fetch
+    // to avoid a 404 console error. Alerts will be created on first Gmail fetch.
+    if (!localStorage.getItem('github_alerts_sha')) return;
     fetchAlertsCsv()
       .then(({ content }) => {
         if (content) {
