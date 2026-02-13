@@ -1703,6 +1703,21 @@ textarea {
   gap: 8px;
 }
 
+.vh2-pdf-btn {
+  padding: 6px 16px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.vh2-pdf-btn:hover {
+  background: var(--primary-hover);
+}
+
 .vh2-stat {
   display: flex;
   align-items: center;

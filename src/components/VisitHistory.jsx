@@ -1,6 +1,8 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import visitHistoryData from '../data/visitHistory';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 function isCashStop(store) {
   return store.id.toLowerCase().startsWith('cash');
@@ -327,6 +329,110 @@ export default function VisitHistory() {
     else { setSortCol(col); setSortDir(col === 'days' ? 'desc' : 'asc'); }
   }
 
+  const generatePDF = useCallback(() => {
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    // Title
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    let title = 'Visit History';
+    if (filterRoute !== 'all') title += ` — Route ${filterRoute}`;
+    if (filterType !== 'all') title += ` (${TYPE_LABELS[filterType] || filterType})`;
+    doc.text(title, pageWidth / 2, 15, { align: 'center' });
+
+    // Subtitle with stats
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const filteredStats = {
+      onTrack: sorted.filter(r => r.status === 'ontrack').length,
+      missed: sorted.filter(r => r.status === 'missed').length,
+      overdue: sorted.filter(r => r.status === 'overdue').length,
+      never: sorted.filter(r => r.status === 'never').length,
+    };
+    doc.text(
+      `${sorted.length} stores | On Track: ${filteredStats.onTrack} | Missed: ${filteredStats.missed} | Overdue: ${filteredStats.overdue} | Never: ${filteredStats.never} | Generated ${today}`,
+      pageWidth / 2, 21, { align: 'center' }
+    );
+
+    // Table
+    const tableData = sorted.map((row, i) => [
+      i + 1,
+      row.id,
+      row.name,
+      row.city,
+      row.route,
+      TYPE_LABELS[row.prefix] || row.prefix,
+      row.lastVisit ? formatShortDate(row.lastVisit) : '—',
+      row.daysSince !== null ? `${row.daysSince}d` : '—',
+      row.prevVisit ? formatShortDate(row.prevVisit) : '—',
+      row.grade.letter,
+    ]);
+
+    const statusColor = (status) => {
+      if (status === 'ontrack') return [34, 197, 94];
+      if (status === 'missed') return [249, 115, 22];
+      if (status === 'overdue') return [239, 68, 68];
+      return [156, 163, 175];
+    };
+
+    const gradeColor = (letter) => {
+      if (letter === 'A') return [34, 197, 94];
+      if (letter === 'B') return [59, 130, 246];
+      if (letter === 'C') return [234, 179, 8];
+      if (letter === 'D') return [249, 115, 22];
+      return [239, 68, 68];
+    };
+
+    autoTable(doc, {
+      startY: 26,
+      head: [['#', 'Store ID', 'Store Name', 'City', 'Rte', 'Type', 'Last Visit', 'Days', 'Prev Visit', 'Grade']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235], fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7.5 },
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 12, halign: 'center' },
+        5: { cellWidth: 24 },
+        6: { cellWidth: 22 },
+        7: { cellWidth: 14, halign: 'center' },
+        8: { cellWidth: 22 },
+        9: { cellWidth: 14, halign: 'center' },
+      },
+      margin: { left: 14, right: 14 },
+      didParseCell: function (data) {
+        if (data.section === 'body') {
+          const rowIdx = data.row.index;
+          const row = sorted[rowIdx];
+          if (!row) return;
+          // Color the Days column by status
+          if (data.column.index === 7) {
+            data.cell.styles.textColor = statusColor(row.status);
+            data.cell.styles.fontStyle = 'bold';
+          }
+          // Color the Grade column
+          if (data.column.index === 9) {
+            data.cell.styles.textColor = gradeColor(row.grade.letter);
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      },
+    });
+
+    // Filename
+    let filename = 'visit-history';
+    if (filterRoute !== 'all') filename += `-route-${filterRoute}`;
+    if (filterType !== 'all') filename += `-${filterType}`;
+    filename += `.pdf`;
+
+    doc.save(filename);
+  }, [sorted, filterRoute, filterType, filterStatus]);
+
   const SortArrow = ({ col }) => {
     if (sortCol !== col) return <span className="vh2-sort-arrow inactive">&#8597;</span>;
     return <span className="vh2-sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>;
@@ -343,6 +449,9 @@ export default function VisitHistory() {
             <div className="vh2-stat red">{stats.overdue}<span>overdue</span></div>
             <div className="vh2-stat gray">{stats.never}<span>never</span></div>
           </div>
+          <button className="vh2-pdf-btn" onClick={generatePDF} title="Export filtered table as PDF">
+            Export PDF
+          </button>
         </div>
 
         <div className="vh2-filters">
