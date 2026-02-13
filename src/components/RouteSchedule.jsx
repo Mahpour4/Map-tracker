@@ -278,7 +278,7 @@ export default function RouteSchedule() {
         ];
       });
 
-      const table = autoTable(doc, {
+      autoTable(doc, {
         startY: yPos,
         head: [['#', 'Store ID', 'Store Name', 'Address', 'Last Visit', 'Days', 'Status', 'Notes']],
         body: tableData,
@@ -307,7 +307,7 @@ export default function RouteSchedule() {
         },
       });
 
-      yPos = table.finalY + 8;
+      yPos = doc.lastAutoTable.finalY + 8;
     });
 
     const pageCount = doc.internal.getNumberOfPages();
