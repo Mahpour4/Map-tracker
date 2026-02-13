@@ -178,6 +178,9 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
           parsed.emailId = id;
           parsed.dateReceived = dateHeader ? parseDateHeader(dateHeader.value) : '';
           alerts.push(parsed);
+        } else if (alerts.length === 0 && i === 0) {
+          // Log first unparsed subject to help debug regex issues
+          console.warn('[Gmail] Subject did not match parser:', subjectHeader.value);
         }
       }
     }
@@ -192,20 +195,55 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
 /**
  * Parse an alert email subject line.
  * Example: "Food Lion Service Alert created for Food Lion #1471 - Dumfries - WISE FOODS - ADUSA - Ref: #ADUSA-8877738"
+ * Also handles variations: missing #, extra/fewer dash sections, different spacing.
  */
 export function parseAlertSubject(subject) {
-  const regex = /Service Alert created for (.+?) #(\d+)\s*-\s*(.+?)\s*-\s*(.+?)\s*-\s*(.+?)\s*-\s*Ref:\s*#(.+)/i;
+  // Primary regex: full 4-section format
+  const regex = /Service Alert created for (.+?) #(\d+)\s*-\s*(.+?)\s*-\s*(.+?)\s*-\s*(.+?)\s*-\s*Ref:\s*#?(.+)/i;
   const match = subject.match(regex);
-  if (!match) return null;
+  if (match) {
+    return {
+      storeName: match[1].trim(),
+      storeNumber: match[2].trim(),
+      city: match[3].trim(),
+      vendor: match[4].trim(),
+      company: match[5].trim(),
+      refNumber: match[6].trim(),
+    };
+  }
 
-  return {
-    storeName: match[1].trim(),
-    storeNumber: match[2].trim(),
-    city: match[3].trim(),
-    vendor: match[4].trim(),
-    company: match[5].trim(),
-    refNumber: match[6].trim(),
-  };
+  // Fallback: 3-section format (city - vendor/company combined - Ref)
+  const regex3 = /Service Alert created for (.+?) #(\d+)\s*-\s*(.+?)\s*-\s*(.+?)\s*-\s*Ref:\s*#?(.+)/i;
+  const match3 = subject.match(regex3);
+  if (match3) {
+    return {
+      storeName: match3[1].trim(),
+      storeNumber: match3[2].trim(),
+      city: match3[3].trim(),
+      vendor: match3[4].trim(),
+      company: '',
+      refNumber: match3[5].trim(),
+    };
+  }
+
+  // Last resort: just extract store name, number, and ref
+  const regexMin = /Service Alert created for (.+?) #(\d+).*?Ref:\s*#?(\S+)/i;
+  const matchMin = subject.match(regexMin);
+  if (matchMin) {
+    // Try to extract city from the middle part
+    const middle = subject.slice(subject.indexOf(`#${matchMin[2]}`) + matchMin[2].length + 1, subject.search(/Ref:/i));
+    const parts = middle.split('-').map(s => s.trim()).filter(Boolean);
+    return {
+      storeName: matchMin[1].trim(),
+      storeNumber: matchMin[2].trim(),
+      city: parts[0] || '',
+      vendor: parts[1] || '',
+      company: parts[2] || '',
+      refNumber: matchMin[3].trim(),
+    };
+  }
+
+  return null;
 }
 
 function parseDateHeader(dateStr) {
