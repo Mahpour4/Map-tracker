@@ -104,7 +104,9 @@ export default function VisitHistory() {
   const [editPos, setEditPos] = useState(null);
   const [viewDate, setViewDate] = useState('');
   const [visitVersion, setVisitVersion] = useState(0);
+  const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
   const editDateRef = useRef(null);
+  const pdfMenuRef = useRef(null);
 
   // Column resizing
   const defaultWidths = { status: 24, name: 180, city: 110, route: 44, type: 52, lastVisit: 74, days: 44, prevVisit: 74, thirdVisit: 74, grade: 48, actions: 30 };
@@ -329,7 +331,95 @@ export default function VisitHistory() {
     else { setSortCol(col); setSortDir(col === 'days' ? 'desc' : 'asc'); }
   }
 
-  const generatePDF = useCallback(() => {
+  // Close PDF menu when clicking outside
+  useEffect(() => {
+    if (!pdfMenuOpen) return;
+    const handleClick = (e) => {
+      if (pdfMenuRef.current && !pdfMenuRef.current.contains(e.target)) setPdfMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [pdfMenuOpen]);
+
+  const statusColor = (status) => {
+    if (status === 'ontrack') return [34, 197, 94];
+    if (status === 'missed') return [249, 115, 22];
+    if (status === 'overdue') return [239, 68, 68];
+    return [156, 163, 175];
+  };
+
+  const gradeColor = (letter) => {
+    if (letter === 'A') return [34, 197, 94];
+    if (letter === 'B') return [59, 130, 246];
+    if (letter === 'C') return [234, 179, 8];
+    if (letter === 'D') return [249, 115, 22];
+    return [239, 68, 68];
+  };
+
+  const generatePDF = useCallback((mode) => {
+    setPdfMenuOpen(false);
+    let rows = [...sorted];
+    let subtitle = '';
+    let filenameSuffix = '';
+
+    switch (mode) {
+      case 'current':
+        subtitle = 'Current View';
+        break;
+      case 'chain': {
+        rows.sort((a, b) => {
+          const cmp = a.prefix.localeCompare(b.prefix);
+          if (cmp !== 0) return cmp;
+          return (a.daysSince ?? 9999) - (b.daysSince ?? 9999);
+        });
+        subtitle = 'Grouped by Chain';
+        filenameSuffix = '-by-chain';
+        break;
+      }
+      case 'oldest': {
+        rows.sort((a, b) => {
+          const da = a.lastVisit || '';
+          const db = b.lastVisit || '';
+          if (!da && !db) return 0;
+          if (!da) return -1;
+          if (!db) return 1;
+          return da.localeCompare(db);
+        });
+        subtitle = 'Oldest First';
+        filenameSuffix = '-oldest';
+        break;
+      }
+      case 'days': {
+        rows.sort((a, b) => {
+          const da = a.daysSince ?? 9999;
+          const db = b.daysSince ?? 9999;
+          return db - da;
+        });
+        subtitle = 'Most Days Since Visit';
+        filenameSuffix = '-by-days';
+        break;
+      }
+      case 'grade': {
+        const order = { F: 1, D: 2, C: 3, B: 4, A: 5 };
+        rows.sort((a, b) => (order[a.grade.letter] || 5) - (order[b.grade.letter] || 5));
+        subtitle = 'Worst Grade First';
+        filenameSuffix = '-by-grade';
+        break;
+      }
+      case 'route': {
+        rows.sort((a, b) => {
+          const cmp = Number(a.route) - Number(b.route);
+          if (cmp !== 0) return cmp;
+          return (a.daysSince ?? 9999) - (b.daysSince ?? 9999);
+        });
+        subtitle = 'Grouped by Route';
+        filenameSuffix = '-by-route';
+        break;
+      }
+      default:
+        subtitle = 'Current View';
+    }
+
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -342,53 +432,63 @@ export default function VisitHistory() {
     if (filterType !== 'all') title += ` (${TYPE_LABELS[filterType] || filterType})`;
     doc.text(title, pageWidth / 2, 15, { align: 'center' });
 
-    // Subtitle with stats
+    // Subtitle
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const filteredStats = {
-      onTrack: sorted.filter(r => r.status === 'ontrack').length,
-      missed: sorted.filter(r => r.status === 'missed').length,
-      overdue: sorted.filter(r => r.status === 'overdue').length,
-      never: sorted.filter(r => r.status === 'never').length,
+    const pdfStats = {
+      onTrack: rows.filter(r => r.status === 'ontrack').length,
+      missed: rows.filter(r => r.status === 'missed').length,
+      overdue: rows.filter(r => r.status === 'overdue').length,
+      never: rows.filter(r => r.status === 'never').length,
     };
     doc.text(
-      `${sorted.length} stores | On Track: ${filteredStats.onTrack} | Missed: ${filteredStats.missed} | Overdue: ${filteredStats.overdue} | Never: ${filteredStats.never} | Generated ${today}`,
+      `${subtitle} | ${rows.length} stores | On Track: ${pdfStats.onTrack} | Missed: ${pdfStats.missed} | Overdue: ${pdfStats.overdue} | Never: ${pdfStats.never} | ${today}`,
       pageWidth / 2, 21, { align: 'center' }
     );
 
-    // Table
-    const tableData = sorted.map((row, i) => [
-      i + 1,
-      row.id,
-      row.name,
-      row.city,
-      row.route,
-      TYPE_LABELS[row.prefix] || row.prefix,
-      row.lastVisit ? formatShortDate(row.lastVisit) : '—',
-      row.daysSince !== null ? `${row.daysSince}d` : '—',
-      row.prevVisit ? formatShortDate(row.prevVisit) : '—',
-      row.grade.letter,
-    ]);
+    // Build table — insert chain/route group headers if grouped
+    const isGrouped = mode === 'chain' || mode === 'route';
+    const tableRows = [];
+    const rowRef = []; // parallel array tracking source row for coloring
+    let lastGroup = null;
 
-    const statusColor = (status) => {
-      if (status === 'ontrack') return [34, 197, 94];
-      if (status === 'missed') return [249, 115, 22];
-      if (status === 'overdue') return [239, 68, 68];
-      return [156, 163, 175];
-    };
+    rows.forEach((row, i) => {
+      const groupKey = mode === 'chain' ? (TYPE_LABELS[row.prefix] || row.prefix)
+        : mode === 'route' ? `Route ${row.route}`
+        : null;
+      if (isGrouped && groupKey !== lastGroup) {
+        tableRows.push([{ content: groupKey, colSpan: 10, styles: { fillColor: [241, 245, 249], fontStyle: 'bold', fontSize: 8, textColor: [30, 58, 95] } }]);
+        rowRef.push(null);
+        lastGroup = groupKey;
+      }
+      tableRows.push([
+        tableRows.filter(r => rowRef[tableRows.indexOf(r)] !== null).length > 0
+          ? rowRef.filter(r => r !== null).length + 1 : 1,
+        row.id,
+        row.name,
+        row.city,
+        row.route,
+        TYPE_LABELS[row.prefix] || row.prefix,
+        row.lastVisit ? formatShortDate(row.lastVisit) : '—',
+        row.daysSince !== null ? `${row.daysSince}d` : '—',
+        row.prevVisit ? formatShortDate(row.prevVisit) : '—',
+        row.grade.letter,
+      ]);
+      rowRef.push(row);
+    });
 
-    const gradeColor = (letter) => {
-      if (letter === 'A') return [34, 197, 94];
-      if (letter === 'B') return [59, 130, 246];
-      if (letter === 'C') return [234, 179, 8];
-      if (letter === 'D') return [249, 115, 22];
-      return [239, 68, 68];
-    };
+    // Simpler numbering — recalculate row numbers
+    let num = 0;
+    for (let i = 0; i < tableRows.length; i++) {
+      if (rowRef[i] === null) continue; // group header
+      num++;
+      tableRows[i][0] = num;
+    }
 
     autoTable(doc, {
       startY: 26,
       head: [['#', 'Store ID', 'Store Name', 'City', 'Rte', 'Type', 'Last Visit', 'Days', 'Prev Visit', 'Grade']],
-      body: tableData,
+      body: tableRows,
       theme: 'grid',
       headStyles: { fillColor: [37, 99, 235], fontSize: 8, fontStyle: 'bold' },
       bodyStyles: { fontSize: 7.5 },
@@ -407,15 +507,12 @@ export default function VisitHistory() {
       margin: { left: 14, right: 14 },
       didParseCell: function (data) {
         if (data.section === 'body') {
-          const rowIdx = data.row.index;
-          const row = sorted[rowIdx];
-          if (!row) return;
-          // Color the Days column by status
+          const row = rowRef[data.row.index];
+          if (!row) return; // group header row
           if (data.column.index === 7) {
             data.cell.styles.textColor = statusColor(row.status);
             data.cell.styles.fontStyle = 'bold';
           }
-          // Color the Grade column
           if (data.column.index === 9) {
             data.cell.styles.textColor = gradeColor(row.grade.letter);
             data.cell.styles.fontStyle = 'bold';
@@ -424,14 +521,12 @@ export default function VisitHistory() {
       },
     });
 
-    // Filename
     let filename = 'visit-history';
     if (filterRoute !== 'all') filename += `-route-${filterRoute}`;
     if (filterType !== 'all') filename += `-${filterType}`;
-    filename += `.pdf`;
-
+    filename += filenameSuffix + '.pdf';
     doc.save(filename);
-  }, [sorted, filterRoute, filterType, filterStatus]);
+  }, [sorted, filterRoute, filterType]);
 
   const SortArrow = ({ col }) => {
     if (sortCol !== col) return <span className="vh2-sort-arrow inactive">&#8597;</span>;
@@ -449,9 +544,21 @@ export default function VisitHistory() {
             <div className="vh2-stat red">{stats.overdue}<span>overdue</span></div>
             <div className="vh2-stat gray">{stats.never}<span>never</span></div>
           </div>
-          <button className="vh2-pdf-btn" onClick={generatePDF} title="Export filtered table as PDF">
-            Export PDF
-          </button>
+          <div className="vh2-pdf-wrap" ref={pdfMenuRef}>
+            <button className="vh2-pdf-btn" onClick={() => setPdfMenuOpen(!pdfMenuOpen)}>
+              Export PDF <span className="vh2-pdf-arrow">{pdfMenuOpen ? '\u25B2' : '\u25BC'}</span>
+            </button>
+            {pdfMenuOpen && (
+              <div className="vh2-pdf-menu">
+                <button onClick={() => generatePDF('current')}>Current View</button>
+                <button onClick={() => generatePDF('chain')}>Group by Chain</button>
+                <button onClick={() => generatePDF('route')}>Group by Route</button>
+                <button onClick={() => generatePDF('days')}>Most Days Since</button>
+                <button onClick={() => generatePDF('oldest')}>Oldest Visit First</button>
+                <button onClick={() => generatePDF('grade')}>Worst Grade First</button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="vh2-filters">

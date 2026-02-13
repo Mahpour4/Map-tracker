@@ -1703,6 +1703,9 @@ textarea {
   gap: 8px;
 }
 
+.vh2-pdf-wrap {
+  position: relative;
+}
 .vh2-pdf-btn {
   padding: 6px 16px;
   background: var(--primary);
@@ -1713,9 +1716,42 @@ textarea {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .vh2-pdf-btn:hover {
   background: var(--primary-hover);
+}
+.vh2-pdf-arrow {
+  font-size: 9px;
+}
+.vh2-pdf-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100;
+  min-width: 180px;
+  padding: 4px 0;
+}
+.vh2-pdf-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.vh2-pdf-menu button:hover {
+  background: #f1f5f9;
+  color: var(--primary);
 }
 
 .vh2-stat {
