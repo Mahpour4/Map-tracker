@@ -32,7 +32,7 @@ function toYMD(dateStr) {
 }
 
 function getVisitGrade(daysSince, intervals, targetDays) {
-  if (daysSince === null) return { letter: 'F', color: '#9ca3af', label: 'Never' };
+  if (daysSince === null) return { letter: 'F', color: '#9ca3af', label: 'Never', score: 0 };
 
   // Weight: current gap matters most, then recent history
   const scores = [];
@@ -60,11 +60,11 @@ function getVisitGrade(daysSince, intervals, targetDays) {
     : currentScore;
   const avg = Math.round(currentScore * 0.6 + histAvg * 0.4);
 
-  if (avg >= 85) return { letter: 'A', color: '#22c55e', label: 'A' };
-  if (avg >= 65) return { letter: 'B', color: '#3b82f6', label: 'B' };
-  if (avg >= 45) return { letter: 'C', color: '#eab308', label: 'C' };
-  if (avg >= 25) return { letter: 'D', color: '#f97316', label: 'D' };
-  return { letter: 'F', color: '#ef4444', label: 'F' };
+  if (avg >= 85) return { letter: 'A', color: '#22c55e', label: 'A', score: avg };
+  if (avg >= 65) return { letter: 'B', color: '#3b82f6', label: 'B', score: avg };
+  if (avg >= 45) return { letter: 'C', color: '#eab308', label: 'C', score: avg };
+  if (avg >= 25) return { letter: 'D', color: '#f97316', label: 'D', score: avg };
+  return { letter: 'F', color: '#ef4444', label: 'F', score: avg };
 }
 
 function getRowStatus(daysSince, targetDays) {
@@ -311,7 +311,19 @@ export default function VisitHistory() {
     const missed = tableData.filter((r) => r.status === 'missed').length;
     const overdue = tableData.filter((r) => r.status === 'overdue').length;
     const never = tableData.filter((r) => r.status === 'never').length;
-    return { total: tableData.length, onTrack, missed, overdue, never };
+
+    // Overall grade: average all store scores
+    let overallGrade = { letter: '—', color: '#9ca3af', score: 0 };
+    if (tableData.length > 0) {
+      const avgScore = Math.round(tableData.reduce((sum, r) => sum + r.grade.score, 0) / tableData.length);
+      if (avgScore >= 85) overallGrade = { letter: 'A', color: '#22c55e', score: avgScore };
+      else if (avgScore >= 65) overallGrade = { letter: 'B', color: '#3b82f6', score: avgScore };
+      else if (avgScore >= 45) overallGrade = { letter: 'C', color: '#eab308', score: avgScore };
+      else if (avgScore >= 25) overallGrade = { letter: 'D', color: '#f97316', score: avgScore };
+      else overallGrade = { letter: 'F', color: '#ef4444', score: avgScore };
+    }
+
+    return { total: tableData.length, onTrack, missed, overdue, never, overallGrade };
   }, [tableData]);
 
   // Chain type counts for quick filter buttons
@@ -441,8 +453,18 @@ export default function VisitHistory() {
       overdue: rows.filter(r => r.status === 'overdue').length,
       never: rows.filter(r => r.status === 'never').length,
     };
+    // Compute overall grade for PDF
+    let pdfGradeLetter = '—';
+    if (rows.length > 0) {
+      const avg = Math.round(rows.reduce((s, r) => s + r.grade.score, 0) / rows.length);
+      if (avg >= 85) pdfGradeLetter = 'A';
+      else if (avg >= 65) pdfGradeLetter = 'B';
+      else if (avg >= 45) pdfGradeLetter = 'C';
+      else if (avg >= 25) pdfGradeLetter = 'D';
+      else pdfGradeLetter = 'F';
+    }
     doc.text(
-      `${subtitle} | ${rows.length} stores | On Track: ${pdfStats.onTrack} | Missed: ${pdfStats.missed} | Overdue: ${pdfStats.overdue} | Never: ${pdfStats.never} | ${today}`,
+      `${subtitle} | ${rows.length} stores | Grade: ${pdfGradeLetter} | On Track: ${pdfStats.onTrack} | Missed: ${pdfStats.missed} | Overdue: ${pdfStats.overdue} | Never: ${pdfStats.never} | ${today}`,
       pageWidth / 2, 21, { align: 'center' }
     );
 
@@ -543,6 +565,10 @@ export default function VisitHistory() {
             <div className="vh2-stat orange">{stats.missed}<span>missed</span></div>
             <div className="vh2-stat red">{stats.overdue}<span>overdue</span></div>
             <div className="vh2-stat gray">{stats.never}<span>never</span></div>
+            <div className="vh2-overall-grade" style={{ background: stats.overallGrade.color + '18', borderColor: stats.overallGrade.color + '40' }}>
+              <span className="vh2-overall-letter" style={{ color: stats.overallGrade.color }}>{stats.overallGrade.letter}</span>
+              <span className="vh2-overall-label">overall</span>
+            </div>
           </div>
           <div className="vh2-pdf-wrap" ref={pdfMenuRef}>
             <button className="vh2-pdf-btn" onClick={() => setPdfMenuOpen(!pdfMenuOpen)}>

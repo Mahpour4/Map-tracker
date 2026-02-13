@@ -1776,6 +1776,28 @@ textarea {
 .vh2-stat.red { background: #fef2f2; color: #dc2626; }
 .vh2-stat.gray { background: #f1f5f9; color: #64748b; }
 
+.vh2-overall-grade {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1.5px solid;
+  margin-left: 6px;
+}
+.vh2-overall-letter {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.vh2-overall-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .vh2-filters {
   display: flex;
   flex-direction: column;
