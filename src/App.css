@@ -2935,3 +2935,236 @@ textarea {
   font-weight: 700;
 }
 
+/* ============ Data Import ============ */
+.data-import-page {
+  padding: 20px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+  overflow-y: auto;
+  height: calc(100vh - 50px);
+}
+
+.data-import-header h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.data-import-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.data-import-input-section {
+  margin-bottom: 16px;
+}
+
+.data-import-textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  resize: vertical;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.data-import-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.data-import-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.data-import-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.data-import-actions .btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.data-import-actions .btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.data-import-actions .btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.data-import-actions .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.data-import-actions .btn-success {
+  background: #22c55e;
+  color: white;
+}
+
+.data-import-actions .btn-success:hover {
+  background: #16a34a;
+}
+
+.data-import-actions .btn-secondary {
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.data-import-actions .btn-secondary:hover {
+  background: var(--border);
+}
+
+.data-import-error {
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.data-import-success {
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.data-import-summary {
+  display: flex;
+  gap: 20px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.import-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.import-stat-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.import-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.import-section {
+  margin-bottom: 16px;
+}
+
+.import-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.import-section-muted {
+  color: var(--text-muted);
+}
+
+.import-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.import-table-header {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f1f5f9;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.import-table-row {
+  display: flex;
+  gap: 8px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+
+.import-row-new {
+  background: #f0fdf4;
+}
+
+.import-row-skipped {
+  opacity: 0.6;
+}
+
+.import-col-id {
+  width: 100px;
+  font-weight: 600;
+  font-family: monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.import-col-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-col-city {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.import-col-route {
+  width: 50px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.import-col-date {
+  width: 100px;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: monospace;
+  font-size: 11px;
+}
+

@@ -88,6 +88,19 @@ function reducer(state, action) {
       );
       return { ...state, stores: reassignStores(updatedStores, state.zones), syncStatus: 'idle' };
     }
+    case 'BULK_IMPORT_STORES': {
+      const { updates, additions } = action.payload;
+      let updatedStores = [...state.stores];
+      // Apply updates to existing stores
+      const updateMap = {};
+      updates.forEach(u => { updateMap[u.id] = u; });
+      updatedStores = updatedStores.map(s =>
+        updateMap[s.id] ? { ...s, ...updateMap[s.id] } : s
+      );
+      // Add new stores
+      additions.forEach(a => { updatedStores.push(a); });
+      return { ...state, stores: reassignStores(updatedStores, state.zones), syncStatus: 'idle' };
+    }
     case 'DELETE_STORE':
       return {
         ...state,
@@ -494,6 +507,10 @@ export function AppProvider({ children }) {
     fetchGmailAlerts,
     syncAlertsFromGithub,
     saveSchedule,
+    bulkImportStores: useCallback(
+      (updates, additions) => dispatch({ type: 'BULK_IMPORT_STORES', payload: { updates, additions } }),
+      []
+    ),
   };
 
   return (

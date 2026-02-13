@@ -5,6 +5,7 @@ import MapView from './components/MapView';
 import RouteLeaderboard from './components/RouteLeaderboard';
 import VisitHistory from './components/VisitHistory';
 import RouteSchedule from './components/RouteSchedule';
+import DataImport from './components/DataImport';
 import './App.css';
 
 function App() {
@@ -40,11 +41,18 @@ function App() {
             >
               Route Schedule
             </button>
+            <button
+              className={`page-nav-btn ${page === 'import' ? 'active' : ''}`}
+              onClick={() => setPage('import')}
+            >
+              Data Import
+            </button>
           </div>
           {page === 'map' && <MapView />}
           {page === 'leaderboard' && <RouteLeaderboard />}
           {page === 'visits' && <VisitHistory />}
           {page === 'schedule' && <RouteSchedule />}
+          {page === 'import' && <DataImport />}
         </main>
       </div>
     </AppProvider>
