@@ -91,9 +91,12 @@ function reducer(state, action) {
     case 'BULK_IMPORT_STORES': {
       const { updates, additions } = action.payload;
       let updatedStores = [...state.stores];
-      // Apply updates to existing stores
+      // Apply updates to existing stores (strip display-only fields)
       const updateMap = {};
-      updates.forEach(u => { updateMap[u.id] = u; });
+      updates.forEach(u => {
+        const { _displayName, ...clean } = u;
+        updateMap[clean.id] = clean;
+      });
       updatedStores = updatedStores.map(s =>
         updateMap[s.id] ? { ...s, ...updateMap[s.id] } : s
       );

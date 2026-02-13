@@ -8,6 +8,23 @@ const KNOWN_CITIES = Object.keys(cityCoords).map(k => {
   return city;
 });
 
+// Geocode using cityCoords with spiral offset for multiple stores in same city
+const geocodeCounter = {};
+function geocodeCity(city, state) {
+  if (!city) return { lat: 0, lng: 0 };
+  const key = `${city.toUpperCase()}, ${state.toUpperCase()}`;
+  const coords = cityCoords[key];
+  if (!coords) return { lat: 0, lng: 0 };
+
+  geocodeCounter[key] = (geocodeCounter[key] || 0) + 1;
+  const offset = (geocodeCounter[key] - 1) * 0.003;
+  const angle = (geocodeCounter[key] * 137.5 * Math.PI) / 180;
+  return {
+    lat: coords[0] + offset * Math.cos(angle),
+    lng: coords[1] + offset * Math.sin(angle),
+  };
+}
+
 // City-to-region mapping
 const cityRegionMap = {
   'BALTIMORE': { region: 'Baltimore City', territory: 'Baltimore City', sub: 'Baltimore City' },
@@ -223,14 +240,15 @@ export default function DataImport() {
           changes.lastVisited = lastSale;
         }
         if (Object.keys(changes).length > 0) {
-          updates.push({ id, ...changes, _name: existing.name, _action: 'update' });
+          updates.push({ id, ...changes, _displayName: existing.name });
         } else {
           skipped.push({ id, name: existing.name, reason: 'Already current' });
         }
       } else {
-        // New store
+        // New store - geocode using cityCoords
         const addr = parseAddress(address);
         const region = getRegionInfo(addr.city);
+        const coords = geocodeCity(addr.city, addr.state);
         additions.push({
           id,
           storeNumber: id,
@@ -244,13 +262,12 @@ export default function DataImport() {
           region: region.region,
           territory: region.territory,
           subTerritory: region.sub,
-          lat: 0,
-          lng: 0,
+          lat: coords.lat,
+          lng: coords.lng,
           lastVisited: lastSale || null,
           type: detectStoreType(name, id),
           zoneId: null,
           subZoneId: null,
-          _action: 'add',
         });
       }
     });
@@ -355,7 +372,7 @@ export default function DataImport() {
                 {parsed.updates.map(u => (
                   <div key={u.id} className="import-table-row">
                     <span className="import-col-id">{u.id}</span>
-                    <span className="import-col-name">{u._name}</span>
+                    <span className="import-col-name">{u._displayName}</span>
                     <span className="import-col-date">{u.lastVisited}</span>
                   </div>
                 ))}
