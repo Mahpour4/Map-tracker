@@ -101,7 +101,13 @@ async function gmailFetch(path, params = {}) {
 
   const url = new URL(`${GMAIL_API}${path}`);
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) url.searchParams.set(k, v);
+    if (v === undefined || v === null) return;
+    // Gmail API needs repeated params for metadataHeaders (one per header)
+    if (Array.isArray(v)) {
+      v.forEach(item => url.searchParams.append(k, item));
+    } else {
+      url.searchParams.set(k, v);
+    }
   });
 
   const res = await fetch(url.toString(), {
@@ -159,7 +165,7 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
       batch.map(msg =>
         gmailFetch(`/users/me/messages/${msg.id}`, {
           format: 'metadata',
-          metadataHeaders: 'Subject,Date',
+          metadataHeaders: ['Subject', 'Date'],
         }).then(detail => ({ id: msg.id, detail }))
       )
     );
