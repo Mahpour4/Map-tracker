@@ -5,6 +5,7 @@ import RouteLeaderboard from './components/RouteLeaderboard';
 import VisitHistory from './components/VisitHistory';
 import RouteSchedule from './components/RouteSchedule';
 import DataImport from './components/DataImport';
+import AlertLog from './components/AlertLog';
 import './App.css';
 
 function AppContent() {
@@ -46,12 +47,19 @@ function AppContent() {
           >
             Data Import
           </button>
+          <button
+            className={`page-nav-btn ${page === 'alerts' ? 'active' : ''}`}
+            onClick={() => setPage('alerts')}
+          >
+            Alert Log
+          </button>
         </div>
         {page === 'map' && <MapView />}
         {page === 'leaderboard' && <RouteLeaderboard />}
         {page === 'visits' && <VisitHistory />}
         {page === 'schedule' && <RouteSchedule />}
         {page === 'import' && <DataImport />}
+        {page === 'alerts' && <AlertLog />}
       </main>
     </div>
   );

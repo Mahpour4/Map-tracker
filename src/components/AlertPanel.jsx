@@ -33,17 +33,14 @@ function getAlertStatus(alert, store) {
 
 export default function AlertPanel() {
   const { state, fetchGmailAlerts, selectStore, setMapView, setPage, setFilterRoute } = useApp();
-  const { alerts, stores, alertSyncStatus } = state;
+  const { alerts, stores } = state;
 
   const [showSetup, setShowSetup] = useState(false);
   const [clientIdInput, setClientIdInput] = useState('');
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState(null);
-  const [filterRoute, setLocalFilterRoute] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [showDebug, setShowDebug] = useState(false);
   const [debugData, setDebugData] = useState(null);
-  const [viewMode, setViewMode] = useState('alerts'); // 'alerts' | 'log'
 
   const connected = isGmailConnected();
   const hasClientId = !!getGoogleClientId();
@@ -55,73 +52,28 @@ export default function AlertPanel() {
     return map;
   }, [stores]);
 
-  // Enrich alerts with store data and status
-  const enrichedAlerts = useMemo(() => {
-    return alerts.map(a => {
+  // Enrich alerts and get top unresolved for preview
+  const { stats, topUnresolved } = useMemo(() => {
+    const enriched = alerts.map(a => {
       const store = storeMap[a.storeId];
       const statusInfo = getAlertStatus(a, store);
       return { ...a, store, ...statusInfo };
-    }).sort((a, b) => {
-      // Unresolved first, then by date (newest first)
-      if (a.status !== b.status) {
-        if (a.status === 'unresolved') return -1;
-        if (b.status === 'unresolved') return 1;
-      }
-      return (b.dateReceived || '').localeCompare(a.dateReceived || '');
     });
+
+    const total = enriched.length;
+    const unresolved = enriched.filter(a => a.status === 'unresolved');
+    const resolved = enriched.filter(a => a.status === 'resolved');
+
+    // Top 5 unresolved, sorted newest first
+    const top = unresolved
+      .sort((a, b) => (b.dateReceived || '').localeCompare(a.dateReceived || ''))
+      .slice(0, 5);
+
+    return {
+      stats: { total, unresolved: unresolved.length, resolved: resolved.length },
+      topUnresolved: top,
+    };
   }, [alerts, storeMap]);
-
-  // Get unique routes from alerts
-  const alertRoutes = useMemo(() => {
-    const set = new Set(alerts.map(a => a.routeNumber).filter(Boolean));
-    return Array.from(set).sort((a, b) => {
-      const na = parseInt(a), nb = parseInt(b);
-      if (!isNaN(na) && !isNaN(nb)) return na - nb;
-      return a.localeCompare(b);
-    });
-  }, [alerts]);
-
-  // Filter alerts
-  const filteredAlerts = useMemo(() => {
-    let result = enrichedAlerts;
-    if (filterRoute !== 'all') {
-      result = result.filter(a => a.routeNumber === filterRoute);
-    }
-    if (filterStatus !== 'all') {
-      result = result.filter(a => a.status === filterStatus);
-    }
-    return result;
-  }, [enrichedAlerts, filterRoute, filterStatus]);
-
-  // Alert log grouped by route
-  const alertLog = useMemo(() => {
-    const grouped = {};
-    enrichedAlerts.forEach(a => {
-      const route = a.routeNumber || 'Unmatched';
-      if (!grouped[route]) grouped[route] = [];
-      grouped[route].push(a);
-    });
-    // Sort routes numerically
-    return Object.entries(grouped).sort((a, b) => {
-      const na = parseInt(a[0]), nb = parseInt(b[0]);
-      if (a[0] === 'Unmatched') return 1;
-      if (b[0] === 'Unmatched') return -1;
-      if (!isNaN(na) && !isNaN(nb)) return na - nb;
-      return a[0].localeCompare(b[0]);
-    });
-  }, [enrichedAlerts]);
-
-  // Summary stats
-  const stats = useMemo(() => {
-    const total = enrichedAlerts.length;
-    const resolved = enrichedAlerts.filter(a => a.status === 'resolved').length;
-    const unresolved = enrichedAlerts.filter(a => a.status === 'unresolved').length;
-    const resolvedAlerts = enrichedAlerts.filter(a => a.status === 'resolved' && a.days !== null);
-    const avgResponse = resolvedAlerts.length > 0
-      ? Math.round(resolvedAlerts.reduce((sum, a) => sum + a.days, 0) / resolvedAlerts.length)
-      : null;
-    return { total, resolved, unresolved, avgResponse };
-  }, [enrichedAlerts]);
 
   function handleGoToStore(alert) {
     if (!alert.store) return;
@@ -159,40 +111,6 @@ export default function AlertPanel() {
     if (!clientIdInput.trim()) return;
     setGoogleClientId(clientIdInput);
     setClientIdInput('');
-  }
-
-  function renderAlertCard(a) {
-    const hasStore = !!a.store;
-    return (
-      <div
-        key={a.refNumber}
-        className={`alert-card ${a.status} ${hasStore ? 'clickable' : ''}`}
-        onClick={hasStore ? () => handleGoToStore(a) : undefined}
-        title={hasStore ? 'Click to view on map' : 'No store match'}
-      >
-        <div className="alert-card-header">
-          <span className={`alert-status-dot ${a.status}`}></span>
-          <span className="alert-store-name">{a.storeName} #{a.storeNumber}</span>
-          <span className="alert-ref">#{a.refNumber}</span>
-        </div>
-        <div className="alert-card-body">
-          <span className="alert-city">{a.city}</span>
-          {a.routeNumber && <span className="alert-route">Rt {a.routeNumber}</span>}
-          <span className="alert-vendor">{a.vendor}</span>
-          {hasStore && <span className="alert-map-link">View on map</span>}
-        </div>
-        <div className="alert-card-footer">
-          <span className="alert-date">{a.dateReceived || 'Unknown date'}</span>
-          <span className="alert-response" style={{ color: a.color }}>
-            {a.status === 'resolved'
-              ? `Resolved in ${a.days}d`
-              : a.status === 'unresolved'
-              ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
-              : 'No store match'}
-          </span>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -280,7 +198,7 @@ export default function AlertPanel() {
         </div>
       )}
 
-      {/* Stats Summary */}
+      {/* Quick Stats */}
       {stats.total > 0 && (
         <div className="alert-stats">
           <div className="alert-stat-item">
@@ -292,110 +210,39 @@ export default function AlertPanel() {
             <span className="alert-stat-label">Resolved</span>
           </div>
           <div className="alert-stat-item">
-            <span className="alert-stat-value">{stats.avgResponse !== null ? `${stats.avgResponse}d` : '—'}</span>
-            <span className="alert-stat-label">Avg Response</span>
-          </div>
-          <div className="alert-stat-item">
             <span className="alert-stat-value">{stats.total}</span>
             <span className="alert-stat-label">Total</span>
           </div>
         </div>
       )}
 
-      {/* View Mode Toggle + Filters */}
-      {stats.total > 0 && (
-        <div className="alert-view-controls">
-          <div className="alert-view-toggle">
-            <button
-              className={`alert-view-btn ${viewMode === 'alerts' ? 'active' : ''}`}
-              onClick={() => setViewMode('alerts')}
+      {/* Top unresolved alerts preview */}
+      {topUnresolved.length > 0 && (
+        <div className="alert-preview-list">
+          {topUnresolved.map(a => (
+            <div
+              key={a.refNumber}
+              className={`alert-preview-item ${a.store ? 'clickable' : ''}`}
+              onClick={a.store ? () => handleGoToStore(a) : undefined}
             >
-              Alerts
-            </button>
-            <button
-              className={`alert-view-btn ${viewMode === 'log' ? 'active' : ''}`}
-              onClick={() => setViewMode('log')}
-            >
-              Route Log
-            </button>
-          </div>
-
-          {viewMode === 'alerts' && (
-            <div className="alert-filters">
-              <select value={filterRoute} onChange={(e) => setLocalFilterRoute(e.target.value)}>
-                <option value="all">All routes</option>
-                {alertRoutes.map(r => (
-                  <option key={r} value={r}>Route {r}</option>
-                ))}
-              </select>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                <option value="all">All statuses</option>
-                <option value="unresolved">Unresolved</option>
-                <option value="resolved">Resolved</option>
-              </select>
+              <span className="alert-status-dot unresolved"></span>
+              <span className="alert-preview-name">{a.storeName} #{a.storeNumber}</span>
+              <span className="alert-preview-days" style={{ color: a.color }}>
+                {a.days !== null ? `${a.days}d` : '—'}
+              </span>
             </div>
-          )}
+          ))}
         </div>
       )}
 
-      {/* Alert List View */}
-      {viewMode === 'alerts' && (
-        <div className="alert-list">
-          {filteredAlerts.length === 0 ? (
-            <p className="empty-text">
-              {stats.total === 0 ? 'No alerts yet — connect Gmail to fetch alerts' : 'No alerts match your filters'}
-            </p>
-          ) : (
-            filteredAlerts.map(a => renderAlertCard(a))
-          )}
-        </div>
-      )}
-
-      {/* Route Log View */}
-      {viewMode === 'log' && (
-        <div className="alert-log">
-          {alertLog.length === 0 ? (
-            <p className="empty-text">No alerts to display</p>
-          ) : (
-            alertLog.map(([route, routeAlerts]) => {
-              const open = routeAlerts.filter(a => a.status === 'unresolved').length;
-              const resolved = routeAlerts.filter(a => a.status === 'resolved').length;
-              return (
-                <div key={route} className="alert-log-group">
-                  <div className="alert-log-header">
-                    <span className="alert-log-route">
-                      {route === 'Unmatched' ? 'Unmatched Stores' : `Route ${route}`}
-                    </span>
-                    <span className="alert-log-counts">
-                      {routeAlerts.length} alert{routeAlerts.length !== 1 ? 's' : ''}
-                      {open > 0 && <span style={{ color: '#ef4444', marginLeft: 6 }}>{open} open</span>}
-                      {resolved > 0 && <span style={{ color: '#22c55e', marginLeft: 6 }}>{resolved} resolved</span>}
-                    </span>
-                  </div>
-                  <div className="alert-log-items">
-                    {routeAlerts.map(a => (
-                      <div
-                        key={a.refNumber}
-                        className={`alert-log-item ${a.status} ${a.store ? 'clickable' : ''}`}
-                        onClick={a.store ? () => handleGoToStore(a) : undefined}
-                      >
-                        <span className={`alert-status-dot ${a.status}`}></span>
-                        <span className="alert-log-store">{a.storeName} #{a.storeNumber}</span>
-                        <span className="alert-log-city">{a.city}</span>
-                        <span className="alert-log-vendor">{a.vendor}</span>
-                        <span className="alert-log-date">{a.dateReceived}</span>
-                        <span className="alert-log-status" style={{ color: a.color }}>
-                          {a.status === 'resolved' ? `${a.days}d` : a.status === 'unresolved' ? (a.days !== null ? `${a.days}d` : '—') : '?'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
+      {/* Open full Alert Log page */}
+      <button
+        className="alert-open-log-btn"
+        onClick={() => setPage('alerts')}
+      >
+        Open Alert Log
+        {stats.unresolved > 0 && ` (${stats.unresolved} open)`}
+      </button>
 
       {/* Debug: raw email data */}
       {debugData && (
