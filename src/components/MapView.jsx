@@ -308,7 +308,7 @@ export default function MapView() {
     return numberedZones.filter((z) => hiddenZones.has(z.id));
   }, [numberedZones, hiddenZones]);
 
-  // Stale stores: >7 days since visit (only when route filter active)
+  // Stale stores: >7 days since visit, excluding never-visited (may be seasonal)
   const staleStores = useMemo(() => {
     if (filterRoute === 'all') return [];
     return filteredStores
@@ -316,13 +316,8 @@ export default function MapView() {
         const days = getDaysSinceVisit(s.lastVisited);
         return { ...s, daysSince: days };
       })
-      .filter((s) => s.daysSince === null || s.daysSince > 7)
-      .sort((a, b) => {
-        if (a.daysSince === null && b.daysSince === null) return 0;
-        if (a.daysSince === null) return -1;
-        if (b.daysSince === null) return 1;
-        return b.daysSince - a.daysSince;
-      });
+      .filter((s) => s.daysSince !== null && s.daysSince > 7)
+      .sort((a, b) => b.daysSince - a.daysSince);
   }, [filteredStores, filterRoute]);
 
   const copyStaleMessage = useCallback(() => {

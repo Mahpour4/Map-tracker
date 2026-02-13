@@ -159,9 +159,9 @@ export default function RouteLeaderboard() {
     });
 
     return Object.entries(routeMap).map(([route, { required, cash }]) => {
-      const total = required.length;
       const counts = getStatusCounts(required);
-      const coverage = total > 0 ? Math.round((counts.onTrack / total) * 100) : 0;
+      const active = required.length - counts.never; // exclude never-visited (may be seasonal)
+      const coverage = active > 0 ? Math.round((counts.onTrack / active) * 100) : 0;
       const grade = getGrade(coverage);
       const routeAlerts = alertsByRoute[route] || [];
       const alertStats = getAlertStats(routeAlerts, stores);
@@ -170,7 +170,8 @@ export default function RouteLeaderboard() {
         route,
         required,
         cash,
-        totalRequired: total,
+        totalRequired: required.length,
+        totalActive: active,
         totalCash: cash.length,
         counts,
         coverage,
@@ -189,14 +190,14 @@ export default function RouteLeaderboard() {
   }, [routeData, sortAsc]);
 
   const overallStats = useMemo(() => {
-    let totalReq = 0;
+    let totalActive = 0;
     let totalOnTrack = 0;
     routeData.forEach((r) => {
-      totalReq += r.totalRequired;
+      totalActive += r.totalActive;
       totalOnTrack += r.counts.onTrack;
     });
-    const pct = totalReq > 0 ? Math.round((totalOnTrack / totalReq) * 100) : 0;
-    return { totalReq, totalOnTrack, pct, grade: getGrade(pct) };
+    const pct = totalActive > 0 ? Math.round((totalOnTrack / totalActive) * 100) : 0;
+    return { totalActive, totalOnTrack, pct, grade: getGrade(pct) };
   }, [routeData]);
 
   const overallAlertStats = useMemo(() => {
@@ -230,7 +231,7 @@ export default function RouteLeaderboard() {
           <h2>Route Leaderboard</h2>
           <div className="overall-grade" style={{ background: overallStats.grade.color + '15', borderColor: overallStats.grade.color }}>
             <span className="overall-grade-letter" style={{ color: overallStats.grade.color }}>{overallStats.grade.letter}</span>
-            <span className="overall-grade-label">{overallStats.totalOnTrack}/{overallStats.totalReq} on track</span>
+            <span className="overall-grade-label">{overallStats.totalOnTrack}/{overallStats.totalActive} on track</span>
           </div>
         </div>
 
@@ -340,7 +341,7 @@ export default function RouteLeaderboard() {
 
               <div className="route-coverage-text">
                 <span className="coverage-fraction">
-                  <strong>{counts.onTrack}</strong>/{r.totalRequired}
+                  <strong>{counts.onTrack}</strong>/{r.totalActive}
                 </span>
                 <span className="coverage-label"> visited this week</span>
               </div>
