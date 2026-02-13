@@ -267,6 +267,60 @@ function parseDateHeader(dateStr) {
   }
 }
 
+// ---- On-demand image fetching ----
+
+function decodeBase64Url(data) {
+  let b64 = data.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  return b64;
+}
+
+function findEmailParts(part, results = { images: [] }) {
+  if (!part) return results;
+  const headers = (part.headers || []).reduce((acc, h) => {
+    acc[h.name.toLowerCase()] = h.value;
+    return acc;
+  }, {});
+
+  // Inline image (CID-referenced attachment)
+  if (part.mimeType?.startsWith('image/') && part.body?.attachmentId) {
+    results.images.push({
+      attachmentId: part.body.attachmentId,
+      mimeType: part.mimeType,
+      filename: part.filename || 'image.jpg',
+    });
+  }
+
+  if (part.parts) {
+    part.parts.forEach(child => findEmailParts(child, results));
+  }
+  return results;
+}
+
+/**
+ * Fetch the primary image from a specific alert email (on-demand).
+ * Returns { dataUri, filename } or null if no image found.
+ */
+export async function fetchAlertImage(emailId) {
+  // Get full message to find image attachments
+  const detail = await gmailFetch(`/users/me/messages/${emailId}`, {
+    format: 'full',
+  });
+
+  const parts = findEmailParts(detail.payload);
+  if (parts.images.length === 0) return null;
+
+  // Fetch the first (primary) image attachment
+  const img = parts.images[0];
+  const attData = await gmailFetch(
+    `/users/me/messages/${emailId}/attachments/${img.attachmentId}`
+  );
+
+  const base64 = decodeBase64Url(attData.data);
+  const dataUri = `data:${img.mimeType};base64,${base64}`;
+  return { dataUri, filename: img.filename, mimeType: img.mimeType };
+}
+
 // ---- Store matching ----
 
 /**

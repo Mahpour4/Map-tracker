@@ -3911,3 +3911,120 @@ textarea {
   font-size: 14px;
 }
 
+/* Action buttons in table row */
+.al-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.al-btn-send {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  background: #25d366;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.al-btn-send:hover {
+  background: #1da851;
+}
+
+.al-btn-image {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.al-btn-image:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.al-btn-image.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Image preview row */
+.al-image-row {
+  border-left: 3px solid var(--primary) !important;
+  background: #f8fafc;
+}
+
+.al-image-row td {
+  padding: 16px !important;
+}
+
+.al-image-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.al-image-preview {
+  max-width: 500px;
+  max-height: 400px;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  border: 1px solid var(--border);
+}
+
+.al-image-loading {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.al-image-error {
+  color: var(--danger);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.al-btn-download {
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--primary);
+  background: var(--bg-card);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.al-btn-download:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.al-btn-close-image {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.al-btn-close-image:hover {
+  background: #f1f5f9;
+}
+

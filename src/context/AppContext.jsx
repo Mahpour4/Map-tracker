@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, getToken } from '../services/githubService';
-import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected } from '../services/gmailAlertService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi } from '../services/gmailAlertService';
 
 const AppContext = createContext();
 
@@ -25,6 +25,7 @@ const initialState = {
   alerts: [],
   alertSyncStatus: 'idle', // idle | loading | saving | saved | error
   alertSyncError: null,
+  alertImages: {}, // { emailId: { dataUri, filename, loading, error } } — memory-only
   schedules: {}, // { "route_weekOf": { monday: [...], ... } }
 };
 
@@ -219,6 +220,10 @@ function reducer(state, action) {
       return { ...state, alerts: action.payload, alertSyncStatus: 'idle' };
     case 'SET_ALERT_SYNC_STATUS':
       return { ...state, alertSyncStatus: action.payload.status, alertSyncError: action.payload.error || null };
+    case 'SET_ALERT_IMAGE': {
+      const { emailId, ...imageData } = action.payload;
+      return { ...state, alertImages: { ...state.alertImages, [emailId]: imageData } };
+    }
     case 'LOAD_SCHEDULES':
       return { ...state, schedules: action.payload };
     case 'SET_SCHEDULE': {
@@ -379,6 +384,21 @@ export function AppProvider({ children }) {
     }
   }, [state.stores]);
 
+  const loadAlertImage = useCallback(async (emailId) => {
+    if (!emailId) return;
+    dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: true, error: null, dataUri: null } });
+    try {
+      const result = await fetchAlertImageApi(emailId);
+      if (result) {
+        dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: false, error: null, ...result } });
+      } else {
+        dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: false, error: 'No image found', dataUri: null } });
+      }
+    } catch (err) {
+      dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: false, error: err.message, dataUri: null } });
+    }
+  }, []);
+
   const syncAlertsFromGithub = useCallback(() => {
     if (!getToken()) return;
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
@@ -519,6 +539,7 @@ export function AppProvider({ children }) {
     saveToGithub,
     fetchGmailAlerts,
     syncAlertsFromGithub,
+    loadAlertImage,
     saveSchedule,
     bulkImportStores: useCallback(
       (updates, additions) => dispatch({ type: 'BULK_IMPORT_STORES', payload: { updates, additions } }),

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 
 function getDaysBetween(dateA, dateB) {
@@ -32,14 +32,15 @@ function formatDate(dateStr) {
 }
 
 export default function AlertLog() {
-  const { state, selectStore, setMapView, setPage, setFilterRoute } = useApp();
-  const { alerts, stores } = state;
+  const { state, selectStore, setMapView, setPage, setFilterRoute, loadAlertImage } = useApp();
+  const { alerts, stores, alertImages } = state;
 
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterVendor, setLocalFilterVendor] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRoutes, setExpandedRoutes] = useState(null); // null = auto (expand unresolved)
+  const [expandedImage, setExpandedImage] = useState(null); // emailId of alert with open image
 
   // Build store lookup
   const storeMap = useMemo(() => {
@@ -159,6 +160,45 @@ export default function AlertLog() {
     setPage('map');
   }
 
+  function handleSendToDriver(e, alert) {
+    e.stopPropagation();
+    const lines = [
+      `Service Alert - Route ${alert.routeNumber || 'N/A'}`,
+      `Store: ${alert.storeName} #${alert.storeNumber}`,
+      `City: ${alert.city}`,
+      `Vendor: ${alert.vendor}`,
+      `Ref: ${alert.refNumber}`,
+      `Date: ${formatDate(alert.dateReceived)}`,
+    ];
+    const text = encodeURIComponent(lines.join('\n'));
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+
+  function handleToggleImage(e, alert) {
+    e.stopPropagation();
+    const eid = alert.emailId;
+    if (!eid) return;
+    if (expandedImage === eid) {
+      setExpandedImage(null);
+      return;
+    }
+    setExpandedImage(eid);
+    // Fetch if not already cached
+    if (!alertImages[eid]) {
+      loadAlertImage(eid);
+    }
+  }
+
+  function handleDownloadImage(e, imgData) {
+    e.stopPropagation();
+    const a = document.createElement('a');
+    a.href = imgData.dataUri;
+    a.download = imgData.filename || 'alert-image.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   return (
     <div className="al-page">
       {/* Header */}
@@ -254,39 +294,89 @@ export default function AlertLog() {
                         <th>Ref #</th>
                         <th>Date</th>
                         <th>Response</th>
-                        <th style={{ width: 80 }}></th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {routeAlerts.map(a => {
                         const hasStore = !!a.store;
+                        const imgData = alertImages[a.emailId];
+                        const isImgOpen = expandedImage === a.emailId;
                         return (
-                          <tr
-                            key={a.refNumber}
-                            className={`${a.status} ${hasStore ? 'clickable' : ''}`}
-                            onClick={hasStore ? () => handleGoToStore(a) : undefined}
-                          >
-                            <td>
-                              <span className="al-status-dot" style={{ background: a.color }}></span>
-                            </td>
-                            <td className="al-cell-store">{a.storeName} #{a.storeNumber}</td>
-                            <td>{a.city}</td>
-                            <td>{a.vendor}</td>
-                            <td className="al-cell-ref">{a.refNumber}</td>
-                            <td>{formatDate(a.dateReceived)}</td>
-                            <td style={{ color: a.color, fontWeight: 600 }}>
-                              {a.status === 'resolved'
-                                ? `Resolved ${a.days}d`
-                                : a.status === 'unresolved'
-                                ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
-                                : 'No match'}
-                            </td>
-                            <td>
-                              {hasStore
-                                ? <span className="al-map-link">View on map</span>
-                                : <span className="al-no-match">—</span>}
-                            </td>
-                          </tr>
+                          <React.Fragment key={a.refNumber}>
+                            <tr
+                              className={`${a.status} ${hasStore ? 'clickable' : ''}`}
+                              onClick={hasStore ? () => handleGoToStore(a) : undefined}
+                            >
+                              <td>
+                                <span className="al-status-dot" style={{ background: a.color }}></span>
+                              </td>
+                              <td className="al-cell-store">{a.storeName} #{a.storeNumber}</td>
+                              <td>{a.city}</td>
+                              <td>{a.vendor}</td>
+                              <td className="al-cell-ref">{a.refNumber}</td>
+                              <td>{formatDate(a.dateReceived)}</td>
+                              <td style={{ color: a.color, fontWeight: 600 }}>
+                                {a.status === 'resolved'
+                                  ? `Resolved ${a.days}d`
+                                  : a.status === 'unresolved'
+                                  ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
+                                  : 'No match'}
+                              </td>
+                              <td>
+                                <div className="al-action-btns">
+                                  <button
+                                    className="al-btn-send"
+                                    onClick={(e) => handleSendToDriver(e, a)}
+                                    title="Send to driver via WhatsApp"
+                                  >
+                                    Send
+                                  </button>
+                                  {a.emailId && (
+                                    <button
+                                      className={`al-btn-image ${isImgOpen ? 'active' : ''}`}
+                                      onClick={(e) => handleToggleImage(e, a)}
+                                      title="View alert image"
+                                    >
+                                      {imgData?.loading ? '...' : 'Image'}
+                                    </button>
+                                  )}
+                                  {hasStore && (
+                                    <span className="al-map-link" onClick={(e) => { e.stopPropagation(); handleGoToStore(a); }}>
+                                      Map
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                            {isImgOpen && (
+                              <tr className="al-image-row">
+                                <td colSpan={8}>
+                                  <div className="al-image-container">
+                                    {imgData?.loading && <span className="al-image-loading">Loading image...</span>}
+                                    {imgData?.error && <span className="al-image-error">{imgData.error}</span>}
+                                    {imgData?.dataUri && (
+                                      <>
+                                        <img className="al-image-preview" src={imgData.dataUri} alt="Alert" />
+                                        <button
+                                          className="al-btn-download"
+                                          onClick={(e) => handleDownloadImage(e, imgData)}
+                                        >
+                                          Download Image
+                                        </button>
+                                      </>
+                                    )}
+                                    <button
+                                      className="al-btn-close-image"
+                                      onClick={(e) => { e.stopPropagation(); setExpandedImage(null); }}
+                                    >
+                                      Close
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>
