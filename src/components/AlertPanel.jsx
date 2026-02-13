@@ -32,17 +32,18 @@ function getAlertStatus(alert, store) {
 }
 
 export default function AlertPanel() {
-  const { state, fetchGmailAlerts } = useApp();
+  const { state, fetchGmailAlerts, selectStore, setMapView, setPage, setFilterRoute } = useApp();
   const { alerts, stores, alertSyncStatus } = state;
 
   const [showSetup, setShowSetup] = useState(false);
   const [clientIdInput, setClientIdInput] = useState('');
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState(null);
-  const [filterRoute, setFilterRoute] = useState('all');
+  const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showDebug, setShowDebug] = useState(false);
   const [debugData, setDebugData] = useState(null);
+  const [viewMode, setViewMode] = useState('alerts'); // 'alerts' | 'log'
 
   const connected = isGmailConnected();
   const hasClientId = !!getGoogleClientId();
@@ -92,6 +93,24 @@ export default function AlertPanel() {
     return result;
   }, [enrichedAlerts, filterRoute, filterStatus]);
 
+  // Alert log grouped by route
+  const alertLog = useMemo(() => {
+    const grouped = {};
+    enrichedAlerts.forEach(a => {
+      const route = a.routeNumber || 'Unmatched';
+      if (!grouped[route]) grouped[route] = [];
+      grouped[route].push(a);
+    });
+    // Sort routes numerically
+    return Object.entries(grouped).sort((a, b) => {
+      const na = parseInt(a[0]), nb = parseInt(b[0]);
+      if (a[0] === 'Unmatched') return 1;
+      if (b[0] === 'Unmatched') return -1;
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a[0].localeCompare(b[0]);
+    });
+  }, [enrichedAlerts]);
+
   // Summary stats
   const stats = useMemo(() => {
     const total = enrichedAlerts.length;
@@ -103,6 +122,15 @@ export default function AlertPanel() {
       : null;
     return { total, resolved, unresolved, avgResponse };
   }, [enrichedAlerts]);
+
+  function handleGoToStore(alert) {
+    if (!alert.store) return;
+    const s = alert.store;
+    selectStore(s.id);
+    setMapView([s.lat, s.lng], 15);
+    if (s.routeNumber) setFilterRoute(s.routeNumber);
+    setPage('map');
+  }
 
   async function handleSignIn() {
     try {
@@ -131,6 +159,40 @@ export default function AlertPanel() {
     if (!clientIdInput.trim()) return;
     setGoogleClientId(clientIdInput);
     setClientIdInput('');
+  }
+
+  function renderAlertCard(a) {
+    const hasStore = !!a.store;
+    return (
+      <div
+        key={a.refNumber}
+        className={`alert-card ${a.status} ${hasStore ? 'clickable' : ''}`}
+        onClick={hasStore ? () => handleGoToStore(a) : undefined}
+        title={hasStore ? 'Click to view on map' : 'No store match'}
+      >
+        <div className="alert-card-header">
+          <span className={`alert-status-dot ${a.status}`}></span>
+          <span className="alert-store-name">{a.storeName} #{a.storeNumber}</span>
+          <span className="alert-ref">#{a.refNumber}</span>
+        </div>
+        <div className="alert-card-body">
+          <span className="alert-city">{a.city}</span>
+          {a.routeNumber && <span className="alert-route">Rt {a.routeNumber}</span>}
+          <span className="alert-vendor">{a.vendor}</span>
+          {hasStore && <span className="alert-map-link">View on map</span>}
+        </div>
+        <div className="alert-card-footer">
+          <span className="alert-date">{a.dateReceived || 'Unknown date'}</span>
+          <span className="alert-response" style={{ color: a.color }}>
+            {a.status === 'resolved'
+              ? `Resolved in ${a.days}d`
+              : a.status === 'unresolved'
+              ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
+              : 'No store match'}
+          </span>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -240,56 +302,100 @@ export default function AlertPanel() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* View Mode Toggle + Filters */}
       {stats.total > 0 && (
-        <div className="alert-filters">
-          <select value={filterRoute} onChange={(e) => setFilterRoute(e.target.value)}>
-            <option value="all">All routes</option>
-            {alertRoutes.map(r => (
-              <option key={r} value={r}>Route {r}</option>
-            ))}
-          </select>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="all">All statuses</option>
-            <option value="unresolved">Unresolved</option>
-            <option value="resolved">Resolved</option>
-          </select>
+        <div className="alert-view-controls">
+          <div className="alert-view-toggle">
+            <button
+              className={`alert-view-btn ${viewMode === 'alerts' ? 'active' : ''}`}
+              onClick={() => setViewMode('alerts')}
+            >
+              Alerts
+            </button>
+            <button
+              className={`alert-view-btn ${viewMode === 'log' ? 'active' : ''}`}
+              onClick={() => setViewMode('log')}
+            >
+              Route Log
+            </button>
+          </div>
+
+          {viewMode === 'alerts' && (
+            <div className="alert-filters">
+              <select value={filterRoute} onChange={(e) => setLocalFilterRoute(e.target.value)}>
+                <option value="all">All routes</option>
+                {alertRoutes.map(r => (
+                  <option key={r} value={r}>Route {r}</option>
+                ))}
+              </select>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <option value="all">All statuses</option>
+                <option value="unresolved">Unresolved</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Alert List */}
-      <div className="alert-list">
-        {filteredAlerts.length === 0 ? (
-          <p className="empty-text">
-            {stats.total === 0 ? 'No alerts yet — connect Gmail to fetch alerts' : 'No alerts match your filters'}
-          </p>
-        ) : (
-          filteredAlerts.map((a) => (
-            <div key={a.refNumber} className={`alert-card ${a.status}`}>
-              <div className="alert-card-header">
-                <span className={`alert-status-dot ${a.status}`}></span>
-                <span className="alert-store-name">{a.storeName} #{a.storeNumber}</span>
-                <span className="alert-ref">#{a.refNumber}</span>
-              </div>
-              <div className="alert-card-body">
-                <span className="alert-city">{a.city}</span>
-                {a.routeNumber && <span className="alert-route">Rt {a.routeNumber}</span>}
-                <span className="alert-vendor">{a.vendor}</span>
-              </div>
-              <div className="alert-card-footer">
-                <span className="alert-date">{a.dateReceived || 'Unknown date'}</span>
-                <span className="alert-response" style={{ color: a.color }}>
-                  {a.status === 'resolved'
-                    ? `Resolved in ${a.days}d`
-                    : a.status === 'unresolved'
-                    ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
-                    : 'No store match'}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      {/* Alert List View */}
+      {viewMode === 'alerts' && (
+        <div className="alert-list">
+          {filteredAlerts.length === 0 ? (
+            <p className="empty-text">
+              {stats.total === 0 ? 'No alerts yet — connect Gmail to fetch alerts' : 'No alerts match your filters'}
+            </p>
+          ) : (
+            filteredAlerts.map(a => renderAlertCard(a))
+          )}
+        </div>
+      )}
+
+      {/* Route Log View */}
+      {viewMode === 'log' && (
+        <div className="alert-log">
+          {alertLog.length === 0 ? (
+            <p className="empty-text">No alerts to display</p>
+          ) : (
+            alertLog.map(([route, routeAlerts]) => {
+              const open = routeAlerts.filter(a => a.status === 'unresolved').length;
+              const resolved = routeAlerts.filter(a => a.status === 'resolved').length;
+              return (
+                <div key={route} className="alert-log-group">
+                  <div className="alert-log-header">
+                    <span className="alert-log-route">
+                      {route === 'Unmatched' ? 'Unmatched Stores' : `Route ${route}`}
+                    </span>
+                    <span className="alert-log-counts">
+                      {routeAlerts.length} alert{routeAlerts.length !== 1 ? 's' : ''}
+                      {open > 0 && <span style={{ color: '#ef4444', marginLeft: 6 }}>{open} open</span>}
+                      {resolved > 0 && <span style={{ color: '#22c55e', marginLeft: 6 }}>{resolved} resolved</span>}
+                    </span>
+                  </div>
+                  <div className="alert-log-items">
+                    {routeAlerts.map(a => (
+                      <div
+                        key={a.refNumber}
+                        className={`alert-log-item ${a.status} ${a.store ? 'clickable' : ''}`}
+                        onClick={a.store ? () => handleGoToStore(a) : undefined}
+                      >
+                        <span className={`alert-status-dot ${a.status}`}></span>
+                        <span className="alert-log-store">{a.storeName} #{a.storeNumber}</span>
+                        <span className="alert-log-city">{a.city}</span>
+                        <span className="alert-log-vendor">{a.vendor}</span>
+                        <span className="alert-log-date">{a.dateReceived}</span>
+                        <span className="alert-log-status" style={{ color: a.color }}>
+                          {a.status === 'resolved' ? `${a.days}d` : a.status === 'unresolved' ? (a.days !== null ? `${a.days}d` : '—') : '?'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Debug: raw email data */}
       {debugData && (

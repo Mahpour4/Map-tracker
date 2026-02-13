@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
 import RouteLeaderboard from './components/RouteLeaderboard';
@@ -8,53 +7,60 @@ import RouteSchedule from './components/RouteSchedule';
 import DataImport from './components/DataImport';
 import './App.css';
 
-function App() {
-  const [page, setPage] = useState('map');
+function AppContent() {
+  const { state, setPage } = useApp();
+  const page = state.currentPage;
 
   return (
+    <div className="app-layout">
+      <Sidebar />
+      <main className="map-wrapper">
+        <div className="page-nav">
+          <button
+            className={`page-nav-btn ${page === 'map' ? 'active' : ''}`}
+            onClick={() => setPage('map')}
+          >
+            Map View
+          </button>
+          <button
+            className={`page-nav-btn ${page === 'leaderboard' ? 'active' : ''}`}
+            onClick={() => setPage('leaderboard')}
+          >
+            Route Leaderboard
+          </button>
+          <button
+            className={`page-nav-btn ${page === 'visits' ? 'active' : ''}`}
+            onClick={() => setPage('visits')}
+          >
+            Visit History
+          </button>
+          <button
+            className={`page-nav-btn ${page === 'schedule' ? 'active' : ''}`}
+            onClick={() => setPage('schedule')}
+          >
+            Route Schedule
+          </button>
+          <button
+            className={`page-nav-btn ${page === 'import' ? 'active' : ''}`}
+            onClick={() => setPage('import')}
+          >
+            Data Import
+          </button>
+        </div>
+        {page === 'map' && <MapView />}
+        {page === 'leaderboard' && <RouteLeaderboard />}
+        {page === 'visits' && <VisitHistory />}
+        {page === 'schedule' && <RouteSchedule />}
+        {page === 'import' && <DataImport />}
+      </main>
+    </div>
+  );
+}
+
+function App() {
+  return (
     <AppProvider>
-      <div className="app-layout">
-        <Sidebar />
-        <main className="map-wrapper">
-          <div className="page-nav">
-            <button
-              className={`page-nav-btn ${page === 'map' ? 'active' : ''}`}
-              onClick={() => setPage('map')}
-            >
-              Map View
-            </button>
-            <button
-              className={`page-nav-btn ${page === 'leaderboard' ? 'active' : ''}`}
-              onClick={() => setPage('leaderboard')}
-            >
-              Route Leaderboard
-            </button>
-            <button
-              className={`page-nav-btn ${page === 'visits' ? 'active' : ''}`}
-              onClick={() => setPage('visits')}
-            >
-              Visit History
-            </button>
-            <button
-              className={`page-nav-btn ${page === 'schedule' ? 'active' : ''}`}
-              onClick={() => setPage('schedule')}
-            >
-              Route Schedule
-            </button>
-            <button
-              className={`page-nav-btn ${page === 'import' ? 'active' : ''}`}
-              onClick={() => setPage('import')}
-            >
-              Data Import
-            </button>
-          </div>
-          {page === 'map' && <MapView />}
-          {page === 'leaderboard' && <RouteLeaderboard />}
-          {page === 'visits' && <VisitHistory />}
-          {page === 'schedule' && <RouteSchedule />}
-          {page === 'import' && <DataImport />}
-        </main>
-      </div>
+      <AppContent />
     </AppProvider>
   );
 }

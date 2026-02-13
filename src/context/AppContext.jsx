@@ -19,6 +19,7 @@ const initialState = {
   filterRoute: 'all',
   mapCenter: [39.0, -76.8],
   mapZoom: 8,
+  currentPage: 'map',
   syncStatus: 'idle', // idle | loading | saving | saved | error
   syncError: null,
   alerts: [],
@@ -210,6 +211,8 @@ function reducer(state, action) {
         mapCenter: action.payload.center,
         mapZoom: action.payload.zoom,
       };
+    case 'SET_PAGE':
+      return { ...state, currentPage: action.payload };
     case 'LOAD_ALERTS':
       return { ...state, alerts: action.payload, alertSyncStatus: 'saved', alertSyncError: null };
     case 'SET_ALERTS':
@@ -346,9 +349,12 @@ export function AppProvider({ children }) {
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
 
     try {
-      // Find the most recent alert date to only fetch new ones
+      // Default to today's date — only fetch today's alerts
+      const today = new Date().toISOString().split('T')[0];
       const existingDates = state.alerts.map(a => a.dateReceived).filter(Boolean).sort();
-      const afterDate = existingDates.length > 0 ? existingDates[existingDates.length - 1] : undefined;
+      const lastKnown = existingDates.length > 0 ? existingDates[existingDates.length - 1] : undefined;
+      // Use whichever is more recent: last known alert date or today
+      const afterDate = lastKnown && lastKnown > today ? lastKnown : today;
 
       const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(afterDate);
 
@@ -504,6 +510,10 @@ export function AppProvider({ children }) {
     ),
     setFilterRoute: useCallback(
       (route) => dispatch({ type: 'SET_FILTER_ROUTE', payload: route }),
+      []
+    ),
+    setPage: useCallback(
+      (page) => dispatch({ type: 'SET_PAGE', payload: page }),
       []
     ),
     setMapView: useCallback(

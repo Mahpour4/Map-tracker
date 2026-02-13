@@ -2379,11 +2379,138 @@ textarea {
   background: var(--surface);
 }
 
+/* View mode toggle */
+.alert-view-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.alert-view-toggle {
+  display: flex;
+  background: #1a1a2e;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.alert-view-btn {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.alert-view-btn.active {
+  background: #334155;
+  color: #e2e8f0;
+}
+
 .alert-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
+}
+
+/* Route Log View */
+.alert-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.alert-log-group {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.alert-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #1a1a2e;
+  border-bottom: 1px solid var(--border);
+}
+
+.alert-log-route {
+  font-weight: 700;
+  font-size: 12px;
+  color: #e2e8f0;
+}
+
+.alert-log-counts {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.alert-log-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.alert-log-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  border-bottom: 1px solid #1e293b;
+  transition: background 0.15s;
+}
+
+.alert-log-item:last-child {
+  border-bottom: none;
+}
+
+.alert-log-item.clickable {
+  cursor: pointer;
+}
+
+.alert-log-item.clickable:hover {
+  background: #1e293b;
+}
+
+.alert-log-store {
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.alert-log-city {
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.alert-log-vendor {
+  color: #64748b;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alert-log-date {
+  color: #64748b;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.alert-log-status {
+  font-weight: 700;
+  font-size: 10px;
+  white-space: nowrap;
+  min-width: 24px;
+  text-align: right;
 }
 
 .alert-card {
@@ -2392,6 +2519,21 @@ textarea {
   border-radius: 6px;
   border: 1px solid var(--border);
   border-left: 3px solid #9ca3af;
+  transition: background 0.15s;
+}
+
+.alert-card.clickable {
+  cursor: pointer;
+}
+
+.alert-card.clickable:hover {
+  background: #1e293b;
+}
+
+.alert-map-link {
+  font-size: 10px;
+  color: #60a5fa;
+  margin-left: auto;
 }
 
 .alert-card.unresolved {
