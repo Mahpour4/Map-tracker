@@ -1675,7 +1675,7 @@ textarea {
 
 /* ============ Visit History Page (Table) ============ */
 .vh2 {
-  padding: 16px 20px;
+  padding: 60px 20px 20px;
   height: 100%;
   overflow-y: auto;
   background: var(--bg);
@@ -1957,7 +1957,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: auto;
-  max-height: calc(100vh - 240px);
+  max-height: calc(100vh - 310px);
 }
 
 .vh2-table {
