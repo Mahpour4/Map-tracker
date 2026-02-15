@@ -2,9 +2,9 @@ ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Regio
 SFW02342,SFW02342,Shoppers 2342,6300 Coventry Way,Clinton,MD,20735,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.7649,-76.8984,2026-02-10
 SFW02353,SFW02353,Shoppers 2353,806 Largo Center Dr,Largo,MD,20774,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.8976,-76.8303,
 SFW02377,02377,Shoppers 2377,2950 Donnell Dr,Forestville,MD,20747,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8488,-76.8747,2026-02-12
-SFW02379,SFW02379,Shoppers 2379,13600 Baltimore Ave Suite100,LAUREL,MD,20707,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,39.0993,-76.8483,
+SFW02379,SFW02379,Shoppers 2379,13600 Baltimore Ave Suite100,LAUREL,MD,20707,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,39.0993,-76.8483,2025-07-15
 SFW02383,02383,Shoppers 2383,10501 Martin Luther King Jr. Hwy,Bowie,MD,20720,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.943,-76.7312,2025-05-02
-SFW02650,SFW02650,Shoppers 2650,4720 CHERRY HILL RD,COLLEGE PARK,MD,20740,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.9807,-76.9369,
+SFW02650,SFW02650,Shoppers 2650,4720 CHERRY HILL RD,COLLEGE PARK,MD,20740,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.9807,-76.9369,2025-09-16
 WGW00007,WGW00007,Wegmans 07,45131 COLUMBIA PLACE,STERLING,VA,20166,,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.0064,-77.4286,2025-09-17 13:05:57
 SFW07540,SFW07540,Shoppers 7540,5457 BALTIMORE NATIONAL PIKE,BALTIMORE,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2904,-76.6122,
 FLW01668,01668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1073,-76.5714,2026-02-09
@@ -766,3 +766,16 @@ MM000002,MM000002,Megamart Alexandria,8228 Richmond Hwy,Alexandria,VA,22309,200,
 MM000003,MM000003,Megamart Arlington,5001 Columbia Pike,Arlington,VA,22204,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,
 MM000004,MM000004,Megamart Baltimore,3400 Annapolis Rd,Baltimore,MD,21227,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,38.70685088249195,-76.39980549099477,
 MM000005,MM000005,Megamart Chillum,2441 Chillum Rd,Hyattsville,MD,20782,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,38.959552568574054,-76.94053987995825,
+MZ000010,MZ000010,Metz Wilkes-Barre General,575 N River St Wilkes,Barre,PA,18702,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,
+NG000001,NG000001,New Grand Mart Langley Pa,1535 University Blvd E,Hyattsville,MD,20783,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,38.94703673022289,-76.946862833599,
+NG000002,NG000002,New Grand Mart New Carrol,8401 Annapolis Rd New,Carrollton,MD,20784,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,
+SFW02347,SFW02347,SHOPPERS FOOD WHSE 2347,3441 Fort Meade Rd,Maryland City,MD,20724,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.102,-76.8135,2025-09-25
+SL000001,SL000001,Save A Lot- Hagerstown,1161 Maryland Ave,Hagerstown,MD,21740,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.6418,-77.72,2025-11-19
+TGW00759,TGW00759,TARGET 0759,2460 PRINCE WILLIAM PKWY,WOODBRIDGE,VA,22192,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,38.6582,-77.2497,
+TGW01004,TGW01004,TARGET 1004,4600 MITCHELLVILLE ROAD,BOWIE,MD,20716,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.943,-76.7312,
+TGW01005,TGW01005,TARGET 1005,10301 NEW GUINEA ROAD,FAIRFAX,VA,22032,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,38.8462,-77.3064,
+TGW01006,TGW01006,TARGET 1006,10500 CAMPUS WAY S,UPPER MARLBORO,MD,20774,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,38.816,-76.7497,
+TGW01009,TGW01009,TARGET 1009,46201 POTOMAC RUN PLZ,STERLING,VA,20164,200,Route 200 Driver,Northern Virginia,Loudoun County,Loudoun County,39.0064,-77.4286,
+TGW01046,TGW01046,TARGET 1046,20908 FREDERICK ROAD,GERMANTOWN,MD,20876,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.176852568574056,-77.26683987995825,
+TGW01193,TGW01193,TARGET 1193,25 GRAND CORNER AVENUE,GAITHERSBURG,MD,20878,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,
+TGW01295,TGW01295,TARGET 1295,6100 GREENBELT ROAD,GREENBELT,MD,20770,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,
