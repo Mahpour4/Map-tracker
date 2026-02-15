@@ -88,7 +88,7 @@ FLW01560,01560,Food Lion 1560,206 N Fruitland Blvd,Fruitland,MD,21826,210,Route 
 FLW02117,FLW02117,Food Lion 2117,31810 River Rd,Millington,MD,21651,210,Route 210 Driver,Eastern Shore Maryland,Millington,Millington,39.254,-75.8363,2026-02-12
 FLW02123,FLW02123,Food Lion 2123,37468 LION DR,Selbyville,DE,19975,206,Route 206 Driver,Delaware,Selbyville,Selbyville,38.460761467228245,-75.22398858409427,2026-02-12
 FLW02224,02224,Food Lion,22954 SUSSEX HWY,SEAFORD,DE,19973,210,Route 210 Driver,Delaware,SEAFORD,SEAFORD,38.6413,-75.611,2026-02-10
-FLW00246,FLW00246,Food Lion 246,11801 COASTAL HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.3365,-75.0849,2026-02-12
+FLW00246,FLW00246,Food Lion 246,11801 COASTAL HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4273,-75.0540,2026-02-12
 FLW02508,02508,Food Lion 2508,22485 Lankford Hwy,Cape Charles,VA,23310,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.2646,-75.9221,2026-02-09
 FLW02521,FLW02521,Food Lion 2521,9537 Bridgeville Center Rd,Bridgeville,DE,19933,210,Route 210 Driver,Delaware,Bridgeville,Bridgeville,38.7426,-75.6044,2026-02-12
 FLW02561,02561,Food Lion 2561,110 BROADKILL RD,Milton,DE,19968,206,Route 206 Driver,Delaware,Milton,Milton,38.782,-75.3093,2026-02-11
@@ -114,7 +114,7 @@ AMW02679,AMW02679,Acme 2679,18578 Coastal Hwy,Lewes,DE,19958,210,Route 210 Drive
 IND00102,IND00102,Exxon,100 Dominion Rd,Cambridge,MD,21613,210,Route 210 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.566852568574056,-76.07413987995825,
 IND20000,IND20000,G&E Hocker's,695 Bethany Loop,Bethany Beach,DE,19930,206,Route 206 Driver,Delaware,Bethany Beach,Bethany Beach,38.5394,-75.0554,
 IND00103,IND00103,Linkwood Market,Linkwood,Linkwood,MD,21835,210,Route 210 Driver,Eastern Shore Maryland,MD,MD,38.536,-75.9444,
-IND00104,IND00104,Montego Bay Supermarket,12903 COASTAL HWY,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.32818852496177,-75.10086619499721,
+IND00104,IND00104,Montego Bay Supermarket,12903 COASTAL HWY,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4420,-75.0500,
 RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,210,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,2026-02-13
 FLW02522,FLW02522,Food Lion 2522,2466 CENTREVILLE RD,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.044,-76.0667,2026-02-12
 FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.9397,-75.5708,2026-02-09
@@ -349,7 +349,7 @@ CMW05217,05217,Comm Dover AFB 5217,268 GALAXY ST,Dover AFB,DE,19902,206,Route 20
 CMW05720,05720,Comm Aberdeen Navy 5720,3400 SPRINGFIELD ST,Aberdeen Proving Ground,MD,21005,200,Route 200 Driver,Harford County,Aberdeen,Aberdeen,39.5093,-76.1641,
 CMW06264,06264,Comm Ft Detrick 6264,1510 PORTER ST,Frederick,MD,21702,201,Route 201 Driver,Frederick County,Frederick,Frederick,39.4143,-77.4105,2026-02-13
 IND20001,IND20001,Hocker's Supercenter,34960 Atlantic Ave,Ocean View,DE,19970,206,Route 206 Driver,Delaware,Ocean View,Ocean View,38.5432,-75.0886,2026-01-30
-IND20002,IND20002,Ocean Waves,2 Dorchester St unit 108/109,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3365,-75.0849,2025-07-16
+IND20002,IND20002,Ocean Waves,2 Dorchester St unit 108/109,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3284,-75.0870,2025-07-16
 RDW00091,RDW00091,REDNERS MARKET 91,24120 Zinfandel Ln,Lewes,DE,19958,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.7745,-75.1394,2026-02-13
 SL000002,SL000002,Save A Lot- Salisbury,220 Cypress St,Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Lower Shore,38.3607,-75.5994,
 WAW02560,WAW02560,WALMART 2560,11416 Ocean Gtwy,Berlin,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,Berlin,Ocean City & Coastal,38.3226,-75.2177,2025-03-11
@@ -617,14 +617,14 @@ CASH0535,CASH0535,Dundalk Carryout Market,2021 Dundalk Ave,Dundalk,MD,21222,200,
 CASH1700,CASH1700,Geresbecks,2109 Eastern Blvd,Baltimore,MD,21220,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.00389999999998,-76.11596744363153,2024-11-18
 CASH3002,CASH3002,Linkwood market,3864 Ocean Gateway,Linkwood,MD,21835,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,38.536,-75.9444,2025-07-03
 CASH3003,CASH3003,Exxon,324 Sunburst Hwy,Cambridge,MD,21613,200,Route 200 Driver,Eastern Shore Maryland,Cambridge,Mid Shore,38.563461467228244,-76.08188858409427,2025-08-06
-CASH3005,CASH3005,Polock Johnys,210 S Atlantic Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3365,-75.0849,
-CASH3008,CASH3008,21st Street,2100 Philadelphia Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.33676146722824,-75.08788858409427,
-CASH3009,CASH3009,The Beach Place,1 S Baltimore Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.340152568574055,-75.08013987995825,
-CASH3010,CASH3010,Seaside Deli,7207 Coastal Hwy,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.32763673022289,-75.086462833599,
-CASH3013,CASH3013,MDP Distribution,2 Dorchester St,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.346620697349756,-75.09134759530016,2025-05-15
-CASH3014,CASH3014,Polock Johnny's,210 S. Atlantic Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.33261771432346,-75.07041111260567,2025-05-08
-CASH3015,CASH3015,OC Convenience,1201 Atlantic Ave.,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.32818852496177,-75.10086619499721,2025-05-08
-CASH3016,CASH3016,Village Market Beer and Wine,1816 Philadelphia Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3562335450365,-75.07771757699017,2025-05-16
+CASH3005,CASH3005,Polock Johnys,210 S Atlantic Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3287,-75.0848,
+CASH3008,CASH3008,21st Street,2100 Philadelphia Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3399,-75.0835,
+CASH3009,CASH3009,The Beach Place,1 S Baltimore Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3284,-75.0870,
+CASH3010,CASH3010,Seaside Deli,7207 Coastal Hwy,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3356,-75.0743,
+CASH3013,CASH3013,MDP Distribution,2 Dorchester St,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3284,-75.0870,2025-05-15
+CASH3014,CASH3014,Polock Johnny's,210 S. Atlantic Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3287,-75.0848,2025-05-08
+CASH3015,CASH3015,OC Convenience,1201 Atlantic Ave.,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3276,-75.0862,2025-05-08
+CASH3016,CASH3016,Village Market Beer and Wine,1816 Philadelphia Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3375,-75.0840,2025-05-16
 CASH3020,CASH3020,Exxon Friendship Food Mart,"10709 Grays Corner Rd,",Berlin,MD,21811-2821,200,Route 200 Driver,Eastern Shore Maryland,Berlin,Ocean City & Coastal,38.3226,-75.2177,
 CASH3028,CASH3028,H & P,3859 Elmley Ave,Baltimore,MD,21213,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.16573078237164,-77.17454650010109,2026-02-05
 CASH3036,CASH3036,Royal Tobacco Deli and Grocery,5310 Edmonson Ave,Baltimore,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.76468903364334,-76.28009924335278,2026-01-28
