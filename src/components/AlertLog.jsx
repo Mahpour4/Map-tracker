@@ -43,6 +43,7 @@ export default function AlertLog() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterVendor, setLocalFilterVendor] = useState('all');
+  const [filterDate, setFilterDate] = useState(null); // null = show all dates
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRoutes, setExpandedRoutes] = useState(null); // null = auto (expand unresolved)
   const [expandedImage, setExpandedImage] = useState(null); // emailId of alert with open image
@@ -96,6 +97,9 @@ export default function AlertLog() {
   // Apply filters
   const filteredAlerts = useMemo(() => {
     let result = enrichedAlerts;
+    if (filterDate) {
+      result = result.filter(a => a.dateReceived === filterDate);
+    }
     if (filterStatus !== 'all') {
       result = result.filter(a => a.status === filterStatus);
     }
@@ -115,7 +119,7 @@ export default function AlertLog() {
       );
     }
     return result;
-  }, [enrichedAlerts, filterStatus, filterRoute, filterVendor, searchTerm]);
+  }, [enrichedAlerts, filterDate, filterStatus, filterRoute, filterVendor, searchTerm]);
 
   // Group by route
   const alertsByRoute = useMemo(() => {
@@ -352,19 +356,20 @@ export default function AlertLog() {
           <h2>Alert Log</h2>
           <div className="al-quick-dates">
             <button
-              className={`al-quick-btn ${alertDate === today ? 'active' : ''}`}
-              onClick={() => handleFetchByDate(today)}
-              disabled={fetching}
+              className={`al-quick-btn ${filterDate === null ? 'active' : ''}`}
+              onClick={() => setFilterDate(null)}
+            >All</button>
+            <button
+              className={`al-quick-btn ${filterDate === today ? 'active' : ''}`}
+              onClick={() => setFilterDate(today)}
             >Today</button>
             <button
-              className={`al-quick-btn ${alertDate === yesterday ? 'active' : ''}`}
-              onClick={() => handleFetchByDate(yesterday)}
-              disabled={fetching}
+              className={`al-quick-btn ${filterDate === yesterday ? 'active' : ''}`}
+              onClick={() => setFilterDate(yesterday)}
             >Yesterday</button>
             <button
-              className={`al-quick-btn ${alertDate === dayBefore ? 'active' : ''}`}
-              onClick={() => handleFetchByDate(dayBefore)}
-              disabled={fetching}
+              className={`al-quick-btn ${filterDate === dayBefore ? 'active' : ''}`}
+              onClick={() => setFilterDate(dayBefore)}
             >Day Before</button>
           </div>
           <div className="al-date-picker">
