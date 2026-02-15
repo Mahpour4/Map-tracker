@@ -6,6 +6,7 @@ import VisitHistory from './components/VisitHistory';
 import RouteSchedule from './components/RouteSchedule';
 import DataImport from './components/DataImport';
 import AlertLog from './components/AlertLog';
+import AlertAnalytics from './components/AlertAnalytics';
 import './App.css';
 
 function AppContent() {
@@ -48,7 +49,7 @@ function AppContent() {
             Data Import
           </button>
           <button
-            className={`page-nav-btn ${page === 'alerts' ? 'active' : ''}`}
+            className={`page-nav-btn ${page === 'alerts' || page === 'alertAnalytics' ? 'active' : ''}`}
             onClick={() => setPage('alerts')}
           >
             Alert Log
@@ -60,6 +61,7 @@ function AppContent() {
         {page === 'schedule' && <RouteSchedule />}
         {page === 'import' && <DataImport />}
         {page === 'alerts' && <AlertLog />}
+        {page === 'alertAnalytics' && <AlertAnalytics />}
       </main>
     </div>
   );

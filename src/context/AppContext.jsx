@@ -352,14 +352,12 @@ export function AppProvider({ children }) {
       });
   }, [state.alerts]);
 
-  // Fetch new alerts from Gmail — clears existing and replaces
+  // Fetch new alerts from Gmail — merges with existing, dedupes by refNumber, prunes >30 days
   // @param {string} [date] - YYYY-MM-DD date to fetch alerts for (defaults to today)
   // Returns { newCount, rawMessages } for debug display
   const fetchGmailAlerts = useCallback(async (date) => {
     if (!isGmailConnected()) throw new Error('Not connected to Gmail');
 
-    // Clear existing alerts before fetching
-    dispatch({ type: 'SET_ALERTS', payload: [] });
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
 
     try {
@@ -376,18 +374,27 @@ export function AppProvider({ children }) {
         }
       });
 
-      if (newAlerts.length > 0) {
-        dispatch({ type: 'SET_ALERTS', payload: newAlerts });
-      } else {
-        dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
-      }
+      // Merge: existing alerts by refNumber, new overwrite duplicates
+      const alertMap = {};
+      state.alerts.forEach(a => { alertMap[a.refNumber] = a; });
+      newAlerts.forEach(a => { alertMap[a.refNumber] = a; });
+
+      // Prune alerts older than 30 days
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      const merged = Object.values(alertMap).filter(a =>
+        !a.dateReceived || a.dateReceived >= cutoffStr
+      );
+
+      dispatch({ type: 'SET_ALERTS', payload: merged });
 
       return { newCount: newAlerts.length, rawMessages };
     } catch (err) {
       dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
       throw err;
     }
-  }, [state.stores]);
+  }, [state.stores, state.alerts]);
 
   const loadAlertImage = useCallback(async (emailId) => {
     if (!emailId) return;
@@ -586,6 +593,7 @@ export function AppProvider({ children }) {
     loadAlertImage,
     saveSchedule,
     addImportEntry,
+    clearAlerts: useCallback(() => dispatch({ type: 'SET_ALERTS', payload: [] }), []),
     bulkImportStores: useCallback(
       (updates, additions) => dispatch({ type: 'BULK_IMPORT_STORES', payload: { updates, additions } }),
       []

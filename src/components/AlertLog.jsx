@@ -368,6 +368,12 @@ export default function AlertLog() {
             >
               {refreshing ? 'Refreshing...' : 'Refresh Stores'}
             </button>
+            <button
+              className="al-btn-report"
+              onClick={() => setPage('alertAnalytics')}
+            >
+              30-Day Report
+            </button>
           </div>
           <div className="al-stats">
             <span className="al-stat red">{stats.open} <span>Open</span></span>
