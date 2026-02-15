@@ -1703,6 +1703,41 @@ textarea {
   gap: 8px;
 }
 
+.vh2-refresh-btn {
+  padding: 6px 16px;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vh2-refresh-btn:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+.vh2-refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.vh2-refresh-icon {
+  font-size: 16px;
+  display: inline-block;
+  transition: transform 0.3s;
+}
+.vh2-refresh-btn.spinning .vh2-refresh-icon {
+  animation: vh2-spin 0.8s linear infinite;
+}
+@keyframes vh2-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .vh2-pdf-wrap {
   position: relative;
 }

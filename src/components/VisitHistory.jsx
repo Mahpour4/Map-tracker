@@ -91,8 +91,9 @@ const TYPE_LABELS = {
 };
 
 export default function VisitHistory() {
-  const { state, updateStore } = useApp();
-  const { stores } = state;
+  const { state, updateStore, syncFromGithub } = useApp();
+  const { stores, syncStatus } = state;
+  const [refreshing, setRefreshing] = useState(false);
   const [filterRoute, setFilterRoute] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -187,6 +188,19 @@ export default function VisitHistory() {
     closeEdit();
     setVisitVersion((v) => v + 1);
   }, [editDate, stores, updateStore, closeEdit]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    syncFromGithub();
+  }, [syncFromGithub]);
+
+  // Clear refreshing spinner once sync finishes
+  useEffect(() => {
+    if (refreshing && syncStatus !== 'loading') {
+      const t = setTimeout(() => setRefreshing(false), 400);
+      return () => clearTimeout(t);
+    }
+  }, [refreshing, syncStatus]);
 
   const routes = useMemo(() => {
     const set = new Set();
@@ -572,6 +586,15 @@ export default function VisitHistory() {
               <span className="vh2-overall-label">overall</span>
             </div>
           </div>
+          <button
+            className={`vh2-refresh-btn ${refreshing ? 'spinning' : ''}`}
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh last sale data from GitHub"
+          >
+            <span className="vh2-refresh-icon">&#x21bb;</span>
+            {refreshing ? 'Refreshing...' : 'Refresh Data'}
+          </button>
           <div className="vh2-pdf-wrap" ref={pdfMenuRef}>
             <button className="vh2-pdf-btn" onClick={() => setPdfMenuOpen(!pdfMenuOpen)}>
               Export PDF <span className="vh2-pdf-arrow">{pdfMenuOpen ? '\u25B2' : '\u25BC'}</span>
