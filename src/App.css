@@ -3824,6 +3824,29 @@ textarea {
   cursor: not-allowed;
 }
 
+.al-btn-refresh {
+  padding: 6px 16px;
+  border-radius: var(--radius);
+  border: 2px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.al-btn-refresh:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.al-btn-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .al-stats {
   display: flex;
   gap: 8px;
@@ -3999,6 +4022,26 @@ textarea {
   align-items: center;
   gap: 10px;
   white-space: nowrap;
+}
+
+.al-btn-pdf {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #94a3b8;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.al-btn-pdf:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 .al-count-open {
