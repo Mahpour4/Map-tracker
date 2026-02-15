@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, getToken } from '../services/githubService';
-import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi } from '../services/gmailAlertService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
 
 const AppContext = createContext();
 
@@ -388,6 +388,12 @@ export function AppProvider({ children }) {
       );
 
       dispatch({ type: 'SET_ALERTS', payload: merged });
+
+      // Label fetched messages in Gmail (non-blocking)
+      const messageIds = newAlerts.map(a => a.emailId).filter(Boolean);
+      if (messageIds.length > 0) {
+        labelAlertMessages(messageIds);
+      }
 
       return { newCount: newAlerts.length, rawMessages };
     } catch (err) {

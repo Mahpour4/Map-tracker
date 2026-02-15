@@ -2,7 +2,7 @@
 // Uses Google Identity Services (GIS) for browser-based OAuth
 
 const GMAIL_API = 'https://www.googleapis.com/gmail/v1';
-const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+const SCOPES = 'https://www.googleapis.com/auth/gmail.modify';
 const ALERT_SENDER = 'MailAgent@synergies4u.com';
 
 const CLIENT_ID_KEY = 'google_client_id';
@@ -125,6 +125,77 @@ async function gmailFetch(path, params = {}) {
   }
 
   return res.json();
+}
+
+async function gmailPost(path, body = {}) {
+  const token = getAccessToken();
+  if (!token) throw new Error('Not signed in to Gmail');
+
+  const res = await fetch(`${GMAIL_API}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    clearGoogleAuth();
+    throw new Error('Gmail session expired — please sign in again');
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Gmail API error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// ---- Gmail Label Management ----
+
+const ALERT_LABEL_NAME = 'Map Tracker/Logged';
+const LABEL_ID_KEY = 'gmail_alert_label_id';
+
+async function getOrCreateAlertLabel() {
+  // Check cached label ID first
+  const cached = localStorage.getItem(LABEL_ID_KEY);
+  if (cached) return cached;
+
+  // List existing labels and look for ours
+  const labelsResult = await gmailFetch('/users/me/labels');
+  const existing = labelsResult.labels?.find(l => l.name === ALERT_LABEL_NAME);
+  if (existing) {
+    localStorage.setItem(LABEL_ID_KEY, existing.id);
+    return existing.id;
+  }
+
+  // Create the label
+  const created = await gmailPost('/users/me/labels', {
+    name: ALERT_LABEL_NAME,
+    labelListVisibility: 'labelShow',
+    messageListVisibility: 'show',
+  });
+  localStorage.setItem(LABEL_ID_KEY, created.id);
+  console.log('[Gmail] Created label:', ALERT_LABEL_NAME, created.id);
+  return created.id;
+}
+
+export async function labelAlertMessages(messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  try {
+    const labelId = await getOrCreateAlertLabel();
+    // Batch modify — applies label to all messages at once
+    await gmailPost('/users/me/messages/batchModify', {
+      ids: messageIds,
+      addLabelIds: [labelId],
+    });
+    console.log(`[Gmail] Labeled ${messageIds.length} messages as "${ALERT_LABEL_NAME}"`);
+  } catch (err) {
+    console.error('[Gmail] Failed to label messages:', err);
+    // Non-fatal — don't break the alert fetch flow
+  }
 }
 
 /**

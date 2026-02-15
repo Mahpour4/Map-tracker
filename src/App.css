@@ -3780,6 +3780,40 @@ textarea {
 }
 
 /* Date picker */
+.al-quick-dates {
+  display: flex;
+  gap: 4px;
+}
+
+.al-quick-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.al-quick-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.al-quick-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.al-quick-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .al-date-picker {
   display: flex;
   align-items: center;

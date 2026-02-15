@@ -38,6 +38,8 @@ export default function AlertLog() {
   const { alerts, stores, alertImages, syncStatus } = state;
 
   const today = new Date().toISOString().split('T')[0];
+  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0]; })();
+  const dayBefore = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return d.toISOString().split('T')[0]; })();
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterVendor, setLocalFilterVendor] = useState('all');
@@ -216,10 +218,12 @@ export default function AlertLog() {
     }
   }
 
-  async function handleFetchByDate() {
+  async function handleFetchByDate(dateOverride) {
+    const dateToFetch = dateOverride || alertDate;
+    if (dateOverride) setAlertDate(dateOverride);
     setFetching(true);
     try {
-      await fetchGmailAlerts(alertDate);
+      await fetchGmailAlerts(dateToFetch);
     } catch (err) {
       console.error('Failed to fetch alerts:', err);
     }
@@ -346,6 +350,23 @@ export default function AlertLog() {
       <div className="al-header">
         <div className="al-title-row">
           <h2>Alert Log</h2>
+          <div className="al-quick-dates">
+            <button
+              className={`al-quick-btn ${alertDate === today ? 'active' : ''}`}
+              onClick={() => handleFetchByDate(today)}
+              disabled={fetching}
+            >Today</button>
+            <button
+              className={`al-quick-btn ${alertDate === yesterday ? 'active' : ''}`}
+              onClick={() => handleFetchByDate(yesterday)}
+              disabled={fetching}
+            >Yesterday</button>
+            <button
+              className={`al-quick-btn ${alertDate === dayBefore ? 'active' : ''}`}
+              onClick={() => handleFetchByDate(dayBefore)}
+              disabled={fetching}
+            >Day Before</button>
+          </div>
           <div className="al-date-picker">
             <input
               type="date"
@@ -356,7 +377,7 @@ export default function AlertLog() {
             />
             <button
               className="al-btn-fetch"
-              onClick={handleFetchByDate}
+              onClick={() => handleFetchByDate()}
               disabled={fetching}
             >
               {fetching ? 'Fetching...' : 'Fetch Alerts'}
