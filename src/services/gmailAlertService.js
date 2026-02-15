@@ -396,23 +396,42 @@ export async function fetchAlertImage(emailId) {
 export function matchAlertToStore(alert, stores) {
   const num = alert.storeNumber;
   const paddedNum = num.padStart(5, '0');
+  const alertNameLower = (alert.storeName || '').toLowerCase();
 
-  // Try matching by store number field
-  let match = stores.find(s =>
+  // Find ALL candidate stores whose number matches
+  const candidates = stores.filter(s =>
     s.storeNumber === num ||
     s.storeNumber === paddedNum ||
     s.id.endsWith(paddedNum) ||
     s.id.endsWith(num)
   );
 
-  if (!match) {
-    // Fallback: match by city and name containing the number
-    const cityLower = alert.city.toLowerCase();
-    match = stores.find(s =>
-      s.city.toLowerCase() === cityLower &&
-      (s.name.includes(num) || s.name.includes(paddedNum))
+  if (candidates.length === 1) return candidates[0];
+
+  if (candidates.length > 1) {
+    // Prefer the candidate whose name matches the alert's store name
+    const nameMatch = candidates.find(s =>
+      s.name && alertNameLower && s.name.toLowerCase().includes(alertNameLower)
     );
+    if (nameMatch) return nameMatch;
+
+    // Also try matching by city
+    const cityLower = (alert.city || '').toLowerCase();
+    const cityMatch = candidates.find(s =>
+      s.city && cityLower && s.city.toLowerCase() === cityLower
+    );
+    if (cityMatch) return cityMatch;
+
+    // Fall back to first candidate
+    return candidates[0];
   }
+
+  // Fallback: match by city and name containing the number
+  const cityLower = (alert.city || '').toLowerCase();
+  const match = stores.find(s =>
+    s.city.toLowerCase() === cityLower &&
+    (s.name.includes(num) || s.name.includes(paddedNum))
+  );
 
   return match || null;
 }
