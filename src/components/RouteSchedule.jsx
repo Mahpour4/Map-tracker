@@ -15,6 +15,13 @@ function getDaysSinceVisit(lastVisited) {
   return Math.floor((new Date() - visited) / (1000 * 60 * 60 * 24));
 }
 
+function formatVisitDate(lastVisited) {
+  if (!lastVisited) return 'Never';
+  const d = new Date(lastVisited);
+  if (isNaN(d.getTime())) return 'Never';
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+}
+
 function getMonday(date) {
   const d = new Date(date);
   const day = d.getDay();
@@ -411,6 +418,9 @@ export default function RouteSchedule() {
                         {days === null ? 'Never' : `${days}d`}
                       </span>
                     </div>
+                    <div className="schedule-chip-lastvisit">
+                      Last: {formatVisitDate(s.lastVisited)}
+                    </div>
                     <div className="schedule-chip-add-btns">
                       {DAYS.map(d => (
                         <button
@@ -472,6 +482,7 @@ export default function RouteSchedule() {
                               <div className="schedule-stop-name">{store.id}</div>
                               <div className="schedule-stop-detail">{store.name}</div>
                               <div className="schedule-stop-addr">{store.address}, {store.city}</div>
+                              <div className="schedule-stop-lastvisit">Last visit: {formatVisitDate(store.lastVisited)}</div>
                             </div>
                             <div className="schedule-stop-compliance">
                               <span className="compliance-badge" style={{ color: compliance.color, borderColor: compliance.color }}>

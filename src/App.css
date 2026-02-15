@@ -3007,6 +3007,12 @@ textarea {
   font-weight: 600;
 }
 
+.schedule-chip-lastvisit {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 .schedule-chip-add-btns {
   display: flex;
   gap: 2px;
@@ -3193,6 +3199,11 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.schedule-stop-lastvisit {
+  font-size: 9px;
+  color: var(--text-muted);
 }
 
 .schedule-stop-status {
