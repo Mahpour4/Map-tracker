@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import visitHistory from '../data/visitHistory';
 import jsPDF from 'jspdf';
@@ -65,6 +65,27 @@ function getStopCompliance(storeId, scheduledDay, weekOf) {
   return { status: 'missed', label: 'Missed', color: '#ef4444', visitDate: null };
 }
 
+/** Parse schedule key into route and week components */
+function parseScheduleKey(key) {
+  const match = key.match(/^(.+?)_(\d{4}-\d{2}-\d{2})$/);
+  if (!match) {
+    console.warn(`Invalid schedule key: ${key}`);
+    return null;
+  }
+  const route = match[1];
+  const weekOf = match[2];
+  const routeNum = parseInt(route) || 0;
+  return { route, weekOf, routeNum };
+}
+
+/** Format week range for display */
+function formatWeekRange(weekStart, weekEnd) {
+  const options = { month: 'short', day: 'numeric' };
+  const start = weekStart.toLocaleDateString('en-US', options);
+  const end = weekEnd.toLocaleDateString('en-US', { ...options, year: 'numeric' });
+  return `${start} - ${end}`;
+}
+
 export default function RouteSchedule() {
   const { state, saveSchedule } = useApp();
   const { stores, schedules } = state;
@@ -73,6 +94,7 @@ export default function RouteSchedule() {
   const [weekOf, setWeekOf] = useState(getMonday(new Date()));
   const [dragItem, setDragItem] = useState(null);
   const [noteEditing, setNoteEditing] = useState(null);
+  const [showSchedulesDropdown, setShowSchedulesDropdown] = useState(false);
 
   // Current schedule from context
   const scheduleKey = selectedRoute ? getScheduleKey(selectedRoute, weekOf) : '';
@@ -149,6 +171,82 @@ export default function RouteSchedule() {
     stores.forEach(s => { map[s.id] = s; });
     return map;
   }, [stores]);
+
+  // Process saved schedules list
+  const savedSchedulesList = useMemo(() => {
+    const scheduleKeys = Object.keys(schedules);
+
+    return scheduleKeys
+      .map(key => {
+        const schedule = schedules[key];
+        const parsed = parseScheduleKey(key);
+        if (!parsed) return null;
+
+        const { route, weekOf, routeNum } = parsed;
+
+        // Calculate total stops
+        const totalStops = DAYS.reduce((sum, day) => sum + (schedule[day]?.length || 0), 0);
+
+        // Skip empty schedules
+        if (totalStops === 0) return null;
+
+        // Calculate week dates for display
+        try {
+          const weekStart = new Date(weekOf + 'T00:00:00');
+          if (isNaN(weekStart.getTime())) return null;
+
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 4);
+
+          return {
+            key,
+            route,
+            routeNum,
+            weekOf,
+            weekStart,
+            weekEnd,
+            totalStops,
+            isPast: weekEnd < new Date(),
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        // Primary sort: date (most recent first)
+        const dateCompare = b.weekStart - a.weekStart;
+        if (dateCompare !== 0) return dateCompare;
+
+        // Secondary sort: route number
+        return a.routeNum - b.routeNum;
+      });
+  }, [schedules]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showSchedulesDropdown) return;
+
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.schedules-dropdown-wrapper')) {
+        setShowSchedulesDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSchedulesDropdown]);
+
+  // Event handlers for saved schedules
+  function toggleSchedulesDropdown() {
+    setShowSchedulesDropdown(prev => !prev);
+  }
+
+  function loadSavedSchedule(scheduleItem) {
+    setSelectedRoute(scheduleItem.route);
+    setWeekOf(scheduleItem.weekOf);
+    setShowSchedulesDropdown(false);
+  }
 
   function addStoreToDay(storeId, day) {
     const newSchedule = { ...schedule };
@@ -353,6 +451,59 @@ export default function RouteSchedule() {
               Export PDF
             </button>
           )}
+          <div className="schedules-dropdown-wrapper">
+            <button
+              className={`schedule-saved-btn ${showSchedulesDropdown ? 'active' : ''}`}
+              onClick={toggleSchedulesDropdown}
+            >
+              <span>📋</span>
+              <span className="schedule-saved-btn-text">Saved Schedules</span>
+              {savedSchedulesList.length > 0 && (
+                <span className="schedules-count-badge">{savedSchedulesList.length}</span>
+              )}
+            </button>
+
+            {showSchedulesDropdown && (
+              <div className="schedules-dropdown">
+                <div className="schedules-dropdown-header">
+                  <span className="schedules-dropdown-title">Saved Schedules</span>
+                  {savedSchedulesList.length > 0 && (
+                    <span className="schedules-count-badge">{savedSchedulesList.length}</span>
+                  )}
+                </div>
+
+                <div className="schedules-list">
+                  {savedSchedulesList.length === 0 ? (
+                    <div className="schedules-list-empty">
+                      <p>No saved schedules yet</p>
+                      <p style={{ fontSize: '12px', marginTop: '8px' }}>
+                        Create a schedule by selecting a route and week above
+                      </p>
+                    </div>
+                  ) : (
+                    savedSchedulesList.map(item => {
+                      const isCurrentSchedule = selectedRoute === item.route && weekOf === item.weekOf;
+                      return (
+                        <div
+                          key={item.key}
+                          className={`schedule-list-item ${isCurrentSchedule ? 'active' : ''}`}
+                          onClick={() => loadSavedSchedule(item)}
+                        >
+                          <div className="schedule-item-top">
+                            <span className="schedule-item-route">Route {item.route}</span>
+                            <span className="schedule-item-stops">{item.totalStops} stops</span>
+                          </div>
+                          <div className="schedule-item-week">
+                            {formatWeekRange(item.weekStart, item.weekEnd)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -3427,6 +3427,158 @@ textarea {
   font-weight: 700;
 }
 
+/* Saved Schedules Dropdown */
+.schedules-dropdown-wrapper {
+  position: relative;
+}
+
+.schedule-saved-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.schedule-saved-btn:hover {
+  background: #f1f5f9;
+  border-color: #2563eb;
+}
+
+.schedule-saved-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.schedules-count-badge {
+  background: #2563eb;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  line-height: 1;
+}
+
+.schedule-saved-btn.active .schedules-count-badge {
+  background: white;
+  color: #2563eb;
+}
+
+.schedules-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 360px;
+  max-height: 450px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.schedules-dropdown-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.schedules-dropdown-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.schedules-list {
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.schedules-list-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.schedules-list-empty p {
+  margin: 0;
+}
+
+.schedule-list-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-list-item:hover {
+  background: #f8fafc;
+}
+
+.schedule-list-item.active {
+  background: #eff6ff;
+  border-left: 3px solid #2563eb;
+}
+
+.schedule-list-item:last-child {
+  border-bottom: none;
+}
+
+.schedule-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.schedule-item-route {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.schedule-item-stops {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.schedule-item-week {
+  font-size: 13px;
+  color: var(--text);
+}
+
+@media (max-width: 768px) {
+  .schedules-dropdown {
+    width: 90vw;
+    max-width: 360px;
+    right: -10px;
+  }
+
+  .schedule-saved-btn-text {
+    display: none;
+  }
+}
+
 /* ============ Data Import ============ */
 .data-import-page {
   padding: 20px 24px;
