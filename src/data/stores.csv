@@ -411,7 +411,7 @@ CASH0059,CASH0059,California Marquet,923 Norh Eden St,Baltimore,MD,,200,Route 20
 CASH0060,CASH0060,Candm Grocery,1956 W Fayette St,Baltimore,MD,21223,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.28804455308227,-76.55825139603458,
 CASH0062,CASH0062,Carrol Fuel,1900 N Rolling Rd,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.253761106247865,-76.65586453325778,
 CASH0063,CASH0063,Carrol Fuel Patapsco,101 W Patasco Ave,Baltimore,MD,21225,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.34988669168243,-76.6043684284668,
-CASH0064,CASH0064,Carrol Fuel Woodlawn,1700 N Rolling Rd,Baltimore,MD,21244,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.23879342120979,-76.57606468450989,
+CASH0064,CASH0064,Carrol Fuel Woodlawn,1700 N Rolling Rd,Baltimore,MD,21244,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.23879342120979,-76.57606468450989,2026-02-12
 CASH0067,CASH0067,Catonsville Chevron,5520 Baltimore National P,Catonsville,MD,21228,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,
 CASH0069,CASH0069,Cedar Hill Shell,1587 W Nursery Rd Linthicum,Heights,MD,21090,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,
 CASH0070,CASH0070,Central Food Market,2001 W Pratt St,Baltimore,MD,21223,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3249,-76.55244424713888,
@@ -814,3 +814,4 @@ WMW00283,WMW00283,WEIS MARKETS 283,19 ST MARYS SQUARE LEXINGTON,PARK,MD,20653,20
 WMW00284,WMW00284,WEIS MARKETS 284,210 HG TRUEMAN RD,LUSBY,MD,20657,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,2025-04-16
 WMW00285,WMW00285,WEIS MARKETS 285,13300 HG TRUEMAN RD,SOLOMONS,MD,20688,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,2025-04-16
 WMW00295,WMW00295,WEIS MARKETS 295,10 VILLAGE CENTER RD,REISTERSTOWN,MD,21136-6453,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,,,2025-04-08
+CASH0517,CASH0517,Carrol Fuel Edmonson,2801 Edmondson Ave,Baltimore,MD,21223,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.57853113465863,-77.16569475990323,2026-02-02
