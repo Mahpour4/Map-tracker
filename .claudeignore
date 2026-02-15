@@ -1,7 +1,28 @@
+# Dependencies & build output
 node_modules/
 dist/
+
+# Large data files
 package-lock.json
 src/data/stores.csv
 src/data/visitHistory.js
 src/data/cityCoords.js
+src/data/alerts.csv
+src/data/schedules.json
+src/data/importLog.json
+
+# One-off migration/update scripts
+*.cjs
+*.csv
+
+# Styles (77KB, read only when needed)
+src/App.css
+
+# Static assets
+src/assets/
+public/
+
+# Misc
 *.log
+README.md
+eslint.config.js
