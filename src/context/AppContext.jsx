@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi } from '../services/gmailAlertService';
 
 const AppContext = createContext();
@@ -26,6 +26,7 @@ const initialState = {
   alertSyncStatus: 'idle', // idle | loading | saving | saved | error
   alertSyncError: null,
   alertImages: {}, // { emailId: { dataUri, filename, loading, error } } — memory-only
+  importLog: [], // Array of import entries, newest first
   schedules: {}, // { "route_weekOf": { monday: [...], ... } }
 };
 
@@ -224,6 +225,10 @@ function reducer(state, action) {
       const { emailId, ...imageData } = action.payload;
       return { ...state, alertImages: { ...state.alertImages, [emailId]: imageData } };
     }
+    case 'LOAD_IMPORT_LOG':
+      return { ...state, importLog: action.payload };
+    case 'ADD_IMPORT_ENTRY':
+      return { ...state, importLog: [action.payload, ...state.importLog] };
     case 'LOAD_SCHEDULES':
       return { ...state, schedules: action.payload };
     case 'SET_SCHEDULE': {
@@ -454,6 +459,45 @@ export function AppProvider({ children }) {
     return () => { if (schedulesSaveTimer.current) clearTimeout(schedulesSaveTimer.current); };
   }, [state.schedules]);
 
+  // Load import log from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchImportLog()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (Array.isArray(data)) {
+            dispatch({ type: 'LOAD_IMPORT_LOG', payload: data });
+          }
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load import log:', err);
+      });
+  }, []);
+
+  const addImportEntry = useCallback((entry) => {
+    dispatch({ type: 'ADD_IMPORT_ENTRY', payload: { id: uuidv4(), timestamp: new Date().toISOString(), ...entry } });
+  }, []);
+
+  // Auto-save import log to GitHub when it changes
+  const prevImportLogRef = useRef(state.importLog);
+  const importLogSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevImportLogRef.current === state.importLog) return;
+    prevImportLogRef.current = state.importLog;
+    if (state.importLog.length === 0) return;
+
+    if (importLogSaveTimer.current) clearTimeout(importLogSaveTimer.current);
+    importLogSaveTimer.current = setTimeout(() => {
+      saveImportLog(JSON.stringify(state.importLog))
+        .catch((err) => console.error('Failed to save import log:', err));
+    }, 2000);
+
+    return () => { if (importLogSaveTimer.current) clearTimeout(importLogSaveTimer.current); };
+  }, [state.importLog]);
+
   const actions = {
     addStore: useCallback(
       (store) => dispatch({ type: 'ADD_STORE', payload: store }),
@@ -541,6 +585,7 @@ export function AppProvider({ children }) {
     syncAlertsFromGithub,
     loadAlertImage,
     saveSchedule,
+    addImportEntry,
     bulkImportStores: useCallback(
       (updates, additions) => dispatch({ type: 'BULK_IMPORT_STORES', payload: { updates, additions } }),
       []

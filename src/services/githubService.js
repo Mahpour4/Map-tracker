@@ -3,12 +3,14 @@ const REPO_NAME = 'Map-tracker';
 const FILE_PATH = 'src/data/stores.csv';
 const ALERTS_FILE_PATH = 'src/data/alerts.csv';
 const SCHEDULES_FILE_PATH = 'src/data/schedules.json';
+const IMPORTLOG_FILE_PATH = 'src/data/importLog.json';
 const API_BASE = 'https://api.github.com';
 
 const TOKEN_KEY = 'github_pat';
 const SHA_KEY = 'github_file_sha';
 const ALERTS_SHA_KEY = 'github_alerts_sha';
 const SCHEDULES_SHA_KEY = 'github_schedules_sha';
+const IMPORTLOG_SHA_KEY = 'github_importlog_sha';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -271,6 +273,82 @@ export async function saveSchedulesJson(jsonContent, message) {
 
   const data = await res.json();
   saveSchedulesSha(data.content.sha);
+  return data;
+}
+
+// ---- Import Log JSON (GitHub sync) ----
+
+function getImportLogSha() {
+  return localStorage.getItem(IMPORTLOG_SHA_KEY) || '';
+}
+
+function saveImportLogSha(sha) {
+  localStorage.setItem(IMPORTLOG_SHA_KEY, sha);
+}
+
+export async function fetchImportLog() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
+    { headers: headers() }
+  );
+
+  if (res.status === 404) {
+    return { content: '[]', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveImportLogSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveImportLog(jsonContent, message) {
+  let sha = getImportLogSha();
+
+  if (!sha) {
+    try {
+      const current = await fetchImportLog();
+      sha = current.sha;
+    } catch { /* file may not exist */ }
+  }
+
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+
+  const body = {
+    message: message || 'Update importLog.json from Map Tracker app',
+    content: encoded,
+  };
+  if (sha) body.sha = sha;
+
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
+    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      const fresh = await fetchImportLog();
+      const retryBody = { ...body, sha: fresh.sha };
+      const retryRes = await fetch(
+        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
+        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
+      );
+      if (!retryRes.ok) throw new Error('Failed to save import log after retry');
+      const retryData = await retryRes.json();
+      saveImportLogSha(retryData.content.sha);
+      return retryData;
+    }
+    throw new Error(err.message || `GitHub save failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  saveImportLogSha(data.content.sha);
   return data;
 }
 

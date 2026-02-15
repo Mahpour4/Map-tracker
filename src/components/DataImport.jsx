@@ -198,12 +198,13 @@ function detectStoreType(name, id) {
 }
 
 export default function DataImport() {
-  const { state, bulkImportStores } = useApp();
-  const { stores } = state;
+  const { state, bulkImportStores, addImportEntry } = useApp();
+  const { stores, importLog } = state;
 
   const [rawInput, setRawInput] = useState('');
   const [parsed, setParsed] = useState(null);
   const [applied, setApplied] = useState(false);
+  const [expandedEntry, setExpandedEntry] = useState(null); // id of expanded log entry
 
   // Store lookup
   const storeMap = useMemo(() => {
@@ -278,6 +279,20 @@ export default function DataImport() {
   function handleApply() {
     if (!parsed || parsed.error) return;
     bulkImportStores(parsed.updates, parsed.additions);
+
+    // Build import log entry
+    const logStores = [
+      ...parsed.updates.map(u => ({ id: u.id, name: u._displayName || u.id, date: u.lastVisited, type: 'update' })),
+      ...parsed.additions.map(a => ({ id: a.id, name: a.name, date: a.lastVisited, type: 'new' })),
+    ];
+    addImportEntry({
+      totalInFeed: parsed.total,
+      updatedCount: parsed.updates.length,
+      addedCount: parsed.additions.length,
+      skippedCount: parsed.skipped.length,
+      stores: logStores,
+    });
+
     setApplied(true);
   }
 
@@ -420,6 +435,75 @@ export default function DataImport() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Import History */}
+      {importLog.length > 0 && (
+        <div className="di-log-section">
+          <h3 className="di-log-title">Import History ({importLog.length})</h3>
+          <div className="di-log-list">
+            {importLog.map((entry, idx) => {
+              const isExpanded = expandedEntry === entry.id || (expandedEntry === null && idx === 0);
+              const ts = new Date(entry.timestamp);
+              const dateStr = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              const timeStr = ts.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+              const lastStore = entry.stores?.length > 0 ? entry.stores[entry.stores.length - 1] : null;
+
+              return (
+                <div key={entry.id} className="di-log-entry">
+                  <div
+                    className="di-log-entry-header"
+                    onClick={() => setExpandedEntry(isExpanded ? '__none__' : entry.id)}
+                  >
+                    <div className="di-log-entry-left">
+                      <span className={`al-chevron ${isExpanded ? 'expanded' : ''}`}>&#9654;</span>
+                      <span className="di-log-entry-date">{dateStr} {timeStr}</span>
+                    </div>
+                    <div className="di-log-entry-pills">
+                      {entry.updatedCount > 0 && <span className="di-log-pill blue">{entry.updatedCount} updated</span>}
+                      {entry.addedCount > 0 && <span className="di-log-pill green">{entry.addedCount} new</span>}
+                      {entry.skippedCount > 0 && <span className="di-log-pill gray">{entry.skippedCount} skipped</span>}
+                      <span className="di-log-pill outline">{entry.totalInFeed} in feed</span>
+                    </div>
+                  </div>
+                  {isExpanded && entry.stores && (
+                    <div className="di-log-entry-body">
+                      {lastStore && (
+                        <div className="di-log-last-banner">
+                          Last entry: <strong>{lastStore.name}</strong> ({lastStore.id}) — {lastStore.date}
+                        </div>
+                      )}
+                      <table className="di-log-table">
+                        <thead>
+                          <tr>
+                            <th>Store ID</th>
+                            <th>Name</th>
+                            <th>Date</th>
+                            <th>Type</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {entry.stores.map((s, si) => (
+                            <tr key={s.id + si} className={si === entry.stores.length - 1 ? 'di-log-last-row' : ''}>
+                              <td className="di-log-cell-id">{s.id}</td>
+                              <td>{s.name}</td>
+                              <td>{s.date}</td>
+                              <td>
+                                <span className={`di-log-type ${s.type}`}>
+                                  {s.type === 'new' ? 'New' : 'Update'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
