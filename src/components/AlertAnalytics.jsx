@@ -3,6 +3,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getDaysBetween(dateA, dateB) {
   if (!dateA || !dateB) return null;
   const a = new Date(dateA);
@@ -20,7 +24,7 @@ function getAlertStatus(alert, store) {
     const responseDays = getDaysBetween(alert.dateReceived, visitDate);
     return { status: 'resolved', color: '#22c55e', days: responseDays };
   }
-  const now = new Date().toISOString().split('T')[0];
+  const now = localDateStr();
   const waitDays = getDaysBetween(alert.dateReceived, now);
   return { status: 'unresolved', color: waitDays > 7 ? '#ef4444' : '#f97316', days: waitDays };
 }
@@ -45,7 +49,7 @@ export default function AlertAnalytics() {
 
   // Enrich all alerts with store data and status
   const enrichedAlerts = useMemo(() => {
-    const now = new Date().toISOString().split('T')[0];
+    const now = localDateStr();
     return alerts.map(a => {
       const store = storeMap[a.storeId];
       const statusInfo = getAlertStatus(a, store);
@@ -250,7 +254,7 @@ export default function AlertAnalytics() {
       );
     }
 
-    const dateSlug = new Date().toISOString().split('T')[0];
+    const dateSlug = localDateStr();
     doc.save(`30Day_Alert_Report_${dateSlug}.pdf`);
   }
 

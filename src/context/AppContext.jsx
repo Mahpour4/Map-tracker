@@ -4,6 +4,10 @@ import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '..
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
 
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const AppContext = createContext();
 
 const initialState = {
@@ -361,7 +365,7 @@ export function AppProvider({ children }) {
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
 
     try {
-      const afterDate = date || new Date().toISOString().split('T')[0];
+      const afterDate = date || localDateStr();
 
       const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(afterDate);
 
@@ -382,7 +386,7 @@ export function AppProvider({ children }) {
       // Prune alerts older than 30 days
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - 30);
-      const cutoffStr = cutoff.toISOString().split('T')[0];
+      const cutoffStr = localDateStr(cutoff);
       const merged = Object.values(alertMap).filter(a =>
         !a.dateReceived || a.dateReceived >= cutoffStr
       );

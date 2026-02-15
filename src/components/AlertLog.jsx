@@ -3,6 +3,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getDaysBetween(dateA, dateB) {
   if (!dateA || !dateB) return null;
   const a = new Date(dateA);
@@ -21,7 +25,7 @@ function getAlertStatus(alert, store) {
     const responseDays = getDaysBetween(alert.dateReceived, visitDate);
     return { status: 'resolved', color: '#22c55e', days: responseDays };
   }
-  const now = new Date().toISOString().split('T')[0];
+  const now = localDateStr();
   const waitDays = getDaysBetween(alert.dateReceived, now);
   return { status: 'unresolved', color: waitDays > 7 ? '#ef4444' : '#f97316', days: waitDays };
 }
@@ -37,9 +41,9 @@ export default function AlertLog() {
   const { state, selectStore, setMapView, setPage, setFilterRoute, loadAlertImage, fetchGmailAlerts, syncFromGithub } = useApp();
   const { alerts, stores, alertImages, syncStatus } = state;
 
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0]; })();
-  const dayBefore = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return d.toISOString().split('T')[0]; })();
+  const today = localDateStr();
+  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return localDateStr(d); })();
+  const dayBefore = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return localDateStr(d); })();
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterVendor, setLocalFilterVendor] = useState('all');
@@ -60,7 +64,7 @@ export default function AlertLog() {
 
   // Enrich alerts with store data, status, and days since service
   const enrichedAlerts = useMemo(() => {
-    const now = new Date().toISOString().split('T')[0];
+    const now = localDateStr();
     return alerts.map(a => {
       const store = storeMap[a.storeId];
       const statusInfo = getAlertStatus(a, store);
@@ -344,7 +348,7 @@ export default function AlertLog() {
       );
     }
 
-    const dateSlug = new Date().toISOString().split('T')[0];
+    const dateSlug = localDateStr();
     doc.save(`Route_${route}_Alerts_${dateSlug}.pdf`);
   }
 
