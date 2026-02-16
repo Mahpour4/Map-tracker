@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
+import localSchedules from '../data/schedules.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -31,7 +32,7 @@ const initialState = {
   alertSyncError: null,
   alertImages: {}, // { emailId: { dataUri, filename, loading, error } } — memory-only
   importLog: [], // Array of import entries, newest first
-  schedules: {}, // { "route_weekOf": { monday: [...], ... } }
+  schedules: localSchedules, // { "route_weekOf": { monday: [...], ... } }
 };
 
 const easternShoreSubsections = {
