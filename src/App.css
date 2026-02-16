@@ -3288,6 +3288,73 @@ textarea {
   outline: none;
 }
 
+/* ============ Schedule Visit Date Edit ============ */
+.schedule-stop-days-clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.schedule-stop-days-clickable:hover {
+  opacity: 0.8;
+}
+
+.schedule-visit-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 0;
+}
+
+.schedule-visit-date-input {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 10px;
+  border: 1px solid #2563eb;
+  border-radius: 3px;
+  outline: none;
+  min-width: 0;
+}
+
+.schedule-visit-save-btn {
+  padding: 2px 8px;
+  font-size: 9px;
+  font-weight: 600;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.schedule-visit-save-btn:hover {
+  background: #1d4ed8;
+}
+
+.schedule-visit-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.schedule-visit-cancel-btn {
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.schedule-visit-cancel-btn:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
 /* ============ Schedule Compliance ============ */
 .schedule-compliance-bar {
   display: flex;

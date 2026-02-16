@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import visitHistory from '../data/visitHistory';
 import jsPDF from 'jspdf';
@@ -91,7 +91,7 @@ function formatWeekRange(weekStart, weekEnd) {
 }
 
 export default function RouteSchedule() {
-  const { state, saveSchedule } = useApp();
+  const { state, saveSchedule, updateStore } = useApp();
   const { stores, schedules } = state;
 
   const [selectedRoute, setSelectedRoute] = useState('');
@@ -99,6 +99,9 @@ export default function RouteSchedule() {
   const [dragItem, setDragItem] = useState(null);
   const [noteEditing, setNoteEditing] = useState(null);
   const [showSchedulesDropdown, setShowSchedulesDropdown] = useState(false);
+  const [visitEditId, setVisitEditId] = useState(null);
+  const [visitEditDate, setVisitEditDate] = useState('');
+  const visitDateRef = useRef(null);
 
   // Current schedule from context
   const scheduleKey = selectedRoute ? getScheduleKey(selectedRoute, weekOf) : '';
@@ -328,6 +331,34 @@ export default function RouteSchedule() {
     newSchedule[day] = [];
     persistSchedule(newSchedule);
   }
+
+  // Visit date editing
+  const openVisitEdit = useCallback((storeId) => {
+    setVisitEditId(storeId);
+    setVisitEditDate(new Date().toISOString().split('T')[0]);
+    setTimeout(() => {
+      try { visitDateRef.current?.showPicker(); } catch (_) {}
+    }, 50);
+  }, []);
+
+  const saveVisitDate = useCallback((storeId) => {
+    if (!visitEditDate) return;
+    const ymd = visitEditDate.split('T')[0].split(' ')[0];
+    if (!ymd) return;
+    if (!visitHistory[storeId]) visitHistory[storeId] = [];
+    if (!visitHistory[storeId].includes(ymd)) {
+      visitHistory[storeId].push(ymd);
+      visitHistory[storeId].sort();
+    }
+    const store = stores.find(s => s.id === storeId);
+    if (store) {
+      const allDates = visitHistory[storeId].slice().sort();
+      const newest = allDates[allDates.length - 1];
+      updateStore({ ...store, lastVisited: newest });
+    }
+    setVisitEditId(null);
+    setVisitEditDate('');
+  }, [visitEditDate, stores, updateStore]);
 
   // Generate PDF with compliance
   const generatePDF = useCallback(() => {
@@ -573,9 +604,26 @@ export default function RouteSchedule() {
                         {days === null ? 'Never' : `${days}d`}
                       </span>
                     </div>
-                    <div className="schedule-chip-lastvisit">
+                    <div
+                      className="schedule-chip-lastvisit schedule-stop-days-clickable"
+                      onClick={(e) => { e.stopPropagation(); openVisitEdit(s.id); }}
+                      title="Click to edit visit date"
+                    >
                       Last: {formatVisitDate(s.lastVisited)}
                     </div>
+                    {visitEditId === s.id && (
+                      <div className="schedule-visit-edit">
+                        <input
+                          ref={visitDateRef}
+                          type="date"
+                          className="schedule-visit-date-input"
+                          value={visitEditDate}
+                          onChange={(e) => setVisitEditDate(e.target.value)}
+                        />
+                        <button className="schedule-visit-save-btn" onClick={() => saveVisitDate(s.id)} disabled={!visitEditDate}>Save</button>
+                        <button className="schedule-visit-cancel-btn" onClick={() => setVisitEditId(null)}>&times;</button>
+                      </div>
+                    )}
                     <div className="schedule-chip-add-btns">
                       {DAYS.map(d => (
                         <button
@@ -636,9 +684,14 @@ export default function RouteSchedule() {
                             <div className="schedule-stop-info">
                               <div className="schedule-stop-name">
                                 {store.id}
-                                <span className="schedule-stop-days" style={{
-                                  color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
-                                }}>
+                                <span
+                                  className="schedule-stop-days schedule-stop-days-clickable"
+                                  style={{
+                                    color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
+                                  }}
+                                  onClick={(e) => { e.stopPropagation(); openVisitEdit(store.id); }}
+                                  title="Click to edit visit date"
+                                >
                                   {days === null ? 'Never' : `${days}d`}
                                 </span>
                               </div>
@@ -659,6 +712,19 @@ export default function RouteSchedule() {
                               <button className="btn-icon btn-icon-danger" onClick={() => removeFromDay(day, item.storeId)}>✕</button>
                             </div>
                           </div>
+                          {visitEditId === store.id && (
+                            <div className="schedule-visit-edit">
+                              <input
+                                ref={visitDateRef}
+                                type="date"
+                                className="schedule-visit-date-input"
+                                value={visitEditDate}
+                                onChange={(e) => setVisitEditDate(e.target.value)}
+                              />
+                              <button className="schedule-visit-save-btn" onClick={() => saveVisitDate(store.id)} disabled={!visitEditDate}>Save</button>
+                              <button className="schedule-visit-cancel-btn" onClick={() => setVisitEditId(null)}>&times;</button>
+                            </div>
+                          )}
                           {isEditingNote ? (
                             <input
                               className="schedule-stop-note-input"
