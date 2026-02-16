@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
+import visitHistory from '../data/visitHistory';
 
 const STORE_TYPES = [
   'food-lion', 'shoppers', 'wegmans', 'walmart', 'giant-martins',
@@ -49,8 +50,43 @@ function StoreCard({ store, index, routes }) {
   const isSelected = state.selectedStore === store.id;
   const tc = typeColors[store.type] || typeColors.other;
   const isUnassignedRoute = !store.routeNumber || store.routeNumber === '0';
+  const [editingVisit, setEditingVisit] = useState(false);
+  const [visitDate, setVisitDate] = useState('');
+  const visitDateRef = useRef(null);
 
   const zone = state.zones.find((z) => z.id === store.zoneId);
+
+  const openVisitEdit = (e) => {
+    e.stopPropagation();
+    setEditingVisit(true);
+    setVisitDate(new Date().toISOString().split('T')[0]);
+    setTimeout(() => {
+      try { visitDateRef.current?.showPicker(); } catch (_) {}
+    }, 50);
+  };
+
+  const saveVisit = (e) => {
+    e.stopPropagation();
+    if (!visitDate) return;
+    const ymd = visitDate.split('T')[0].split(' ')[0];
+    if (!ymd) return;
+    if (!visitHistory[store.id]) visitHistory[store.id] = [];
+    if (!visitHistory[store.id].includes(ymd)) {
+      visitHistory[store.id].push(ymd);
+      visitHistory[store.id].sort();
+    }
+    const allDates = visitHistory[store.id].slice().sort();
+    const newest = allDates[allDates.length - 1];
+    updateStore({ ...store, lastVisited: newest });
+    setEditingVisit(false);
+    setVisitDate('');
+  };
+
+  const cancelVisitEdit = (e) => {
+    e.stopPropagation();
+    setEditingVisit(false);
+    setVisitDate('');
+  };
 
   return (
     <div
@@ -93,12 +129,27 @@ function StoreCard({ store, index, routes }) {
         ) : (
           <span className="zone-badge unassigned">Unassigned</span>
         )}
-        {store.lastVisited && (
-          <span className="last-visited">
-            Visited {formatDate(store.lastVisited)}
-          </span>
-        )}
+        <span
+          className="last-visited last-visited-clickable"
+          onClick={openVisitEdit}
+          title="Click to edit visit date"
+        >
+          {store.lastVisited ? `Visited ${formatDate(store.lastVisited)}` : 'No visit date'}
+        </span>
       </div>
+      {editingVisit && (
+        <div className="store-visit-edit" onClick={(e) => e.stopPropagation()}>
+          <input
+            ref={visitDateRef}
+            type="date"
+            className="store-visit-date-input"
+            value={visitDate}
+            onChange={(e) => setVisitDate(e.target.value)}
+          />
+          <button className="store-visit-save-btn" onClick={saveVisit} disabled={!visitDate}>Save</button>
+          <button className="store-visit-cancel-btn" onClick={cancelVisitEdit}>&times;</button>
+        </div>
+      )}
 
       <div className="store-card-actions">
         {isUnassignedRoute ? (

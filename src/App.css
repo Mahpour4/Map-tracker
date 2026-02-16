@@ -769,6 +769,72 @@ textarea {
   margin-left: 6px;
 }
 
+.last-visited-clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.last-visited-clickable:hover {
+  color: #2563eb;
+}
+
+.store-visit-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 0;
+}
+
+.store-visit-date-input {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 11px;
+  border: 1px solid #2563eb;
+  border-radius: 4px;
+  outline: none;
+  min-width: 0;
+}
+
+.store-visit-save-btn {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.store-visit-save-btn:hover {
+  background: #1d4ed8;
+}
+
+.store-visit-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.store-visit-cancel-btn {
+  padding: 3px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.store-visit-cancel-btn:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
 .results-count {
   font-size: 11px;
   color: var(--text-muted);
