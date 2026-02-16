@@ -630,10 +630,16 @@ export default function RouteSchedule() {
                           <div className="schedule-stop-top">
                             <span className="schedule-stop-num">{item.stopNumber}</span>
                             <div className="schedule-stop-info">
-                              <div className="schedule-stop-name">{store.id}</div>
+                              <div className="schedule-stop-name">
+                                {store.id}
+                                <span className="schedule-stop-days" style={{
+                                  color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
+                                }}>
+                                  {days === null ? 'Never' : `${days}d`}
+                                </span>
+                              </div>
                               <div className="schedule-stop-detail">{store.name}</div>
                               <div className="schedule-stop-addr">{store.address}, {store.city}</div>
-                              <div className="schedule-stop-lastvisit">Last visit: {formatVisitDate(store.lastVisited)}</div>
                             </div>
                             <div className="schedule-stop-compliance">
                               <span className="compliance-badge" style={{ color: compliance.color, borderColor: compliance.color }}>
