@@ -42,13 +42,17 @@ function getDayDate(weekOf, day) {
 }
 
 /** Check compliance: was store visited on the scheduled day or same week? */
-function getStopCompliance(storeId, scheduledDay, weekOf) {
+function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited) {
   const scheduledDate = getDayDate(weekOf, scheduledDay);
   const weekEnd = getDayDate(weekOf, 'friday');
   const weekStart = weekOf;
 
-  // Get all visit dates for this store
-  const visits = visitHistory[storeId] || [];
+  // Merge visitHistory with store.lastVisited for complete picture
+  const visits = [...(visitHistory[storeId] || [])];
+  if (lastVisited) {
+    const normalised = lastVisited.split('T')[0];
+    if (!visits.includes(normalised)) visits.push(normalised);
+  }
 
   // Check if visited on exact day
   const exactMatch = visits.includes(scheduledDate);
@@ -147,13 +151,20 @@ export default function RouteSchedule() {
     return routeStores.filter(s => !scheduledIds.has(s.id));
   }, [routeStores, scheduledIds]);
 
+  // Store lookup
+  const storeMap = useMemo(() => {
+    const map = {};
+    stores.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [stores]);
+
   // Compliance stats
   const complianceStats = useMemo(() => {
     let total = 0, exact = 0, sameWeek = 0, missed = 0, future = 0;
     DAYS.forEach(day => {
       (schedule[day] || []).forEach(item => {
         total++;
-        const c = getStopCompliance(item.storeId, day, weekOf);
+        const c = getStopCompliance(item.storeId, day, weekOf, storeMap[item.storeId]?.lastVisited);
         if (c.status === 'exact') exact++;
         else if (c.status === 'sameWeek') sameWeek++;
         else if (c.status === 'missed') missed++;
@@ -163,14 +174,7 @@ export default function RouteSchedule() {
     const completed = exact + sameWeek;
     const adherence = total > 0 ? Math.round((completed / (total - future)) * 100) || 0 : 0;
     return { total, exact, sameWeek, missed, future, completed, adherence };
-  }, [schedule, weekOf]);
-
-  // Store lookup
-  const storeMap = useMemo(() => {
-    const map = {};
-    stores.forEach(s => { map[s.id] = s; });
-    return map;
-  }, [stores]);
+  }, [schedule, weekOf, storeMap]);
 
   // Process saved schedules list
   const savedSchedulesList = useMemo(() => {
@@ -370,7 +374,7 @@ export default function RouteSchedule() {
         const days = getDaysSinceVisit(store.lastVisited);
         const lastVisit = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : 'Never';
         const daysText = days !== null ? `${days}d` : 'Never';
-        const compliance = getStopCompliance(item.storeId, day, weekOf);
+        const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited);
         return [
           item.stopNumber,
           store.id,
@@ -618,7 +622,7 @@ export default function RouteSchedule() {
                       const store = storeMap[item.storeId];
                       if (!store) return null;
                       const days = getDaysSinceVisit(store.lastVisited);
-                      const compliance = getStopCompliance(item.storeId, day, weekOf);
+                      const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited);
                       const isEditingNote = noteEditing === `${day}_${item.storeId}`;
                       return (
                         <div
