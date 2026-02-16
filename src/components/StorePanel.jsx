@@ -1,6 +1,5 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import visitHistory from '../data/visitHistory';
 
 const STORE_TYPES = [
   'food-lion', 'shoppers', 'wegmans', 'walmart', 'giant-martins',
@@ -46,7 +45,7 @@ function formatDate(dateStr) {
 }
 
 function StoreCard({ store, index, routes }) {
-  const { selectStore, deleteStore, updateStore, setMapView, state } = useApp();
+  const { selectStore, deleteStore, updateStore, setMapView, state, recordVisit } = useApp();
   const isSelected = state.selectedStore === store.id;
   const tc = typeColors[store.type] || typeColors.other;
   const isUnassignedRoute = !store.routeNumber || store.routeNumber === '0';
@@ -70,14 +69,7 @@ function StoreCard({ store, index, routes }) {
     if (!visitDate) return;
     const ymd = visitDate.split('T')[0].split(' ')[0];
     if (!ymd) return;
-    if (!visitHistory[store.id]) visitHistory[store.id] = [];
-    if (!visitHistory[store.id].includes(ymd)) {
-      visitHistory[store.id].push(ymd);
-      visitHistory[store.id].sort();
-    }
-    const allDates = visitHistory[store.id].slice().sort();
-    const newest = allDates[allDates.length - 1];
-    updateStore({ ...store, lastVisited: newest });
+    recordVisit(store.id, ymd);
     setEditingVisit(false);
     setVisitDate('');
   };

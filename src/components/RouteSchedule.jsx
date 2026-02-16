@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import visitHistory from '../data/visitHistory';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -42,13 +41,13 @@ function getDayDate(weekOf, day) {
 }
 
 /** Check compliance: was store visited on the scheduled day or same week? */
-function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited) {
+function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited, visitHistoryMap) {
   const scheduledDate = getDayDate(weekOf, scheduledDay);
   const weekEnd = getDayDate(weekOf, 'friday');
   const weekStart = weekOf;
 
-  // Merge visitHistory with store.lastVisited for complete picture
-  const visits = [...(visitHistory[storeId] || [])];
+  // Use context visit history, merge with store.lastVisited as safety net
+  const visits = [...(visitHistoryMap[storeId] || [])];
   if (lastVisited) {
     const normalised = lastVisited.split('T')[0];
     if (!visits.includes(normalised)) visits.push(normalised);
@@ -91,8 +90,8 @@ function formatWeekRange(weekStart, weekEnd) {
 }
 
 export default function RouteSchedule() {
-  const { state, saveSchedule, updateStore } = useApp();
-  const { stores, schedules } = state;
+  const { state, saveSchedule, recordVisit } = useApp();
+  const { stores, schedules, visitHistory: visitHistoryMap } = state;
 
   const [selectedRoute, setSelectedRoute] = useState('');
   const [weekOf, setWeekOf] = useState(getMonday(new Date()));
@@ -167,7 +166,7 @@ export default function RouteSchedule() {
     DAYS.forEach(day => {
       (schedule[day] || []).forEach(item => {
         total++;
-        const c = getStopCompliance(item.storeId, day, weekOf, storeMap[item.storeId]?.lastVisited);
+        const c = getStopCompliance(item.storeId, day, weekOf, storeMap[item.storeId]?.lastVisited, visitHistoryMap);
         if (c.status === 'exact') exact++;
         else if (c.status === 'sameWeek') sameWeek++;
         else if (c.status === 'missed') missed++;
@@ -345,20 +344,10 @@ export default function RouteSchedule() {
     if (!visitEditDate) return;
     const ymd = visitEditDate.split('T')[0].split(' ')[0];
     if (!ymd) return;
-    if (!visitHistory[storeId]) visitHistory[storeId] = [];
-    if (!visitHistory[storeId].includes(ymd)) {
-      visitHistory[storeId].push(ymd);
-      visitHistory[storeId].sort();
-    }
-    const store = stores.find(s => s.id === storeId);
-    if (store) {
-      const allDates = visitHistory[storeId].slice().sort();
-      const newest = allDates[allDates.length - 1];
-      updateStore({ ...store, lastVisited: newest });
-    }
+    recordVisit(storeId, ymd);
     setVisitEditId(null);
     setVisitEditDate('');
-  }, [visitEditDate, stores, updateStore]);
+  }, [visitEditDate, recordVisit]);
 
   // Generate PDF with compliance
   const generatePDF = useCallback(() => {
@@ -405,7 +394,7 @@ export default function RouteSchedule() {
         const days = getDaysSinceVisit(store.lastVisited);
         const lastVisit = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : 'Never';
         const daysText = days !== null ? `${days}d` : 'Never';
-        const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited);
+        const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited, visitHistoryMap);
         return [
           item.stopNumber,
           store.id,
@@ -670,7 +659,7 @@ export default function RouteSchedule() {
                       const store = storeMap[item.storeId];
                       if (!store) return null;
                       const days = getDaysSinceVisit(store.lastVisited);
-                      const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited);
+                      const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited, visitHistoryMap);
                       const isEditingNote = noteEditing === `${day}_${item.storeId}`;
                       return (
                         <div

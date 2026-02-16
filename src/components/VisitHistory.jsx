@@ -1,6 +1,5 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import visitHistoryData from '../data/visitHistory';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -91,7 +90,7 @@ const TYPE_LABELS = {
 };
 
 export default function VisitHistory() {
-  const { state, updateStore, syncFromGithub } = useApp();
+  const { state, updateStore, syncFromGithub, recordVisit } = useApp();
   const { stores, syncStatus } = state;
   const [refreshing, setRefreshing] = useState(false);
   const [filterRoute, setFilterRoute] = useState('all');
@@ -104,7 +103,6 @@ export default function VisitHistory() {
   const [editDate, setEditDate] = useState('');
   const [editPos, setEditPos] = useState(null);
   const [viewDate, setViewDate] = useState('');
-  const [visitVersion, setVisitVersion] = useState(0);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
   const editDateRef = useRef(null);
   const pdfMenuRef = useRef(null);
@@ -172,22 +170,9 @@ export default function VisitHistory() {
     if (!editDate) return;
     const ymd = toYMD(editDate);
     if (!ymd) return;
-    // Update visit history in memory
-    if (!visitHistoryData[storeId]) visitHistoryData[storeId] = [];
-    if (!visitHistoryData[storeId].includes(ymd)) {
-      visitHistoryData[storeId].push(ymd);
-      visitHistoryData[storeId].sort();
-    }
-    // Update store's lastVisited (triggers GitHub sync)
-    const store = stores.find((s) => s.id === storeId);
-    if (store) {
-      const allDates = visitHistoryData[storeId].slice().sort();
-      const newest = allDates[allDates.length - 1];
-      updateStore({ ...store, lastVisited: newest });
-    }
+    recordVisit(storeId, ymd);
     closeEdit();
-    setVisitVersion((v) => v + 1);
-  }, [editDate, stores, updateStore, closeEdit]);
+  }, [editDate, recordVisit, closeEdit]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -227,8 +212,8 @@ export default function VisitHistory() {
     return stores
       .filter((s) => s.routeNumber && s.routeNumber !== '0')
       .map((s) => {
-        // Merge visitHistory.js dates with the store's lastVisited from stores.csv
-        const dates = new Set(visitHistoryData[s.id] || []);
+        // Get visit dates from context (single source of truth), merge lastVisited as safety net
+        const dates = new Set(state.visitHistory[s.id] || []);
         if (s.lastVisited) {
           const csvDate = toYMD(s.lastVisited);
           if (csvDate) dates.add(csvDate);
@@ -270,7 +255,7 @@ export default function VisitHistory() {
           allDates: history,
         };
       });
-  }, [stores, visitVersion]);
+  }, [stores, state.visitHistory]);
 
   // Visits on selected date
   const viewDateCount = useMemo(() => {
