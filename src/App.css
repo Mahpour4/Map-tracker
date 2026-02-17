@@ -5387,6 +5387,18 @@ textarea {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
+.ft-advanced {
+  margin-top: 8px;
+}
+
+.ft-advanced summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
 .ft-error {
   color: var(--danger);
   font-size: 12px;

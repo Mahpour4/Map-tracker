@@ -1,8 +1,14 @@
 // Motive (formerly KeepTruckin) Fleet API Service
+//
+// In development, requests go through the Vite proxy (/api/motive -> api.gomotive.com)
+// to bypass CORS. In production, set a custom base URL or CORS proxy.
 const TOKEN_KEY = 'motive_api_key';
 const BASE_URL_KEY = 'motive_base_url';
 const CORS_PROXY_KEY = 'motive_cors_proxy';
-const DEFAULT_BASE_URL = 'https://api.gomotive.com/v1';
+
+// Use Vite dev proxy by default to avoid CORS issues
+const DEFAULT_BASE_URL = '/api/motive/v1';
+const DIRECT_API_URL = 'https://api.gomotive.com/v1';
 
 // ---- Credential management ----
 
@@ -23,7 +29,12 @@ export function getMotiveBaseUrl() {
 }
 
 export function setMotiveBaseUrl(url) {
-  localStorage.setItem(BASE_URL_KEY, url.trim());
+  if (url && url.trim() && url.trim() !== DIRECT_API_URL) {
+    localStorage.setItem(BASE_URL_KEY, url.trim());
+  } else {
+    // Use default proxy path
+    localStorage.removeItem(BASE_URL_KEY);
+  }
 }
 
 export function getCorsProxy() {
@@ -31,7 +42,7 @@ export function getCorsProxy() {
 }
 
 export function setCorsProxy(proxy) {
-  if (proxy.trim()) {
+  if (proxy && proxy.trim()) {
     localStorage.setItem(CORS_PROXY_KEY, proxy.trim());
   } else {
     localStorage.removeItem(CORS_PROXY_KEY);
@@ -49,17 +60,29 @@ async function motiveFetch(path, params = {}) {
   if (!apiKey) throw new Error('Motive API key not configured');
 
   const baseUrl = getMotiveBaseUrl();
-  const fullUrl = new URL(`${baseUrl}${path}`);
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) {
-      fullUrl.searchParams.set(k, String(v));
-    }
-  });
+  const isRelative = baseUrl.startsWith('/');
 
-  let fetchUrl = fullUrl.toString();
-  const proxy = getCorsProxy();
-  if (proxy) {
-    fetchUrl = `${proxy}${encodeURIComponent(fetchUrl)}`;
+  // Build URL - relative paths (proxy) use string concat, absolute use URL constructor
+  let fetchUrl;
+  if (isRelative) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) searchParams.set(k, String(v));
+    });
+    const qs = searchParams.toString();
+    fetchUrl = `${baseUrl}${path}${qs ? '?' + qs : ''}`;
+  } else {
+    const fullUrl = new URL(`${baseUrl}${path}`);
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) fullUrl.searchParams.set(k, String(v));
+    });
+    fetchUrl = fullUrl.toString();
+
+    // Apply CORS proxy if configured (only for absolute URLs)
+    const proxy = getCorsProxy();
+    if (proxy) {
+      fetchUrl = `${proxy}${encodeURIComponent(fetchUrl)}`;
+    }
   }
 
   const res = await fetch(fetchUrl, {
@@ -75,7 +98,7 @@ async function motiveFetch(path, params = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error_message || `Motive API error: ${res.status}`);
+    throw new Error(err.error_message || err.message || `Motive API error: ${res.status}`);
   }
 
   return res.json();

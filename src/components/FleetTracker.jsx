@@ -41,7 +41,7 @@ export default function FleetTracker() {
 
   const [showApiSetup, setShowApiSetup] = useState(!isMotiveConnected());
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [baseUrlInput, setBaseUrlInput] = useState(getMotiveBaseUrl());
+  const [baseUrlInput, setBaseUrlInput] = useState('');
   const [corsProxyInput, setCorsProxyInput] = useState(getCorsProxy());
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -234,22 +234,25 @@ export default function FleetTracker() {
                   onChange={(e) => setApiKeyInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}
                 />
-                <label className="ft-label">API Base URL (optional)</label>
-                <input
-                  type="text"
-                  className="ft-input"
-                  placeholder="https://api.gomotive.com/v1"
-                  value={baseUrlInput}
-                  onChange={(e) => setBaseUrlInput(e.target.value)}
-                />
-                <label className="ft-label">CORS Proxy URL (optional)</label>
-                <input
-                  type="text"
-                  className="ft-input"
-                  placeholder="https://corsproxy.io/?"
-                  value={corsProxyInput}
-                  onChange={(e) => setCorsProxyInput(e.target.value)}
-                />
+                <details className="ft-advanced">
+                  <summary>Advanced Settings</summary>
+                  <label className="ft-label">API Base URL (uses dev proxy by default)</label>
+                  <input
+                    type="text"
+                    className="ft-input"
+                    placeholder="/api/motive/v1 (default — proxied through Vite)"
+                    value={baseUrlInput}
+                    onChange={(e) => setBaseUrlInput(e.target.value)}
+                  />
+                  <label className="ft-label">CORS Proxy URL (for production)</label>
+                  <input
+                    type="text"
+                    className="ft-input"
+                    placeholder="https://corsproxy.io/?"
+                    value={corsProxyInput}
+                    onChange={(e) => setCorsProxyInput(e.target.value)}
+                  />
+                </details>
                 <button
                   className="btn btn-sm btn-primary"
                   onClick={handleSaveKey}
