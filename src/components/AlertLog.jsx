@@ -56,6 +56,8 @@ export default function AlertLog() {
   const [fetching, setFetching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(null); // route string or null
+  const [showStats, setShowStats] = useState(false);
+  const [statsView, setStatsView] = useState('day'); // 'day' | 'week' | 'month'
 
   // --- PDF sent tracking (persisted in localStorage) ---
   const PDF_SENT_KEY = 'pdf_sent_log';
@@ -188,6 +190,69 @@ export default function AlertLog() {
       : null;
     return { total, open, resolved, unknown, avgResponse };
   }, [enrichedAlerts]);
+
+  // Statistics grouped by time period
+  const timeStats = useMemo(() => {
+    if (!showStats) return { day: [], week: [], month: [], summary: {} };
+
+    function getWeekKey(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const jan1 = new Date(d.getFullYear(), 0, 1);
+      const dayOfYear = Math.floor((d - jan1) / 86400000) + 1;
+      const weekNum = Math.ceil((dayOfYear + jan1.getDay()) / 7);
+      return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+    }
+
+    function getMonthKey(dateStr) {
+      return dateStr.slice(0, 7);
+    }
+
+    const dayMap = {};
+    const weekMap = {};
+    const monthMap = {};
+
+    enrichedAlerts.forEach(a => {
+      const date = a.dateReceived;
+      if (!date) return;
+
+      if (!dayMap[date]) dayMap[date] = { key: date, total: 0, open: 0, resolved: 0 };
+      dayMap[date].total++;
+      if (a.status === 'unresolved') dayMap[date].open++;
+      if (a.status === 'resolved') dayMap[date].resolved++;
+
+      const wk = getWeekKey(date);
+      if (!weekMap[wk]) weekMap[wk] = { key: wk, total: 0, open: 0, resolved: 0 };
+      weekMap[wk].total++;
+      if (a.status === 'unresolved') weekMap[wk].open++;
+      if (a.status === 'resolved') weekMap[wk].resolved++;
+
+      const mo = getMonthKey(date);
+      if (!monthMap[mo]) monthMap[mo] = { key: mo, total: 0, open: 0, resolved: 0 };
+      monthMap[mo].total++;
+      if (a.status === 'unresolved') monthMap[mo].open++;
+      if (a.status === 'resolved') monthMap[mo].resolved++;
+    });
+
+    const toSorted = (map) => Object.values(map).sort((a, b) => b.key.localeCompare(a.key));
+
+    const dayArr = toSorted(dayMap);
+    const busiest = dayArr.length > 0
+      ? dayArr.reduce((max, d) => d.total > max.total ? d : max, dayArr[0])
+      : null;
+    const avgPerDay = dayArr.length > 0
+      ? Math.round(dayArr.reduce((s, d) => s + d.total, 0) / dayArr.length * 10) / 10
+      : 0;
+    const resolutionRate = enrichedAlerts.length > 0
+      ? Math.round(enrichedAlerts.filter(a => a.status === 'resolved').length / enrichedAlerts.length * 100)
+      : 0;
+
+    return {
+      day: dayArr,
+      week: toSorted(weekMap),
+      month: toSorted(monthMap),
+      summary: { busiest, avgPerDay, resolutionRate },
+    };
+  }, [enrichedAlerts, showStats]);
 
   // Determine which routes are expanded
   const isRouteExpanded = (route) => {
@@ -596,6 +661,12 @@ export default function AlertLog() {
             >
               30-Day Report
             </button>
+            <button
+              className={`al-btn-stats ${showStats ? 'active' : ''}`}
+              onClick={() => setShowStats(!showStats)}
+            >
+              {showStats ? 'Close Stats' : 'Statistics'}
+            </button>
           </div>
           <div className="al-stats">
             <span className="al-stat red">{stats.open} <span>Open</span></span>
@@ -638,6 +709,101 @@ export default function AlertLog() {
           </div>
         </div>
       </div>
+
+      {/* Statistics Panel */}
+      {showStats && (
+        <div className="al-stats-panel">
+          <div className="al-stats-panel-header">
+            <h3>Alert Statistics</h3>
+            <div className="al-stats-view-toggle">
+              {['day', 'week', 'month'].map(v => (
+                <button
+                  key={v}
+                  className={`al-quick-btn ${statsView === v ? 'active' : ''}`}
+                  onClick={() => setStatsView(v)}
+                >
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+            <button className="al-stats-close" onClick={() => setShowStats(false)}>Close</button>
+          </div>
+
+          <div className="al-stats-summary">
+            <div className="al-stats-card">
+              <span className="al-stats-card-value">{timeStats.summary.avgPerDay}</span>
+              <span className="al-stats-card-label">Avg / Day</span>
+            </div>
+            <div className="al-stats-card red">
+              <span className="al-stats-card-value">{stats.open}</span>
+              <span className="al-stats-card-label">Open</span>
+            </div>
+            <div className="al-stats-card green">
+              <span className="al-stats-card-value">{stats.resolved}</span>
+              <span className="al-stats-card-label">Resolved</span>
+            </div>
+            <div className="al-stats-card">
+              <span className="al-stats-card-value">{timeStats.summary.resolutionRate}%</span>
+              <span className="al-stats-card-label">Resolution Rate</span>
+            </div>
+            {timeStats.summary.busiest && (
+              <div className="al-stats-card">
+                <span className="al-stats-card-value">{timeStats.summary.busiest.total}</span>
+                <span className="al-stats-card-label">Busiest: {formatDate(timeStats.summary.busiest.key)}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="al-stats-chart">
+            {timeStats[statsView].length === 0 ? (
+              <div className="al-stats-empty">No data for this view</div>
+            ) : (
+              (() => {
+                const data = timeStats[statsView];
+                const maxTotal = Math.max(...data.map(d => d.total));
+                return data.map(d => {
+                  const label = statsView === 'day'
+                    ? formatDate(d.key)
+                    : statsView === 'week'
+                    ? d.key
+                    : new Date(d.key + '-01T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                  return (
+                    <div key={d.key} className="al-stats-row">
+                      <span className="al-stats-row-label">{label}</span>
+                      <div className="al-stats-row-bar-wrap">
+                        <div className="al-stats-row-bar" style={{ width: `${(d.total / maxTotal) * 100}%` }}>
+                          {d.open > 0 && (
+                            <div className="al-stats-bar-segment" style={{ flex: d.open, background: '#ef4444' }} />
+                          )}
+                          {d.resolved > 0 && (
+                            <div className="al-stats-bar-segment" style={{ flex: d.resolved, background: '#22c55e' }} />
+                          )}
+                          {(d.total - d.open - d.resolved) > 0 && (
+                            <div className="al-stats-bar-segment" style={{ flex: d.total - d.open - d.resolved, background: '#9ca3af' }} />
+                          )}
+                        </div>
+                      </div>
+                      <span className="al-stats-row-count">
+                        {d.total}
+                        <span className="al-stats-row-breakdown">
+                          {d.open > 0 && <span style={{ color: '#ef4444' }}>{d.open}o</span>}
+                          {d.resolved > 0 && <span style={{ color: '#22c55e' }}>{d.resolved}r</span>}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                });
+              })()
+            )}
+          </div>
+
+          <div className="al-stats-legend">
+            <span><span className="al-stats-legend-dot" style={{ background: '#ef4444' }} /> Open</span>
+            <span><span className="al-stats-legend-dot" style={{ background: '#22c55e' }} /> Resolved</span>
+            <span><span className="al-stats-legend-dot" style={{ background: '#9ca3af' }} /> Unknown</span>
+          </div>
+        </div>
+      )}
 
       {/* Route-grouped content */}
       {filteredAlerts.length === 0 ? (
