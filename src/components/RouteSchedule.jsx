@@ -7,17 +7,24 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 const DAY_LABELS = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday' };
 const DAY_OFFSETS = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
 
+function toLocalDate(dateStr) {
+  if (!dateStr) return null;
+  const raw = dateStr.split('T')[0];
+  const d = new Date(raw + 'T00:00:00');
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function getDaysSinceVisit(lastVisited) {
-  if (!lastVisited) return null;
-  const visited = new Date(lastVisited);
-  if (isNaN(visited.getTime())) return null;
-  return Math.floor((new Date() - visited) / (1000 * 60 * 60 * 24));
+  const visited = toLocalDate(lastVisited);
+  if (!visited) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.floor((now - visited) / (1000 * 60 * 60 * 24));
 }
 
 function formatVisitDate(lastVisited) {
-  if (!lastVisited) return 'Never';
-  const d = new Date(lastVisited);
-  if (isNaN(d.getTime())) return 'Never';
+  const d = toLocalDate(lastVisited);
+  if (!d) return 'Never';
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 }
 
