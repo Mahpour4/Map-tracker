@@ -356,16 +356,21 @@ export function AppProvider({ children }) {
       });
   }, [state.stores]);
 
-  // Load alerts from GitHub on mount (skip if file has never been saved)
+  // Load alerts from GitHub on mount
   useEffect(() => {
     if (!getToken()) return;
-    // If we've never saved alerts, the file doesn't exist yet — skip the fetch
-    // to avoid a 404 console error. Alerts will be created on first Gmail fetch.
-    if (!localStorage.getItem('github_alerts_sha')) return;
     fetchAlertsCsv()
       .then(({ content }) => {
         if (content) {
-          const alerts = parseAlertsCsv(content);
+          const parsed = parseAlertsCsv(content);
+          // Deduplicate by refNumber (keep last occurrence)
+          const deduped = {};
+          parsed.forEach(a => { if (a.refNumber) deduped[a.refNumber] = a; });
+          // Prune alerts older than 30 days
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - 30);
+          const cutoffStr = localDateStr(cutoff);
+          const alerts = Object.values(deduped).filter(a => !a.dateReceived || a.dateReceived >= cutoffStr);
           dispatch({ type: 'LOAD_ALERTS', payload: alerts });
         }
       })
@@ -374,24 +379,30 @@ export function AppProvider({ children }) {
       });
   }, []);
 
-  // Auto-save alerts to GitHub when they change
+  // Auto-save alerts to GitHub when they change (debounced 2s)
   const prevAlertsRef = useRef(state.alerts);
+  const alertSaveTimerRef = useRef(null);
   useEffect(() => {
     if (!getToken()) return;
     if (prevAlertsRef.current === state.alerts) return;
     prevAlertsRef.current = state.alerts;
     if (state.alerts.length === 0) return;
 
+    if (alertSaveTimerRef.current) clearTimeout(alertSaveTimerRef.current);
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saving' } });
-    const csv = alertsToCsv(state.alerts);
-    saveAlertsCsv(csv)
-      .then(() => {
-        dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
-      })
-      .catch((err) => {
-        console.error('Failed to save alerts:', err);
-        dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
-      });
+    alertSaveTimerRef.current = setTimeout(() => {
+      const csv = alertsToCsv(state.alerts);
+      saveAlertsCsv(csv)
+        .then(() => {
+          dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'saved' } });
+        })
+        .catch((err) => {
+          console.error('Failed to save alerts:', err);
+          dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
+        });
+    }, 2000);
+
+    return () => { if (alertSaveTimerRef.current) clearTimeout(alertSaveTimerRef.current); };
   }, [state.alerts]);
 
   // Fetch new alerts from Gmail — merges with existing, dedupes by refNumber, prunes >30 days
@@ -418,8 +429,8 @@ export function AppProvider({ children }) {
 
       // Merge: existing alerts by refNumber, new overwrite duplicates
       const alertMap = {};
-      state.alerts.forEach(a => { alertMap[a.refNumber] = a; });
-      newAlerts.forEach(a => { alertMap[a.refNumber] = a; });
+      state.alerts.forEach(a => { if (a.refNumber) alertMap[a.refNumber] = a; });
+      newAlerts.forEach(a => { if (a.refNumber) alertMap[a.refNumber] = a; });
 
       // Prune alerts older than 30 days
       const cutoff = new Date();

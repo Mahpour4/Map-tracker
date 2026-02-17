@@ -512,6 +512,11 @@ export function matchAlertToStore(alert, stores) {
 
 const ALERT_CSV_HEADER = 'RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,DateReceived';
 
+function quoteCsvField(val) {
+  const s = (val || '').toString();
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 export function alertsToCsv(alerts) {
   const lines = [ALERT_CSV_HEADER];
   alerts.forEach(a => {
@@ -526,9 +531,28 @@ export function alertsToCsv(alerts) {
       a.company,
       a.routeNumber || '',
       a.dateReceived || '',
-    ].join(','));
+    ].map(quoteCsvField).join(','));
   });
   return lines.join('\n');
+}
+
+function splitCsvLine(line) {
+  const cols = [];
+  let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuote) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') { inQuote = false; }
+      else { cur += ch; }
+    } else {
+      if (ch === '"') { inQuote = true; }
+      else if (ch === ',') { cols.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+  }
+  cols.push(cur);
+  return cols;
 }
 
 export function parseAlertsCsv(csv) {
@@ -536,7 +560,7 @@ export function parseAlertsCsv(csv) {
   if (lines.length <= 1) return [];
 
   return lines.slice(1).map(line => {
-    const cols = line.split(',');
+    const cols = splitCsvLine(line);
     return {
       refNumber: cols[0] || '',
       emailId: cols[1] || '',
