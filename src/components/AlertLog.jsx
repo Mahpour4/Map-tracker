@@ -40,7 +40,7 @@ function formatDate(dateStr) {
 
 export default function AlertLog() {
   const { state, selectStore, setMapView, setPage, setFilterRoute, loadAlertImage, fetchGmailAlerts, syncFromGithub } = useApp();
-  const { alerts, stores, alertImages, syncStatus } = state;
+  const { alerts, stores, alertImages, syncStatus, schedules } = state;
 
   const today = localDateStr();
   const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return localDateStr(d); })();
@@ -387,6 +387,44 @@ export default function AlertLog() {
     }
   }, [syncStatus, refreshing]);
 
+  // Helper: get Monday of the week containing a date
+  function getMonday(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff);
+    return d.toISOString().split('T')[0];
+  }
+
+  // Helper: find the scheduled day for a store in a given route's current-week schedule
+  function getScheduleDay(storeId, routeNum) {
+    if (!storeId || !routeNum || !schedules) return null;
+    const weekOf = getMonday(new Date());
+    const key = `${routeNum}_${weekOf}`;
+    const sched = schedules[key];
+    if (!sched) return null;
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    for (const day of days) {
+      if (sched[day] && sched[day].some(s => s.storeId === storeId)) {
+        return day.charAt(0).toUpperCase() + day.slice(1);
+      }
+    }
+    return null;
+  }
+
+  // Helper: count alerts for a specific store this month
+  function getStoreMonthlyStats(storeId) {
+    if (!storeId) return null;
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const storeAlerts = enrichedAlerts.filter(a =>
+      (a.storeId === storeId) && a.dateReceived && a.dateReceived >= monthStart
+    );
+    if (storeAlerts.length === 0) return null;
+    const earliest = storeAlerts.reduce((min, a) => a.dateReceived < min ? a.dateReceived : min, storeAlerts[0].dateReceived);
+    return { count: storeAlerts.length, since: earliest };
+  }
+
   async function generateRoutePDF(e, route, routeAlerts) {
     e.stopPropagation();
     setPdfGenerating(route);
@@ -399,13 +437,11 @@ export default function AlertLog() {
       let fetchFails = 0;
 
       const fetchPromises = alertsWithEmail.map(async (a) => {
-        // Check in-memory cache first (from previously expanded images)
         const cached = alertImages[a.emailId];
         if (cached && cached.dataUri && !cached.loading) {
           imageResults[a.emailId] = cached;
           return;
         }
-        // Skip Gmail fetch if not connected
         if (!gmailOk) { fetchFails++; return; }
         try {
           const result = await fetchAlertImage(a.emailId);
@@ -423,7 +459,6 @@ export default function AlertLog() {
       const processedImages = {};
 
       async function fetchViaProxy(url) {
-        // Try a CORS proxy to fetch external images the browser can't access directly
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
         const resp = await fetch(proxyUrl);
         if (!resp.ok) throw new Error(`Proxy returned ${resp.status}`);
@@ -439,9 +474,7 @@ export default function AlertLog() {
       async function processOneImage(emailId, imgData) {
         let base64Uri = imgData.dataUri;
 
-        // External URLs (http/https) need conversion to base64 for PDF embedding
         if (imgData.isExternal) {
-          // Strategy A: direct fetch as blob (works if server sends CORS headers)
           try {
             const resp = await fetch(imgData.dataUri);
             const blob = await resp.blob();
@@ -452,11 +485,9 @@ export default function AlertLog() {
               reader.readAsDataURL(blob);
             });
           } catch (_) {
-            // Strategy B: CORS proxy
             try {
               base64Uri = await fetchViaProxy(imgData.dataUri);
             } catch (_2) {
-              // Strategy C: canvas with crossOrigin (works if server allows it)
               try {
                 base64Uri = await new Promise((resolve, reject) => {
                   const el = new Image();
@@ -475,13 +506,12 @@ export default function AlertLog() {
                 });
               } catch (_3) {
                 console.warn(`All image strategies failed for ${emailId}`);
-                return; // skip this image
+                return;
               }
             }
           }
         }
 
-        // Load the (now base64) image to get its natural dimensions
         return new Promise((resolve) => {
           const el = new Image();
           el.onload = () => {
@@ -500,7 +530,6 @@ export default function AlertLog() {
         Object.entries(imageResults).map(([eid, data]) => processOneImage(eid, data))
       );
 
-      // Warn user if images couldn't be included
       const imgCount = Object.keys(processedImages).length;
       if (alertsWithEmail.length > 0 && imgCount === 0) {
         if (!gmailOk) {
@@ -510,85 +539,101 @@ export default function AlertLog() {
         }
       }
 
-      // --- 3. Build the PDF ---
-      const doc = new jsPDF('landscape', 'mm', 'a4');
+      // --- 3. Build the PDF (portrait, phone-optimized) ---
+      const doc = new jsPDF('portrait', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
       // Title
-      doc.setFontSize(16);
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text(route === 'Unmatched' ? 'Unmatched Stores — Service Alerts' : `Route ${route} — Service Alerts`, pageWidth / 2, 15, { align: 'center' });
+      doc.text(route === 'Unmatched' ? 'Unmatched — Service Alerts' : `Route ${route} — Service Alerts`, pageWidth / 2, 12, { align: 'center' });
 
       // Subtitle
       const open = routeAlerts.filter(a => a.status === 'unresolved').length;
       const resolved = routeAlerts.filter(a => a.status === 'resolved').length;
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${todayStr} | ${routeAlerts.length} alerts | ${open} open | ${resolved} resolved`, pageWidth / 2, 21, { align: 'center' });
+      doc.text(`${todayStr} | ${routeAlerts.length} alerts | ${open} open | ${resolved} resolved`, pageWidth / 2, 17, { align: 'center' });
 
-      // Build table rows
+      // Build table rows — phone-optimized columns:
+      // Store (name + address), Last Svc (days + sched day), Status, Response (monthly stats), Image
       const tableData = routeAlerts.map((a, i) => {
-        const lastService = a.daysSinceService !== null ? `${a.daysSinceService}d ago` : 'Never';
-        const response = a.status === 'resolved'
-          ? `Resolved ${a.days}d`
-          : a.status === 'unresolved'
-          ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
-          : 'No match';
+        // Store column: name #number + address + city
+        const addr = a.store?.address || '';
+        const storeCell = `${a.storeName} #${a.storeNumber}\n${addr}${addr && a.city ? ', ' : ''}${a.city || ''}`;
+
+        // Last Svc column: days since visit + schedule day
+        const svcParts = [];
+        if (a.daysSinceService !== null) svcParts.push(`${a.daysSinceService}d ago`);
+        else svcParts.push('Never');
+        const schedDay = getScheduleDay(a.storeId, a.routeNumber);
+        if (schedDay) svcParts.push(`Sched: ${schedDay}`);
+        const lastSvcCell = svcParts.join('\n');
+
+        // Status
+        const statusCell = a.status === 'resolved' ? 'Resolved' : a.status === 'unresolved' ? 'Open' : '?';
+
+        // Response column: monthly stats for this store
+        const monthStats = getStoreMonthlyStats(a.storeId);
+        const responseParts = [];
+        if (a.status === 'resolved') responseParts.push(`Resolved ${a.days}d`);
+        else if (a.status === 'unresolved') responseParts.push(a.days !== null ? `${a.days}d waiting` : 'Waiting');
+        else responseParts.push('No match');
+        if (monthStats) {
+          responseParts.push(`${monthStats.count} alert${monthStats.count > 1 ? 's' : ''} since ${formatDate(monthStats.since)}`);
+        }
+        const responseCell = responseParts.join('\n');
+
         return [
           i + 1,
-          `${a.storeName} #${a.storeNumber}`,
-          a.city,
-          lastService,
-          a.refNumber,
-          formatDate(a.dateReceived),
-          a.status === 'resolved' ? 'Resolved' : a.status === 'unresolved' ? 'Open' : 'Unknown',
-          response,
-          '', // image placeholder — drawn via didDrawCell
+          storeCell,
+          lastSvcCell,
+          statusCell,
+          responseCell,
+          '', // image placeholder
         ];
       });
 
       autoTable(doc, {
-        startY: 26,
-        head: [['#', 'Store', 'City', 'Last Svc', 'Ref #', 'Date', 'Status', 'Response', 'Image']],
+        startY: 21,
+        head: [['#', 'Store', 'Last Svc', 'Status', 'Response', 'Image']],
         body: tableData,
         theme: 'grid',
-        headStyles: { fillColor: [37, 99, 235], fontSize: 7, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 7, minCellHeight: 30 },
+        headStyles: { fillColor: [37, 99, 235], fontSize: 7, fontStyle: 'bold', cellPadding: 1.5 },
+        bodyStyles: { fontSize: 7, minCellHeight: 28, cellPadding: 1.5, lineHeightFactor: 1.3 },
         columnStyles: {
           0: { cellWidth: 7, halign: 'center' },
-          1: { cellWidth: 42 },
-          2: { cellWidth: 25 },
-          3: { cellWidth: 18, halign: 'center' },
-          4: { cellWidth: 30 },
-          5: { cellWidth: 20 },
-          6: { cellWidth: 15, halign: 'center' },
-          7: { cellWidth: 28 },
-          8: { cellWidth: 55 },
+          1: { cellWidth: 46 },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 14, halign: 'center' },
+          4: { cellWidth: 36 },
+          5: { cellWidth: 42 },
         },
-        margin: { left: 14, right: 14 },
+        margin: { left: 8, right: 8 },
+        tableWidth: pageWidth - 16,
         didParseCell: function (data) {
           if (data.section !== 'body') return;
           const a = routeAlerts[data.row.index];
           if (!a) return;
-          // Status column
-          if (data.column.index === 6) {
+          // Status column (3)
+          if (data.column.index === 3) {
             data.cell.styles.fontStyle = 'bold';
             if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
             else if (a.status === 'unresolved') data.cell.styles.textColor = [239, 68, 68];
             else data.cell.styles.textColor = [156, 163, 175];
           }
-          // Last Service column
-          if (data.column.index === 3) {
+          // Last Service column (2)
+          if (data.column.index === 2) {
             if (a.daysSinceService === null) data.cell.styles.textColor = [156, 163, 175];
             else if (a.daysSinceService > 14) data.cell.styles.textColor = [239, 68, 68];
             else if (a.daysSinceService > 7) data.cell.styles.textColor = [249, 115, 22];
             else data.cell.styles.textColor = [34, 197, 94];
             data.cell.styles.fontStyle = 'bold';
           }
-          // Response column
-          if (data.column.index === 7) {
+          // Response column (4)
+          if (data.column.index === 4) {
             if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
             else if (a.status === 'unresolved') data.cell.styles.textColor = a.days > 7 ? [239, 68, 68] : [249, 115, 22];
             else data.cell.styles.textColor = [156, 163, 175];
@@ -596,13 +641,13 @@ export default function AlertLog() {
           }
         },
         didDrawCell: function (data) {
-          // Embed thumbnail in the Image column
-          if (data.section !== 'body' || data.column.index !== 8) return;
+          // Embed thumbnail in Image column (5)
+          if (data.section !== 'body' || data.column.index !== 5) return;
           const a = routeAlerts[data.row.index];
           const img = a ? processedImages[a.emailId] : null;
           if (!img) return;
 
-          const pad = 1.5;
+          const pad = 1;
           const cellX = data.cell.x + pad;
           const cellY = data.cell.y + pad;
           const maxW = data.cell.width - pad * 2;
@@ -621,8 +666,6 @@ export default function AlertLog() {
         },
       });
 
-
-
       // Footer on all pages
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
@@ -638,7 +681,6 @@ export default function AlertLog() {
 
       const dateSlug = localDateStr();
       doc.save(`Route_${route}_Alerts_${dateSlug}.pdf`);
-      // Mark this exact set of alerts as "sent"
       markRouteSent(routeAlerts);
     } catch (err) {
       console.error('PDF generation failed:', err);
