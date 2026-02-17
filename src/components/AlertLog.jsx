@@ -442,25 +442,27 @@ export default function AlertLog() {
           formatDate(a.dateReceived),
           a.status === 'resolved' ? 'Resolved' : a.status === 'unresolved' ? 'Open' : 'Unknown',
           response,
+          '', // image placeholder — drawn via didDrawCell
         ];
       });
 
       autoTable(doc, {
         startY: 26,
-        head: [['#', 'Store', 'City', 'Last Service', 'Ref #', 'Alert Date', 'Status', 'Response']],
+        head: [['#', 'Store', 'City', 'Last Svc', 'Ref #', 'Date', 'Status', 'Response', 'Image']],
         body: tableData,
         theme: 'grid',
-        headStyles: { fillColor: [37, 99, 235], fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8 },
+        headStyles: { fillColor: [37, 99, 235], fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7, minCellHeight: 30 },
         columnStyles: {
-          0: { cellWidth: 8, halign: 'center' },
-          1: { cellWidth: 50 },
-          2: { cellWidth: 30 },
-          3: { cellWidth: 22, halign: 'center' },
-          4: { cellWidth: 35 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 18, halign: 'center' },
-          7: { cellWidth: 30 },
+          0: { cellWidth: 7, halign: 'center' },
+          1: { cellWidth: 42 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 18, halign: 'center' },
+          4: { cellWidth: 30 },
+          5: { cellWidth: 20 },
+          6: { cellWidth: 15, halign: 'center' },
+          7: { cellWidth: 28 },
+          8: { cellWidth: 55 },
         },
         margin: { left: 14, right: 14 },
         didParseCell: function (data) {
@@ -490,56 +492,33 @@ export default function AlertLog() {
             data.cell.styles.fontStyle = 'bold';
           }
         },
+        didDrawCell: function (data) {
+          // Embed thumbnail in the Image column
+          if (data.section !== 'body' || data.column.index !== 8) return;
+          const a = routeAlerts[data.row.index];
+          const img = a ? processedImages[a.emailId] : null;
+          if (!img) return;
+
+          const pad = 1.5;
+          const cellX = data.cell.x + pad;
+          const cellY = data.cell.y + pad;
+          const maxW = data.cell.width - pad * 2;
+          const maxH = data.cell.height - pad * 2;
+          const aspect = img.width / img.height;
+          let drawW, drawH;
+          if (maxW / maxH > aspect) { drawH = maxH; drawW = drawH * aspect; }
+          else { drawW = maxW; drawH = drawW / aspect; }
+          const drawX = cellX + (maxW - drawW) / 2;
+          const drawY = cellY + (maxH - drawH) / 2;
+
+          try {
+            const fmt = img.base64Uri.match(/^data:image\/png/) ? 'PNG' : 'JPEG';
+            doc.addImage(img.base64Uri, fmt, drawX, drawY, drawW, drawH);
+          } catch (_) {}
+        },
       });
 
-      // --- 4. Append image pages ---
-      for (const a of routeAlerts) {
-        const img = processedImages[a.emailId];
-        if (!img) continue;
 
-        doc.addPage('a4', 'landscape');
-
-        // Header: store name, number, city
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text(`${a.storeName} #${a.storeNumber} — ${a.city}`, pageWidth / 2, 15, { align: 'center' });
-
-        // Subtitle: ref, date, status
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 100, 100);
-        const statusLabel = a.status === 'resolved' ? 'Resolved' : a.status === 'unresolved' ? 'Open' : 'Unknown';
-        doc.text(`Ref: ${a.refNumber} | Alert: ${formatDate(a.dateReceived)} | Status: ${statusLabel}`, pageWidth / 2, 22, { align: 'center' });
-
-        // Image area: fit within page while preserving aspect ratio
-        const margin = 14;
-        const imgTopY = 28;
-        const maxW = pageWidth - margin * 2;
-        const maxH = pageHeight - imgTopY - 12; // leave room for footer
-        const aspectRatio = img.width / img.height;
-        let drawW, drawH;
-        if (maxW / maxH > aspectRatio) {
-          drawH = maxH;
-          drawW = drawH * aspectRatio;
-        } else {
-          drawW = maxW;
-          drawH = drawW / aspectRatio;
-        }
-        const drawX = (pageWidth - drawW) / 2;
-        const drawY = imgTopY + (maxH - drawH) / 2;
-
-        try {
-          // Detect format from data URI; default to JPEG
-          const fmt = img.base64Uri.match(/^data:image\/png/) ? 'PNG' : 'JPEG';
-          doc.addImage(img.base64Uri, fmt, drawX, drawY, drawW, drawH);
-        } catch (imgErr) {
-          console.warn(`Failed to add image for ${a.emailId} to PDF:`, imgErr);
-          doc.setFontSize(10);
-          doc.setTextColor(180, 180, 180);
-          doc.text('Image could not be embedded', pageWidth / 2, pageHeight / 2, { align: 'center' });
-        }
-      }
 
       // Footer on all pages
       const pageCount = doc.internal.getNumberOfPages();
