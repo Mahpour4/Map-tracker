@@ -169,6 +169,7 @@ export default function FleetTracker() {
       v.vehicleId.toLowerCase().includes(term) ||
       v.licensePlate.toLowerCase().includes(term) ||
       v.vin.toLowerCase().includes(term) ||
+      (v.yearMakeModel || '').toLowerCase().includes(term) ||
       (v.driverName || '').toLowerCase().includes(term)
     );
   }, [vehicleLocations, fleetVehicles, searchTerm]);
@@ -380,9 +381,13 @@ export default function FleetTracker() {
                 <tr>
                   <th>#</th>
                   <th>Vehicle</th>
+                  <th>Year / Make / Model</th>
                   <th>License Plate</th>
                   <th>VIN</th>
                   <th>Source / Gateway</th>
+                  <th>Policy #</th>
+                  <th>Insurance Pg</th>
+                  <th>Expiration</th>
                   {connected && <th>Driver</th>}
                   {connected && <th>Location</th>}
                   {connected && <th>Speed</th>}
@@ -399,9 +404,13 @@ export default function FleetTracker() {
                   >
                     <td>{v.index}</td>
                     <td className="ft-cell-vehicle">{v.vehicleId}</td>
+                    <td className="ft-cell-ymm">{v.yearMakeModel || '—'}</td>
                     <td className="ft-cell-plate">{v.licensePlate}</td>
                     <td className="ft-cell-vin">{v.vin}</td>
                     <td className="ft-cell-source">{v.source}</td>
+                    <td className="ft-cell-policy">{v.policyNumber || '—'}</td>
+                    <td className="ft-cell-inspage">{v.insuranceCardPage || '—'}</td>
+                    <td className="ft-cell-expiry">{v.expirationDate || '—'}</td>
                     {connected && <td>{v.driverName || '—'}</td>}
                     {connected && (
                       <td className="ft-cell-location">
