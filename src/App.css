@@ -5766,3 +5766,17 @@ textarea {
   border: none !important;
 }
 
+/* Version badge */
+.app-version {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 11px;
+  color: #888;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 2px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
