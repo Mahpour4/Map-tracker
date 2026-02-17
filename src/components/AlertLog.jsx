@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
-import { fetchAlertImage } from '../services/gmailAlertService';
+import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -257,38 +257,56 @@ export default function AlertLog() {
     setPdfGenerating(route);
 
     try {
-      // --- 1. Fetch images for all alerts ---
+      // --- 1. Gather images for all alerts ---
+      const alertsWithEmail = routeAlerts.filter(a => a.emailId);
+      const gmailOk = isGmailConnected();
       const imageResults = {};
-      const fetchPromises = routeAlerts
-        .filter(a => a.emailId)
-        .map(async (a) => {
-          // Check in-memory cache first
-          const cached = alertImages[a.emailId];
-          if (cached && cached.dataUri && !cached.loading) {
-            imageResults[a.emailId] = cached;
-            return;
-          }
-          // Fetch from Gmail API
-          try {
-            const result = await fetchAlertImage(a.emailId);
-            if (result && result.dataUri) {
-              imageResults[a.emailId] = result;
-            }
-          } catch (err) {
-            console.warn(`Failed to fetch image for ${a.emailId}:`, err);
-          }
-        });
+      let fetchFails = 0;
+
+      const fetchPromises = alertsWithEmail.map(async (a) => {
+        // Check in-memory cache first (from previously expanded images)
+        const cached = alertImages[a.emailId];
+        if (cached && cached.dataUri && !cached.loading) {
+          imageResults[a.emailId] = cached;
+          return;
+        }
+        // Skip Gmail fetch if not connected
+        if (!gmailOk) { fetchFails++; return; }
+        try {
+          const result = await fetchAlertImage(a.emailId);
+          if (result && result.dataUri) {
+            imageResults[a.emailId] = result;
+          } else { fetchFails++; }
+        } catch (err) {
+          fetchFails++;
+          console.warn(`Image fetch failed for ${a.emailId}:`, err);
+        }
+      });
       await Promise.allSettled(fetchPromises);
 
-      // --- 2. Convert all images to embeddable base64 & get dimensions ---
+      // --- 2. Convert images to embeddable base64 & get dimensions ---
       const processedImages = {};
+
+      async function fetchViaProxy(url) {
+        // Try a CORS proxy to fetch external images the browser can't access directly
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        const resp = await fetch(proxyUrl);
+        if (!resp.ok) throw new Error(`Proxy returned ${resp.status}`);
+        const blob = await resp.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
 
       async function processOneImage(emailId, imgData) {
         let base64Uri = imgData.dataUri;
 
-        // External URLs need conversion to base64 for PDF embedding
+        // External URLs (http/https) need conversion to base64 for PDF embedding
         if (imgData.isExternal) {
-          // Strategy A: fetch as blob (works when server allows CORS or same-origin)
+          // Strategy A: direct fetch as blob (works if server sends CORS headers)
           try {
             const resp = await fetch(imgData.dataUri);
             const blob = await resp.blob();
@@ -298,28 +316,32 @@ export default function AlertLog() {
               reader.onerror = reject;
               reader.readAsDataURL(blob);
             });
-          } catch (fetchErr) {
-            console.warn(`Fetch-as-blob failed for ${emailId}, trying canvas:`, fetchErr);
-            // Strategy B: load image without CORS restriction, then canvas convert
+          } catch (_) {
+            // Strategy B: CORS proxy
             try {
-              base64Uri = await new Promise((resolve, reject) => {
-                const el = new Image();
-                el.crossOrigin = 'anonymous';
-                el.onload = () => {
-                  try {
-                    const c = document.createElement('canvas');
-                    c.width = el.naturalWidth;
-                    c.height = el.naturalHeight;
-                    c.getContext('2d').drawImage(el, 0, 0);
-                    resolve(c.toDataURL('image/jpeg', 0.9));
-                  } catch (ce) { reject(ce); }
-                };
-                el.onerror = reject;
-                el.src = imgData.dataUri;
-              });
-            } catch (canvasErr) {
-              console.warn(`Canvas fallback also failed for ${emailId}:`, canvasErr);
-              return; // skip this image entirely
+              base64Uri = await fetchViaProxy(imgData.dataUri);
+            } catch (_2) {
+              // Strategy C: canvas with crossOrigin (works if server allows it)
+              try {
+                base64Uri = await new Promise((resolve, reject) => {
+                  const el = new Image();
+                  el.crossOrigin = 'anonymous';
+                  el.onload = () => {
+                    try {
+                      const c = document.createElement('canvas');
+                      c.width = el.naturalWidth;
+                      c.height = el.naturalHeight;
+                      c.getContext('2d').drawImage(el, 0, 0);
+                      resolve(c.toDataURL('image/jpeg', 0.9));
+                    } catch (ce) { reject(ce); }
+                  };
+                  el.onerror = reject;
+                  el.src = imgData.dataUri;
+                });
+              } catch (_3) {
+                console.warn(`All image strategies failed for ${emailId}`);
+                return; // skip this image
+              }
             }
           }
         }
@@ -342,6 +364,16 @@ export default function AlertLog() {
       await Promise.all(
         Object.entries(imageResults).map(([eid, data]) => processOneImage(eid, data))
       );
+
+      // Warn user if images couldn't be included
+      const imgCount = Object.keys(processedImages).length;
+      if (alertsWithEmail.length > 0 && imgCount === 0) {
+        if (!gmailOk) {
+          window.alert('Gmail is not connected — images could not be fetched.\n\nPlease sign in to Gmail first, then try again.');
+        } else {
+          window.alert('No images could be loaded for this route.\n\nTry expanding an image in the alert list first, then generate the PDF.');
+        }
+      }
 
       // --- 3. Build the PDF ---
       const doc = new jsPDF('landscape', 'mm', 'a4');
