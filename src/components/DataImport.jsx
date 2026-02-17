@@ -198,7 +198,7 @@ function detectStoreType(name, id) {
 }
 
 export default function DataImport() {
-  const { state, bulkImportStores, addImportEntry } = useApp();
+  const { state, bulkImportStores, addImportEntry, bulkRecordVisits } = useApp();
   const { stores, importLog } = state;
 
   const [rawInput, setRawInput] = useState('');
@@ -279,6 +279,15 @@ export default function DataImport() {
   function handleApply() {
     if (!parsed || parsed.error) return;
     bulkImportStores(parsed.updates, parsed.additions);
+
+    // Record visit dates in visit history so they persist
+    const visitEntries = [
+      ...parsed.updates.filter(u => u.lastVisited).map(u => ({ storeId: u.id, date: u.lastVisited.split('T')[0] })),
+      ...parsed.additions.filter(a => a.lastVisited).map(a => ({ storeId: a.id, date: a.lastVisited.split('T')[0] })),
+    ];
+    if (visitEntries.length > 0) {
+      bulkRecordVisits(visitEntries);
+    }
 
     // Build import log entry
     const logStores = [

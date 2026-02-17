@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 
 const STORE_TYPES = [
@@ -45,12 +45,40 @@ function formatDate(dateStr) {
 }
 
 function StoreCard({ store, index, routes }) {
-  const { selectStore, deleteStore, updateStore, setMapView, state } = useApp();
+  const { selectStore, deleteStore, updateStore, setMapView, state, recordVisit } = useApp();
   const isSelected = state.selectedStore === store.id;
   const tc = typeColors[store.type] || typeColors.other;
   const isUnassignedRoute = !store.routeNumber || store.routeNumber === '0';
+  const [editingVisit, setEditingVisit] = useState(false);
+  const [visitDate, setVisitDate] = useState('');
+  const visitDateRef = useRef(null);
 
   const zone = state.zones.find((z) => z.id === store.zoneId);
+
+  const openVisitEdit = (e) => {
+    e.stopPropagation();
+    setEditingVisit(true);
+    setVisitDate(new Date().toISOString().split('T')[0]);
+    setTimeout(() => {
+      try { visitDateRef.current?.showPicker(); } catch (_) {}
+    }, 50);
+  };
+
+  const saveVisit = (e) => {
+    e.stopPropagation();
+    if (!visitDate) return;
+    const ymd = visitDate.split('T')[0].split(' ')[0];
+    if (!ymd) return;
+    recordVisit(store.id, ymd);
+    setEditingVisit(false);
+    setVisitDate('');
+  };
+
+  const cancelVisitEdit = (e) => {
+    e.stopPropagation();
+    setEditingVisit(false);
+    setVisitDate('');
+  };
 
   return (
     <div
@@ -93,12 +121,27 @@ function StoreCard({ store, index, routes }) {
         ) : (
           <span className="zone-badge unassigned">Unassigned</span>
         )}
-        {store.lastVisited && (
-          <span className="last-visited">
-            Visited {formatDate(store.lastVisited)}
-          </span>
-        )}
+        <span
+          className="last-visited last-visited-clickable"
+          onClick={openVisitEdit}
+          title="Click to edit visit date"
+        >
+          {store.lastVisited ? `Visited ${formatDate(store.lastVisited)}` : 'No visit date'}
+        </span>
       </div>
+      {editingVisit && (
+        <div className="store-visit-edit" onClick={(e) => e.stopPropagation()}>
+          <input
+            ref={visitDateRef}
+            type="date"
+            className="store-visit-date-input"
+            value={visitDate}
+            onChange={(e) => setVisitDate(e.target.value)}
+          />
+          <button className="store-visit-save-btn" onClick={saveVisit} disabled={!visitDate}>Save</button>
+          <button className="store-visit-cancel-btn" onClick={cancelVisitEdit}>&times;</button>
+        </div>
+      )}
 
       <div className="store-card-actions">
         {isUnassignedRoute ? (

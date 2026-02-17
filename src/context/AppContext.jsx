@@ -1,8 +1,10 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
+import localSchedules from '../data/schedules.json';
+import localVisitHistory from '../data/visitHistory.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -31,7 +33,8 @@ const initialState = {
   alertSyncError: null,
   alertImages: {}, // { emailId: { dataUri, filename, loading, error } } — memory-only
   importLog: [], // Array of import entries, newest first
-  schedules: {}, // { "route_weekOf": { monday: [...], ... } }
+  schedules: localSchedules, // { "route_weekOf": { monday: [...], ... } }
+  visitHistory: localVisitHistory, // { storeId: ['YYYY-MM-DD', ...] }
 };
 
 const easternShoreSubsections = {
@@ -238,6 +241,41 @@ function reducer(state, action) {
     case 'SET_SCHEDULE': {
       const { key, schedule } = action.payload;
       return { ...state, schedules: { ...state.schedules, [key]: schedule } };
+    }
+    case 'LOAD_VISIT_HISTORY':
+      return { ...state, visitHistory: action.payload };
+    case 'RECORD_VISIT': {
+      const { storeId, date } = action.payload;
+      const existing = state.visitHistory[storeId] || [];
+      if (existing.includes(date)) return state;
+      const updated = [...existing, date].sort();
+      const newest = updated[updated.length - 1];
+      return {
+        ...state,
+        visitHistory: { ...state.visitHistory, [storeId]: updated },
+        stores: state.stores.map(s =>
+          s.id === storeId ? { ...s, lastVisited: newest } : s
+        ),
+      };
+    }
+    case 'BULK_RECORD_VISITS': {
+      const entries = action.payload;
+      let newVH = { ...state.visitHistory };
+      let newStores = state.stores;
+      entries.forEach(({ storeId, date }) => {
+        const existing = newVH[storeId] || [];
+        if (!existing.includes(date)) {
+          const updated = [...existing, date].sort();
+          newVH = { ...newVH, [storeId]: updated };
+          const newest = updated[updated.length - 1];
+          newStores = newStores.map(s =>
+            s.id === storeId && (!s.lastVisited || newest > s.lastVisited)
+              ? { ...s, lastVisited: newest }
+              : s
+          );
+        }
+      });
+      return { ...state, visitHistory: newVH, stores: newStores };
     }
     default:
       return state;
@@ -476,6 +514,39 @@ export function AppProvider({ children }) {
     return () => { if (schedulesSaveTimer.current) clearTimeout(schedulesSaveTimer.current); };
   }, [state.schedules]);
 
+  // Load visit history from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchVisitHistoryJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          dispatch({ type: 'LOAD_VISIT_HISTORY', payload: data });
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load visit history:', err);
+      });
+  }, []);
+
+  // Auto-save visit history to GitHub when it changes
+  const prevVisitHistoryRef = useRef(state.visitHistory);
+  const visitHistorySaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevVisitHistoryRef.current === state.visitHistory) return;
+    prevVisitHistoryRef.current = state.visitHistory;
+    if (Object.keys(state.visitHistory).length === 0) return;
+
+    if (visitHistorySaveTimer.current) clearTimeout(visitHistorySaveTimer.current);
+    visitHistorySaveTimer.current = setTimeout(() => {
+      saveVisitHistoryJson(JSON.stringify(state.visitHistory))
+        .catch((err) => console.error('Failed to save visit history:', err));
+    }, 2000);
+
+    return () => { if (visitHistorySaveTimer.current) clearTimeout(visitHistorySaveTimer.current); };
+  }, [state.visitHistory]);
+
   // Load import log from GitHub on mount
   useEffect(() => {
     if (!getToken()) return;
@@ -606,6 +677,14 @@ export function AppProvider({ children }) {
     clearAlerts: useCallback(() => dispatch({ type: 'SET_ALERTS', payload: [] }), []),
     bulkImportStores: useCallback(
       (updates, additions) => dispatch({ type: 'BULK_IMPORT_STORES', payload: { updates, additions } }),
+      []
+    ),
+    recordVisit: useCallback(
+      (storeId, date) => dispatch({ type: 'RECORD_VISIT', payload: { storeId, date } }),
+      []
+    ),
+    bulkRecordVisits: useCallback(
+      (entries) => dispatch({ type: 'BULK_RECORD_VISITS', payload: entries }),
       []
     ),
   };

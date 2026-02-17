@@ -10,7 +10,6 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import { useApp } from '../context/AppContext';
-import visitHistoryData from '../data/visitHistory';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -143,7 +142,7 @@ function formatDate(dateStr) {
 }
 
 export default function MapView() {
-  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore } = useApp();
+  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore, recordVisit } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute } = state;
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
@@ -352,20 +351,10 @@ export default function MapView() {
     if (!popupEditDate) return;
     const ymd = popupEditDate.split('T')[0].split(' ')[0];
     if (!ymd) return;
-    if (!visitHistoryData[storeId]) visitHistoryData[storeId] = [];
-    if (!visitHistoryData[storeId].includes(ymd)) {
-      visitHistoryData[storeId].push(ymd);
-      visitHistoryData[storeId].sort();
-    }
-    const store = stores.find((s) => s.id === storeId);
-    if (store) {
-      const allDates = visitHistoryData[storeId].slice().sort();
-      const newest = allDates[allDates.length - 1];
-      updateStore({ ...store, lastVisited: newest });
-    }
+    recordVisit(storeId, ymd);
     setPopupEditId(null);
     setPopupEditDate('');
-  }, [popupEditDate, stores, updateStore]);
+  }, [popupEditDate, recordVisit]);
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>

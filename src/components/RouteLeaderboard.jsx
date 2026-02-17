@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import visitHistory from '../data/visitHistory';
 
 function isCashStop(store) {
   return store.id.toLowerCase().startsWith('cash');
@@ -60,7 +59,7 @@ function getDayDate(weekOf, day) {
   return d.toISOString().split('T')[0];
 }
 
-function getScheduleAdherence(schedules, route) {
+function getScheduleAdherence(schedules, route, visitHistoryMap) {
   const currentWeek = getMonday(new Date());
   const key = `${route}_${currentWeek}`;
   const schedule = schedules[key];
@@ -74,7 +73,7 @@ function getScheduleAdherence(schedules, route) {
       total++;
       const scheduledDate = getDayDate(currentWeek, day);
       const weekEnd = getDayDate(currentWeek, 'friday');
-      const visits = visitHistory[item.storeId] || [];
+      const visits = visitHistoryMap[item.storeId] || [];
 
       if (visits.includes(scheduledDate)) {
         exact++;
@@ -130,7 +129,7 @@ function getAlertStats(alerts, stores) {
 
 export default function RouteLeaderboard() {
   const { state } = useApp();
-  const { stores, alerts, schedules } = state;
+  const { stores, alerts, schedules, visitHistory: visitHistoryMap } = state;
   const [sortAsc, setSortAsc] = useState(false);
   const [expanded, setExpanded] = useState(null);
 
@@ -165,7 +164,7 @@ export default function RouteLeaderboard() {
       const grade = getGrade(coverage);
       const routeAlerts = alertsByRoute[route] || [];
       const alertStats = getAlertStats(routeAlerts, stores);
-      const adherence = getScheduleAdherence(schedules, route);
+      const adherence = getScheduleAdherence(schedules, route, visitHistoryMap);
       return {
         route,
         required,

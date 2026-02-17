@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
+import { fetchAlertImage } from '../services/gmailAlertService';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -54,6 +55,7 @@ export default function AlertLog() {
   const [alertDate, setAlertDate] = useState(today);
   const [fetching, setFetching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(null); // route string or null
 
   // Build store lookup
   const storeMap = useMemo(() => {
@@ -250,106 +252,251 @@ export default function AlertLog() {
     }
   }, [syncStatus, refreshing]);
 
-  function generateRoutePDF(e, route, routeAlerts) {
+  async function generateRoutePDF(e, route, routeAlerts) {
     e.stopPropagation();
-    const doc = new jsPDF('landscape', 'mm', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    setPdfGenerating(route);
 
-    // Title
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(route === 'Unmatched' ? 'Unmatched Stores — Service Alerts' : `Route ${route} — Service Alerts`, pageWidth / 2, 15, { align: 'center' });
+    try {
+      // --- 1. Fetch images for all alerts ---
+      const imageResults = {};
+      const fetchPromises = routeAlerts
+        .filter(a => a.emailId)
+        .map(async (a) => {
+          // Check in-memory cache first
+          const cached = alertImages[a.emailId];
+          if (cached && cached.dataUri && !cached.loading) {
+            imageResults[a.emailId] = cached;
+            return;
+          }
+          // Fetch from Gmail API
+          try {
+            const result = await fetchAlertImage(a.emailId);
+            if (result && result.dataUri) {
+              imageResults[a.emailId] = result;
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch image for ${a.emailId}:`, err);
+          }
+        });
+      await Promise.allSettled(fetchPromises);
 
-    // Subtitle
-    const open = routeAlerts.filter(a => a.status === 'unresolved').length;
-    const resolved = routeAlerts.filter(a => a.status === 'resolved').length;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${todayStr} | ${routeAlerts.length} alerts | ${open} open | ${resolved} resolved`, pageWidth / 2, 21, { align: 'center' });
+      // --- 2. Convert all images to embeddable base64 & get dimensions ---
+      const processedImages = {};
 
-    // Build table rows
-    const tableData = routeAlerts.map((a, i) => {
-      const lastService = a.daysSinceService !== null ? `${a.daysSinceService}d ago` : 'Never';
-      const response = a.status === 'resolved'
-        ? `Resolved ${a.days}d`
-        : a.status === 'unresolved'
-        ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
-        : 'No match';
-      return [
-        i + 1,
-        `${a.storeName} #${a.storeNumber}`,
-        a.city,
-        lastService,
-        a.refNumber,
-        formatDate(a.dateReceived),
-        a.status === 'resolved' ? 'Resolved' : a.status === 'unresolved' ? 'Open' : 'Unknown',
-        response,
-      ];
-    });
+      async function processOneImage(emailId, imgData) {
+        let base64Uri = imgData.dataUri;
 
-    autoTable(doc, {
-      startY: 26,
-      head: [['#', 'Store', 'City', 'Last Service', 'Ref #', 'Alert Date', 'Status', 'Response']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [37, 99, 235], fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 8, halign: 'center' },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 22, halign: 'center' },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 22 },
-        6: { cellWidth: 18, halign: 'center' },
-        7: { cellWidth: 30 },
-      },
-      margin: { left: 14, right: 14 },
-      didParseCell: function (data) {
-        if (data.section !== 'body') return;
-        const a = routeAlerts[data.row.index];
-        if (!a) return;
-        // Status column
-        if (data.column.index === 6) {
-          data.cell.styles.fontStyle = 'bold';
-          if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
-          else if (a.status === 'unresolved') data.cell.styles.textColor = [239, 68, 68];
-          else data.cell.styles.textColor = [156, 163, 175];
+        // External URLs need conversion to base64 for PDF embedding
+        if (imgData.isExternal) {
+          // Strategy A: fetch as blob (works when server allows CORS or same-origin)
+          try {
+            const resp = await fetch(imgData.dataUri);
+            const blob = await resp.blob();
+            base64Uri = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } catch (fetchErr) {
+            console.warn(`Fetch-as-blob failed for ${emailId}, trying canvas:`, fetchErr);
+            // Strategy B: load image without CORS restriction, then canvas convert
+            try {
+              base64Uri = await new Promise((resolve, reject) => {
+                const el = new Image();
+                el.crossOrigin = 'anonymous';
+                el.onload = () => {
+                  try {
+                    const c = document.createElement('canvas');
+                    c.width = el.naturalWidth;
+                    c.height = el.naturalHeight;
+                    c.getContext('2d').drawImage(el, 0, 0);
+                    resolve(c.toDataURL('image/jpeg', 0.9));
+                  } catch (ce) { reject(ce); }
+                };
+                el.onerror = reject;
+                el.src = imgData.dataUri;
+              });
+            } catch (canvasErr) {
+              console.warn(`Canvas fallback also failed for ${emailId}:`, canvasErr);
+              return; // skip this image entirely
+            }
+          }
         }
-        // Last Service column
-        if (data.column.index === 3) {
-          if (a.daysSinceService === null) data.cell.styles.textColor = [156, 163, 175];
-          else if (a.daysSinceService > 14) data.cell.styles.textColor = [239, 68, 68];
-          else if (a.daysSinceService > 7) data.cell.styles.textColor = [249, 115, 22];
-          else data.cell.styles.textColor = [34, 197, 94];
-          data.cell.styles.fontStyle = 'bold';
-        }
-        // Response column
-        if (data.column.index === 7) {
-          if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
-          else if (a.status === 'unresolved') data.cell.styles.textColor = a.days > 7 ? [239, 68, 68] : [249, 115, 22];
-          else data.cell.styles.textColor = [156, 163, 175];
-          data.cell.styles.fontStyle = 'bold';
-        }
-      },
-    });
 
-    // Footer on all pages
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        `Generated ${todayStr} — Map Tracker — Page ${i}/${pageCount}`,
-        pageWidth / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' }
+        // Load the (now base64) image to get its natural dimensions
+        return new Promise((resolve) => {
+          const el = new Image();
+          el.onload = () => {
+            processedImages[emailId] = { base64Uri, width: el.naturalWidth, height: el.naturalHeight };
+            resolve();
+          };
+          el.onerror = () => {
+            console.warn(`Dimension load failed for ${emailId}`);
+            resolve();
+          };
+          el.src = base64Uri;
+        });
+      }
+
+      await Promise.all(
+        Object.entries(imageResults).map(([eid, data]) => processOneImage(eid, data))
       );
-    }
 
-    const dateSlug = localDateStr();
-    doc.save(`Route_${route}_Alerts_${dateSlug}.pdf`);
+      // --- 3. Build the PDF ---
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      // Title
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(route === 'Unmatched' ? 'Unmatched Stores — Service Alerts' : `Route ${route} — Service Alerts`, pageWidth / 2, 15, { align: 'center' });
+
+      // Subtitle
+      const open = routeAlerts.filter(a => a.status === 'unresolved').length;
+      const resolved = routeAlerts.filter(a => a.status === 'resolved').length;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${todayStr} | ${routeAlerts.length} alerts | ${open} open | ${resolved} resolved`, pageWidth / 2, 21, { align: 'center' });
+
+      // Build table rows
+      const tableData = routeAlerts.map((a, i) => {
+        const lastService = a.daysSinceService !== null ? `${a.daysSinceService}d ago` : 'Never';
+        const response = a.status === 'resolved'
+          ? `Resolved ${a.days}d`
+          : a.status === 'unresolved'
+          ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
+          : 'No match';
+        return [
+          i + 1,
+          `${a.storeName} #${a.storeNumber}`,
+          a.city,
+          lastService,
+          a.refNumber,
+          formatDate(a.dateReceived),
+          a.status === 'resolved' ? 'Resolved' : a.status === 'unresolved' ? 'Open' : 'Unknown',
+          response,
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 26,
+        head: [['#', 'Store', 'City', 'Last Service', 'Ref #', 'Alert Date', 'Status', 'Response']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [37, 99, 235], fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 8, halign: 'center' },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 30 },
+          3: { cellWidth: 22, halign: 'center' },
+          4: { cellWidth: 35 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 18, halign: 'center' },
+          7: { cellWidth: 30 },
+        },
+        margin: { left: 14, right: 14 },
+        didParseCell: function (data) {
+          if (data.section !== 'body') return;
+          const a = routeAlerts[data.row.index];
+          if (!a) return;
+          // Status column
+          if (data.column.index === 6) {
+            data.cell.styles.fontStyle = 'bold';
+            if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
+            else if (a.status === 'unresolved') data.cell.styles.textColor = [239, 68, 68];
+            else data.cell.styles.textColor = [156, 163, 175];
+          }
+          // Last Service column
+          if (data.column.index === 3) {
+            if (a.daysSinceService === null) data.cell.styles.textColor = [156, 163, 175];
+            else if (a.daysSinceService > 14) data.cell.styles.textColor = [239, 68, 68];
+            else if (a.daysSinceService > 7) data.cell.styles.textColor = [249, 115, 22];
+            else data.cell.styles.textColor = [34, 197, 94];
+            data.cell.styles.fontStyle = 'bold';
+          }
+          // Response column
+          if (data.column.index === 7) {
+            if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
+            else if (a.status === 'unresolved') data.cell.styles.textColor = a.days > 7 ? [239, 68, 68] : [249, 115, 22];
+            else data.cell.styles.textColor = [156, 163, 175];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+      });
+
+      // --- 4. Append image pages ---
+      for (const a of routeAlerts) {
+        const img = processedImages[a.emailId];
+        if (!img) continue;
+
+        doc.addPage('a4', 'landscape');
+
+        // Header: store name, number, city
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${a.storeName} #${a.storeNumber} — ${a.city}`, pageWidth / 2, 15, { align: 'center' });
+
+        // Subtitle: ref, date, status
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        const statusLabel = a.status === 'resolved' ? 'Resolved' : a.status === 'unresolved' ? 'Open' : 'Unknown';
+        doc.text(`Ref: ${a.refNumber} | Alert: ${formatDate(a.dateReceived)} | Status: ${statusLabel}`, pageWidth / 2, 22, { align: 'center' });
+
+        // Image area: fit within page while preserving aspect ratio
+        const margin = 14;
+        const imgTopY = 28;
+        const maxW = pageWidth - margin * 2;
+        const maxH = pageHeight - imgTopY - 12; // leave room for footer
+        const aspectRatio = img.width / img.height;
+        let drawW, drawH;
+        if (maxW / maxH > aspectRatio) {
+          drawH = maxH;
+          drawW = drawH * aspectRatio;
+        } else {
+          drawW = maxW;
+          drawH = drawW / aspectRatio;
+        }
+        const drawX = (pageWidth - drawW) / 2;
+        const drawY = imgTopY + (maxH - drawH) / 2;
+
+        try {
+          // Detect format from data URI; default to JPEG
+          const fmt = img.base64Uri.match(/^data:image\/png/) ? 'PNG' : 'JPEG';
+          doc.addImage(img.base64Uri, fmt, drawX, drawY, drawW, drawH);
+        } catch (imgErr) {
+          console.warn(`Failed to add image for ${a.emailId} to PDF:`, imgErr);
+          doc.setFontSize(10);
+          doc.setTextColor(180, 180, 180);
+          doc.text('Image could not be embedded', pageWidth / 2, pageHeight / 2, { align: 'center' });
+        }
+      }
+
+      // Footer on all pages
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Generated ${todayStr} — Map Tracker — Page ${i}/${pageCount}`,
+          pageWidth / 2, pageHeight - 5, { align: 'center' }
+        );
+      }
+
+      const dateSlug = localDateStr();
+      doc.save(`Route_${route}_Alerts_${dateSlug}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setPdfGenerating(null);
+    }
   }
 
   return (
@@ -483,9 +630,10 @@ export default function AlertLog() {
                     <button
                       className="al-btn-pdf"
                       onClick={(e) => generateRoutePDF(e, route, routeAlerts)}
+                      disabled={pdfGenerating !== null}
                       title={`Download PDF for ${route === 'Unmatched' ? 'unmatched stores' : 'Route ' + route}`}
                     >
-                      PDF
+                      {pdfGenerating === route ? 'Generating...' : 'PDF'}
                     </button>
                   </div>
                 </div>

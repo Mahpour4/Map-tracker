@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import visitHistory from '../data/visitHistory';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -42,13 +41,17 @@ function getDayDate(weekOf, day) {
 }
 
 /** Check compliance: was store visited on the scheduled day or same week? */
-function getStopCompliance(storeId, scheduledDay, weekOf) {
+function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited, visitHistoryMap) {
   const scheduledDate = getDayDate(weekOf, scheduledDay);
   const weekEnd = getDayDate(weekOf, 'friday');
   const weekStart = weekOf;
 
-  // Get all visit dates for this store
-  const visits = visitHistory[storeId] || [];
+  // Use context visit history, merge with store.lastVisited as safety net
+  const visits = [...(visitHistoryMap[storeId] || [])];
+  if (lastVisited) {
+    const normalised = lastVisited.split('T')[0];
+    if (!visits.includes(normalised)) visits.push(normalised);
+  }
 
   // Check if visited on exact day
   const exactMatch = visits.includes(scheduledDate);
@@ -87,14 +90,17 @@ function formatWeekRange(weekStart, weekEnd) {
 }
 
 export default function RouteSchedule() {
-  const { state, saveSchedule } = useApp();
-  const { stores, schedules } = state;
+  const { state, saveSchedule, recordVisit } = useApp();
+  const { stores, schedules, visitHistory: visitHistoryMap } = state;
 
   const [selectedRoute, setSelectedRoute] = useState('');
   const [weekOf, setWeekOf] = useState(getMonday(new Date()));
   const [dragItem, setDragItem] = useState(null);
   const [noteEditing, setNoteEditing] = useState(null);
   const [showSchedulesDropdown, setShowSchedulesDropdown] = useState(false);
+  const [visitEditId, setVisitEditId] = useState(null);
+  const [visitEditDate, setVisitEditDate] = useState('');
+  const visitDateRef = useRef(null);
 
   // Current schedule from context
   const scheduleKey = selectedRoute ? getScheduleKey(selectedRoute, weekOf) : '';
@@ -147,13 +153,20 @@ export default function RouteSchedule() {
     return routeStores.filter(s => !scheduledIds.has(s.id));
   }, [routeStores, scheduledIds]);
 
+  // Store lookup
+  const storeMap = useMemo(() => {
+    const map = {};
+    stores.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [stores]);
+
   // Compliance stats
   const complianceStats = useMemo(() => {
     let total = 0, exact = 0, sameWeek = 0, missed = 0, future = 0;
     DAYS.forEach(day => {
       (schedule[day] || []).forEach(item => {
         total++;
-        const c = getStopCompliance(item.storeId, day, weekOf);
+        const c = getStopCompliance(item.storeId, day, weekOf, storeMap[item.storeId]?.lastVisited, visitHistoryMap);
         if (c.status === 'exact') exact++;
         else if (c.status === 'sameWeek') sameWeek++;
         else if (c.status === 'missed') missed++;
@@ -163,14 +176,7 @@ export default function RouteSchedule() {
     const completed = exact + sameWeek;
     const adherence = total > 0 ? Math.round((completed / (total - future)) * 100) || 0 : 0;
     return { total, exact, sameWeek, missed, future, completed, adherence };
-  }, [schedule, weekOf]);
-
-  // Store lookup
-  const storeMap = useMemo(() => {
-    const map = {};
-    stores.forEach(s => { map[s.id] = s; });
-    return map;
-  }, [stores]);
+  }, [schedule, weekOf, storeMap]);
 
   // Process saved schedules list
   const savedSchedulesList = useMemo(() => {
@@ -325,6 +331,24 @@ export default function RouteSchedule() {
     persistSchedule(newSchedule);
   }
 
+  // Visit date editing
+  const openVisitEdit = useCallback((storeId) => {
+    setVisitEditId(storeId);
+    setVisitEditDate(new Date().toISOString().split('T')[0]);
+    setTimeout(() => {
+      try { visitDateRef.current?.showPicker(); } catch (_) {}
+    }, 50);
+  }, []);
+
+  const saveVisitDate = useCallback((storeId) => {
+    if (!visitEditDate) return;
+    const ymd = visitEditDate.split('T')[0].split(' ')[0];
+    if (!ymd) return;
+    recordVisit(storeId, ymd);
+    setVisitEditId(null);
+    setVisitEditDate('');
+  }, [visitEditDate, recordVisit]);
+
   // Generate PDF with compliance
   const generatePDF = useCallback(() => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
@@ -370,7 +394,7 @@ export default function RouteSchedule() {
         const days = getDaysSinceVisit(store.lastVisited);
         const lastVisit = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : 'Never';
         const daysText = days !== null ? `${days}d` : 'Never';
-        const compliance = getStopCompliance(item.storeId, day, weekOf);
+        const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited, visitHistoryMap);
         return [
           item.stopNumber,
           store.id,
@@ -569,9 +593,26 @@ export default function RouteSchedule() {
                         {days === null ? 'Never' : `${days}d`}
                       </span>
                     </div>
-                    <div className="schedule-chip-lastvisit">
+                    <div
+                      className="schedule-chip-lastvisit schedule-stop-days-clickable"
+                      onClick={(e) => { e.stopPropagation(); openVisitEdit(s.id); }}
+                      title="Click to edit visit date"
+                    >
                       Last: {formatVisitDate(s.lastVisited)}
                     </div>
+                    {visitEditId === s.id && (
+                      <div className="schedule-visit-edit">
+                        <input
+                          ref={visitDateRef}
+                          type="date"
+                          className="schedule-visit-date-input"
+                          value={visitEditDate}
+                          onChange={(e) => setVisitEditDate(e.target.value)}
+                        />
+                        <button className="schedule-visit-save-btn" onClick={() => saveVisitDate(s.id)} disabled={!visitEditDate}>Save</button>
+                        <button className="schedule-visit-cancel-btn" onClick={() => setVisitEditId(null)}>&times;</button>
+                      </div>
+                    )}
                     <div className="schedule-chip-add-btns">
                       {DAYS.map(d => (
                         <button
@@ -618,7 +659,7 @@ export default function RouteSchedule() {
                       const store = storeMap[item.storeId];
                       if (!store) return null;
                       const days = getDaysSinceVisit(store.lastVisited);
-                      const compliance = getStopCompliance(item.storeId, day, weekOf);
+                      const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited, visitHistoryMap);
                       const isEditingNote = noteEditing === `${day}_${item.storeId}`;
                       return (
                         <div
@@ -630,10 +671,21 @@ export default function RouteSchedule() {
                           <div className="schedule-stop-top">
                             <span className="schedule-stop-num">{item.stopNumber}</span>
                             <div className="schedule-stop-info">
-                              <div className="schedule-stop-name">{store.id}</div>
+                              <div className="schedule-stop-name">
+                                {store.id}
+                                <span
+                                  className="schedule-stop-days schedule-stop-days-clickable"
+                                  style={{
+                                    color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
+                                  }}
+                                  onClick={(e) => { e.stopPropagation(); openVisitEdit(store.id); }}
+                                  title="Click to edit visit date"
+                                >
+                                  {days === null ? 'Never' : `${days}d`}
+                                </span>
+                              </div>
                               <div className="schedule-stop-detail">{store.name}</div>
                               <div className="schedule-stop-addr">{store.address}, {store.city}</div>
-                              <div className="schedule-stop-lastvisit">Last visit: {formatVisitDate(store.lastVisited)}</div>
                             </div>
                             <div className="schedule-stop-compliance">
                               <span className="compliance-badge" style={{ color: compliance.color, borderColor: compliance.color }}>
@@ -649,6 +701,19 @@ export default function RouteSchedule() {
                               <button className="btn-icon btn-icon-danger" onClick={() => removeFromDay(day, item.storeId)}>✕</button>
                             </div>
                           </div>
+                          {visitEditId === store.id && (
+                            <div className="schedule-visit-edit">
+                              <input
+                                ref={visitDateRef}
+                                type="date"
+                                className="schedule-visit-date-input"
+                                value={visitEditDate}
+                                onChange={(e) => setVisitEditDate(e.target.value)}
+                              />
+                              <button className="schedule-visit-save-btn" onClick={() => saveVisitDate(store.id)} disabled={!visitEditDate}>Save</button>
+                              <button className="schedule-visit-cancel-btn" onClick={() => setVisitEditId(null)}>&times;</button>
+                            </div>
+                          )}
                           {isEditingNote ? (
                             <input
                               className="schedule-stop-note-input"
