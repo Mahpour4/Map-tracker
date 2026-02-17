@@ -53,9 +53,20 @@ function StoreCard({ store, index, routes }) {
   const isUnassignedRoute = !store.routeNumber || store.routeNumber === '0';
   const [editingVisit, setEditingVisit] = useState(false);
   const [visitDate, setVisitDate] = useState('');
+  const [copied, setCopied] = useState(false);
   const visitDateRef = useRef(null);
 
   const zone = state.zones.find((z) => z.id === store.zoneId);
+
+  const copyAlert = (e) => {
+    e.stopPropagation();
+    const lastService = formatDate(store.lastVisited) || 'Never';
+    const msg = `🚨 *ALERT - Service Required*\n\nStore: ${store.name}\nStore #: ${store.id}\nAddress: ${store.address}, ${store.city}, ${store.state} ${store.zip}\nLast Service: ${lastService}\n\n⚠️ This store needs to be serviced.`;
+    navigator.clipboard.writeText(msg).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const openVisitEdit = (e) => {
     e.stopPropagation();
@@ -146,6 +157,13 @@ function StoreCard({ store, index, routes }) {
       )}
 
       <div className="store-card-actions">
+        <button
+          className="btn btn-sm store-alert-btn"
+          onClick={copyAlert}
+          title="Copy WhatsApp alert to clipboard"
+        >
+          {copied ? 'Copied!' : 'Alert'}
+        </button>
         {isUnassignedRoute ? (
           <select
             className="route-assign-select"

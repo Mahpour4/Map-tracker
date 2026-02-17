@@ -1125,6 +1125,20 @@ textarea {
   opacity: 0.85;
 }
 
+/* WhatsApp alert button */
+.store-alert-btn {
+  background: #25d366;
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+.store-alert-btn:hover {
+  opacity: 0.85;
+  background: #25d366;
+  color: white;
+}
+
 /* Copied flash notification */
 .copied-flash {
   position: absolute;

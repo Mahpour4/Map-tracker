@@ -171,6 +171,7 @@ export default function MapView() {
   const [zonesOff, setZonesOff] = useState(false);
   const [hideCash, setHideCash] = useState(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
+  const [copiedPopupId, setCopiedPopupId] = useState(null);
   const [staleCollapsed, setStaleCollapsed] = useState(false);
   const [popupEditId, setPopupEditId] = useState(null);
   const [popupEditDate, setPopupEditDate] = useState('');
@@ -359,6 +360,15 @@ export default function MapView() {
       setTimeout(() => setCopiedFlash(false), 2000);
     });
   }, [staleStores, filterRoute, filterType]);
+
+  const copyStoreAlert = useCallback((store) => {
+    const lastService = store.lastVisited ? formatDate(store.lastVisited).split(' (')[0] : 'Never';
+    const msg = `🚨 *ALERT - Service Required*\n\nStore: ${store.name}\nStore #: ${store.id}\nAddress: ${store.address}, ${store.city}, ${store.state} ${store.zip}\nLast Service: ${lastService}\n\n⚠️ This store needs to be serviced.`;
+    navigator.clipboard.writeText(msg).then(() => {
+      setCopiedPopupId(store.id);
+      setTimeout(() => setCopiedPopupId(null), 2000);
+    });
+  }, []);
 
   const openPopupEdit = useCallback((storeId) => {
     setPopupEditId(storeId);
@@ -701,6 +711,13 @@ export default function MapView() {
                 {getRecencyTier(store.lastVisited).label}
               </span>
               <div className="popup-actions">
+                <button
+                  className="btn btn-xs store-alert-btn"
+                  onClick={() => copyStoreAlert(store)}
+                  title="Copy WhatsApp alert to clipboard"
+                >
+                  {copiedPopupId === store.id ? 'Copied!' : 'Alert'}
+                </button>
                 {store.routeNumber && store.routeNumber !== '0' ? (
                   <button
                     className="btn btn-xs btn-warning"
