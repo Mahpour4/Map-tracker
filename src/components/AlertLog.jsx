@@ -396,17 +396,21 @@ export default function AlertLog() {
     return d.toISOString().split('T')[0];
   }
 
-  // Helper: find the scheduled day for a store in a given route's current-week schedule
+  // Helper: find the scheduled day for a store by checking all schedule weeks for the route
   function getScheduleDay(storeId, routeNum) {
     if (!storeId || !routeNum || !schedules) return null;
-    const weekOf = getMonday(new Date());
-    const key = `${routeNum}_${weekOf}`;
-    const sched = schedules[key];
-    if (!sched) return null;
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    for (const day of days) {
-      if (sched[day] && sched[day].some(s => s.storeId === storeId)) {
-        return day.charAt(0).toUpperCase() + day.slice(1);
+    // Search all schedule keys for this route (most recent week first)
+    const routeKeys = Object.keys(schedules)
+      .filter(k => k.startsWith(`${routeNum}_`))
+      .sort((a, b) => b.localeCompare(a));
+    for (const key of routeKeys) {
+      const sched = schedules[key];
+      if (!sched) continue;
+      for (const day of days) {
+        if (sched[day] && sched[day].some(s => s.storeId === storeId)) {
+          return day.charAt(0).toUpperCase() + day.slice(1);
+        }
       }
     }
     return null;
