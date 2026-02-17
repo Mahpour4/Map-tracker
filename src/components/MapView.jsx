@@ -117,6 +117,24 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited) {
   });
 }
 
+// Truck icon for fleet vehicle overlay (diamond shape to distinguish from store circles)
+function createTruckOverlayIcon(engineStatus) {
+  const color = engineStatus === 'on' ? '#22c55e' : engineStatus === 'off' ? '#ef4444' : '#9ca3af';
+  return L.divIcon({
+    className: 'fleet-overlay-marker',
+    html: `<div style="
+      width: 12px; height: 12px;
+      background: ${color};
+      border-radius: 3px;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      transform: rotate(45deg);
+    "></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  });
+}
+
 function MapUpdater({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
@@ -142,8 +160,8 @@ function formatDate(dateStr) {
 }
 
 export default function MapView() {
-  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore, recordVisit } = useApp();
-  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute } = state;
+  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore, recordVisit, toggleVehiclesOnMap } = useApp();
+  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute, vehicleLocations, showVehiclesOnMap } = state;
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(false);
@@ -467,6 +485,15 @@ export default function MapView() {
             {staleCollapsed ? `Show Stale (${staleStores.length})` : 'Hide Stale'}
           </button>
         )}
+        {vehicleLocations.length > 0 && (
+          <button
+            className={`zone-toggle-btn ${showVehiclesOnMap ? '' : 'zones-hidden'}`}
+            onClick={toggleVehiclesOnMap}
+            title={showVehiclesOnMap ? 'Hide fleet vehicles' : 'Show fleet vehicles on map'}
+          >
+            {showVehiclesOnMap ? 'Hide Fleet' : 'Show Fleet'}
+          </button>
+        )}
       </div>
 
       {/* Legend - switches between store types and visit recency */}
@@ -699,6 +726,51 @@ export default function MapView() {
           </Popup>
         </Marker>
       ))}
+
+      {/* Fleet vehicle overlay markers */}
+      {showVehiclesOnMap && vehicleLocations
+        .filter(v => v.lat && v.lng)
+        .map(v => (
+          <Marker
+            key={`fleet-${v.vin}`}
+            position={[v.lat, v.lng]}
+            icon={createTruckOverlayIcon(v.engineStatus)}
+          >
+            <Popup>
+              <div className="store-popup">
+                <strong>{v.vehicleId}</strong>
+                <br />
+                <span className="popup-address">{v.licensePlate}</span>
+                <br />
+                {v.driverName && (
+                  <>
+                    <span className="popup-zone">Driver: {v.driverName}</span>
+                    <br />
+                  </>
+                )}
+                <span className="popup-zone">
+                  Speed: {v.speed != null ? `${v.speed} mph` : 'N/A'}
+                </span>
+                <br />
+                <span
+                  className="popup-type"
+                  style={{
+                    background: v.engineStatus === 'on' ? '#22c55e20' : '#ef444420',
+                    color: v.engineStatus === 'on' ? '#22c55e' : '#ef4444',
+                  }}
+                >
+                  Engine: {v.engineStatus || 'Unknown'}
+                </span>
+                {v.description && (
+                  <>
+                    <br />
+                    <span className="popup-zone">{v.description}</span>
+                  </>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
     </MapContainer>
     </div>
   );

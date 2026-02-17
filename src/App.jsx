@@ -7,6 +7,7 @@ import RouteSchedule from './components/RouteSchedule';
 import DataImport from './components/DataImport';
 import AlertLog from './components/AlertLog';
 import AlertAnalytics from './components/AlertAnalytics';
+import FleetTracker from './components/FleetTracker';
 import './App.css';
 
 function AppContent() {
@@ -54,6 +55,12 @@ function AppContent() {
           >
             Alert Log
           </button>
+          <button
+            className={`page-nav-btn ${page === 'fleet' ? 'active' : ''}`}
+            onClick={() => setPage('fleet')}
+          >
+            Fleet Tracker
+          </button>
         </div>
         {page === 'map' && <MapView />}
         {page === 'leaderboard' && <RouteLeaderboard />}
@@ -62,6 +69,7 @@ function AppContent() {
         {page === 'import' && <DataImport />}
         {page === 'alerts' && <AlertLog />}
         {page === 'alertAnalytics' && <AlertAnalytics />}
+        {page === 'fleet' && <FleetTracker />}
       </main>
     </div>
   );

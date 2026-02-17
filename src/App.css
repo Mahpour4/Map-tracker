@@ -5270,3 +5270,465 @@ textarea {
   color: var(--text-muted);
 }
 
+/* ============ Fleet Tracker ============ */
+.ft-page {
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.ft-header {
+  margin-bottom: 16px;
+}
+
+.ft-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ft-title-row h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.ft-connection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ft-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ft-status-dot.idle { background: #d1d5db; }
+.ft-status-dot.loading { background: #3b82f6; animation: pulse-dot 1s infinite; }
+.ft-status-dot.connected { background: #22c55e; }
+.ft-status-dot.error { background: #ef4444; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.ft-status-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.ft-settings-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--primary);
+  transition: all 0.15s;
+}
+
+.ft-settings-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.ft-api-setup {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.ft-api-connected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.ft-api-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ft-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.ft-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-card);
+}
+
+.ft-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.ft-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.ft-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ft-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.ft-stat {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ft-stat span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.ft-stat.green { color: #22c55e; }
+.ft-stat.red { color: #ef4444; }
+.ft-stat.blue { color: #3b82f6; }
+
+.ft-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.ft-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s;
+}
+
+.ft-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.ft-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ft-auto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ft-auto-toggle input {
+  cursor: pointer;
+}
+
+.ft-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ft-view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ft-view-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+
+.ft-view-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.ft-view-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+.ft-view-btn:hover:not(.active) {
+  background: #f1f5f9;
+}
+
+.ft-search {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-card);
+}
+
+.ft-search:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Content layout */
+.ft-content {
+  display: flex;
+  gap: 16px;
+  min-height: 400px;
+}
+
+.ft-content.ft-table {
+  flex-direction: column;
+}
+
+.ft-content.ft-map {
+  flex-direction: column;
+}
+
+.ft-content.ft-split {
+  flex-direction: row;
+}
+
+.ft-content.ft-split .ft-map-container {
+  flex: 1;
+  min-height: 400px;
+}
+
+.ft-content.ft-split .ft-table-container {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+/* Map */
+.ft-map-container {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 400px;
+  background: var(--bg-card);
+}
+
+.ft-map {
+  height: 100%;
+  width: 100%;
+  min-height: 400px;
+}
+
+.ft-map-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 24px;
+}
+
+.ft-popup {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ft-popup-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Table */
+.ft-table-container {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.ft-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ft-table thead {
+  background: #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ft-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.ft-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  color: var(--text);
+}
+
+.ft-table tbody tr {
+  transition: background 0.1s;
+  cursor: pointer;
+}
+
+.ft-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.ft-table tbody tr.selected {
+  background: #eff6ff;
+  border-left: 3px solid var(--primary);
+}
+
+.ft-cell-vehicle {
+  font-weight: 600;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ft-cell-plate {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ft-cell-vin {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ft-cell-source {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ft-cell-location {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ft-cell-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ft-cell-speed {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ft-cell-updated {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ft-engine-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ft-engine-badge.on {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ft-engine-badge.off {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.ft-engine-badge.unknown {
+  background: #f1f5f9;
+  color: #9ca3af;
+}
+
+/* Footer */
+.ft-footer {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.ft-footer-error {
+  color: var(--danger);
+}
+
+/* Fleet markers on maps */
+.fleet-overlay-marker,
+.fleet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
