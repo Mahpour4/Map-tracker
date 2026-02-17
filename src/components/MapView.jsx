@@ -54,9 +54,10 @@ const recencyTiers = [
   { label: '8-10 days', color: '#3b82f6', maxDays: 10, pulse: null },
   { label: '11-15 days', color: '#eab308', maxDays: 15, pulse: 'pulse-slow' },
   { label: '16-30 days', color: '#f97316', maxDays: 30, pulse: 'pulse-medium' },
-  { label: '30+ days', color: '#ef4444', maxDays: Infinity, pulse: 'pulse-fast' },
+  { label: '31-89 days', color: '#ef4444', maxDays: 89, pulse: 'pulse-fast' },
+  { label: 'Dormant (90+ days)', color: '#6b7280', maxDays: Infinity, pulse: null },
 ];
-const neverVisitedTier = { label: 'Never visited', color: '#9ca3af', pulse: 'pulse-fast' };
+const neverVisitedTier = { label: 'Never visited', color: '#9ca3af', pulse: null };
 
 function getDaysSinceVisit(lastVisited) {
   if (!lastVisited) return null;
