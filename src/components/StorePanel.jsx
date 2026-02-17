@@ -36,7 +36,9 @@ const typeColors = {
 
 function formatDate(dateStr) {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
+  const raw = dateStr.split('T')[0];
+  const d = new Date(raw + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
   return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',

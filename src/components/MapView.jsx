@@ -60,9 +60,11 @@ const neverVisitedTier = { label: 'Never visited', color: '#9ca3af', pulse: 'pul
 
 function getDaysSinceVisit(lastVisited) {
   if (!lastVisited) return null;
-  const visited = new Date(lastVisited);
+  const raw = lastVisited.split('T')[0];
+  const visited = new Date(raw + 'T00:00:00');
   if (isNaN(visited.getTime())) return null;
   const now = new Date();
+  now.setHours(0, 0, 0, 0);
   return Math.floor((now - visited) / (1000 * 60 * 60 * 24));
 }
 
@@ -145,7 +147,8 @@ function MapUpdater({ center, zoom }) {
 
 function formatDate(dateStr) {
   if (!dateStr) return 'Never';
-  const d = new Date(dateStr);
+  const raw = dateStr.split('T')[0];
+  const d = new Date(raw + 'T00:00:00');
   if (isNaN(d.getTime())) return 'Never';
   const formatted = d.toLocaleDateString('en-US', {
     month: 'short',
