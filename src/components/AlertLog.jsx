@@ -57,6 +57,7 @@ export default function AlertLog() {
   const [refreshing, setRefreshing] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(null); // route string or null
   const [showStats, setShowStats] = useState(false);
+  const [statsTab, setStatsTab] = useState('time'); // 'time' | 'route' | 'zone' | 'chain' | 'top'
   const [statsView, setStatsView] = useState('day'); // 'day' | 'week' | 'month'
 
   // --- PDF sent tracking (persisted in localStorage) ---
@@ -191,10 +192,11 @@ export default function AlertLog() {
     return { total, open, resolved, unknown, avgResponse };
   }, [enrichedAlerts]);
 
-  // Statistics grouped by time period
-  const timeStats = useMemo(() => {
-    if (!showStats) return { day: [], week: [], month: [], summary: {} };
+  // Comprehensive statistics across all dimensions
+  const allStats = useMemo(() => {
+    if (!showStats) return { time: {}, routes: [], zones: [], chains: [], topStores: [], topDrivers: [], summary: {} };
 
+    // --- Time groupings ---
     function getWeekKey(dateStr) {
       const d = new Date(dateStr + 'T00:00:00');
       const jan1 = new Date(d.getFullYear(), 0, 1);
@@ -203,53 +205,89 @@ export default function AlertLog() {
       return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
     }
 
-    function getMonthKey(dateStr) {
-      return dateStr.slice(0, 7);
+    const dayMap = {}, weekMap = {}, monthMap = {};
+    const routeMap = {}, zoneMap = {}, chainMap = {}, storeCountMap = {}, driverMap = {};
+
+    function inc(map, key, a) {
+      if (!key) return;
+      if (!map[key]) map[key] = { key, total: 0, open: 0, resolved: 0, avgDays: 0, _days: [] };
+      map[key].total++;
+      if (a.status === 'unresolved') map[key].open++;
+      if (a.status === 'resolved') {
+        map[key].resolved++;
+        if (a.days !== null) map[key]._days.push(a.days);
+      }
     }
 
-    const dayMap = {};
-    const weekMap = {};
-    const monthMap = {};
+    // Extract chain name from store name (e.g. "Food Lion 1414" → "Food Lion")
+    function getChain(name) {
+      if (!name) return 'Unknown';
+      return name.replace(/\s*#?\d+\s*$/, '').trim() || name;
+    }
 
     enrichedAlerts.forEach(a => {
       const date = a.dateReceived;
-      if (!date) return;
+      if (date) {
+        inc(dayMap, date, a);
+        inc(weekMap, getWeekKey(date), a);
+        inc(monthMap, date.slice(0, 7), a);
+      }
 
-      if (!dayMap[date]) dayMap[date] = { key: date, total: 0, open: 0, resolved: 0 };
-      dayMap[date].total++;
-      if (a.status === 'unresolved') dayMap[date].open++;
-      if (a.status === 'resolved') dayMap[date].resolved++;
+      // Route
+      inc(routeMap, a.routeNumber || 'Unassigned', a);
 
-      const wk = getWeekKey(date);
-      if (!weekMap[wk]) weekMap[wk] = { key: wk, total: 0, open: 0, resolved: 0 };
-      weekMap[wk].total++;
-      if (a.status === 'unresolved') weekMap[wk].open++;
-      if (a.status === 'resolved') weekMap[wk].resolved++;
+      // Zone (use store region/territory)
+      const zone = a.store?.region || a.store?.territory || 'Unknown';
+      inc(zoneMap, zone, a);
 
-      const mo = getMonthKey(date);
-      if (!monthMap[mo]) monthMap[mo] = { key: mo, total: 0, open: 0, resolved: 0 };
-      monthMap[mo].total++;
-      if (a.status === 'unresolved') monthMap[mo].open++;
-      if (a.status === 'resolved') monthMap[mo].resolved++;
+      // Chain
+      inc(chainMap, getChain(a.storeName), a);
+
+      // Store (for top offenders)
+      const storeKey = a.storeId || a.storeName;
+      if (!storeCountMap[storeKey]) storeCountMap[storeKey] = { key: storeKey, name: a.storeName, number: a.storeNumber, city: a.city, route: a.routeNumber, total: 0, open: 0, resolved: 0, _days: [] };
+      storeCountMap[storeKey].total++;
+      if (a.status === 'unresolved') storeCountMap[storeKey].open++;
+      if (a.status === 'resolved') {
+        storeCountMap[storeKey].resolved++;
+        if (a.days !== null) storeCountMap[storeKey]._days.push(a.days);
+      }
+
+      // Driver (from store data)
+      const driver = a.store?.driver || `Route ${a.routeNumber || '?'} Driver`;
+      inc(driverMap, driver, a);
     });
 
-    const toSorted = (map) => Object.values(map).sort((a, b) => b.key.localeCompare(a.key));
+    // Compute average response days for each bucket
+    function finalize(map) {
+      const arr = Object.values(map);
+      arr.forEach(b => {
+        b.avgDays = b._days.length > 0 ? Math.round(b._days.reduce((s, d) => s + d, 0) / b._days.length * 10) / 10 : null;
+        delete b._days;
+      });
+      return arr;
+    }
 
-    const dayArr = toSorted(dayMap);
-    const busiest = dayArr.length > 0
-      ? dayArr.reduce((max, d) => d.total > max.total ? d : max, dayArr[0])
-      : null;
-    const avgPerDay = dayArr.length > 0
-      ? Math.round(dayArr.reduce((s, d) => s + d.total, 0) / dayArr.length * 10) / 10
-      : 0;
+    const toSortedDesc = (map) => { const arr = finalize(map); arr.sort((a, b) => b.key.localeCompare(a.key)); return arr; };
+    const toSortedByTotal = (map) => { const arr = finalize(map); arr.sort((a, b) => b.total - a.total); return arr; };
+
+    const dayArr = toSortedDesc(dayMap);
+    const busiest = dayArr.length > 0 ? dayArr.reduce((max, d) => d.total > max.total ? d : max, dayArr[0]) : null;
+    const avgPerDay = dayArr.length > 0 ? Math.round(dayArr.reduce((s, d) => s + d.total, 0) / dayArr.length * 10) / 10 : 0;
     const resolutionRate = enrichedAlerts.length > 0
-      ? Math.round(enrichedAlerts.filter(a => a.status === 'resolved').length / enrichedAlerts.length * 100)
-      : 0;
+      ? Math.round(enrichedAlerts.filter(a => a.status === 'resolved').length / enrichedAlerts.length * 100) : 0;
+
+    // Top stores: finalize and sort by total, take stores with 2+ alerts
+    const allStores = finalize(storeCountMap);
+    const topStores = allStores.filter(s => s.total >= 1).sort((a, b) => b.total - a.total).slice(0, 15);
 
     return {
-      day: dayArr,
-      week: toSorted(weekMap),
-      month: toSorted(monthMap),
+      time: { day: dayArr, week: toSortedDesc(weekMap), month: toSortedDesc(monthMap) },
+      routes: toSortedByTotal(routeMap),
+      zones: toSortedByTotal(zoneMap),
+      chains: toSortedByTotal(chainMap),
+      topStores,
+      topDrivers: toSortedByTotal(driverMap),
       summary: { busiest, avgPerDay, resolutionRate },
     };
   }, [enrichedAlerts, showStats]);
@@ -715,24 +753,31 @@ export default function AlertLog() {
         <div className="al-stats-panel">
           <div className="al-stats-panel-header">
             <h3>Alert Statistics</h3>
-            <div className="al-stats-view-toggle">
-              {['day', 'week', 'month'].map(v => (
+            <div className="al-stats-tabs">
+              {[
+                ['time', 'By Time'],
+                ['route', 'By Route'],
+                ['zone', 'By Zone'],
+                ['chain', 'By Chain'],
+                ['top', 'Top Stores'],
+              ].map(([key, label]) => (
                 <button
-                  key={v}
-                  className={`al-quick-btn ${statsView === v ? 'active' : ''}`}
-                  onClick={() => setStatsView(v)}
+                  key={key}
+                  className={`al-stats-tab ${statsTab === key ? 'active' : ''}`}
+                  onClick={() => setStatsTab(key)}
                 >
-                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                  {label}
                 </button>
               ))}
             </div>
             <button className="al-stats-close" onClick={() => setShowStats(false)}>Close</button>
           </div>
 
+          {/* Summary cards */}
           <div className="al-stats-summary">
             <div className="al-stats-card">
-              <span className="al-stats-card-value">{timeStats.summary.avgPerDay}</span>
-              <span className="al-stats-card-label">Avg / Day</span>
+              <span className="al-stats-card-value">{stats.total}</span>
+              <span className="al-stats-card-label">Total</span>
             </div>
             <div className="al-stats-card red">
               <span className="al-stats-card-value">{stats.open}</span>
@@ -743,59 +788,266 @@ export default function AlertLog() {
               <span className="al-stats-card-label">Resolved</span>
             </div>
             <div className="al-stats-card">
-              <span className="al-stats-card-value">{timeStats.summary.resolutionRate}%</span>
+              <span className="al-stats-card-value">{allStats.summary.resolutionRate}%</span>
               <span className="al-stats-card-label">Resolution Rate</span>
             </div>
-            {timeStats.summary.busiest && (
+            <div className="al-stats-card">
+              <span className="al-stats-card-value">{allStats.summary.avgPerDay}</span>
+              <span className="al-stats-card-label">Avg / Day</span>
+            </div>
+            {allStats.summary.busiest && (
               <div className="al-stats-card">
-                <span className="al-stats-card-value">{timeStats.summary.busiest.total}</span>
-                <span className="al-stats-card-label">Busiest: {formatDate(timeStats.summary.busiest.key)}</span>
+                <span className="al-stats-card-value">{allStats.summary.busiest.total}</span>
+                <span className="al-stats-card-label">Peak: {formatDate(allStats.summary.busiest.key)}</span>
               </div>
             )}
           </div>
 
-          <div className="al-stats-chart">
-            {timeStats[statsView].length === 0 ? (
-              <div className="al-stats-empty">No data for this view</div>
-            ) : (
-              (() => {
-                const data = timeStats[statsView];
-                const maxTotal = Math.max(...data.map(d => d.total));
-                return data.map(d => {
-                  const label = statsView === 'day'
-                    ? formatDate(d.key)
-                    : statsView === 'week'
-                    ? d.key
-                    : new Date(d.key + '-01T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                  return (
-                    <div key={d.key} className="al-stats-row">
-                      <span className="al-stats-row-label">{label}</span>
-                      <div className="al-stats-row-bar-wrap">
-                        <div className="al-stats-row-bar" style={{ width: `${(d.total / maxTotal) * 100}%` }}>
-                          {d.open > 0 && (
-                            <div className="al-stats-bar-segment" style={{ flex: d.open, background: '#ef4444' }} />
-                          )}
-                          {d.resolved > 0 && (
-                            <div className="al-stats-bar-segment" style={{ flex: d.resolved, background: '#22c55e' }} />
-                          )}
-                          {(d.total - d.open - d.resolved) > 0 && (
-                            <div className="al-stats-bar-segment" style={{ flex: d.total - d.open - d.resolved, background: '#9ca3af' }} />
-                          )}
+          {/* === TIME TAB === */}
+          {statsTab === 'time' && (
+            <div className="al-stats-section">
+              <div className="al-stats-section-header">
+                <h4>Alert Volume Over Time</h4>
+                <div className="al-stats-view-toggle">
+                  {['day', 'week', 'month'].map(v => (
+                    <button key={v} className={`al-quick-btn ${statsView === v ? 'active' : ''}`} onClick={() => setStatsView(v)}>
+                      {v.charAt(0).toUpperCase() + v.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="al-stats-chart">
+                {(allStats.time[statsView] || []).length === 0 ? (
+                  <div className="al-stats-empty">No data</div>
+                ) : (() => {
+                  const data = allStats.time[statsView];
+                  const maxTotal = Math.max(...data.map(d => d.total));
+                  return data.map(d => {
+                    const label = statsView === 'day' ? formatDate(d.key)
+                      : statsView === 'week' ? d.key
+                      : new Date(d.key + '-01T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    return (
+                      <div key={d.key} className="al-stats-row">
+                        <span className="al-stats-row-label">{label}</span>
+                        <div className="al-stats-row-bar-wrap">
+                          <div className="al-stats-row-bar" style={{ width: `${(d.total / maxTotal) * 100}%` }}>
+                            {d.open > 0 && <div className="al-stats-bar-segment" style={{ flex: d.open, background: '#ef4444' }} />}
+                            {d.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: d.resolved, background: '#22c55e' }} />}
+                            {(d.total - d.open - d.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: d.total - d.open - d.resolved, background: '#9ca3af' }} />}
+                          </div>
                         </div>
-                      </div>
-                      <span className="al-stats-row-count">
-                        {d.total}
-                        <span className="al-stats-row-breakdown">
-                          {d.open > 0 && <span style={{ color: '#ef4444' }}>{d.open}o</span>}
-                          {d.resolved > 0 && <span style={{ color: '#22c55e' }}>{d.resolved}r</span>}
+                        <span className="al-stats-row-count">
+                          {d.total}
+                          <span className="al-stats-row-breakdown">
+                            {d.open > 0 && <span style={{ color: '#ef4444' }}>{d.open}o</span>}
+                            {d.resolved > 0 && <span style={{ color: '#22c55e' }}>{d.resolved}r</span>}
+                          </span>
                         </span>
-                      </span>
-                    </div>
-                  );
-                });
-              })()
-            )}
-          </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* === ROUTE TAB === */}
+          {statsTab === 'route' && (
+            <div className="al-stats-section">
+              <h4>Alerts by Route</h4>
+              <table className="al-stats-table">
+                <thead>
+                  <tr>
+                    <th>Route</th>
+                    <th>Total</th>
+                    <th>Open</th>
+                    <th>Resolved</th>
+                    <th>Avg Response</th>
+                    <th className="al-stats-bar-col">Distribution</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allStats.routes.map(r => {
+                    const maxTotal = allStats.routes[0]?.total || 1;
+                    return (
+                      <tr key={r.key} className={r.open > 0 ? 'has-open' : ''}>
+                        <td className="al-stats-td-label">Route {r.key}</td>
+                        <td className="al-stats-td-num">{r.total}</td>
+                        <td className="al-stats-td-num" style={{ color: r.open > 0 ? '#dc2626' : undefined }}>{r.open}</td>
+                        <td className="al-stats-td-num" style={{ color: r.resolved > 0 ? '#16a34a' : undefined }}>{r.resolved}</td>
+                        <td className="al-stats-td-num">{r.avgDays !== null ? `${r.avgDays}d` : '—'}</td>
+                        <td>
+                          <div className="al-stats-row-bar-wrap">
+                            <div className="al-stats-row-bar" style={{ width: `${(r.total / maxTotal) * 100}%` }}>
+                              {r.open > 0 && <div className="al-stats-bar-segment" style={{ flex: r.open, background: '#ef4444' }} />}
+                              {r.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: r.resolved, background: '#22c55e' }} />}
+                              {(r.total - r.open - r.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: r.total - r.open - r.resolved, background: '#9ca3af' }} />}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* === ZONE TAB === */}
+          {statsTab === 'zone' && (
+            <div className="al-stats-section">
+              <h4>Alerts by Zone / Region</h4>
+              <table className="al-stats-table">
+                <thead>
+                  <tr>
+                    <th>Zone</th>
+                    <th>Total</th>
+                    <th>Open</th>
+                    <th>Resolved</th>
+                    <th>Avg Response</th>
+                    <th className="al-stats-bar-col">Distribution</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allStats.zones.map(z => {
+                    const maxTotal = allStats.zones[0]?.total || 1;
+                    return (
+                      <tr key={z.key} className={z.open > 0 ? 'has-open' : ''}>
+                        <td className="al-stats-td-label">{z.key}</td>
+                        <td className="al-stats-td-num">{z.total}</td>
+                        <td className="al-stats-td-num" style={{ color: z.open > 0 ? '#dc2626' : undefined }}>{z.open}</td>
+                        <td className="al-stats-td-num" style={{ color: z.resolved > 0 ? '#16a34a' : undefined }}>{z.resolved}</td>
+                        <td className="al-stats-td-num">{z.avgDays !== null ? `${z.avgDays}d` : '—'}</td>
+                        <td>
+                          <div className="al-stats-row-bar-wrap">
+                            <div className="al-stats-row-bar" style={{ width: `${(z.total / maxTotal) * 100}%` }}>
+                              {z.open > 0 && <div className="al-stats-bar-segment" style={{ flex: z.open, background: '#ef4444' }} />}
+                              {z.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: z.resolved, background: '#22c55e' }} />}
+                              {(z.total - z.open - z.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: z.total - z.open - z.resolved, background: '#9ca3af' }} />}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* === CHAIN TAB === */}
+          {statsTab === 'chain' && (
+            <div className="al-stats-section">
+              <h4>Alerts by Store Chain</h4>
+              <table className="al-stats-table">
+                <thead>
+                  <tr>
+                    <th>Chain</th>
+                    <th>Total</th>
+                    <th>Open</th>
+                    <th>Resolved</th>
+                    <th>Avg Response</th>
+                    <th className="al-stats-bar-col">Distribution</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allStats.chains.map(c => {
+                    const maxTotal = allStats.chains[0]?.total || 1;
+                    return (
+                      <tr key={c.key} className={c.open > 0 ? 'has-open' : ''}>
+                        <td className="al-stats-td-label">{c.key}</td>
+                        <td className="al-stats-td-num">{c.total}</td>
+                        <td className="al-stats-td-num" style={{ color: c.open > 0 ? '#dc2626' : undefined }}>{c.open}</td>
+                        <td className="al-stats-td-num" style={{ color: c.resolved > 0 ? '#16a34a' : undefined }}>{c.resolved}</td>
+                        <td className="al-stats-td-num">{c.avgDays !== null ? `${c.avgDays}d` : '—'}</td>
+                        <td>
+                          <div className="al-stats-row-bar-wrap">
+                            <div className="al-stats-row-bar" style={{ width: `${(c.total / maxTotal) * 100}%` }}>
+                              {c.open > 0 && <div className="al-stats-bar-segment" style={{ flex: c.open, background: '#ef4444' }} />}
+                              {c.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: c.resolved, background: '#22c55e' }} />}
+                              {(c.total - c.open - c.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: c.total - c.open - c.resolved, background: '#9ca3af' }} />}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* === TOP STORES / DRIVERS TAB === */}
+          {statsTab === 'top' && (
+            <div className="al-stats-section">
+              <h4>Top Stores (Most Alerts)</h4>
+              <table className="al-stats-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Store</th>
+                    <th>City</th>
+                    <th>Route</th>
+                    <th>Alerts</th>
+                    <th>Open</th>
+                    <th>Resolved</th>
+                    <th>Avg Response</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allStats.topStores.map((s, i) => (
+                    <tr key={s.key} className={s.total >= 3 ? 'critical' : s.total >= 2 ? 'warning' : ''}>
+                      <td className="al-stats-td-num">{i + 1}</td>
+                      <td className="al-stats-td-label">{s.name} #{s.number}</td>
+                      <td>{s.city}</td>
+                      <td className="al-stats-td-num">{s.route || '—'}</td>
+                      <td className="al-stats-td-num" style={{ fontWeight: 700 }}>{s.total}</td>
+                      <td className="al-stats-td-num" style={{ color: s.open > 0 ? '#dc2626' : undefined }}>{s.open}</td>
+                      <td className="al-stats-td-num" style={{ color: s.resolved > 0 ? '#16a34a' : undefined }}>{s.resolved}</td>
+                      <td className="al-stats-td-num">{s.avgDays !== null ? `${s.avgDays}d` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <h4 style={{ marginTop: 20 }}>Drivers by Alert Volume</h4>
+              <table className="al-stats-table">
+                <thead>
+                  <tr>
+                    <th>Driver</th>
+                    <th>Total</th>
+                    <th>Open</th>
+                    <th>Resolved</th>
+                    <th>Avg Response</th>
+                    <th className="al-stats-bar-col">Distribution</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allStats.topDrivers.map(d => {
+                    const maxTotal = allStats.topDrivers[0]?.total || 1;
+                    return (
+                      <tr key={d.key} className={d.open > 0 ? 'has-open' : ''}>
+                        <td className="al-stats-td-label">{d.key}</td>
+                        <td className="al-stats-td-num">{d.total}</td>
+                        <td className="al-stats-td-num" style={{ color: d.open > 0 ? '#dc2626' : undefined }}>{d.open}</td>
+                        <td className="al-stats-td-num" style={{ color: d.resolved > 0 ? '#16a34a' : undefined }}>{d.resolved}</td>
+                        <td className="al-stats-td-num">{d.avgDays !== null ? `${d.avgDays}d` : '—'}</td>
+                        <td>
+                          <div className="al-stats-row-bar-wrap">
+                            <div className="al-stats-row-bar" style={{ width: `${(d.total / maxTotal) * 100}%` }}>
+                              {d.open > 0 && <div className="al-stats-bar-segment" style={{ flex: d.open, background: '#ef4444' }} />}
+                              {d.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: d.resolved, background: '#22c55e' }} />}
+                              {(d.total - d.open - d.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: d.total - d.open - d.resolved, background: '#9ca3af' }} />}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className="al-stats-legend">
             <span><span className="al-stats-legend-dot" style={{ background: '#ef4444' }} /> Open</span>

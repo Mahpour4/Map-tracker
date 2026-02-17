@@ -4749,10 +4749,39 @@ textarea {
   margin: 0;
 }
 
+.al-stats-tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.al-stats-tab {
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.al-stats-tab:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.al-stats-tab.active {
+  background: #0891b2;
+  color: white;
+  border-color: #0891b2;
+}
+
 .al-stats-view-toggle {
   display: flex;
   gap: 4px;
-  margin-left: 8px;
 }
 
 .al-stats-close {
@@ -4882,6 +4911,100 @@ textarea {
   color: var(--text-muted);
   font-size: 13px;
   padding: 20px;
+}
+
+/* Section within stats panel */
+.al-stats-section {
+  margin-bottom: 16px;
+}
+
+.al-stats-section h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 10px 0;
+}
+
+.al-stats-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.al-stats-section-header h4 {
+  margin: 0;
+}
+
+/* Stats tables */
+.al-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.al-stats-table thead th {
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.al-stats-table tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.al-stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.al-stats-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.al-stats-table tbody tr.has-open {
+  background: #fef2f2;
+}
+
+.al-stats-table tbody tr.has-open:hover {
+  background: #fee2e2;
+}
+
+.al-stats-table tbody tr.critical {
+  background: #fef2f2;
+}
+
+.al-stats-table tbody tr.critical:hover {
+  background: #fee2e2;
+}
+
+.al-stats-table tbody tr.warning {
+  background: #fffbeb;
+}
+
+.al-stats-table tbody tr.warning:hover {
+  background: #fef3c7;
+}
+
+.al-stats-td-label {
+  font-weight: 600;
+}
+
+.al-stats-td-num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.al-stats-bar-col {
+  width: 30%;
+  min-width: 100px;
 }
 
 .al-stats-legend {
