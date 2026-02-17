@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
+import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
 import localSchedules from '../data/schedules.json';
@@ -35,6 +36,12 @@ const initialState = {
   importLog: [], // Array of import entries, newest first
   schedules: localSchedules, // { "route_weekOf": { monday: [...], ... } }
   visitHistory: localVisitHistory, // { storeId: ['YYYY-MM-DD', ...] }
+  // Fleet tracking (Motive API)
+  fleetVehicles: fleetVehicles,
+  vehicleLocations: [],
+  fleetSyncStatus: 'idle', // idle | loading | error | connected
+  fleetSyncError: null,
+  showVehiclesOnMap: false,
 };
 
 const easternShoreSubsections = {
@@ -277,6 +284,23 @@ function reducer(state, action) {
       });
       return { ...state, visitHistory: newVH, stores: newStores };
     }
+    case 'SET_VEHICLE_LOCATIONS':
+      return {
+        ...state,
+        vehicleLocations: action.payload,
+        fleetSyncStatus: 'connected',
+        fleetSyncError: null,
+      };
+    case 'SET_FLEET_SYNC_STATUS':
+      return {
+        ...state,
+        fleetSyncStatus: action.payload.status,
+        fleetSyncError: action.payload.error || null,
+      };
+    case 'TOGGLE_VEHICLES_ON_MAP':
+      return { ...state, showVehiclesOnMap: !state.showVehiclesOnMap };
+    case 'SET_VEHICLES_ON_MAP':
+      return { ...state, showVehiclesOnMap: action.payload };
     default:
       return state;
   }
@@ -696,6 +720,22 @@ export function AppProvider({ children }) {
     ),
     bulkRecordVisits: useCallback(
       (entries) => dispatch({ type: 'BULK_RECORD_VISITS', payload: entries }),
+      []
+    ),
+    updateVehicleLocations: useCallback(
+      (locations) => dispatch({ type: 'SET_VEHICLE_LOCATIONS', payload: locations }),
+      []
+    ),
+    setFleetSyncStatus: useCallback(
+      (status, error) => dispatch({ type: 'SET_FLEET_SYNC_STATUS', payload: { status, error } }),
+      []
+    ),
+    toggleVehiclesOnMap: useCallback(
+      () => dispatch({ type: 'TOGGLE_VEHICLES_ON_MAP' }),
+      []
+    ),
+    setVehiclesOnMap: useCallback(
+      (show) => dispatch({ type: 'SET_VEHICLES_ON_MAP', payload: show }),
       []
     ),
   };
