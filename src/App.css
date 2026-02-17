@@ -4422,6 +4422,31 @@ textarea {
   border-color: var(--primary);
 }
 
+.al-pdf-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.al-btn-pdf--sent {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.al-btn-pdf--sent:hover {
+  background: #bbf7d0;
+  border-color: #4ade80;
+  color: #14532d;
+}
+
+.al-pdf-sent-tag {
+  font-size: 10px;
+  color: #16a34a;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .al-count-open {
   color: #dc2626;
   font-weight: 600;

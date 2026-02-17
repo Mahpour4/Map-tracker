@@ -57,6 +57,38 @@ export default function AlertLog() {
   const [refreshing, setRefreshing] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(null); // route string or null
 
+  // --- PDF sent tracking (persisted in localStorage) ---
+  const PDF_SENT_KEY = 'pdf_sent_log';
+  const [pdfSentLog, setPdfSentLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(PDF_SENT_KEY)) || {}; }
+    catch { return {}; }
+  });
+
+  function getRouteRefKey(routeAlerts) {
+    // Create a stable key from sorted RefNumbers so we can track exactly which alerts were sent
+    return routeAlerts.map(a => a.refNumber).filter(Boolean).sort().join(',');
+  }
+
+  function markRouteSent(routeAlerts) {
+    const refKey = getRouteRefKey(routeAlerts);
+    if (!refKey) return;
+    const updated = {
+      ...pdfSentLog,
+      [refKey]: {
+        date: new Date().toISOString(),
+        refs: routeAlerts.map(a => a.refNumber).filter(Boolean),
+        count: routeAlerts.length,
+      },
+    };
+    setPdfSentLog(updated);
+    localStorage.setItem(PDF_SENT_KEY, JSON.stringify(updated));
+  }
+
+  function getRouteSentInfo(routeAlerts) {
+    const refKey = getRouteRefKey(routeAlerts);
+    return refKey ? pdfSentLog[refKey] : null;
+  }
+
   // Build store lookup
   const storeMap = useMemo(() => {
     const map = {};
@@ -524,6 +556,8 @@ export default function AlertLog() {
 
       const dateSlug = localDateStr();
       doc.save(`Route_${route}_Alerts_${dateSlug}.pdf`);
+      // Mark this exact set of alerts as "sent"
+      markRouteSent(routeAlerts);
     } catch (err) {
       console.error('PDF generation failed:', err);
     } finally {
@@ -659,14 +693,27 @@ export default function AlertLog() {
                       {open > 0 && <span className="al-count-open">{open} open</span>}
                       {resolved > 0 && <span className="al-count-resolved">{resolved} resolved</span>}
                     </span>
-                    <button
-                      className="al-btn-pdf"
-                      onClick={(e) => generateRoutePDF(e, route, routeAlerts)}
-                      disabled={pdfGenerating !== null}
-                      title={`Download PDF for ${route === 'Unmatched' ? 'unmatched stores' : 'Route ' + route}`}
-                    >
-                      {pdfGenerating === route ? 'Generating...' : 'PDF'}
-                    </button>
+                    {(() => {
+                      const sentInfo = getRouteSentInfo(routeAlerts);
+                      const sentDate = sentInfo ? new Date(sentInfo.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+                      return (
+                        <div className="al-pdf-wrap">
+                          <button
+                            className={`al-btn-pdf${sentInfo ? ' al-btn-pdf--sent' : ''}`}
+                            onClick={(e) => generateRoutePDF(e, route, routeAlerts)}
+                            disabled={pdfGenerating !== null}
+                            title={sentInfo
+                              ? `Sent ${sentDate} (${sentInfo.count} alerts: ${sentInfo.refs.join(', ')})\nClick to re-generate`
+                              : `Download PDF for ${route === 'Unmatched' ? 'unmatched stores' : 'Route ' + route}`}
+                          >
+                            {pdfGenerating === route ? 'Generating...' : sentInfo ? 'PDF' : 'PDF'}
+                          </button>
+                          {sentInfo && (
+                            <span className="al-pdf-sent-tag">Sent {sentDate}</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
