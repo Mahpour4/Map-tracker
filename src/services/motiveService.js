@@ -8,7 +8,12 @@ const CORS_PROXY_KEY = 'motive_cors_proxy';
 
 // Use Vite dev proxy by default to avoid CORS issues
 const DEFAULT_BASE_URL = '/api/motive/v1';
-const DIRECT_API_URL = 'https://api.gomotive.com/v1';
+
+// Clear stale direct-API URLs from localStorage (leftover from before proxy was added)
+const storedUrl = localStorage.getItem('motive_base_url') || '';
+if (storedUrl.includes('api.gomotive.com') || storedUrl.includes('api.keeptruckin.com')) {
+  localStorage.removeItem('motive_base_url');
+}
 
 // ---- Credential management ----
 
@@ -29,7 +34,7 @@ export function getMotiveBaseUrl() {
 }
 
 export function setMotiveBaseUrl(url) {
-  if (url && url.trim() && url.trim() !== DIRECT_API_URL) {
+  if (url && url.trim() && url.trim() !== DEFAULT_BASE_URL) {
     localStorage.setItem(BASE_URL_KEY, url.trim());
   } else {
     // Use default proxy path
