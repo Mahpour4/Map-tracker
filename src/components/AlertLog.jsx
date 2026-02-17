@@ -280,40 +280,68 @@ export default function AlertLog() {
         });
       await Promise.allSettled(fetchPromises);
 
-      // --- 2. Pre-load images to get dimensions & convert external URLs to base64 ---
+      // --- 2. Convert all images to embeddable base64 & get dimensions ---
       const processedImages = {};
-      const loadPromises = Object.entries(imageResults).map(([emailId, imgData]) => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => {
-            let base64Uri = imgData.dataUri;
-            // Convert external URLs to base64 via canvas
-            if (imgData.isExternal) {
-              try {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                base64Uri = canvas.toDataURL('image/jpeg', 0.9);
-              } catch (canvasErr) {
-                console.warn(`Canvas conversion failed for ${emailId}:`, canvasErr);
-                resolve();
-                return;
-              }
+
+      async function processOneImage(emailId, imgData) {
+        let base64Uri = imgData.dataUri;
+
+        // External URLs need conversion to base64 for PDF embedding
+        if (imgData.isExternal) {
+          // Strategy A: fetch as blob (works when server allows CORS or same-origin)
+          try {
+            const resp = await fetch(imgData.dataUri);
+            const blob = await resp.blob();
+            base64Uri = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } catch (fetchErr) {
+            console.warn(`Fetch-as-blob failed for ${emailId}, trying canvas:`, fetchErr);
+            // Strategy B: load image without CORS restriction, then canvas convert
+            try {
+              base64Uri = await new Promise((resolve, reject) => {
+                const el = new Image();
+                el.crossOrigin = 'anonymous';
+                el.onload = () => {
+                  try {
+                    const c = document.createElement('canvas');
+                    c.width = el.naturalWidth;
+                    c.height = el.naturalHeight;
+                    c.getContext('2d').drawImage(el, 0, 0);
+                    resolve(c.toDataURL('image/jpeg', 0.9));
+                  } catch (ce) { reject(ce); }
+                };
+                el.onerror = reject;
+                el.src = imgData.dataUri;
+              });
+            } catch (canvasErr) {
+              console.warn(`Canvas fallback also failed for ${emailId}:`, canvasErr);
+              return; // skip this image entirely
             }
-            processedImages[emailId] = { base64Uri, width: img.naturalWidth, height: img.naturalHeight };
+          }
+        }
+
+        // Load the (now base64) image to get its natural dimensions
+        return new Promise((resolve) => {
+          const el = new Image();
+          el.onload = () => {
+            processedImages[emailId] = { base64Uri, width: el.naturalWidth, height: el.naturalHeight };
             resolve();
           };
-          img.onerror = () => {
-            console.warn(`Image load failed for ${emailId}`);
+          el.onerror = () => {
+            console.warn(`Dimension load failed for ${emailId}`);
             resolve();
           };
-          img.src = imgData.dataUri;
+          el.src = base64Uri;
         });
-      });
-      await Promise.all(loadPromises);
+      }
+
+      await Promise.all(
+        Object.entries(imageResults).map(([eid, data]) => processOneImage(eid, data))
+      );
 
       // --- 3. Build the PDF ---
       const doc = new jsPDF('landscape', 'mm', 'a4');
@@ -438,7 +466,9 @@ export default function AlertLog() {
         const drawY = imgTopY + (maxH - drawH) / 2;
 
         try {
-          doc.addImage(img.base64Uri, 'JPEG', drawX, drawY, drawW, drawH);
+          // Detect format from data URI; default to JPEG
+          const fmt = img.base64Uri.match(/^data:image\/png/) ? 'PNG' : 'JPEG';
+          doc.addImage(img.base64Uri, fmt, drawX, drawY, drawW, drawH);
         } catch (imgErr) {
           console.warn(`Failed to add image for ${a.emailId} to PDF:`, imgErr);
           doc.setFontSize(10);
