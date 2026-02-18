@@ -125,14 +125,22 @@ async function fetchAllPages(path, dataKey, params = {}) {
     const data = await motiveFetch(path, { ...params, page_no: pageNo, per_page: 25 });
     const items = data[dataKey] || [];
     allItems.push(...items);
+    console.log(`[Motive] Page ${pageNo}: ${items.length} ${dataKey}`, data.pagination);
 
     const pagination = data.pagination;
-    if (!pagination || pageNo >= (pagination.total_pages || 1) || items.length === 0) {
+    if (!pagination || items.length === 0) {
       hasMore = false;
+    } else {
+      // Motive returns 'total' (item count), not 'total_pages'
+      const totalPages = pagination.total_pages || Math.ceil((pagination.total || 0) / (pagination.per_page || 25));
+      if (pageNo >= totalPages) {
+        hasMore = false;
+      }
     }
     pageNo++;
   }
 
+  console.log(`[Motive] Total fetched: ${allItems.length} ${dataKey}`);
   return allItems;
 }
 
