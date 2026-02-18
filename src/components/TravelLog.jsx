@@ -138,14 +138,20 @@ export default function TravelLog() {
       return;
     }
 
-    const vehiclesWithMotiveId = vehicleList.filter(v => v.motiveId);
+    const allWithMotive = vehicleList.filter(v => v.motiveId);
+    const vehiclesWithMotiveId = selectedVehicle === 'all'
+      ? allWithMotive
+      : allWithMotive.filter(v => v.vin === selectedVehicle);
     if (vehiclesWithMotiveId.length === 0) {
       setProcessStatus({ message: 'No vehicles with Motive IDs found. Refresh Fleet Tracker first to get vehicle data.', type: 'error' });
       return;
     }
 
     setProcessing(true);
-    setProcessStatus({ message: `Processing ${vehiclesWithMotiveId.length} vehicles for ${selectedDate}...`, type: 'info' });
+    const label = selectedVehicle === 'all'
+      ? `${vehiclesWithMotiveId.length} vehicles`
+      : vehiclesWithMotiveId[0]?.label || 'selected vehicle';
+    setProcessStatus({ message: `Processing ${label} for ${selectedDate}...`, type: 'info' });
 
     let totalVisits = 0;
     let drivingCount = 0;
@@ -257,7 +263,7 @@ export default function TravelLog() {
         type: 'success',
       });
     }
-  }, [vehicleList, selectedDate, stores, warehouses, logTravelEntries, bulkRecordVisits]);
+  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, logTravelEntries, bulkRecordVisits]);
 
   // --- Manual store matching ---
   const matchCandidates = useMemo(() => {
