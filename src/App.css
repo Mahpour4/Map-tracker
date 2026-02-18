@@ -6099,6 +6099,9 @@ textarea {
 .tl-page {
   padding: 20px 24px;
   max-width: 1000px;
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
 }
 
 .tl-header h2 {
