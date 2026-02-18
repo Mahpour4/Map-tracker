@@ -10,6 +10,7 @@ import localWarehouses from '../data/warehouses.json';
 import localTravelLog from '../data/travelLog.json';
 import localAddressOverrides from '../data/addressOverrides.json';
 import localCustomLocations from '../data/customLocations.json';
+import { reverseGeocode } from '../utils/geocodeAddress';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -970,6 +971,26 @@ export function AppProvider({ children }) {
         console.error('Failed to load custom locations:', err);
       });
   }, []);
+
+  // Auto-fill missing addresses for custom locations via reverse geocoding
+  const addressFillRan = useRef(false);
+  useEffect(() => {
+    if (addressFillRan.current) return;
+    const missing = state.customLocations.filter(cl => !cl.address && cl.lat && cl.lng);
+    if (missing.length === 0) return;
+    addressFillRan.current = true;
+    (async () => {
+      for (const cl of missing) {
+        try {
+          const addr = await reverseGeocode(cl.lat, cl.lng);
+          if (addr) {
+            dispatch({ type: 'UPDATE_CUSTOM_LOCATION', payload: { id: cl.id, address: addr } });
+          }
+        } catch { /* skip on error */ }
+        await new Promise(r => setTimeout(r, 1100)); // respect Nominatim rate limit
+      }
+    })();
+  }, [state.customLocations]);
 
   // Auto-save custom locations to GitHub when they change
   const prevCustomLocationsRef = useRef(state.customLocations);

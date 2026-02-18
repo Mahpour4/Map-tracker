@@ -425,6 +425,10 @@ textarea {
 }
 
 .store-zone-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
   margin: 6px 0;
 }
 
@@ -764,9 +768,10 @@ textarea {
 }
 
 .last-visited {
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  margin-top: 4px;
 }
 
 .last-visited-clickable {

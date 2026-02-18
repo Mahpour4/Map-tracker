@@ -136,16 +136,16 @@ function StoreCard({ store, index, routes }) {
         ) : (
           <span className="zone-badge unassigned">Unassigned</span>
         )}
-        <span
-          className="last-visited last-visited-clickable"
-          onClick={openVisitEdit}
-          title="Click to edit visit date"
-        >
-          {store.lastSaleDate ? `Sale: ${formatDate(store.lastSaleDate)}` : ''}
-          {store.lastSaleDate && store.lastVisited ? ' / ' : ''}
-          {store.lastVisited ? `Visit: ${formatDate(store.lastVisited)}` : ''}
-          {!store.lastSaleDate && !store.lastVisited ? 'No date' : ''}
-        </span>
+      </div>
+      <div
+        className="last-visited last-visited-clickable"
+        onClick={openVisitEdit}
+        title="Click to edit visit date"
+      >
+        {store.lastSaleDate ? `Sale: ${formatDate(store.lastSaleDate)}` : ''}
+        {store.lastSaleDate && store.lastVisited ? ' / ' : ''}
+        {store.lastVisited ? `Visit: ${formatDate(store.lastVisited)}` : ''}
+        {!store.lastSaleDate && !store.lastVisited ? 'No date' : ''}
       </div>
       {editingVisit && (
         <div className="store-visit-edit" onClick={(e) => e.stopPropagation()}>
