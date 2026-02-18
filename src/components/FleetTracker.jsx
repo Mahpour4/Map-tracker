@@ -106,12 +106,14 @@ export default function FleetTracker() {
         }
       });
 
+      console.log('[Fleet] Merging', locations.length, 'API locations with', fleetVehicles.length, 'local vehicles');
       const merged = fleetVehicles.map(fv => {
         const apiMatch = locations.find(loc =>
           (loc.vin && fv.vin && loc.vin.toUpperCase() === fv.vin.toUpperCase()) ||
           (loc.licensePlate && fv.licensePlate &&
             fv.licensePlate.toUpperCase().includes(loc.licensePlate.toUpperCase()))
         );
+        console.log('[Fleet] Match:', fv.vehicleId, '→', apiMatch ? `VIN:${apiMatch.vin} lat:${apiMatch.lat}` : 'NO MATCH');
 
         if (apiMatch) {
           const driver = driverByVehicleId[apiMatch.id] || {};

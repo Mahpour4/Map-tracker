@@ -139,13 +139,15 @@ async function fetchAllPages(path, dataKey, params = {}) {
 // ---- Public API functions ----
 
 export async function fetchVehicles() {
-  const vehicles = await fetchAllPages('/vehicles', 'vehicles');
-  return vehicles.map(v => v.vehicle || v);
+  const raw = await fetchAllPages('/vehicles', 'vehicles');
+  console.log('[Motive] Raw vehicles response (' + raw.length + ' items):', raw.slice(0, 2));
+  return raw.map(v => v.vehicle || v);
 }
 
 export async function fetchVehicleLocations() {
-  const locations = await fetchAllPages('/vehicle_locations', 'vehicle_locations');
-  return locations.map(vl => {
+  const raw = await fetchAllPages('/vehicle_locations', 'vehicle_locations');
+  console.log('[Motive] Raw vehicle_locations (' + raw.length + ' items):', raw.slice(0, 2));
+  const mapped = raw.map(vl => {
     const vehicle = vl.vehicle || {};
     const loc = vl.last_known_location || vl.current_location || {};
     return {
@@ -162,11 +164,14 @@ export async function fetchVehicleLocations() {
       description: loc.description || '',
     };
   });
+  console.log('[Motive] Parsed locations:', mapped.map(m => ({ vin: m.vin, plate: m.licensePlate, lat: m.lat })));
+  return mapped;
 }
 
 export async function fetchDrivers() {
-  const drivers = await fetchAllPages('/drivers', 'drivers');
-  return drivers.map(d => d.driver || d);
+  const raw = await fetchAllPages('/drivers', 'drivers');
+  console.log('[Motive] Raw drivers (' + raw.length + ' items):', raw.slice(0, 2));
+  return raw.map(d => d.driver || d);
 }
 
 export async function testMotiveConnection() {
