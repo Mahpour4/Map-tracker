@@ -6504,6 +6504,67 @@ textarea {
   color: #8b5cf6;
 }
 
+/* --- Per-Row Raw Data Toggle --- */
+.tl-raw-toggle-btn {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tl-raw-toggle-btn:hover {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+.tl-entry-raw {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--text);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* --- Edit/Delete Custom Location Buttons --- */
+.tl-edit-btn,
+.tl-delete-btn {
+  font-size: 0.65rem;
+  padding: 1px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tl-edit-btn {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+.tl-edit-btn:hover {
+  background: #f59e0b;
+  color: #fff;
+}
+.tl-delete-btn {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+.tl-delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
 /* ============ Fleet Tracker — Schedule Alerts ============ */
 .ft-sched-alerts {
   background: #fef3c7;

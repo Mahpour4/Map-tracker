@@ -60,6 +60,10 @@ function getTypeColor(type) {
   return TYPE_COLORS[type] || TYPE_COLORS.custom;
 }
 
+function isCustomType(type) {
+  return type in CUSTOM_TYPE_LABELS;
+}
+
 function getTypeLabel(type) {
   if (type === 'store') return 'store';
   if (type === 'warehouse') return 'warehouse';
@@ -92,7 +96,7 @@ function createStopIcon(type, index) {
 }
 
 export default function TravelLog() {
-  const { state, logTravelEntries, bulkRecordVisits, setAddressOverride, addCustomLocation } = useApp();
+  const { state, logTravelEntries, bulkRecordVisits, setAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
   const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides, customLocations } = state;
 
   const today = localDateStr();
@@ -107,6 +111,11 @@ export default function TravelLog() {
   const [rawData, setRawData] = useState(null); // { breadcrumbs: {vin: [...], ...}, drivingPeriods: [...] }
   const [showRawData, setShowRawData] = useState(false);
   const [rawDataTab, setRawDataTab] = useState('driving'); // driving | breadcrumbs
+  // Per-row raw data
+  const [expandedRawIndex, setExpandedRawIndex] = useState(null);
+  // Edit custom location
+  const [editingLocationId, setEditingLocationId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', type: '', address: '' });
   // Create custom location form
   const [newLocName, setNewLocName] = useState('');
   const [newLocType, setNewLocType] = useState('gas-station');
@@ -417,6 +426,35 @@ export default function TravelLog() {
     return candidates;
   }, [matchingEntry, matchSearch, customLocations]);
 
+  // Propagate a match to all other driving entries with the same destination address
+  const propagateMatchToSameDestination = useCallback((matchedEntry, matchedLocation, locationType) => {
+    const dest = (matchedEntry.destination || '').trim();
+    if (!dest) return;
+    const sameDestEntries = dayEntries.filter(e =>
+      e.type === 'driving' &&
+      (e.destination || '').trim() === dest &&
+      e.locationId !== matchedEntry.locationId
+    );
+    if (sameDestEntries.length === 0) return;
+    const visitEntries = sameDestEntries.map(e => ({
+      vehicleVin: e.vehicleVin,
+      vehicleId: e.vehicleId,
+      type: locationType,
+      locationId: matchedLocation.id,
+      locationName: matchedLocation.name,
+      lat: matchedLocation.lat,
+      lng: matchedLocation.lng,
+      time: e.departureTime || e.arrivalTime || e.time,
+      arrivalTime: e.departureTime || e.arrivalTime,
+      departureTime: e.departureTime,
+      dwellMinutes: null,
+    }));
+    logTravelEntries(visitEntries);
+    if (locationType === 'store') {
+      bulkRecordVisits(visitEntries.map(() => ({ storeId: matchedLocation.id, date: selectedDate })));
+    }
+  }, [dayEntries, logTravelEntries, bulkRecordVisits, selectedDate]);
+
   const handleMatchStore = useCallback((store) => {
     if (!matchingEntry) return;
     logTravelEntries([{
@@ -435,9 +473,10 @@ export default function TravelLog() {
     bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
     const dest = (matchingEntry.destination || '').trim();
     if (dest) setAddressOverride(dest, store.id);
+    propagateMatchToSameDestination(matchingEntry, store, 'store');
     setMatchingEntry(null);
     setMatchSearch('');
-  }, [matchingEntry, selectedDate, logTravelEntries, bulkRecordVisits, setAddressOverride]);
+  }, [matchingEntry, selectedDate, logTravelEntries, bulkRecordVisits, setAddressOverride, propagateMatchToSameDestination]);
 
   const handleMatchCustomLocation = useCallback((cl) => {
     if (!matchingEntry) return;
@@ -456,9 +495,10 @@ export default function TravelLog() {
     }]);
     const dest = (matchingEntry.destination || '').trim();
     if (dest) setAddressOverride(dest, cl.id);
+    propagateMatchToSameDestination(matchingEntry, cl, cl.type || 'custom');
     setMatchingEntry(null);
     setMatchSearch('');
-  }, [matchingEntry, logTravelEntries, setAddressOverride]);
+  }, [matchingEntry, logTravelEntries, setAddressOverride, propagateMatchToSameDestination]);
 
   const handleCreateAndMatch = useCallback(() => {
     if (!matchingEntry || !newLocName.trim()) return;
@@ -697,7 +737,45 @@ export default function TravelLog() {
                         Match Location
                       </button>
                     )}
+                    {isCustomType(entry.type) && entry.locationId && (() => {
+                      const cl = customLocations.find(c => c.id === entry.locationId);
+                      return cl ? (
+                        <>
+                          <button
+                            className="tl-edit-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditForm({ name: cl.name, type: cl.type, address: cl.address || '' });
+                              setEditingLocationId(cl.id);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="tl-delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Delete custom location "${cl.name}"?`)) {
+                                deleteCustomLocation(cl.id);
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : null;
+                    })()}
+                    <button
+                      className="tl-raw-toggle-btn"
+                      onClick={(e) => { e.stopPropagation(); setExpandedRawIndex(expandedRawIndex === i ? null : i); }}
+                      title="View raw entry data"
+                    >
+                      {'{'}...{'}'}
+                    </button>
                   </div>
+                  {expandedRawIndex === i && (
+                    <pre className="tl-entry-raw">{JSON.stringify(entry, null, 2)}</pre>
+                  )}
                 </div>
               </div>
             ))
@@ -859,6 +937,65 @@ export default function TravelLog() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Edit Custom Location Modal ---- */}
+      {editingLocationId && (
+        <div className="tl-match-overlay" onClick={() => setEditingLocationId(null)}>
+          <div className="tl-match-popup" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="tl-match-header">
+              <h3>Edit Custom Location</h3>
+              <button className="tl-match-close" onClick={() => setEditingLocationId(null)}>&times;</button>
+            </div>
+            <div style={{ padding: '0 20px 20px' }}>
+              <div className="tl-create-form">
+                <div className="tl-create-field">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                    autoFocus
+                  />
+                </div>
+                <div className="tl-create-field">
+                  <label>Type</label>
+                  <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))}>
+                    <option value="gas-station">Gas Station</option>
+                    <option value="storage">Storage Unit</option>
+                    <option value="warehouse">Warehouse</option>
+                    <option value="meeting-point">Meeting Point</option>
+                    <option value="driver-home">Driver Home</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="tl-create-field">
+                  <label>Address</label>
+                  <input
+                    type="text"
+                    value={editForm.address}
+                    onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+                  />
+                </div>
+                <button
+                  className="btn btn-primary tl-create-btn"
+                  onClick={() => {
+                    updateCustomLocation({
+                      id: editingLocationId,
+                      name: editForm.name.trim(),
+                      type: editForm.type,
+                      address: editForm.address.trim(),
+                    });
+                    setEditingLocationId(null);
+                  }}
+                  disabled={!editForm.name.trim()}
+                >
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>
