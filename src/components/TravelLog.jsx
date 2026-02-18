@@ -715,9 +715,8 @@ export default function TravelLog() {
                             rel="noopener noreferrer"
                             className="tl-map-link"
                           >
-                            {displayName}
+                            {displayName}{addr ? `: ${addr}` : ''}
                           </a>
-                          {addr && <span className="tl-entry-addr">{addr}</span>}
                         </>
                       );
                     })()}
