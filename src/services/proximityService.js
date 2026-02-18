@@ -169,7 +169,7 @@ export function detectCurrentProximity(vehicles, stores, warehouses) {
 
   for (const v of vehicles) {
     if (v.lat == null || v.lng == null) continue;
-    const routeNumber = v.vehicleId; // vehicleId is the route number
+    const routeNumber = v.routeNumber;
 
     // Check route-matched stores
     for (const store of stores) {

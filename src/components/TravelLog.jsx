@@ -30,8 +30,9 @@ export default function TravelLog() {
     return source.map(v => ({
       vin: v.vin,
       vehicleId: v.vehicleId,
+      routeNumber: v.routeNumber || null,
       motiveId: v.motiveId || v.id || null,
-      label: `${v.vehicleId} (${v.vin?.slice(-6) || '?'})`,
+      label: `Rt ${v.routeNumber || '?'} - ${v.vehicleId} (${v.vin?.slice(-6) || '?'})`,
     }));
   }, [vehicleLocations, fleetVehicles]);
 
@@ -110,8 +111,7 @@ export default function TravelLog() {
         console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs`);
 
         if (breadcrumbs.length > 0) {
-          // vehicleId IS the route number
-          const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.vehicleId);
+          const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.routeNumber);
           console.log(`[TravelLog] ${vehicle.label}: ${visits.length} visits detected (10min+ dwell)`);
 
           if (visits.length > 0) {

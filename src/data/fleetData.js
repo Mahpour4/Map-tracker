@@ -3,6 +3,7 @@ export const fleetVehicles = [
   {
     index: 1,
     vehicleId: 'BIN Truck ISUZU NPR/ NPR-HD/ NPR-XD',
+    routeNumber: '211',
     licensePlate: '6DY4136 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120282',
     vin: 'JALC4W168H7001647',
@@ -14,6 +15,7 @@ export const fleetVehicles = [
   {
     index: 2,
     vehicleId: 'Ford Cargo Van ny truck ford Transit',
+    routeNumber: '199',
     licensePlate: '9GK3895 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120512',
     vin: '1FTBW3X84RKB07820',
@@ -25,6 +27,7 @@ export const fleetVehicles = [
   {
     index: 3,
     vehicleId: 'Ford Truck 101 Ryan ford Transit',
+    routeNumber: '201',
     licensePlate: '2GM4417 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120321',
     vin: '1FDBF6P86RKB32747',
@@ -36,6 +39,7 @@ export const fleetVehicles = [
   {
     index: 4,
     vehicleId: 'Ford Truck 110 TY Ford transit',
+    routeNumber: '210',
     licensePlate: '2GM4442 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120311',
     vin: '1FDBF6P84RKB55153',
@@ -47,6 +51,7 @@ export const fleetVehicles = [
   {
     index: 5,
     vehicleId: 'Ford Truck 209 Damian Ford Transit',
+    routeNumber: '209',
     licensePlate: '4GL7052 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120324',
     vin: '1FDBF6P8XRKB46859',
@@ -58,6 +63,7 @@ export const fleetVehicles = [
   {
     index: 6,
     vehicleId: 'Ford Truck Anthony Ford Transit',
+    routeNumber: '206',
     licensePlate: '2GG1791 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120325',
     vin: 'JALC4W164G7001773',
@@ -69,6 +75,7 @@ export const fleetVehicles = [
   {
     index: 7,
     vehicleId: 'New York Truck ISUZU NPR-HD',
+    routeNumber: '198',
     licensePlate: '2EF3381 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120308',
     vin: 'JALC4W169K7009926',
@@ -80,6 +87,7 @@ export const fleetVehicles = [
   {
     index: 8,
     vehicleId: 'Route 103 (Truck #18 Jay ) ISUZU NPR-HD',
+    routeNumber: '203',
     licensePlate: '2GG1789 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME122651',
     vin: 'JALC4W163G7003949',
@@ -91,6 +99,7 @@ export const fleetVehicles = [
   {
     index: 9,
     vehicleId: 'Sindy rt 200 ford Transit',
+    routeNumber: '204',
     licensePlate: '4GL7050 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120317',
     vin: '1FDBF6P88RKB33138',
@@ -102,6 +111,7 @@ export const fleetVehicles = [
   {
     index: 10,
     vehicleId: 'Truck #11 Jose isuzu NPR-HD',
+    routeNumber: '200',
     licensePlate: '2GG1866 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120286',
     vin: 'JALC4W169G7003583',
@@ -113,6 +123,7 @@ export const fleetVehicles = [
   {
     index: 11,
     vehicleId: 'Truck 208 Draco ISUZU NPR-HD',
+    routeNumber: '208',
     licensePlate: '2GG1862 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120297',
     vin: 'JALC4W167G7003596',
@@ -124,6 +135,7 @@ export const fleetVehicles = [
   {
     index: 12,
     vehicleId: 'route 207 Andre ford Transit',
+    routeNumber: '207',
     licensePlate: '2GM4443 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120322',
     vin: '1FDBF6P84RKB46372',
