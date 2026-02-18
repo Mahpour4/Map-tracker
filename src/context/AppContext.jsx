@@ -756,7 +756,15 @@ export function AppProvider({ children }) {
 
     if (travelLogSaveTimer.current) clearTimeout(travelLogSaveTimer.current);
     travelLogSaveTimer.current = setTimeout(() => {
-      saveTravelLogJson(JSON.stringify(state.travelLog))
+      // Prune entries older than 40 days before saving
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 40);
+      const cutoffStr = localDateStr(cutoff);
+      const pruned = {};
+      for (const [date, vehicles] of Object.entries(state.travelLog)) {
+        if (date >= cutoffStr) pruned[date] = vehicles;
+      }
+      saveTravelLogJson(JSON.stringify(pruned))
         .catch((err) => console.error('Failed to save travel log:', err));
     }, 2000);
 
