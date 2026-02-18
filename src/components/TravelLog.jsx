@@ -97,7 +97,7 @@ function createStopIcon(type, index) {
 }
 
 export default function TravelLog() {
-  const { state, logTravelEntries, bulkRecordVisits, setAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
+  const { state, logTravelEntries, manualMatchEntries, bulkRecordVisits, setAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
   const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides, customLocations } = state;
 
   const today = localDateStr();
@@ -437,39 +437,39 @@ export default function TravelLog() {
       e.locationId !== matchedEntry.locationId
     );
     if (sameDestEntries.length === 0) return;
-    const visitEntries = sameDestEntries.map(e => ({
+    console.log(`[TravelLog] Propagating match to ${sameDestEntries.length} other entries with destination "${dest}"`);
+    const updates = sameDestEntries.map(e => ({
       vehicleVin: e.vehicleVin,
-      vehicleId: e.vehicleId,
-      type: locationType,
-      locationId: matchedLocation.id,
-      locationName: matchedLocation.name,
-      lat: matchedLocation.lat,
-      lng: matchedLocation.lng,
-      time: e.departureTime || e.arrivalTime || e.time,
-      arrivalTime: e.departureTime || e.arrivalTime,
-      departureTime: e.departureTime,
-      dwellMinutes: null,
+      date: selectedDate,
+      oldLocationId: e.locationId,
+      newEntry: {
+        type: locationType,
+        locationId: matchedLocation.id,
+        locationName: matchedLocation.name,
+        lat: matchedLocation.lat,
+        lng: matchedLocation.lng,
+      },
     }));
-    logTravelEntries(visitEntries);
+    manualMatchEntries(updates);
     if (locationType === 'store') {
-      bulkRecordVisits(visitEntries.map(() => ({ storeId: matchedLocation.id, date: selectedDate })));
+      bulkRecordVisits(updates.map(() => ({ storeId: matchedLocation.id, date: selectedDate })));
     }
-  }, [dayEntries, logTravelEntries, bulkRecordVisits, selectedDate]);
+  }, [dayEntries, manualMatchEntries, bulkRecordVisits, selectedDate]);
 
   const handleMatchStore = useCallback((store) => {
     if (!matchingEntry) return;
-    logTravelEntries([{
+    console.log(`[TravelLog] Manual match: "${matchingEntry.locationName}" → store "${store.name}" (${store.id})`);
+    manualMatchEntries([{
       vehicleVin: matchingEntry.vehicleVin,
-      vehicleId: matchingEntry.vehicleId,
-      type: 'store',
-      locationId: store.id,
-      locationName: store.name,
-      lat: store.lat,
-      lng: store.lng,
-      time: matchingEntry.departureTime || matchingEntry.arrivalTime || matchingEntry.time,
-      arrivalTime: matchingEntry.departureTime || matchingEntry.arrivalTime,
-      departureTime: matchingEntry.departureTime,
-      dwellMinutes: null,
+      date: selectedDate,
+      oldLocationId: matchingEntry.locationId,
+      newEntry: {
+        type: 'store',
+        locationId: store.id,
+        locationName: store.name,
+        lat: store.lat,
+        lng: store.lng,
+      },
     }]);
     bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
     const dest = (matchingEntry.destination || '').trim();
@@ -477,29 +477,29 @@ export default function TravelLog() {
     propagateMatchToSameDestination(matchingEntry, store, 'store');
     setMatchingEntry(null);
     setMatchSearch('');
-  }, [matchingEntry, selectedDate, logTravelEntries, bulkRecordVisits, setAddressOverride, propagateMatchToSameDestination]);
+  }, [matchingEntry, selectedDate, manualMatchEntries, bulkRecordVisits, setAddressOverride, propagateMatchToSameDestination]);
 
   const handleMatchCustomLocation = useCallback((cl) => {
     if (!matchingEntry) return;
-    logTravelEntries([{
+    console.log(`[TravelLog] Manual match: "${matchingEntry.locationName}" → custom "${cl.name}" (${cl.type || 'custom'})`);
+    manualMatchEntries([{
       vehicleVin: matchingEntry.vehicleVin,
-      vehicleId: matchingEntry.vehicleId,
-      type: cl.type || 'custom',
-      locationId: cl.id,
-      locationName: cl.name,
-      lat: cl.lat,
-      lng: cl.lng,
-      time: matchingEntry.departureTime || matchingEntry.arrivalTime || matchingEntry.time,
-      arrivalTime: matchingEntry.departureTime || matchingEntry.arrivalTime,
-      departureTime: matchingEntry.departureTime,
-      dwellMinutes: null,
+      date: selectedDate,
+      oldLocationId: matchingEntry.locationId,
+      newEntry: {
+        type: cl.type || 'custom',
+        locationId: cl.id,
+        locationName: cl.name,
+        lat: cl.lat,
+        lng: cl.lng,
+      },
     }]);
     const dest = (matchingEntry.destination || '').trim();
     if (dest) setAddressOverride(dest, cl.id);
     propagateMatchToSameDestination(matchingEntry, cl, cl.type || 'custom');
     setMatchingEntry(null);
     setMatchSearch('');
-  }, [matchingEntry, logTravelEntries, setAddressOverride, propagateMatchToSameDestination]);
+  }, [matchingEntry, selectedDate, manualMatchEntries, setAddressOverride, propagateMatchToSameDestination]);
 
   const handleCreateAndMatch = useCallback(() => {
     if (!matchingEntry || !newLocName.trim()) return;
@@ -513,19 +513,19 @@ export default function TravelLog() {
       lat: matchingEntry.destinationLat || matchingEntry.lat,
       lng: matchingEntry.destinationLng || matchingEntry.lng,
     };
+    console.log(`[TravelLog] Create & match: "${matchingEntry.locationName}" → new "${newLoc.name}" (${newLocType})`);
     addCustomLocation(newLoc);
-    logTravelEntries([{
+    manualMatchEntries([{
       vehicleVin: matchingEntry.vehicleVin,
-      vehicleId: matchingEntry.vehicleId,
-      type: newLocType,
-      locationId: id,
-      locationName: newLocName.trim(),
-      lat: matchingEntry.destinationLat || matchingEntry.lat,
-      lng: matchingEntry.destinationLng || matchingEntry.lng,
-      time: matchingEntry.departureTime || matchingEntry.arrivalTime || matchingEntry.time,
-      arrivalTime: matchingEntry.departureTime || matchingEntry.arrivalTime,
-      departureTime: matchingEntry.departureTime,
-      dwellMinutes: null,
+      date: selectedDate,
+      oldLocationId: matchingEntry.locationId,
+      newEntry: {
+        type: newLocType,
+        locationId: id,
+        locationName: newLocName.trim(),
+        lat: newLoc.lat,
+        lng: newLoc.lng,
+      },
     }]);
     if (dest) setAddressOverride(dest, id);
     propagateMatchToSameDestination(matchingEntry, newLoc, newLocType);
@@ -533,7 +533,7 @@ export default function TravelLog() {
     setMatchSearch('');
     setNewLocName('');
     setNewLocType('gas-station');
-  }, [matchingEntry, newLocName, newLocType, addCustomLocation, logTravelEntries, setAddressOverride, propagateMatchToSameDestination]);
+  }, [matchingEntry, selectedDate, newLocName, newLocType, addCustomLocation, manualMatchEntries, setAddressOverride, propagateMatchToSameDestination]);
 
   // Raw data total breadcrumb count
   const rawBreadcrumbCount = useMemo(() => {
