@@ -11,6 +11,7 @@ import FleetTracker from './components/FleetTracker';
 import DriverDashboard from './components/DriverDashboard';
 import TravelLog from './components/TravelLog';
 import WarehouseSettings from './components/WarehouseSettings';
+import CustomLocations from './components/CustomLocations';
 import './App.css';
 
 function AppContent() {
@@ -82,6 +83,12 @@ function AppContent() {
           >
             Warehouses
           </button>
+          <button
+            className={`page-nav-btn ${page === 'customLocations' ? 'active' : ''}`}
+            onClick={() => setPage('customLocations')}
+          >
+            Custom Locations
+          </button>
         </div>
         {page === 'map' && <MapView />}
         {page === 'leaderboard' && <RouteLeaderboard />}
@@ -94,6 +101,7 @@ function AppContent() {
         {page === 'fleet' && <FleetTracker />}
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
+        {page === 'customLocations' && <CustomLocations />}
         <div className="app-version">v1.9.0</div>
       </main>
     </div>
