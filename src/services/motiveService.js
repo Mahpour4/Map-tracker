@@ -92,7 +92,7 @@ async function motiveFetch(path, params = {}) {
 
   const res = await fetch(fetchUrl, {
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      'X-Api-Key': apiKey,
       'Accept': 'application/json',
     },
   });
