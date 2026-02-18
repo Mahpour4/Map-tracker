@@ -151,56 +151,42 @@ export async function fetchVehicles() {
 }
 
 export async function fetchVehicleLocations() {
-  // Use driving_periods endpoint — this is what the Motive SDK's
-  // fetchAListOfTheVehiclesDrivingPeriods calls, and it returns actual data.
-  // Path is /v1/driving_periods (NOT /v1/vehicles/driving_periods which treats
-  // "driving_periods" as a vehicle ID and returns 400).
-  const raw = await fetchAllPages('/v1/driving_periods', 'driving_periods');
-  console.log('[Motive] Raw driving_periods (' + raw.length + ' items):', raw.slice(0, 2));
+  // Use the same endpoint as the Motive SDK's fetchAListOfAllTheVehiclesAndTheirLocations
+  const raw = await fetchAllPages('/v1/vehicle_locations', 'vehicle_locations');
+  console.log('[Motive] Raw vehicle_locations (' + raw.length + ' items)');
+  // Log the full first item so we can see the exact API response structure
+  if (raw.length > 0) {
+    console.log('[Motive] Sample item [0]:', JSON.stringify(raw[0], null, 2));
+  }
 
-  // Extract the latest location per vehicle (keyed by VIN)
-  const latestByVin = {};
-  raw.forEach(dp => {
-    const period = dp.driving_period || dp;
-    const vehicle = period.vehicle || {};
-    const vin = vehicle.vin;
-    if (!vin) return;
-
-    // Prefer in_progress trips; otherwise keep the most recent by start_time
-    const existing = latestByVin[vin];
-    if (!existing ||
-        period.status === 'in_progress' ||
-        (existing.status !== 'in_progress' && period.start_time > existing.start_time)) {
-      latestByVin[vin] = period;
-    }
-  });
-
-  const mapped = Object.values(latestByVin).map(period => {
-    const vehicle = period.vehicle || {};
-    const driver = period.driver || {};
-    // Use destination coords if available, fall back to origin
-    const lat = period.destination_lat || period.origin_lat;
-    const lon = period.destination_lon || period.origin_lon;
-    const location = period.destination || period.origin || '';
+  const mapped = raw.map(vl => {
+    // Handle possible nesting: { vehicle_location: { vehicle: {}, ... } } or flat
+    const entry = vl.vehicle_location || vl;
+    const vehicle = entry.vehicle || {};
+    const driver = entry.current_driver || entry.driver || {};
+    const loc = entry.last_known_location || entry;
 
     return {
-      id: vehicle.id,
-      number: vehicle.number,
-      vin: vehicle.vin,
-      licensePlate: vehicle.license_plate_number || null,
-      lat: lat ? parseFloat(lat) : null,
-      lng: lon ? parseFloat(lon) : null,
-      speed: null, // driving_periods doesn't include speed
-      bearing: null,
-      engineStatus: period.status === 'in_progress' ? 'on' : 'off',
-      locatedAt: period.end_time || period.start_time || null,
-      description: location,
+      id: vehicle.id || entry.id,
+      number: vehicle.number || entry.number,
+      vin: vehicle.vin || entry.vin,
+      licensePlate: vehicle.license_plate_number || entry.license_plate_number || null,
+      lat: loc.lat != null ? parseFloat(loc.lat) : null,
+      lng: (loc.lon != null || loc.lng != null) ? parseFloat(loc.lon || loc.lng) : null,
+      speed: loc.speed != null ? parseFloat(loc.speed) : null,
+      bearing: loc.bearing != null ? parseFloat(loc.bearing) : null,
+      engineStatus: loc.engine_status || (loc.type === 'vehicle_moving' ? 'on' : loc.type === 'vehicle_stopped' ? 'off' : null),
+      locatedAt: loc.located_at || null,
+      description: loc.description || '',
       driverName: driver.first_name ? `${driver.first_name} ${driver.last_name || ''}`.trim() : null,
       driverStatus: driver.status || null,
     };
   });
 
-  console.log('[Motive] Parsed locations:', mapped.map(m => ({ vin: m.vin, plate: m.licensePlate, lat: m.lat, lng: m.lng, engine: m.engineStatus, driver: m.driverName })));
+  console.log('[Motive] Parsed locations:', mapped.map(m => ({
+    id: m.id, num: m.number, vin: m.vin, plate: m.licensePlate,
+    lat: m.lat, lng: m.lng, engine: m.engineStatus, driver: m.driverName,
+  })));
   return mapped;
 }
 

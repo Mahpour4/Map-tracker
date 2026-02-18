@@ -92,11 +92,20 @@ export default function FleetTracker() {
       const locations = await fetchVehicleLocations();
 
       console.log('[Fleet] Merging', locations.length, 'API locations with', fleetVehicles.length, 'local vehicles');
+      // Log all API VINs so we can compare against local vehicles
+      console.log('[Fleet] API VINs:', locations.map(l => l.vin));
+      console.log('[Fleet] Local VINs:', fleetVehicles.map(fv => fv.vin));
+
       const merged = fleetVehicles.map(fv => {
-        const apiMatch = locations.find(loc =>
-          (loc.vin && fv.vin && loc.vin.toUpperCase() === fv.vin.toUpperCase())
-        );
-        console.log('[Fleet] Match:', fv.vehicleId, 'VIN:', fv.vin, '→', apiMatch ? `VIN:${apiMatch.vin} lat:${apiMatch.lat}` : 'NO MATCH');
+        // Try matching by VIN first, then by vehicle number, then by license plate
+        const fvVin = (fv.vin || '').toUpperCase().trim();
+        const apiMatch = locations.find(loc => {
+          if (fvVin && loc.vin && loc.vin.toUpperCase().trim() === fvVin) return true;
+          if (fv.vehicleId && loc.number && loc.number === fv.vehicleId) return true;
+          if (fv.licensePlate && loc.licensePlate && loc.licensePlate === fv.licensePlate) return true;
+          return false;
+        });
+        console.log('[Fleet] Match:', fv.vehicleId, 'VIN:', fv.vin, '→', apiMatch ? `VIN:${apiMatch.vin} num:${apiMatch.number} lat:${apiMatch.lat}` : 'NO MATCH');
 
         if (apiMatch) {
           return {
