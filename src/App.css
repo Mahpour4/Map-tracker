@@ -6504,3 +6504,403 @@ textarea {
   color: #8b5cf6;
 }
 
+/* ============ Fleet Tracker — Schedule Alerts ============ */
+.ft-sched-alerts {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0 0;
+}
+.ft-sched-alerts-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #92400e;
+  display: block;
+  margin-bottom: 4px;
+}
+.ft-sched-alert-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  padding: 2px 0;
+}
+.ft-sched-alert-route {
+  font-weight: 700;
+  color: #1e3a5f;
+  min-width: 50px;
+}
+.ft-sched-alert-driver {
+  color: #64748b;
+  min-width: 80px;
+}
+.ft-sched-alert-msg {
+  color: #ef4444;
+  font-weight: 600;
+}
+.ft-cell-sched {
+  white-space: nowrap;
+}
+.ft-sched-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ft-sched-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ============ Driver Dashboard ============ */
+.dd-page {
+  padding: 24px;
+  max-width: 1100px;
+}
+.dd-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.dd-header h2 {
+  font-size: 20px;
+  color: #1e3a5f;
+  margin: 0;
+}
+.dd-route-select {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+  color: #1e3a5f;
+  min-width: 240px;
+}
+.dd-empty {
+  color: #64748b;
+  font-size: 14px;
+  padding: 40px 0;
+  text-align: center;
+}
+.dd-muted {
+  color: #9ca3af;
+  font-size: 13px;
+  padding: 8px 0;
+}
+.dd-muted-sm {
+  color: #d1d5db;
+  font-size: 11px;
+}
+
+/* Driver info bar */
+.dd-driver-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f0f4f8;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.dd-driver-name {
+  font-weight: 700;
+  color: #1e3a5f;
+  font-size: 15px;
+}
+.dd-driver-vehicle {
+  color: #475569;
+}
+.dd-driver-plate {
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* Score card */
+.dd-score-card {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.dd-grade-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.dd-grade-letter {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+}
+.dd-grade-number {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.dd-sub-scores {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dd-sub-score {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dd-sub-label {
+  font-size: 13px;
+  color: #475569;
+  width: 140px;
+  flex-shrink: 0;
+}
+.dd-sub-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dd-sub-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.dd-sub-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a5f;
+  width: 30px;
+  text-align: right;
+}
+
+/* Section */
+.dd-section {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.dd-section h3 {
+  font-size: 14px;
+  color: #1e3a5f;
+  margin: 0 0 10px;
+}
+
+/* Today's progress */
+.dd-today {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.dd-today-bar-track {
+  flex: 1;
+  min-width: 200px;
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.dd-today-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+.dd-today-status {
+  font-size: 13px;
+  font-weight: 700;
+}
+.dd-status-on-track { color: #22c55e; }
+.dd-status-behind { color: #ef4444; }
+.dd-status-no-schedule { color: #9ca3af; }
+.dd-today-detail {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Week schedule grid */
+.dd-week-grid {
+  display: flex;
+  gap: 4px;
+}
+.dd-week-day {
+  flex: 1;
+  text-align: center;
+  padding: 6px 4px;
+  background: #f9fafb;
+  border-radius: 4px;
+  min-width: 0;
+}
+.dd-week-future {
+  opacity: 0.5;
+}
+.dd-week-day-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-bottom: 4px;
+}
+.dd-week-day-date {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: #64748b;
+}
+.dd-week-stops {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  min-height: 16px;
+}
+.dd-week-stop {
+  display: inline-block;
+}
+.dd-week-stop-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.dd-week-stop.exact .dd-week-stop-dot { background: #22c55e; }
+.dd-week-stop.same-week .dd-week-stop-dot { background: #3b82f6; }
+.dd-week-stop.missed .dd-week-stop-dot { background: #ef4444; }
+.dd-week-stop.future .dd-week-stop-dot { background: #d1d5db; }
+.dd-week-summary {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.dd-week-done {
+  font-weight: 700;
+  color: #22c55e;
+}
+
+/* 4-week trend */
+.dd-trend {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  height: 120px;
+}
+.dd-trend-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+.dd-trend-bar-track {
+  flex: 1;
+  width: 100%;
+  max-width: 48px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.dd-trend-bar-fill {
+  width: 100%;
+  border-radius: 4px;
+  transition: height 0.3s ease;
+}
+.dd-trend-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-top: 4px;
+}
+.dd-trend-week {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* Recent activity */
+.dd-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dd-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  padding: 4px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.dd-activity-date {
+  font-weight: 600;
+  color: #1e3a5f;
+  width: 90px;
+  flex-shrink: 0;
+}
+.dd-activity-stores { color: #22c55e; font-weight: 600; }
+.dd-activity-wh { color: #f97316; }
+.dd-activity-miles { color: #3b82f6; }
+.dd-activity-total { color: #9ca3af; margin-left: auto; }
+
+/* Route alerts */
+.dd-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dd-alert-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 4px 0;
+}
+.dd-alert-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.dd-alert-resolved .dd-alert-icon {
+  background: #dcfce7;
+  color: #22c55e;
+}
+.dd-alert-open .dd-alert-icon {
+  background: #fee2e2;
+  color: #ef4444;
+}
+.dd-alert-store {
+  color: #1e3a5f;
+  font-weight: 600;
+}
+.dd-alert-status {
+  margin-left: auto;
+  font-size: 12px;
+}
+.dd-alert-resolved .dd-alert-status { color: #22c55e; }
+.dd-alert-open .dd-alert-status { color: #ef4444; }
+
