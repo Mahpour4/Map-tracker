@@ -74,7 +74,8 @@ async function motiveFetch(path, params = {}) {
       if (v !== undefined && v !== null) searchParams.set(k, String(v));
     });
     const qs = searchParams.toString();
-    fetchUrl = `${baseUrl}${path}${qs ? '?' + qs : ''}`;
+    const separator = path.includes('?') ? '&' : '?';
+    fetchUrl = `${baseUrl}${path}${qs ? separator + qs : ''}`;
   } else {
     const fullUrl = new URL(`${baseUrl}${path}`);
     Object.entries(params).forEach(([k, v]) => {
@@ -226,14 +227,18 @@ export async function fetchVehicleLocationHistory(motiveId, startDate, endDate) 
     { start_date: startDate, end_date: endDate, updated_after: updatedAfter }
   );
   console.log(`[Motive] Location history for vehicle ${motiveId}: ${raw.length} breadcrumbs`);
-  return raw.map(loc => ({
-    lat: loc.lat != null ? parseFloat(loc.lat) : null,
-    lng: loc.lon != null ? parseFloat(loc.lon) : null,
-    time: loc.located_at || null,
-    speed: loc.speed != null ? parseFloat(loc.speed) : null,
-    description: loc.description || '',
-    type: loc.type || null,
-  })).filter(loc => loc.lat != null && loc.lng != null && loc.time);
+  // v3 detail endpoint wraps each item: { vehicle_location: { lat, lon, located_at, ... } }
+  return raw.map(item => {
+    const loc = item.vehicle_location || item;
+    return {
+      lat: loc.lat != null ? parseFloat(loc.lat) : null,
+      lng: loc.lon != null ? parseFloat(loc.lon) : null,
+      time: loc.located_at || null,
+      speed: loc.speed != null ? parseFloat(loc.speed) : null,
+      description: loc.description || '',
+      type: loc.type || null,
+    };
+  }).filter(loc => loc.lat != null && loc.lng != null && loc.time);
 }
 
 /**
