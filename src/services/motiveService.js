@@ -7,7 +7,7 @@ const BASE_URL_KEY = 'motive_base_url';
 const CORS_PROXY_KEY = 'motive_cors_proxy';
 
 // Use Vite dev proxy by default to avoid CORS issues
-const DEFAULT_BASE_URL = '/api/motive/v1';
+const DEFAULT_BASE = '/api/motive';
 
 // Clear stale direct-API URLs from localStorage (leftover from before proxy was added)
 const storedUrl = localStorage.getItem('motive_base_url') || '';
@@ -30,14 +30,13 @@ export function clearMotiveApiKey() {
 }
 
 export function getMotiveBaseUrl() {
-  return localStorage.getItem(BASE_URL_KEY) || DEFAULT_BASE_URL;
+  return localStorage.getItem(BASE_URL_KEY) || DEFAULT_BASE;
 }
 
 export function setMotiveBaseUrl(url) {
-  if (url && url.trim() && url.trim() !== DEFAULT_BASE_URL) {
+  if (url && url.trim() && url.trim() !== DEFAULT_BASE) {
     localStorage.setItem(BASE_URL_KEY, url.trim());
   } else {
-    // Use default proxy path
     localStorage.removeItem(BASE_URL_KEY);
   }
 }
@@ -59,6 +58,7 @@ export function isMotiveConnected() {
 }
 
 // ---- API fetch wrapper ----
+// path should include the version, e.g. '/v1/vehicles' or '/v2/vehicle_locations'
 
 async function motiveFetch(path, params = {}) {
   const apiKey = getMotiveApiKey();
@@ -67,7 +67,6 @@ async function motiveFetch(path, params = {}) {
   const baseUrl = getMotiveBaseUrl();
   const isRelative = baseUrl.startsWith('/');
 
-  // Build URL - relative paths (proxy) use string concat, absolute use URL constructor
   let fetchUrl;
   if (isRelative) {
     const searchParams = new URLSearchParams();
@@ -83,7 +82,6 @@ async function motiveFetch(path, params = {}) {
     });
     fetchUrl = fullUrl.toString();
 
-    // Apply CORS proxy if configured (only for absolute URLs)
     const proxy = getCorsProxy();
     if (proxy) {
       fetchUrl = `${proxy}${encodeURIComponent(fetchUrl)}`;
@@ -147,78 +145,47 @@ async function fetchAllPages(path, dataKey, params = {}) {
 // ---- Public API functions ----
 
 export async function fetchVehicles() {
-  const raw = await fetchAllPages('/vehicles', 'vehicles');
-  console.log('[Motive] Raw vehicles response (' + raw.length + ' items):', raw.slice(0, 2));
+  const raw = await fetchAllPages('/v1/vehicles', 'vehicles');
+  console.log('[Motive] Raw vehicles (' + raw.length + ' items):', raw.slice(0, 2));
   return raw.map(v => v.vehicle || v);
 }
 
 export async function fetchVehicleLocations() {
-  // Use driving_periods endpoint — it reliably returns vehicle locations
-  const raw = await fetchAllPages('/vehicles/driving_periods', 'driving_periods');
-  console.log('[Motive] Raw driving_periods (' + raw.length + ' items):', raw.slice(0, 2));
+  // Use v2 endpoint — matches the Motive SDK's fetchAListOfAllTheVehiclesAndTheirLocations
+  const raw = await fetchAllPages('/v2/vehicle_locations', 'vehicle_locations');
+  console.log('[Motive] Raw v2 vehicle_locations (' + raw.length + ' items):', raw.slice(0, 2));
 
-  // Extract the latest location per vehicle (keyed by VIN)
-  const latestByVin = {};
-  raw.forEach(dp => {
-    const period = dp.driving_period || dp;
-    const vehicle = period.vehicle || {};
-    const vin = vehicle.vin;
-    if (!vin) return;
-
-    // Prefer in_progress trips; otherwise keep the most recent by start_time
-    const existing = latestByVin[vin];
-    if (!existing ||
-        period.status === 'in_progress' ||
-        (!existing.status !== 'in_progress' && period.start_time > existing.start_time)) {
-      latestByVin[vin] = period;
-    }
-  });
-
-  const mapped = Object.values(latestByVin).map(period => {
-    const vehicle = period.vehicle || {};
-    const driver = period.driver || {};
-    // For in_progress trips, use destination if available, else origin
-    // For completed trips, use destination (last known position)
-    const lat = period.status === 'in_progress'
-      ? (period.destination_lat || period.origin_lat)
-      : (period.destination_lat || period.origin_lat);
-    const lon = period.status === 'in_progress'
-      ? (period.destination_lon || period.origin_lon)
-      : (period.destination_lon || period.origin_lon);
-    const location = period.status === 'in_progress'
-      ? (period.destination || period.origin || '')
-      : (period.destination || period.origin || '');
+  const mapped = raw.map(vl => {
+    // v2 may nest under vehicle_location or return flat
+    const entry = vl.vehicle_location || vl;
+    const vehicle = entry.vehicle || {};
+    const driver = entry.current_driver || entry.driver || {};
+    const loc = entry.last_known_location || entry;
 
     return {
-      id: vehicle.id,
-      number: vehicle.number,
-      vin: vehicle.vin,
-      licensePlate: vehicle.license_plate_number || null,
-      lat: lat ? parseFloat(lat) : null,
-      lng: lon ? parseFloat(lon) : null,
-      speed: null, // driving_periods doesn't include speed
-      bearing: null,
-      engineStatus: period.status === 'in_progress' ? 'on' : 'off',
-      locatedAt: period.end_time || period.start_time || null,
-      description: location,
+      id: vehicle.id || entry.id,
+      number: vehicle.number || entry.number,
+      vin: vehicle.vin || entry.vin,
+      licensePlate: vehicle.license_plate_number || entry.license_plate_number || null,
+      lat: loc.lat ? parseFloat(loc.lat) : null,
+      lng: (loc.lon || loc.lng) ? parseFloat(loc.lon || loc.lng) : null,
+      speed: loc.speed != null ? parseFloat(loc.speed) : null,
+      bearing: loc.bearing != null ? parseFloat(loc.bearing) : null,
+      engineStatus: loc.engine_status || (loc.type === 'vehicle_moving' ? 'on' : loc.type === 'vehicle_stopped' ? 'off' : null),
+      locatedAt: loc.located_at || null,
+      description: loc.description || '',
       driverName: driver.first_name ? `${driver.first_name} ${driver.last_name || ''}`.trim() : null,
       driverStatus: driver.status || null,
     };
   });
 
-  console.log('[Motive] Parsed locations from driving_periods:', mapped.map(m => ({ vin: m.vin, lat: m.lat, engine: m.engineStatus })));
+  console.log('[Motive] Parsed locations:', mapped.map(m => ({ vin: m.vin, plate: m.licensePlate, lat: m.lat, engine: m.engineStatus, driver: m.driverName })));
   return mapped;
-}
-
-export async function fetchDrivers() {
-  const raw = await fetchAllPages('/drivers', 'drivers');
-  console.log('[Motive] Raw drivers (' + raw.length + ' items):', raw.slice(0, 2));
-  return raw.map(d => d.driver || d);
 }
 
 export async function testMotiveConnection() {
   try {
-    await motiveFetch('/vehicles', { per_page: 1 });
+    await motiveFetch('/v1/vehicles', { per_page: 1 });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
