@@ -17,9 +17,12 @@ function isValidCoord(lat, lng) {
 // Clean garbled arrow encoding from old saved entries
 function cleanLocationName(name) {
   if (!name) return name;
-  return name.replace(/[Ã\u00c3][Â\u00c2]*[¢\u00a2][Ã\u00c3][Â\u00c2]*[†\u0086]*[Ã\u00c3][Â\u00c2]*/g, '\u2192')
-    .replace(/â†'/g, '\u2192')
-    .replace(/→/g, '\u2192');
+  // Match any run of 3+ characters in the Latin Extended / C1 Controls range
+  // which is where garbled multi-byte UTF-8 arrows end up
+  return name
+    .replace(/\s*[\u00C0-\u00FF\u0080-\u009F]{3,}\s*/g, ' \u2192 ')
+    .replace(/\s*\u2192\s*/g, ' \u2192 ')
+    .trim();
 }
 
 // Auto-fit map bounds to points
