@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
 import { fetchVehicleLocationHistory, fetchDrivingPeriods, isMotiveConnected } from '../services/motiveService';
 import { analyzeLocationHistory } from '../services/proximityService';
@@ -503,25 +504,21 @@ export default function TravelLog() {
   const handleCreateAndMatch = useCallback(() => {
     if (!matchingEntry || !newLocName.trim()) return;
     const dest = (matchingEntry.destination || '').trim();
+    const id = uuidv4();
     const newLoc = {
+      id,
       name: newLocName.trim(),
       type: newLocType,
       address: dest,
       lat: matchingEntry.destinationLat || matchingEntry.lat,
       lng: matchingEntry.destinationLng || matchingEntry.lng,
     };
-    // addCustomLocation generates the ID via reducer
     addCustomLocation(newLoc);
-    // We need to log the entry — use a temporary approach: generate an ID here that matches what the reducer will create
-    // Actually, the reducer uses uuidv4 so we can't predict it. Instead, log with the address as the name.
-    // We'll match using the destination → name mapping via address override once the custom location is saved.
-    // For now, just create the custom location. The next Process Day will auto-match it.
-    // But let's also create the visit entry directly:
     logTravelEntries([{
       vehicleVin: matchingEntry.vehicleVin,
       vehicleId: matchingEntry.vehicleId,
       type: newLocType,
-      locationId: `custom-${Date.now()}`,
+      locationId: id,
       locationName: newLocName.trim(),
       lat: matchingEntry.destinationLat || matchingEntry.lat,
       lng: matchingEntry.destinationLng || matchingEntry.lng,
@@ -530,13 +527,13 @@ export default function TravelLog() {
       departureTime: matchingEntry.departureTime,
       dwellMinutes: null,
     }]);
-    // Note: address override will be saved once the custom location gets its ID
-    // For future matching, the custom location's proximity radius will handle it
+    if (dest) setAddressOverride(dest, id);
+    propagateMatchToSameDestination(matchingEntry, newLoc, newLocType);
     setMatchingEntry(null);
     setMatchSearch('');
     setNewLocName('');
     setNewLocType('gas-station');
-  }, [matchingEntry, newLocName, newLocType, addCustomLocation, logTravelEntries]);
+  }, [matchingEntry, newLocName, newLocType, addCustomLocation, logTravelEntries, setAddressOverride, propagateMatchToSameDestination]);
 
   // Raw data total breadcrumb count
   const rawBreadcrumbCount = useMemo(() => {
@@ -692,16 +689,20 @@ export default function TravelLog() {
                           <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
                         </>
                       );
-                    })() : (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${(entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(entry.locationName)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="tl-map-link"
-                      >
-                        {cleanLocationName(entry.locationName)}
-                      </a>
-                    )}
+                    })() : (() => {
+                      const liveCl = isCustomType(entry.type) && entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
+                      const displayName = liveCl ? liveCl.name : cleanLocationName(entry.locationName);
+                      return (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${(entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(displayName)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="tl-map-link"
+                        >
+                          {displayName}
+                        </a>
+                      );
+                    })()}
                   </div>
                   <div className="tl-entry-meta">
                     <span
@@ -738,7 +739,7 @@ export default function TravelLog() {
                       </button>
                     )}
                     {isCustomType(entry.type) && entry.locationId && (() => {
-                      const cl = customLocations.find(c => c.id === entry.locationId);
+                      const cl = customLocations.find(c => c.id === entry.locationId) || customLocations.find(c => c.name === entry.locationName);
                       return cl ? (
                         <>
                           <button
