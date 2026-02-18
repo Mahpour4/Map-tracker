@@ -123,14 +123,17 @@ async function fetchAllPages(path, dataKey, params = {}) {
     const data = await motiveFetch(path, { ...params, page_no: pageNo, per_page: 25 });
     const items = data[dataKey] || [];
     allItems.push(...items);
-    console.log(`[Motive] Page ${pageNo}: ${items.length} ${dataKey}`, data.pagination);
 
-    const pagination = data.pagination;
-    if (!pagination || items.length === 0) {
+    // Pagination can be nested under data.pagination OR at the top level (per_page, total, page_no)
+    const pagination = data.pagination || data;
+    const perPage = pagination.per_page || 25;
+    const total = pagination.total || 0;
+    console.log(`[Motive] Page ${pageNo}: ${items.length} ${dataKey} (total: ${total})`);
+
+    if (items.length === 0) {
       hasMore = false;
     } else {
-      // Motive returns 'total' (item count), not 'total_pages'
-      const totalPages = pagination.total_pages || Math.ceil((pagination.total || 0) / (pagination.per_page || 25));
+      const totalPages = pagination.total_pages || Math.ceil(total / perPage);
       if (pageNo >= totalPages) {
         hasMore = false;
       }
@@ -151,35 +154,60 @@ export async function fetchVehicles() {
 }
 
 export async function fetchVehicleLocations() {
-  // Use v2 endpoint — matches the Motive SDK's fetchAListOfAllTheVehiclesAndTheirLocations
-  const raw = await fetchAllPages('/v2/vehicle_locations', 'vehicle_locations');
-  console.log('[Motive] Raw v2 vehicle_locations (' + raw.length + ' items):', raw.slice(0, 2));
+  // Motive SDK: fetchAListOfAllTheVehiclesAndTheirLocations
+  // GET /v3/vehicle_locations → { vehicles: [{ vehicle: { ..., current_location: {...}, current_driver: {...} } }] }
+  const raw = await fetchAllPages('/v3/vehicle_locations', 'vehicles');
+  console.log('[Motive] Raw v3 vehicles with locations (' + raw.length + ' items)');
+  if (raw.length > 0) {
+    console.log('[Motive] Sample item [0]:', JSON.stringify(raw[0], null, 2));
+  }
 
   const mapped = raw.map(vl => {
-    // v2 may nest under vehicle_location or return flat
-    const entry = vl.vehicle_location || vl;
-    const vehicle = entry.vehicle || {};
-    const driver = entry.current_driver || entry.driver || {};
-    const loc = entry.last_known_location || entry;
+    const vehicle = vl.vehicle || vl;
+    const loc = vehicle.current_location || {};
+    const driver = vehicle.current_driver || {};
+
+    // Handle both v1-style (speed in mph, type) and v3-list-style (kph, vehicle_state)
+    let speed = null;
+    if (loc.speed != null) speed = parseFloat(loc.speed);            // v1/v3-detail: mph
+    else if (loc.kph != null) speed = parseFloat(loc.kph) * 0.621371; // v3-list: kph→mph
+
+    // Engine: v3-list uses vehicle_state ("on"/"off"), v1 uses type ("vehicle_moving"/"vehicle_stopped")
+    let engineStatus = null;
+    if (loc.vehicle_state) engineStatus = loc.vehicle_state;
+    else if (loc.type === 'vehicle_moving') engineStatus = 'on';
+    else if (loc.type === 'vehicle_stopped') engineStatus = 'off';
+    else if (loc.type) engineStatus = loc.type;
+
+    // Location text: v1 has description, v3-list has city/state/current_location (string)
+    let description = loc.description || '';
+    if (!description && typeof loc.current_location === 'string') description = loc.current_location;
+    if (!description) description = [loc.city, loc.state].filter(Boolean).join(', ');
 
     return {
-      id: vehicle.id || entry.id,
-      number: vehicle.number || entry.number,
-      vin: vehicle.vin || entry.vin,
-      licensePlate: vehicle.license_plate_number || entry.license_plate_number || null,
-      lat: loc.lat ? parseFloat(loc.lat) : null,
-      lng: (loc.lon || loc.lng) ? parseFloat(loc.lon || loc.lng) : null,
-      speed: loc.speed != null ? parseFloat(loc.speed) : null,
+      id: vehicle.id,
+      number: vehicle.number,
+      vin: vehicle.vin,
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      licensePlate: vehicle.license_plate_number || null,
+      lat: loc.lat != null ? parseFloat(loc.lat) : null,
+      lng: loc.lon != null ? parseFloat(loc.lon) : null,
+      speed,
       bearing: loc.bearing != null ? parseFloat(loc.bearing) : null,
-      engineStatus: loc.engine_status || (loc.type === 'vehicle_moving' ? 'on' : loc.type === 'vehicle_stopped' ? 'off' : null),
+      engineStatus,
       locatedAt: loc.located_at || null,
-      description: loc.description || '',
+      description,
       driverName: driver.first_name ? `${driver.first_name} ${driver.last_name || ''}`.trim() : null,
       driverStatus: driver.status || null,
     };
   });
 
-  console.log('[Motive] Parsed locations:', mapped.map(m => ({ vin: m.vin, plate: m.licensePlate, lat: m.lat, engine: m.engineStatus, driver: m.driverName })));
+  console.log('[Motive] Parsed locations:', mapped.map(m => ({
+    id: m.id, num: m.number, vin: m.vin, plate: m.licensePlate,
+    lat: m.lat, lng: m.lng, engine: m.engineStatus, driver: m.driverName,
+  })));
   return mapped;
 }
 
