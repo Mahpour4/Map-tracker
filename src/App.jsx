@@ -86,7 +86,7 @@ function AppContent() {
         {page === 'fleet' && <FleetTracker />}
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
-        <div className="app-version">v1.7.9</div>
+        <div className="app-version">v1.8.1</div>
       </main>
     </div>
   );
