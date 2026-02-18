@@ -424,7 +424,17 @@ export function processStoresFromCsv(csvText) {
   return { stores, zones };
 }
 
-const CSV_HEADER = 'ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Visited';
+const CSV_HEADER = 'ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Visited,Dormant';
+
+function isDormantForCsv(lastVisited) {
+  if (!lastVisited) return true;
+  const raw = lastVisited.split('T')[0];
+  const d = new Date(raw + 'T00:00:00');
+  if (isNaN(d.getTime())) return true;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.floor((now - d) / (1000 * 60 * 60 * 24)) >= 90;
+}
 
 function escapeCsvField(val) {
   const s = String(val || '');
@@ -453,6 +463,7 @@ export function storesToCsv(stores) {
       escapeCsvField(s.lat),
       escapeCsvField(s.lng),
       escapeCsvField(s.lastVisited || ''),
+      escapeCsvField(isDormantForCsv(s.lastVisited) ? 'Yes' : 'No'),
     ].join(','));
   });
   return lines.join('\n') + '\n';

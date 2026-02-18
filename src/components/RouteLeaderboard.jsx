@@ -23,11 +23,17 @@ function getGrade(pct) {
   return { letter: 'F', color: '#ef4444' };
 }
 
+function isDormant(lastVisited) {
+  const days = getDaysSinceVisit(lastVisited);
+  return days === null || days >= 90;
+}
+
 function getStatusCounts(stores) {
-  const counts = { onTrack: 0, overdue1: 0, overdue2: 0, critical: 0, never: 0 };
+  const counts = { onTrack: 0, overdue1: 0, overdue2: 0, critical: 0, never: 0, dormant: 0 };
   stores.forEach((s) => {
     const days = getDaysSinceVisit(s.lastVisited);
     if (days === null) counts.never++;
+    else if (days >= 90) counts.dormant++;
     else if (days <= 7) counts.onTrack++;
     else if (days <= 14) counts.overdue1++;
     else if (days <= 30) counts.overdue2++;
@@ -161,7 +167,7 @@ export default function RouteLeaderboard() {
 
     return Object.entries(routeMap).map(([route, { required, cash }]) => {
       const counts = getStatusCounts(required);
-      const active = required.length - counts.never; // exclude never-visited (may be seasonal)
+      const active = required.length - counts.never - counts.dormant; // exclude never-visited and dormant (90+ days)
       const coverage = active > 0 ? Math.round((counts.onTrack / active) * 100) : 0;
       const grade = getGrade(coverage);
       const routeAlerts = alertsByRoute[route] || [];
@@ -407,6 +413,7 @@ export default function RouteLeaderboard() {
               {isExpanded && (
                 <div className="route-store-list">
                   {r.required
+                    .filter((s) => !isDormant(s.lastVisited))
                     .sort((a, b) => {
                       const da = getDaysSinceVisit(a.lastVisited);
                       const db = getDaysSinceVisit(b.lastVisited);
@@ -440,6 +447,26 @@ export default function RouteLeaderboard() {
                         </div>
                       );
                     })}
+                  {r.counts.dormant + r.counts.never > 0 && (
+                    <div className="route-cash-section">
+                      <div className="cash-section-label">Dormant stores ({r.counts.dormant + r.counts.never}) — not scored</div>
+                      {r.required
+                        .filter((s) => isDormant(s.lastVisited))
+                        .map((s) => {
+                          const days = getDaysSinceVisit(s.lastVisited);
+                          return (
+                            <div key={s.id} className="route-store-item">
+                              <span className="store-status-dot" style={{ background: '#6b7280' }}></span>
+                              <span className="store-item-name">{s.name}</span>
+                              <span className="store-item-city">{s.city}</span>
+                              <span className="store-item-days" style={{ color: '#6b7280' }}>
+                                {days === null ? 'Never' : `${days}d ago`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
                   {r.cash.length > 0 && (
                     <div className="route-cash-section">
                       <div className="cash-section-label">CASH stops ({r.cash.length}) — not scored</div>
