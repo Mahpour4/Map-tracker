@@ -148,6 +148,7 @@ export default function TravelLog() {
     setProcessStatus({ message: `Processing ${vehiclesWithMotiveId.length} vehicles for ${selectedDate}...`, type: 'info' });
 
     let totalVisits = 0;
+    let drivingCount = 0;
     let processedCount = 0;
     const errors = [];
 
@@ -161,14 +162,20 @@ export default function TravelLog() {
           type: 'info',
         });
 
-        const breadcrumbs = await fetchVehicleLocationHistory(
-          vehicle.motiveId,
-          selectedDate,
-          selectedDate
-        );
+        // Fetch breadcrumbs + driving periods for this vehicle in parallel
+        const [breadcrumbs, periods] = await Promise.all([
+          fetchVehicleLocationHistory(vehicle.motiveId, selectedDate, selectedDate),
+          fetchDrivingPeriods({
+            vehicleIds: [String(vehicle.motiveId)],
+            startDate: selectedDate,
+            endDate: selectedDate,
+            status: 'complete',
+          }),
+        ]);
 
-        console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs`);
+        console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs, ${periods.length} driving periods`);
 
+        // Store visits from breadcrumbs
         if (breadcrumbs.length > 0) {
           const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.routeNumber);
           console.log(`[TravelLog] ${vehicle.label}: ${visits.length} visits detected`);
@@ -200,39 +207,12 @@ export default function TravelLog() {
             totalVisits += visits.length;
           }
         }
-      } catch (err) {
-        console.error(`[TravelLog] Error processing ${vehicle.label}:`, err);
-        errors.push(`${vehicle.label}: ${err.message}`);
-      }
 
-      processedCount++;
-
-      if (processedCount < vehiclesWithMotiveId.length) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-
-    // Fetch driving periods
-    let drivingCount = 0;
-    try {
-      setProcessStatus({ message: 'Fetching driving periods...', type: 'info' });
-      const motiveIds = vehiclesWithMotiveId.map(v => String(v.motiveId));
-      const periods = await fetchDrivingPeriods({
-        vehicleIds: motiveIds,
-        startDate: selectedDate,
-        endDate: selectedDate,
-        status: 'complete',
-      });
-
-      if (periods.length > 0) {
-        const drivingEntries = periods.map(dp => {
-          const matchedVehicle = vehiclesWithMotiveId.find(v =>
-            String(v.motiveId) === String(dp.vehicleId) ||
-            (v.vin && dp.vehicleVin && v.vin.toUpperCase() === dp.vehicleVin.toUpperCase())
-          );
-          return {
-            vehicleVin: matchedVehicle?.vin || dp.vehicleVin || '',
-            vehicleId: matchedVehicle?.vehicleId || dp.vehicleNumber || '',
+        // Driving periods for this vehicle
+        if (periods.length > 0) {
+          const drivingEntries = periods.map(dp => ({
+            vehicleVin: vehicle.vin,
+            vehicleId: vehicle.vehicleId,
             type: 'driving',
             locationId: `driving-${dp.id}`,
             locationName: `${dp.origin || 'Unknown'} \u2192 ${dp.destination || 'Unknown'}`,
@@ -247,17 +227,21 @@ export default function TravelLog() {
             destinationLat: dp.destinationLat,
             destinationLng: dp.destinationLng,
             destination: dp.destination || '',
-          };
-        }).filter(e => e.vehicleVin);
+          }));
 
-        if (drivingEntries.length > 0) {
           logTravelEntries(drivingEntries);
-          drivingCount = drivingEntries.length;
+          drivingCount += drivingEntries.length;
         }
+      } catch (err) {
+        console.error(`[TravelLog] Error processing ${vehicle.label}:`, err);
+        errors.push(`${vehicle.label}: ${err.message}`);
       }
-    } catch (err) {
-      console.error('[TravelLog] Error fetching driving periods:', err);
-      errors.push(`Driving periods: ${err.message}`);
+
+      processedCount++;
+
+      if (processedCount < vehiclesWithMotiveId.length) {
+        await new Promise(r => setTimeout(r, 500));
+      }
     }
 
     setProcessing(false);
