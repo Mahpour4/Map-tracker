@@ -211,6 +211,31 @@ export async function fetchVehicleLocations() {
   return mapped;
 }
 
+/**
+ * Fetch location history for a single vehicle over a date range.
+ * GET /v3/vehicle_locations/:id?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&updated_after=...
+ * Returns array of location breadcrumbs sorted by time.
+ */
+export async function fetchVehicleLocationHistory(motiveId, startDate, endDate) {
+  if (!motiveId) throw new Error('Vehicle Motive ID is required');
+  // updated_after is required by the API — use start of the start_date
+  const updatedAfter = `${startDate}T00:00:00Z`;
+  const raw = await fetchAllPages(
+    `/v3/vehicle_locations/${motiveId}`,
+    'vehicle_locations',
+    { start_date: startDate, end_date: endDate, updated_after: updatedAfter }
+  );
+  console.log(`[Motive] Location history for vehicle ${motiveId}: ${raw.length} breadcrumbs`);
+  return raw.map(loc => ({
+    lat: loc.lat != null ? parseFloat(loc.lat) : null,
+    lng: loc.lon != null ? parseFloat(loc.lon) : null,
+    time: loc.located_at || null,
+    speed: loc.speed != null ? parseFloat(loc.speed) : null,
+    description: loc.description || '',
+    type: loc.type || null,
+  })).filter(loc => loc.lat != null && loc.lng != null && loc.time);
+}
+
 export async function testMotiveConnection() {
   try {
     await motiveFetch('/v1/vehicles', { per_page: 1 });

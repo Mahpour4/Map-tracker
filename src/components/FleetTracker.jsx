@@ -14,6 +14,7 @@ import {
   fetchVehicleLocations,
   testMotiveConnection,
 } from '../services/motiveService';
+import { detectCurrentProximity, filterNewVisits } from '../services/proximityService';
 
 function createTruckIcon(engineStatus, isSelected) {
   const color = engineStatus === 'on' ? '#22c55e' : engineStatus === 'off' ? '#ef4444' : '#9ca3af';
@@ -35,8 +36,8 @@ function createTruckIcon(engineStatus, isSelected) {
 }
 
 export default function FleetTracker() {
-  const { state, updateVehicleLocations, setFleetSyncStatus, setVehiclesOnMap } = useApp();
-  const { fleetVehicles, vehicleLocations, fleetSyncStatus, fleetSyncError, showVehiclesOnMap } = state;
+  const { state, updateVehicleLocations, setFleetSyncStatus, setVehiclesOnMap, bulkRecordVisits, logTravelEntries, toggleAutoVisit } = useApp();
+  const { fleetVehicles, vehicleLocations, fleetSyncStatus, fleetSyncError, showVehiclesOnMap, stores, warehouses, travelLog, autoVisitEnabled } = state;
 
   const [showApiSetup, setShowApiSetup] = useState(!isMotiveConnected());
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -129,11 +130,29 @@ export default function FleetTracker() {
 
       updateVehicleLocations(merged);
       setLastRefreshTime(new Date());
+
+      // Real-time proximity snapshot (route-matched, type-based radius, no speed filter)
+      if (autoVisitEnabled) {
+        const allVisits = detectCurrentProximity(merged, stores, warehouses);
+        const newVisits = filterNewVisits(allVisits, travelLog);
+        if (newVisits.length > 0) {
+          console.log('[Proximity] Detected visits:', newVisits);
+          // Log store visits to visitHistory (for compliance/recency tracking)
+          const storeVisits = newVisits
+            .filter(v => v.type === 'store')
+            .map(v => ({ storeId: v.locationId, date: v.time.slice(0, 10) }));
+          if (storeVisits.length > 0) {
+            bulkRecordVisits(storeVisits);
+          }
+          // Log all visits to travel log (stores + warehouses)
+          logTravelEntries(newVisits);
+        }
+      }
     } catch (err) {
       console.error('Fleet refresh failed:', err);
       setFleetSyncStatus('error', err.message);
     }
-  }, [fleetVehicles, updateVehicleLocations, setFleetSyncStatus]);
+  }, [fleetVehicles, updateVehicleLocations, setFleetSyncStatus, autoVisitEnabled, stores, warehouses, travelLog, bulkRecordVisits, logTravelEntries]);
 
   // Auto-fetch on first render when connected
   useEffect(() => {
@@ -290,6 +309,14 @@ export default function FleetTracker() {
                   onChange={(e) => setVehiclesOnMap(e.target.checked)}
                 />
                 Show on Main Map
+              </label>
+              <label className="ft-auto-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoVisitEnabled}
+                  onChange={toggleAutoVisit}
+                />
+                Auto-Visit Log
               </label>
             </div>
           </div>
