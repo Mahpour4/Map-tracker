@@ -101,7 +101,7 @@ async function githubPutWithRetry({ url, encoded, message, sha, fetchFn, saveSha
 export async function fetchStoresCsv() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (!res.ok) {
@@ -149,7 +149,7 @@ function saveAlertsSha(sha) {
 export async function fetchAlertsCsv() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -194,7 +194,7 @@ function saveSchedulesSha(sha) {
 export async function fetchSchedulesJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -241,7 +241,7 @@ function saveImportLogSha(sha) {
 export async function fetchImportLog() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -288,7 +288,7 @@ function saveVisitHistorySha(sha) {
 export async function fetchVisitHistoryJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${VISITHISTORY_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -335,7 +335,7 @@ function saveWarehousesSha(sha) {
 export async function fetchWarehousesJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -382,7 +382,7 @@ function saveTravelLogSha(sha) {
 export async function fetchTravelLogJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -429,7 +429,7 @@ function saveAddressOverridesSha(sha) {
 export async function fetchAddressOverridesJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ADDRESS_OVERRIDES_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -476,7 +476,7 @@ function saveCustomLocationsSha(sha) {
 export async function fetchCustomLocationsJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CUSTOM_LOCATIONS_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
