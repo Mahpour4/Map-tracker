@@ -384,8 +384,39 @@ function reducer(state, action) {
       return { ...state, customLocations: action.payload };
     case 'ADD_CUSTOM_LOCATION':
       return { ...state, customLocations: [...state.customLocations, { id: uuidv4(), ...action.payload }] };
-    case 'UPDATE_CUSTOM_LOCATION':
-      return { ...state, customLocations: state.customLocations.map(cl => cl.id === action.payload.id ? { ...cl, ...action.payload } : cl) };
+    case 'UPDATE_CUSTOM_LOCATION': {
+      const updCl = action.payload;
+      const newCustomLocations = state.customLocations.map(cl => cl.id === updCl.id ? { ...cl, ...updCl } : cl);
+      // Also update locationName/type in travel log entries referencing this custom location
+      const newTravelLog = { ...state.travelLog };
+      let logChanged = false;
+      Object.keys(newTravelLog).forEach(dateKey => {
+        const dayLog = newTravelLog[dateKey];
+        Object.keys(dayLog).forEach(vin => {
+          const entries = dayLog[vin];
+          for (let i = 0; i < entries.length; i++) {
+            if (entries[i].locationId === updCl.id) {
+              if (!logChanged) {
+                newTravelLog[dateKey] = { ...dayLog };
+                newTravelLog[dateKey][vin] = [...entries];
+                logChanged = true;
+              } else if (newTravelLog[dateKey] === dayLog) {
+                newTravelLog[dateKey] = { ...dayLog };
+                newTravelLog[dateKey][vin] = [...entries];
+              } else if (newTravelLog[dateKey][vin] === entries) {
+                newTravelLog[dateKey][vin] = [...entries];
+              }
+              newTravelLog[dateKey][vin][i] = {
+                ...newTravelLog[dateKey][vin][i],
+                locationName: updCl.name || newTravelLog[dateKey][vin][i].locationName,
+                type: updCl.type || newTravelLog[dateKey][vin][i].type,
+              };
+            }
+          }
+        });
+      });
+      return { ...state, customLocations: newCustomLocations, travelLog: logChanged ? newTravelLog : state.travelLog };
+    }
     case 'DELETE_CUSTOM_LOCATION':
       return { ...state, customLocations: state.customLocations.filter(cl => cl.id !== action.payload) };
     default:
