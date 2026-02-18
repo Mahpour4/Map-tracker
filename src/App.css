@@ -6007,6 +6007,10 @@ textarea {
   color: #f59e0b;
 }
 
+.tl-stat.green {
+  color: #22c55e;
+}
+
 .tl-timeline {
   position: relative;
   padding-left: 40px;
@@ -6071,6 +6075,10 @@ textarea {
   background: #f59e0b;
 }
 
+.tl-entry.tl-driving .tl-entry-dot {
+  background: #3b82f6;
+}
+
 .tl-entry-content {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -6085,6 +6093,10 @@ textarea {
 
 .tl-entry.tl-warehouse .tl-entry-content {
   border-left: 3px solid #f59e0b;
+}
+
+.tl-entry.tl-driving .tl-entry-content {
+  border-left: 3px solid #3b82f6;
 }
 
 .tl-entry-name {
@@ -6119,6 +6131,11 @@ textarea {
   color: #92400e;
 }
 
+.tl-type-badge.driving {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 .tl-entry-vehicle {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -6137,6 +6154,18 @@ textarea {
   background: #f1f5f9;
   padding: 1px 5px;
   border-radius: 3px;
+}
+
+.tl-entry-distance {
+  font-size: 0.75rem;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.tl-entry-driver {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .tl-entry-timerange {

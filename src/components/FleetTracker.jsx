@@ -179,6 +179,7 @@ export default function FleetTracker() {
     const term = searchTerm.toLowerCase();
     return source.filter(v =>
       v.vehicleId.toLowerCase().includes(term) ||
+      (v.routeNumber || '').toLowerCase().includes(term) ||
       v.licensePlate.toLowerCase().includes(term) ||
       v.vin.toLowerCase().includes(term) ||
       (v.yearMakeModel || '').toLowerCase().includes(term) ||
@@ -371,6 +372,7 @@ export default function FleetTracker() {
                     <Popup>
                       <div className="ft-popup">
                         <strong>{v.vehicleId}</strong><br />
+                        {v.routeNumber && <><span>Route: {v.routeNumber}</span><br /></>}
                         <span>{v.licensePlate}</span><br />
                         {v.driverName && <><span>Driver: {v.driverName}</span><br /></>}
                         <span>Speed: {v.speed != null ? `${v.speed} mph` : 'N/A'}</span><br />
@@ -404,6 +406,7 @@ export default function FleetTracker() {
                 <tr>
                   <th>#</th>
                   <th>Vehicle</th>
+                  <th>Route</th>
                   <th>Year / Make / Model</th>
                   <th>License Plate</th>
                   <th>VIN</th>
@@ -427,6 +430,7 @@ export default function FleetTracker() {
                   >
                     <td>{v.index}</td>
                     <td className="ft-cell-vehicle">{v.vehicleId}</td>
+                    <td className="ft-cell-route">{v.routeNumber || '—'}</td>
                     <td className="ft-cell-ymm">{v.yearMakeModel || '—'}</td>
                     <td className="ft-cell-plate">{v.licensePlate}</td>
                     <td className="ft-cell-vin">{v.vin}</td>

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { fetchVehicleLocationHistory, isMotiveConnected } from '../services/motiveService';
+import { fetchVehicleLocationHistory, fetchDrivingPeriods, isMotiveConnected } from '../services/motiveService';
 import { analyzeLocationHistory } from '../services/proximityService';
 
 function localDateStr(d = new Date()) {
@@ -30,8 +30,9 @@ export default function TravelLog() {
     return source.map(v => ({
       vin: v.vin,
       vehicleId: v.vehicleId,
+      routeNumber: v.routeNumber || null,
       motiveId: v.motiveId || v.id || null,
-      label: `${v.vehicleId} (${v.vin?.slice(-6) || '?'})`,
+      label: `Rt ${v.routeNumber || '?'} - ${v.vehicleId} (${v.vin?.slice(-6) || '?'})`,
     }));
   }, [vehicleLocations, fleetVehicles]);
 
@@ -64,13 +65,15 @@ export default function TravelLog() {
     const vehicleCount = Object.keys(dayLog).length;
     let storeVisits = 0;
     let warehouseVisits = 0;
+    let drivingSegments = 0;
     Object.values(dayLog).forEach(stops => {
       stops.forEach(s => {
         if (s.type === 'store') storeVisits++;
-        if (s.type === 'warehouse') warehouseVisits++;
+        else if (s.type === 'warehouse') warehouseVisits++;
+        else if (s.type === 'driving') drivingSegments++;
       });
     });
-    return { vehicleCount, storeVisits, warehouseVisits, total: storeVisits + warehouseVisits };
+    return { vehicleCount, storeVisits, warehouseVisits, drivingSegments, total: storeVisits + warehouseVisits };
   }, [travelLog, selectedDate]);
 
   // ---- Process Day: pull location history for all vehicles and analyze ----
@@ -110,8 +113,7 @@ export default function TravelLog() {
         console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs`);
 
         if (breadcrumbs.length > 0) {
-          // vehicleId IS the route number
-          const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.vehicleId);
+          const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.routeNumber);
           console.log(`[TravelLog] ${vehicle.label}: ${visits.length} visits detected (10min+ dwell)`);
 
           if (visits.length > 0) {
@@ -156,16 +158,62 @@ export default function TravelLog() {
       }
     }
 
+    // Fetch driving periods for all vehicles on this date
+    let drivingCount = 0;
+    try {
+      setProcessStatus({ message: 'Fetching driving periods...', type: 'info' });
+      const motiveIds = vehiclesWithMotiveId.map(v => String(v.motiveId));
+      const periods = await fetchDrivingPeriods({
+        vehicleIds: motiveIds,
+        startDate: selectedDate,
+        endDate: selectedDate,
+        status: 'complete',
+      });
+
+      if (periods.length > 0) {
+        const drivingEntries = periods.map(dp => {
+          // Match driving period vehicle back to our fleet by Motive ID or VIN
+          const matchedVehicle = vehiclesWithMotiveId.find(v =>
+            String(v.motiveId) === String(dp.vehicleId) ||
+            (v.vin && dp.vehicleVin && v.vin.toUpperCase() === dp.vehicleVin.toUpperCase())
+          );
+          return {
+            vehicleVin: matchedVehicle?.vin || dp.vehicleVin || '',
+            vehicleId: matchedVehicle?.vehicleId || dp.vehicleNumber || '',
+            type: 'driving',
+            locationId: `driving-${dp.id}`,
+            locationName: `${dp.origin || 'Unknown'} → ${dp.destination || 'Unknown'}`,
+            lat: dp.originLat,
+            lng: dp.originLng,
+            time: dp.startTime,
+            arrivalTime: dp.startTime,
+            departureTime: dp.endTime,
+            dwellMinutes: Math.round((dp.duration || 0) / 60),
+            distance: dp.distance,
+            driverName: dp.driverName,
+          };
+        }).filter(e => e.vehicleVin);
+
+        if (drivingEntries.length > 0) {
+          logTravelEntries(drivingEntries);
+          drivingCount = drivingEntries.length;
+        }
+      }
+    } catch (err) {
+      console.error('[TravelLog] Error fetching driving periods:', err);
+      errors.push(`Driving periods: ${err.message}`);
+    }
+
     setProcessing(false);
 
     if (errors.length > 0) {
       setProcessStatus({
-        message: `Done. ${totalVisits} visits found across ${processedCount - errors.length} vehicles. ${errors.length} errors: ${errors.join('; ')}`,
+        message: `Done. ${totalVisits} visits + ${drivingCount} driving segments across ${processedCount - errors.length} vehicles. ${errors.length} errors: ${errors.join('; ')}`,
         type: 'error',
       });
     } else {
       setProcessStatus({
-        message: `Done! ${totalVisits} visits found across ${processedCount} vehicles for ${selectedDate}.`,
+        message: `Done! ${totalVisits} visits + ${drivingCount} driving segments across ${processedCount} vehicles for ${selectedDate}.`,
         type: 'success',
       });
     }
@@ -225,6 +273,7 @@ export default function TravelLog() {
         <span className="tl-stat">{stats.vehicleCount} <span>Vehicles</span></span>
         <span className="tl-stat blue">{stats.storeVisits} <span>Store Visits</span></span>
         <span className="tl-stat orange">{stats.warehouseVisits} <span>Warehouse</span></span>
+        <span className="tl-stat green">{stats.drivingSegments} <span>Driving</span></span>
         <span className="tl-stat">{stats.total} <span>Total Stops</span></span>
       </div>
 
@@ -256,6 +305,12 @@ export default function TravelLog() {
                   )}
                   {entry.dwellMinutes != null && (
                     <span className="tl-entry-dwell">{entry.dwellMinutes} min</span>
+                  )}
+                  {entry.type === 'driving' && entry.distance > 0 && (
+                    <span className="tl-entry-distance">{entry.distance} mi</span>
+                  )}
+                  {entry.type === 'driving' && entry.driverName && (
+                    <span className="tl-entry-driver">{entry.driverName}</span>
                   )}
                   {entry.departureTime && entry.arrivalTime && (
                     <span className="tl-entry-timerange">
