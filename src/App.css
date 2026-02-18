@@ -5915,6 +5915,186 @@ textarea {
   margin-top: 12px;
 }
 
+/* ============ Custom Locations ============ */
+.cl-page {
+  padding: 20px 24px;
+  max-width: 900px;
+}
+
+.cl-header h2 {
+  font-size: 1.4rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.cl-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.cl-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cl-search {
+  flex: 1;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.cl-search:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.cl-type-filter {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  min-width: 150px;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.cl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cl-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 24px;
+  text-align: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.cl-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cl-card.editing {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.cl-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cl-card-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cl-card-name strong {
+  font-size: 0.95rem;
+}
+
+.cl-type-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cl-type-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  padding: 1px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.cl-address {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding-left: 18px;
+}
+
+.cl-coords-display {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: monospace;
+  padding-left: 18px;
+}
+
+.cl-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.cl-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.cl-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.cl-coords {
+  display: flex;
+  gap: 8px;
+}
+
+.cl-coord {
+  flex: 1;
+}
+
+.cl-coords-readonly {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  padding: 4px 0;
+}
+
+.cl-form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.cl-add-btn {
+  margin-top: 12px;
+}
+
 /* ============ Travel Log ============ */
 .tl-page {
   padding: 20px 24px;
