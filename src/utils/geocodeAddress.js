@@ -1,4 +1,5 @@
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -23,6 +24,35 @@ export async function geocodeAddress(address, city, state, zip) {
     const data = await res.json();
     if (data.length === 0) return null;
     return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reverse-geocode coordinates via OpenStreetMap Nominatim.
+ * Returns a display address string or null.
+ */
+export async function reverseGeocode(lat, lng) {
+  const url = `${NOMINATIM_REVERSE_URL}?${new URLSearchParams({
+    lat: String(lat),
+    lon: String(lng),
+    format: 'json',
+    addressdetails: '1',
+  })}`;
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'MapTrackerApp/1.0' },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || data.error) return null;
+    const a = data.address;
+    if (!a) return data.display_name || null;
+    const street = [a.house_number, a.road].filter(Boolean).join(' ');
+    const parts = [street, a.city || a.town || a.village, a.state, a.postcode].filter(Boolean);
+    return parts.length >= 2 ? parts.join(', ') : data.display_name || null;
   } catch {
     return null;
   }
