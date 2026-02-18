@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
 import { fetchVehicleLocationHistory, fetchDrivingPeriods, isMotiveConnected } from '../services/motiveService';
-import { analyzeLocationHistory } from '../services/proximityService';
+import { analyzeLocationHistory, findAddressMatch } from '../services/proximityService';
 import { haversineDistance } from '../utils/geoUtils';
 
 function localDateStr(d = new Date()) {
@@ -109,6 +109,8 @@ export default function TravelLog() {
   const [matchingEntry, setMatchingEntry] = useState(null);
   const [matchSearch, setMatchSearch] = useState('');
   const [matchTab, setMatchTab] = useState('stores'); // stores | custom | create
+  // Address-match suggestions: Map of locationId → store object
+  const [suggestions, setSuggestions] = useState(new Map());
   // Raw data popup
   const [rawData, setRawData] = useState(null); // { breadcrumbs: {vin: [...], ...}, drivingPeriods: [...] }
   const [showRawData, setShowRawData] = useState(false);
@@ -353,6 +355,51 @@ export default function TravelLog() {
             totalVisits += overrideVisits.length;
             console.log(`[TravelLog] ${vehicle.label}: ${overrideVisits.length} auto-matched from address overrides`);
           }
+
+          // Backup: address-string matching for unmatched driving period destinations
+          const routeStores = stores.filter(s =>
+            vehicle.routeNumber && String(s.routeNumber).trim() === String(vehicle.routeNumber).trim()
+          );
+          const addrAutoMatches = [];
+          const addrAutoVisitRecords = [];
+          const newSuggestions = new Map();
+
+          for (const dp of drivingEntries) {
+            const dest = (dp.destination || '').trim();
+            if (!dest || addressOverrides[dest]) continue; // already handled
+            const match = findAddressMatch(dest, routeStores);
+            if (!match) continue;
+
+            if (match.confidence === 'high') {
+              addrAutoMatches.push({
+                vehicleVin: vehicle.vin,
+                date: selectedDate,
+                oldLocationId: dp.locationId,
+                newEntry: {
+                  type: 'store',
+                  locationId: match.store.id,
+                  locationName: match.store.name,
+                  lat: match.store.lat,
+                  lng: match.store.lng,
+                },
+              });
+              addrAutoVisitRecords.push({ storeId: match.store.id, date: selectedDate });
+              setAddressOverride(dest, match.store.id);
+              console.log(`[TravelLog] ${vehicle.label}: address match (high) "${dest}" → "${match.store.name}"`);
+            } else {
+              newSuggestions.set(dp.locationId, match.store);
+              console.log(`[TravelLog] ${vehicle.label}: address suggestion (low) "${dest}" → "${match.store.name}"`);
+            }
+          }
+
+          if (addrAutoMatches.length > 0) {
+            manualMatchEntries(addrAutoMatches);
+            if (addrAutoVisitRecords.length > 0) bulkRecordVisits(addrAutoVisitRecords);
+            totalVisits += addrAutoMatches.length;
+          }
+          if (newSuggestions.size > 0) {
+            setSuggestions(prev => new Map([...prev, ...newSuggestions]));
+          }
         }
       } catch (err) {
         console.error(`[TravelLog] Error processing ${vehicle.label}:`, err);
@@ -380,7 +427,7 @@ export default function TravelLog() {
         type: 'success',
       });
     }
-  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, customLocations, addressOverrides, logTravelEntries, bulkRecordVisits]);
+  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, customLocations, addressOverrides, logTravelEntries, bulkRecordVisits, manualMatchEntries, setAddressOverride]);
 
   // --- Manual matching ---
   const matchCandidates = useMemo(() => {
@@ -467,6 +514,30 @@ export default function TravelLog() {
       bulkRecordVisits(updates.map(() => ({ storeId: matchedLocation.id, date: selectedDate })));
     }
   }, [dayEntries, manualMatchEntries, bulkRecordVisits, selectedDate]);
+
+  const handleAcceptSuggestion = useCallback((entry, store) => {
+    manualMatchEntries([{
+      vehicleVin: entry.vehicleVin,
+      date: selectedDate,
+      oldLocationId: entry.locationId,
+      newEntry: {
+        type: 'store',
+        locationId: store.id,
+        locationName: store.name,
+        lat: store.lat,
+        lng: store.lng,
+      },
+    }]);
+    bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
+    const dest = (entry.destination || '').trim();
+    if (dest) setAddressOverride(dest, store.id);
+    propagateMatchToSameDestination(entry, store, 'store');
+    setSuggestions(prev => { const next = new Map(prev); next.delete(entry.locationId); return next; });
+  }, [selectedDate, manualMatchEntries, bulkRecordVisits, setAddressOverride, propagateMatchToSameDestination]);
+
+  const handleDismissSuggestion = useCallback((locationId) => {
+    setSuggestions(prev => { const next = new Map(prev); next.delete(locationId); return next; });
+  }, []);
 
   const handleMatchStore = useCallback((store) => {
     if (!matchingEntry) return;
@@ -758,6 +829,16 @@ export default function TravelLog() {
                         {new Date(entry.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
+                    {(entry.type === 'driving' || effectivelyUnmatched) && suggestions.has(entry.locationId) && (() => {
+                      const suggested = suggestions.get(entry.locationId);
+                      return (
+                        <span className="tl-suggestion-badge">
+                          Suggested: {suggested.name}
+                          <button className="tl-suggest-accept" title="Accept" onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(entry, suggested); }}>✓</button>
+                          <button className="tl-suggest-dismiss" title="Dismiss" onClick={(e) => { e.stopPropagation(); handleDismissSuggestion(entry.locationId); }}>✗</button>
+                        </span>
+                      );
+                    })()}
                     {(entry.type === 'driving' || effectivelyUnmatched) && (
                       <button
                         className="tl-match-btn"

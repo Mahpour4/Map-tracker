@@ -6421,6 +6421,33 @@ textarea {
   border-bottom-style: solid;
 }
 
+/* Address-match suggestion badge */
+.tl-suggestion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+.tl-suggest-accept,
+.tl-suggest-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+.tl-suggest-accept { color: #16a34a; }
+.tl-suggest-dismiss { color: #dc2626; }
+.tl-suggest-accept:hover { color: #15803d; }
+.tl-suggest-dismiss:hover { color: #b91c1c; }
+
 /* Match Store button on driving entries */
 .tl-match-btn {
   font-size: 0.65rem;

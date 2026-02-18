@@ -196,6 +196,65 @@ export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleR
   return visits;
 }
 
+// Street type abbreviation map for address normalization
+const STREET_ABBREVS = {
+  street: 'st', avenue: 'ave', boulevard: 'blvd', road: 'rd',
+  drive: 'dr', lane: 'ln', court: 'ct', place: 'pl',
+  circle: 'cir', highway: 'hwy', parkway: 'pkwy', way: 'wy',
+};
+
+function normalizeAddr(str) {
+  if (!str) return '';
+  let s = str.toLowerCase().split(',')[0]; // only street portion before city
+  Object.entries(STREET_ABBREVS).forEach(([long, short]) => {
+    s = s.replace(new RegExp(`\\b${long}\\b`, 'g'), short);
+  });
+  return s.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Backup address-string matching for driving period destinations.
+ * Used when lat/lng proximity matching fails or coordinates are missing.
+ *
+ * @param {string} destinationStr - Motive driving period destination address
+ * @param {Array} routeStores - Stores already filtered to the vehicle's route
+ * @returns {{ store: Object, confidence: 'high'|'low' } | null}
+ */
+export function findAddressMatch(destinationStr, routeStores) {
+  if (!destinationStr) return null;
+  const normDest = normalizeAddr(destinationStr);
+  const destParts = normDest.split(' ');
+  const destNum = /^\d+$/.test(destParts[0]) ? destParts[0] : null;
+  const destStreet = (destNum ? destParts.slice(1) : destParts).join(' ');
+
+  let lowMatch = null;
+
+  for (const store of routeStores) {
+    if (!store.address) continue;
+    const normStore = normalizeAddr(store.address);
+    const storeParts = normStore.split(' ');
+    const storeNum = /^\d+$/.test(storeParts[0]) ? storeParts[0] : null;
+    const storeStreet = (storeNum ? storeParts.slice(1) : storeParts).join(' ');
+
+    if (!destStreet || !storeStreet) continue;
+
+    const destWords = destStreet.split(' ').filter(w => w.length > 2);
+    const storeWords = storeStreet.split(' ').filter(w => w.length > 2);
+    const overlap = destWords.filter(w => storeWords.includes(w));
+    const streetMatches = overlap.length >= Math.min(2, Math.min(destWords.length, storeWords.length));
+
+    if (destNum && storeNum && destNum === storeNum && streetMatches) {
+      return { store, confidence: 'high' };
+    }
+
+    if (streetMatches && !lowMatch) {
+      lowMatch = store;
+    }
+  }
+
+  return lowMatch ? { store: lowMatch, confidence: 'low' } : null;
+}
+
 /**
  * Real-time proximity snapshot (used during live polling).
  * Simpler version: checks current position against route stores + warehouses.
