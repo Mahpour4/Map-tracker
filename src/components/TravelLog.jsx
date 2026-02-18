@@ -276,7 +276,7 @@ export default function TravelLog() {
         <h2>Travel Log</h2>
         <p className="tl-desc">
           Pull location history from Motive and detect store visits
-          (10+ min dwell). Chain: 500m, Independent: 200m radius. Route-matched stores only.
+          (10+ min dwell). Chain: 805m (~½ mi), Independent: 200m radius. Route-matched stores only.
         </p>
       </div>
 
