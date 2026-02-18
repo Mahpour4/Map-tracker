@@ -106,15 +106,14 @@ export default function FleetTracker() {
         }
       });
 
+      console.log('[Fleet] Merging', locations.length, 'API locations with', fleetVehicles.length, 'local vehicles');
       const merged = fleetVehicles.map(fv => {
         const apiMatch = locations.find(loc =>
-          (loc.vin && fv.vin && loc.vin.toUpperCase() === fv.vin.toUpperCase()) ||
-          (loc.licensePlate && fv.licensePlate &&
-            fv.licensePlate.toUpperCase().includes(loc.licensePlate.toUpperCase()))
+          (loc.vin && fv.vin && loc.vin.toUpperCase() === fv.vin.toUpperCase())
         );
+        console.log('[Fleet] Match:', fv.vehicleId, 'VIN:', fv.vin, '→', apiMatch ? `VIN:${apiMatch.vin} lat:${apiMatch.lat}` : 'NO MATCH');
 
         if (apiMatch) {
-          const driver = driverByVehicleId[apiMatch.id] || {};
           return {
             ...fv,
             motiveId: apiMatch.id,
@@ -123,8 +122,8 @@ export default function FleetTracker() {
             speed: apiMatch.speed,
             bearing: apiMatch.bearing,
             engineStatus: apiMatch.engineStatus,
-            driverName: driver.name || null,
-            driverStatus: driver.status || null,
+            driverName: apiMatch.driverName || null,
+            driverStatus: apiMatch.driverStatus || null,
             lastUpdated: apiMatch.locatedAt,
             description: apiMatch.description,
             matched: true,
