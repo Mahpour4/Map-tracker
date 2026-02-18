@@ -259,8 +259,20 @@ function reducer(state, action) {
       const { key, schedule } = action.payload;
       return { ...state, schedules: { ...state.schedules, [key]: schedule } };
     }
-    case 'LOAD_VISIT_HISTORY':
-      return { ...state, visitHistory: action.payload };
+    case 'LOAD_VISIT_HISTORY': {
+      const loadedVH = action.payload;
+      // Reconcile stores' lastVisited with visit history dates
+      const reconciledStores = state.stores.map(s => {
+        const visits = loadedVH[s.id];
+        if (!visits || visits.length === 0) return s;
+        const newest = visits[visits.length - 1]; // already sorted
+        if (!s.lastVisited || newest > s.lastVisited.split('T')[0]) {
+          return { ...s, lastVisited: newest };
+        }
+        return s;
+      });
+      return { ...state, visitHistory: loadedVH, stores: reconciledStores };
+    }
     case 'RECORD_VISIT': {
       const { storeId, date } = action.payload;
       const existing = state.visitHistory[storeId] || [];

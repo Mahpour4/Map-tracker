@@ -14,13 +14,24 @@ function isValidCoord(lat, lng) {
   return lat != null && lng != null && Math.abs(lat) > 1 && Math.abs(lng) > 1;
 }
 
-// Clean garbled arrow encoding from old saved entries
+// Clean garbled arrow encoding and garbage characters from location names
 function cleanLocationName(name) {
   if (!name) return name;
   return name
     .replace(/\s*[\u00C0-\u00FF\u0080-\u009F]{3,}\s*/g, ' \u2192 ')
     .replace(/\s*\u2192\s*/g, ' \u2192 ')
     .trim();
+}
+
+// Check if a location string is garbage/meaningless (single special chars, empty, etc.)
+function isGarbageLocation(str) {
+  if (!str) return true;
+  const cleaned = str.trim();
+  if (!cleaned || cleaned.length <= 2) {
+    // Single or double chars that aren't real addresses (e.g. "¢", "Â")
+    return !/^[a-zA-Z0-9]/.test(cleaned);
+  }
+  return false;
 }
 
 // Custom location type labels
@@ -278,7 +289,7 @@ export default function TravelLog() {
             vehicleId: vehicle.vehicleId,
             type: 'driving',
             locationId: `driving-${dp.id}`,
-            locationName: `${dp.origin || 'Unknown'} \u2192 ${dp.destination || 'Unknown'}`,
+            locationName: `${isGarbageLocation(dp.origin) ? 'Unknown' : dp.origin} \u2192 ${isGarbageLocation(dp.destination) ? 'Unknown' : dp.destination}`,
             lat: dp.originLat,
             lng: dp.originLng,
             time: dp.startTime,
@@ -289,7 +300,7 @@ export default function TravelLog() {
             driverName: dp.driverName,
             destinationLat: dp.destinationLat,
             destinationLng: dp.destinationLng,
-            destination: dp.destination || '',
+            destination: isGarbageLocation(dp.destination) ? '' : dp.destination,
           }));
 
           logTravelEntries(drivingEntries);
@@ -630,8 +641,8 @@ export default function TravelLog() {
                   <div className="tl-entry-name">
                     {entry.type === 'driving' ? (() => {
                       const parts = cleanLocationName(entry.locationName).split(' \u2192 ');
-                      const origin = parts[0] || 'Unknown';
-                      const dest = parts[1] || 'Unknown';
+                      const origin = isGarbageLocation(parts[0]) ? 'Unknown' : parts[0];
+                      const dest = isGarbageLocation(parts[1]) ? 'Unknown' : parts[1];
                       const originQ = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(origin);
                       const destQ = (entry.destinationLat && entry.destinationLng) ? `${entry.destinationLat},${entry.destinationLng}` : encodeURIComponent(dest);
                       return (
