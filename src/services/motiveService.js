@@ -67,20 +67,27 @@ async function motiveFetch(path, params = {}) {
   const baseUrl = getMotiveBaseUrl();
   const isRelative = baseUrl.startsWith('/');
 
+  // Helper: append params supporting arrays (e.g. vehicle_ids[] = [1,2,3])
+  function applyParams(searchParams, params) {
+    Object.entries(params).forEach(([k, v]) => {
+      if (v === undefined || v === null) return;
+      if (Array.isArray(v)) {
+        v.forEach(item => searchParams.append(k, String(item)));
+      } else {
+        searchParams.set(k, String(v));
+      }
+    });
+  }
+
   let fetchUrl;
   if (isRelative) {
     const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== null) searchParams.set(k, String(v));
-    });
+    applyParams(searchParams, params);
     const qs = searchParams.toString();
-    const separator = path.includes('?') ? '&' : '?';
-    fetchUrl = `${baseUrl}${path}${qs ? separator + qs : ''}`;
+    fetchUrl = `${baseUrl}${path}${qs ? '?' + qs : ''}`;
   } else {
     const fullUrl = new URL(`${baseUrl}${path}`);
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== null) fullUrl.searchParams.set(k, String(v));
-    });
+    applyParams(fullUrl.searchParams, params);
     fetchUrl = fullUrl.toString();
 
     const proxy = getCorsProxy();
@@ -227,7 +234,11 @@ export async function fetchVehicleLocationHistory(motiveId, startDate, endDate) 
     { start_date: startDate, end_date: endDate, updated_after: updatedAfter }
   );
   console.log(`[Motive] Location history for vehicle ${motiveId}: ${raw.length} breadcrumbs`);
-  // v3 detail endpoint wraps each item: { vehicle_location: { lat, lon, located_at, ... } }
+  if (raw.length > 0) {
+    console.log(`[Motive] Raw breadcrumb sample [0]:`, JSON.stringify(raw[0], null, 2));
+    console.log(`[Motive] Raw breadcrumb keys [0]:`, Object.keys(raw[0]));
+  }
+  // v3 detail endpoint may wrap items: { vehicle_location: { lat, lon, located_at, ... } }
   return raw.map(item => {
     const loc = item.vehicle_location || item;
     return {
@@ -259,14 +270,12 @@ export async function fetchDrivingPeriods(opts = {}) {
   if (opts.endDate) params.end_date = opts.endDate;
   if (opts.status) params.status = opts.status;
 
-  // vehicle_ids[] needs special handling — add as repeated params
-  let path = '/v1/driving_periods';
+  // vehicle_ids[] as repeated query params (now handled natively by motiveFetch)
   if (opts.vehicleIds && opts.vehicleIds.length > 0) {
-    const idParams = opts.vehicleIds.map(id => `vehicle_ids[]=${encodeURIComponent(id)}`).join('&');
-    path = `/v1/driving_periods?${idParams}`;
+    params['vehicle_ids[]'] = opts.vehicleIds;
   }
 
-  const raw = await fetchAllPages(path, 'driving_periods', params);
+  const raw = await fetchAllPages('/v1/driving_periods', 'driving_periods', params);
   console.log(`[Motive] Driving periods: ${raw.length} total`);
 
   return raw.map(dp => {
