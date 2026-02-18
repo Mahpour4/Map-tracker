@@ -98,7 +98,7 @@ function createStopIcon(type, index) {
 }
 
 export default function TravelLog() {
-  const { state, logTravelEntries, manualMatchEntries, bulkRecordVisits, setAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
+  const { state, logTravelEntries, manualMatchEntries, unmatchEntry, bulkRecordVisits, setAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
   const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides, customLocations } = state;
 
   const today = localDateStr();
@@ -675,8 +675,17 @@ export default function TravelLog() {
                 : `No travel log entries for ${selectedDate}. Click "Process ${selectedDate}" to analyze that day's data.`}
             </div>
           ) : (
-            dayEntries.map((entry, i) => (
-              <div key={`${entry.vehicleVin}-${entry.locationId}-${i}`} className={`tl-entry tl-${entry.type}`}>
+            dayEntries.map((entry, i) => {
+              // Resolve whether this entry's locationId points to a live location
+              const liveCl = entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
+              const liveStore = entry.type === 'store' && entry.locationId ? stores.find(s => s.id === entry.locationId) : null;
+              const liveWh = entry.type === 'warehouse' && entry.locationId ? warehouses.find(w => w.id === entry.locationId) : null;
+              const isResolved = !!(liveCl || liveStore || liveWh);
+              // Treat as unmatched if non-driving entry lost its association
+              const effectivelyUnmatched = entry.type !== 'driving' && !isResolved;
+
+              return (
+              <div key={`${entry.vehicleVin}-${entry.locationId}-${i}`} className={`tl-entry tl-${effectivelyUnmatched ? 'driving' : entry.type}`}>
                 <div className="tl-entry-index">{i + 1}</div>
                 <div className="tl-entry-time">
                   {entry.arrivalTime
@@ -685,7 +694,7 @@ export default function TravelLog() {
                       ? new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : '--:--'}
                 </div>
-                <div className="tl-entry-dot" style={!['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type) } : undefined} />
+                <div className="tl-entry-dot" style={!['store','warehouse','driving'].includes(entry.type) || effectivelyUnmatched ? { background: effectivelyUnmatched ? undefined : getTypeColor(entry.type) } : undefined} />
                 <div className="tl-entry-content">
                   <div className="tl-entry-name">
                     {entry.type === 'driving' ? (() => {
@@ -702,12 +711,13 @@ export default function TravelLog() {
                         </>
                       );
                     })() : (() => {
-                      const liveCl = entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
-                      const liveStore = entry.type === 'store' && entry.locationId ? stores.find(s => s.id === entry.locationId) : null;
-                      const liveWh = entry.type === 'warehouse' && entry.locationId ? warehouses.find(w => w.id === entry.locationId) : null;
-                      const displayName = liveCl?.name || liveWh?.name || liveStore?.name || cleanLocationName(entry.locationName);
+                      const displayName = isResolved
+                        ? (liveCl?.name || liveWh?.name || liveStore?.name)
+                        : (entry.destination || cleanLocationName(entry.locationName) || (entry.lat && entry.lng ? `${entry.lat}, ${entry.lng}` : 'Unknown'));
                       const storeAddr = liveStore ? [liveStore.address, liveStore.city, liveStore.state].filter(Boolean).join(', ') : '';
-                      const addr = entry.destination || liveCl?.address || storeAddr || liveWh?.address || '';
+                      const addr = isResolved
+                        ? (entry.destination || liveCl?.address || storeAddr || liveWh?.address || '')
+                        : '';
                       return (
                         <>
                           <a
@@ -724,10 +734,10 @@ export default function TravelLog() {
                   </div>
                   <div className="tl-entry-meta">
                     <span
-                      className={`tl-type-badge ${entry.type}`}
-                      style={!['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type), color: '#fff' } : undefined}
+                      className={`tl-type-badge ${effectivelyUnmatched ? 'driving' : entry.type}`}
+                      style={!effectivelyUnmatched && !['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type), color: '#fff' } : undefined}
                     >
-                      {getTypeLabel(entry.type)}
+                      {effectivelyUnmatched ? 'Unmatched' : getTypeLabel(entry.type)}
                     </span>
                     {selectedVehicle === 'all' && (
                       <span className="tl-entry-vehicle">{entry.vehicleId || entry.vehicleVin?.slice(-6)}</span>
@@ -748,7 +758,7 @@ export default function TravelLog() {
                         {new Date(entry.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
-                    {entry.type === 'driving' && (
+                    {(entry.type === 'driving' || effectivelyUnmatched) && (
                       <button
                         className="tl-match-btn"
                         onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchSearch(''); setMatchTab('stores'); }}
@@ -756,34 +766,45 @@ export default function TravelLog() {
                         Match Location
                       </button>
                     )}
-                    {entry.locationId && (() => {
-                      const cl = customLocations.find(c => c.id === entry.locationId) || customLocations.find(c => c.name === entry.locationName);
-                      return cl ? (
-                        <>
-                          <button
-                            className="tl-edit-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditForm({ name: cl.name, type: cl.type, address: cl.address || '' });
-                              setEditingLocationId(cl.id);
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="tl-delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`Delete custom location "${cl.name}"?`)) {
-                                deleteCustomLocation(cl.id);
-                              }
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      ) : null;
-                    })()}
+                    {entry.locationId && liveCl && (
+                      <>
+                        <button
+                          className="tl-edit-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditForm({ name: liveCl.name, type: liveCl.type, address: liveCl.address || '' });
+                            setEditingLocationId(liveCl.id);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="tl-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete custom location "${liveCl.name}"?`)) {
+                              deleteCustomLocation(liveCl.id);
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {isResolved && entry.type !== 'driving' && (
+                      <button
+                        className="tl-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const matchedName = liveCl?.name || liveStore?.name || liveWh?.name || entry.locationName;
+                          if (window.confirm(`Unmatch "${matchedName}" from this entry? It will revert to showing the raw address.`)) {
+                            unmatchEntry(entry.vehicleVin, selectedDate, entry.locationId);
+                          }
+                        }}
+                      >
+                        Unmatch
+                      </button>
+                    )}
                     <button
                       className="tl-raw-toggle-btn"
                       onClick={(e) => { e.stopPropagation(); setExpandedRawIndex(expandedRawIndex === i ? null : i); }}
@@ -797,7 +818,8 @@ export default function TravelLog() {
                   )}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
