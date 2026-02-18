@@ -14,7 +14,7 @@ import {
   fetchVehicleLocations,
   testMotiveConnection,
 } from '../services/motiveService';
-import { detectProximityVisits, filterNewVisits } from '../services/proximityService';
+import { detectCurrentProximity, filterNewVisits } from '../services/proximityService';
 
 function createTruckIcon(engineStatus, isSelected) {
   const color = engineStatus === 'on' ? '#22c55e' : engineStatus === 'off' ? '#ef4444' : '#9ca3af';
@@ -131,9 +131,9 @@ export default function FleetTracker() {
       updateVehicleLocations(merged);
       setLastRefreshTime(new Date());
 
-      // Proximity auto-visit detection
+      // Real-time proximity snapshot (route-matched, type-based radius, no speed filter)
       if (autoVisitEnabled) {
-        const allVisits = detectProximityVisits(merged, stores, warehouses);
+        const allVisits = detectCurrentProximity(merged, stores, warehouses);
         const newVisits = filterNewVisits(allVisits, travelLog);
         if (newVisits.length > 0) {
           console.log('[Proximity] Detected visits:', newVisits);

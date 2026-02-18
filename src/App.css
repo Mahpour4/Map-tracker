@@ -5941,12 +5941,42 @@ textarea {
   font-weight: 600;
 }
 
-.tl-filter select {
+.tl-filter select,
+.tl-filter input[type="date"] {
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.85rem;
   min-width: 180px;
+}
+
+.tl-filter-action {
+  align-self: flex-end;
+}
+
+.tl-status {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.tl-status-info {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.tl-status-success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.tl-status-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .tl-stats {
@@ -6098,5 +6128,20 @@ textarea {
   font-size: 0.75rem;
   color: var(--text-muted);
   font-style: italic;
+}
+
+.tl-entry-dwell {
+  font-size: 0.75rem;
+  color: var(--text);
+  font-weight: 600;
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.tl-entry-timerange {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: monospace;
 }
 
