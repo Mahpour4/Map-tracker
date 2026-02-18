@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
 import { fetchVehicleLocationHistory, fetchDrivingPeriods, isMotiveConnected } from '../services/motiveService';
 import { analyzeLocationHistory } from '../services/proximityService';
+import { haversineDistance } from '../utils/geoUtils';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -427,18 +428,28 @@ export default function TravelLog() {
     return candidates;
   }, [matchingEntry, matchSearch, customLocations]);
 
-  // Propagate a match to all other driving entries with the same destination address
+  // Propagate a match to all other driving entries with the same destination address OR within 1/8 mile
+  const PROPAGATE_RADIUS_M = 201; // 1/8 mile in meters
   const propagateMatchToSameDestination = useCallback((matchedEntry, matchedLocation, locationType) => {
     const dest = (matchedEntry.destination || '').trim();
-    if (!dest) return;
-    const sameDestEntries = dayEntries.filter(e =>
-      e.type === 'driving' &&
-      (e.destination || '').trim() === dest &&
-      e.locationId !== matchedEntry.locationId
-    );
-    if (sameDestEntries.length === 0) return;
-    console.log(`[TravelLog] Propagating match to ${sameDestEntries.length} other entries with destination "${dest}"`);
-    const updates = sameDestEntries.map(e => ({
+    const destLat = matchedEntry.destinationLat || matchedEntry.lat;
+    const destLng = matchedEntry.destinationLng || matchedEntry.lng;
+    if (!dest && !destLat) return;
+    const nearbyEntries = dayEntries.filter(e => {
+      if (e.type !== 'driving' || e.locationId === matchedEntry.locationId) return false;
+      // Exact address match
+      if (dest && (e.destination || '').trim() === dest) return true;
+      // Coordinate proximity match (1/8 mile)
+      const eLat = e.destinationLat || e.lat;
+      const eLng = e.destinationLng || e.lng;
+      if (destLat && destLng && eLat && eLng) {
+        return haversineDistance(destLat, destLng, eLat, eLng) <= PROPAGATE_RADIUS_M;
+      }
+      return false;
+    });
+    if (nearbyEntries.length === 0) return;
+    console.log(`[TravelLog] Propagating match to ${nearbyEntries.length} nearby entries (address + ${PROPAGATE_RADIUS_M}m radius)`);
+    const updates = nearbyEntries.map(e => ({
       vehicleVin: e.vehicleVin,
       date: selectedDate,
       oldLocationId: e.locationId,
@@ -692,15 +703,19 @@ export default function TravelLog() {
                     })() : (() => {
                       const liveCl = isCustomType(entry.type) && entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
                       const displayName = liveCl ? liveCl.name : cleanLocationName(entry.locationName);
+                      const addr = entry.destination || liveCl?.address || '';
                       return (
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${(entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(displayName)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="tl-map-link"
-                        >
-                          {displayName}
-                        </a>
+                        <>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${(entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(displayName)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="tl-map-link"
+                          >
+                            {displayName}
+                          </a>
+                          {addr && <span className="tl-entry-addr">{addr}</span>}
+                        </>
                       );
                     })()}
                   </div>
