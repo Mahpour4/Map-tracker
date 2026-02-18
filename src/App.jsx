@@ -70,7 +70,7 @@ function AppContent() {
         {page === 'alerts' && <AlertLog />}
         {page === 'alertAnalytics' && <AlertAnalytics />}
         {page === 'fleet' && <FleetTracker />}
-        <div className="app-version">v1.3.0</div>
+        <div className="app-version">v1.3.1</div>
       </main>
     </div>
   );

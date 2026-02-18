@@ -154,8 +154,8 @@ export async function fetchVehicles() {
 }
 
 export async function fetchVehicleLocations() {
-  // Use v3 endpoint — returns vehicle_state, kph, city/state fields
-  // Response: { vehicles: [{ vehicle: { id, vin, current_location: { lat, lon, vehicle_state, kph, city, state, ... } } }] }
+  // Motive SDK: fetchAListOfAllTheVehiclesAndTheirLocations
+  // GET /v3/vehicle_locations → { vehicles: [{ vehicle: { ..., current_location: {...}, current_driver: {...} } }] }
   const raw = await fetchAllPages('/v3/vehicle_locations', 'vehicles');
   console.log('[Motive] Raw v3 vehicles with locations (' + raw.length + ' items)');
   if (raw.length > 0) {
@@ -167,16 +167,22 @@ export async function fetchVehicleLocations() {
     const loc = vehicle.current_location || {};
     const driver = vehicle.current_driver || {};
 
-    // v3 uses kph for speed — convert to mph
-    const speedMph = loc.kph != null ? parseFloat(loc.kph) * 0.621371 : null;
+    // Handle both v1-style (speed in mph, type) and v3-list-style (kph, vehicle_state)
+    let speed = null;
+    if (loc.speed != null) speed = parseFloat(loc.speed);            // v1/v3-detail: mph
+    else if (loc.kph != null) speed = parseFloat(loc.kph) * 0.621371; // v3-list: kph→mph
 
-    // v3 uses vehicle_state ("on"/"off") instead of type
-    const engineStatus = loc.vehicle_state || null;
+    // Engine: v3-list uses vehicle_state ("on"/"off"), v1 uses type ("vehicle_moving"/"vehicle_stopped")
+    let engineStatus = null;
+    if (loc.vehicle_state) engineStatus = loc.vehicle_state;
+    else if (loc.type === 'vehicle_moving') engineStatus = 'on';
+    else if (loc.type === 'vehicle_stopped') engineStatus = 'off';
+    else if (loc.type) engineStatus = loc.type;
 
-    // v3 has city/state and current_location (string) for address
-    const description = typeof loc.current_location === 'string'
-      ? loc.current_location
-      : [loc.city, loc.state].filter(Boolean).join(', ');
+    // Location text: v1 has description, v3-list has city/state/current_location (string)
+    let description = loc.description || '';
+    if (!description && typeof loc.current_location === 'string') description = loc.current_location;
+    if (!description) description = [loc.city, loc.state].filter(Boolean).join(', ');
 
     return {
       id: vehicle.id,
@@ -188,7 +194,7 @@ export async function fetchVehicleLocations() {
       licensePlate: vehicle.license_plate_number || null,
       lat: loc.lat != null ? parseFloat(loc.lat) : null,
       lng: loc.lon != null ? parseFloat(loc.lon) : null,
-      speed: speedMph,
+      speed,
       bearing: loc.bearing != null ? parseFloat(loc.bearing) : null,
       engineStatus,
       locatedAt: loc.located_at || null,
