@@ -59,6 +59,8 @@ export default function TravelLog() {
   const [selectedVehicle, setSelectedVehicle] = useState('all');
   const [processing, setProcessing] = useState(false);
   const [processStatus, setProcessStatus] = useState(null);
+  const [matchingEntry, setMatchingEntry] = useState(null);
+  const [matchSearch, setMatchSearch] = useState('');
 
   // Get all dates that have log entries, sorted descending
   const availableDates = useMemo(() => {
@@ -242,6 +244,9 @@ export default function TravelLog() {
             dwellMinutes: Math.round((dp.duration || 0) / 60),
             distance: dp.distance,
             driverName: dp.driverName,
+            destinationLat: dp.destinationLat,
+            destinationLng: dp.destinationLng,
+            destination: dp.destination || '',
           };
         }).filter(e => e.vehicleVin);
 
@@ -269,6 +274,64 @@ export default function TravelLog() {
       });
     }
   }, [vehicleList, selectedDate, stores, warehouses, logTravelEntries, bulkRecordVisits]);
+
+  // --- Manual store matching ---
+  const matchCandidates = useMemo(() => {
+    if (!matchingEntry) return [];
+    const vehicle = vehicleList.find(v => v.vin === matchingEntry.vehicleVin);
+    const routeNum = vehicle?.routeNumber;
+    // Filter to route-matched stores
+    let candidates = stores.filter(s =>
+      routeNum && String(s.routeNumber).trim() === String(routeNum).trim()
+    );
+    // Text search filter
+    if (matchSearch.trim()) {
+      const q = matchSearch.toLowerCase();
+      candidates = candidates.filter(s =>
+        (s.name || '').toLowerCase().includes(q) ||
+        (s.address || '').toLowerCase().includes(q) ||
+        (s.city || '').toLowerCase().includes(q) ||
+        (s.id || '').toLowerCase().includes(q)
+      );
+    }
+    // Sort by address similarity to the destination text
+    const dest = (matchingEntry.destination || '').toLowerCase();
+    if (dest) {
+      candidates = candidates.slice().sort((a, b) => {
+        const aAddr = (a.address || '').toLowerCase();
+        const bAddr = (b.address || '').toLowerCase();
+        // Prioritize stores whose address shares a common prefix with destination
+        const aMatch = dest.includes(aAddr.split(' ')[0]) || aAddr.includes(dest.split(',')[0].split(' ')[0]);
+        const bMatch = dest.includes(bAddr.split(' ')[0]) || bAddr.includes(dest.split(',')[0].split(' ')[0]);
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    }
+    return candidates;
+  }, [matchingEntry, matchSearch, stores, vehicleList]);
+
+  const handleMatchStore = useCallback((store) => {
+    if (!matchingEntry) return;
+    // Create a store visit entry
+    logTravelEntries([{
+      vehicleVin: matchingEntry.vehicleVin,
+      vehicleId: matchingEntry.vehicleId,
+      type: 'store',
+      locationId: store.id,
+      locationName: store.name,
+      lat: store.lat,
+      lng: store.lng,
+      time: matchingEntry.departureTime || matchingEntry.arrivalTime || matchingEntry.time,
+      arrivalTime: matchingEntry.departureTime || matchingEntry.arrivalTime,
+      departureTime: matchingEntry.departureTime,
+      dwellMinutes: null,
+    }]);
+    // Record the visit in visit history
+    bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
+    setMatchingEntry(null);
+    setMatchSearch('');
+  }, [matchingEntry, selectedDate, logTravelEntries, bulkRecordVisits]);
 
   return (
     <div className="tl-page">
@@ -412,6 +475,14 @@ export default function TravelLog() {
                         {new Date(entry.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
+                    {entry.type === 'driving' && (
+                      <button
+                        className="tl-match-btn"
+                        onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchSearch(''); }}
+                      >
+                        Match Store
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -419,6 +490,49 @@ export default function TravelLog() {
           )}
         </div>
       </div>
+
+      {/* Manual Store Match Popup */}
+      {matchingEntry && (
+        <div className="tl-match-overlay" onClick={() => setMatchingEntry(null)}>
+          <div className="tl-match-popup" onClick={e => e.stopPropagation()}>
+            <div className="tl-match-header">
+              <h3>Match to Store</h3>
+              <button className="tl-match-close" onClick={() => setMatchingEntry(null)}>&times;</button>
+            </div>
+            <div className="tl-match-dest">
+              <span className="tl-match-label">Motive Destination:</span>
+              <span className="tl-match-addr">{matchingEntry.destination || matchingEntry.locationName?.split('\u2192')[1]?.trim() || 'Unknown'}</span>
+            </div>
+            <input
+              className="tl-match-search"
+              type="text"
+              placeholder="Search stores by name, address, or ID..."
+              value={matchSearch}
+              onChange={e => setMatchSearch(e.target.value)}
+              autoFocus
+            />
+            <div className="tl-match-list">
+              {matchCandidates.length === 0 ? (
+                <div className="tl-match-empty">No matching stores found for this route</div>
+              ) : (
+                matchCandidates.map(store => (
+                  <div
+                    key={store.id}
+                    className="tl-match-item"
+                    onClick={() => handleMatchStore(store)}
+                  >
+                    <div className="tl-match-store-name">{store.name}</div>
+                    <div className="tl-match-store-addr">
+                      {store.address}{store.city ? `, ${store.city}` : ''}{store.state ? `, ${store.state}` : ''} {store.zip || ''}
+                    </div>
+                    <div className="tl-match-store-id">{store.id}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
