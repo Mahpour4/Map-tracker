@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "id": "wh-main",
+    "name": "Main Warehouse (Cockeysville)",
+    "address": "300 Clubhouse Rd, Hunt Valley, MD 21031",
+    "lat": 39.4878,
+    "lng": -76.6575
+  }
+]

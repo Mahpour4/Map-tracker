@@ -9,6 +9,22 @@ function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Valid coords: must be in roughly US east coast range, not 0,0
+function isValidCoord(lat, lng) {
+  return lat != null && lng != null && Math.abs(lat) > 1 && Math.abs(lng) > 1;
+}
+
+// Clean garbled arrow encoding from old saved entries
+function cleanLocationName(name) {
+  if (!name) return name;
+  // Match any run of 3+ characters in the Latin Extended / C1 Controls range
+  // which is where garbled multi-byte UTF-8 arrows end up
+  return name
+    .replace(/\s*[\u00C0-\u00FF\u0080-\u009F]{3,}\s*/g, ' \u2192 ')
+    .replace(/\s*\u2192\s*/g, ' \u2192 ')
+    .trim();
+}
+
 // Auto-fit map bounds to points
 function FitBounds({ points }) {
   const map = useMap();
@@ -104,12 +120,14 @@ export default function TravelLog() {
     return { vehicleCount, storeVisits, warehouseVisits, drivingSegments, total: storeVisits + warehouseVisits };
   }, [travelLog, selectedDate, selectedVehicle]);
 
-  // Map points from entries with coordinates
-  const mapPoints = useMemo(() => {
-    return dayEntries
-      .filter(e => e.lat != null && e.lng != null)
-      .map(e => [e.lat, e.lng]);
+  // Map-eligible entries (valid coordinates only, no 0,0)
+  const mapEntries = useMemo(() => {
+    return dayEntries.filter(e => isValidCoord(e.lat, e.lng));
   }, [dayEntries]);
+
+  const mapPoints = useMemo(() => {
+    return mapEntries.map(e => [e.lat, e.lng]);
+  }, [mapEntries]);
 
   // ---- Process Day ----
   const handleProcessDay = useCallback(async () => {
@@ -323,7 +341,7 @@ export default function TravelLog() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <FitBounds points={mapPoints} />
-            {dayEntries.filter(e => e.lat != null && e.lng != null).map((entry, i) => (
+            {mapEntries.map((entry, i) => (
               <Marker
                 key={`${entry.vehicleVin}-${entry.locationId}-${i}`}
                 position={[entry.lat, entry.lng]}
@@ -331,7 +349,7 @@ export default function TravelLog() {
               >
                 <Popup>
                   <div style={{ minWidth: 160 }}>
-                    <strong>#{i + 1} {entry.locationName}</strong><br />
+                    <strong>#{i + 1} {cleanLocationName(entry.locationName)}</strong><br />
                     <span style={{ textTransform: 'capitalize' }}>{entry.type}</span>
                     {entry.dwellMinutes != null && ` \u2022 ${entry.dwellMinutes} min`}
                     {entry.distance > 0 && ` \u2022 ${entry.distance} mi`}
@@ -372,7 +390,7 @@ export default function TravelLog() {
                 </div>
                 <div className="tl-entry-dot" />
                 <div className="tl-entry-content">
-                  <div className="tl-entry-name">{entry.locationName}</div>
+                  <div className="tl-entry-name">{cleanLocationName(entry.locationName)}</div>
                   <div className="tl-entry-meta">
                     <span className={`tl-type-badge ${entry.type}`}>{entry.type}</span>
                     {selectedVehicle === 'all' && (
