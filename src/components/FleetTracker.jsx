@@ -15,6 +15,7 @@ import {
   testMotiveConnection,
 } from '../services/motiveService';
 import { detectCurrentProximity, filterNewVisits } from '../services/proximityService';
+import { getTodaySchedule, getScheduleDeviation } from '../utils/driverMetrics';
 
 function createTruckIcon(engineStatus, isSelected) {
   const color = engineStatus === 'on' ? '#22c55e' : engineStatus === 'off' ? '#ef4444' : '#9ca3af';
@@ -37,7 +38,8 @@ function createTruckIcon(engineStatus, isSelected) {
 
 export default function FleetTracker() {
   const { state, updateVehicleLocations, setFleetSyncStatus, setVehiclesOnMap, bulkRecordVisits, logTravelEntries, toggleAutoVisit } = useApp();
-  const { fleetVehicles, vehicleLocations, fleetSyncStatus, fleetSyncError, showVehiclesOnMap, stores, warehouses, travelLog, autoVisitEnabled } = state;
+  const { fleetVehicles, vehicleLocations, fleetSyncStatus, fleetSyncError, showVehiclesOnMap, stores, warehouses, travelLog, autoVisitEnabled, schedules } = state;
+  const [scheduleDeviations, setScheduleDeviations] = useState({});
 
   const [showApiSetup, setShowApiSetup] = useState(!isMotiveConnected());
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -148,11 +150,21 @@ export default function FleetTracker() {
           logTravelEntries(newVisits);
         }
       }
+
+      // Schedule deviation check — flag routes that are behind pace
+      const deviations = {};
+      for (const v of merged) {
+        if (!v.routeNumber || !v.matched) continue;
+        const todaySched = getTodaySchedule(schedules, v.routeNumber);
+        const dev = getScheduleDeviation(v, todaySched, travelLog, stores);
+        deviations[v.routeNumber] = { ...dev, driverName: v.driverName, routeNumber: v.routeNumber };
+      }
+      setScheduleDeviations(deviations);
     } catch (err) {
       console.error('Fleet refresh failed:', err);
       setFleetSyncStatus('error', err.message);
     }
-  }, [fleetVehicles, updateVehicleLocations, setFleetSyncStatus, autoVisitEnabled, stores, warehouses, travelLog, bulkRecordVisits, logTravelEntries]);
+  }, [fleetVehicles, updateVehicleLocations, setFleetSyncStatus, autoVisitEnabled, stores, warehouses, travelLog, schedules, bulkRecordVisits, logTravelEntries]);
 
   // Auto-fetch on first render when connected
   useEffect(() => {
@@ -323,6 +335,23 @@ export default function FleetTracker() {
           </div>
         )}
 
+        {/* Schedule Deviation Alerts */}
+        {connected && Object.values(scheduleDeviations).some(d => d.status === 'behind') && (
+          <div className="ft-sched-alerts">
+            <span className="ft-sched-alerts-title">Schedule Alerts</span>
+            {Object.values(scheduleDeviations)
+              .filter(d => d.status === 'behind')
+              .sort((a, b) => (b.detail?.behind || 0) - (a.detail?.behind || 0))
+              .map(d => (
+                <div key={d.routeNumber} className="ft-sched-alert-item">
+                  <span className="ft-sched-alert-route">Rt {d.routeNumber}</span>
+                  <span className="ft-sched-alert-driver">{d.driverName || '--'}</span>
+                  <span className="ft-sched-alert-msg">{d.message}</span>
+                </div>
+              ))}
+          </div>
+        )}
+
         {/* View toggle + Search */}
         <div className="ft-toolbar">
           <div className="ft-view-toggle">
@@ -419,6 +448,7 @@ export default function FleetTracker() {
                   {connected && <th>Speed</th>}
                   {connected && <th>Engine</th>}
                   {connected && <th>Updated</th>}
+                  {connected && <th>Schedule</th>}
                 </tr>
               </thead>
               <tbody>
@@ -464,6 +494,22 @@ export default function FleetTracker() {
                         {v.lastUpdated
                           ? new Date(v.lastUpdated).toLocaleTimeString()
                           : '—'}
+                      </td>
+                    )}
+                    {connected && (
+                      <td className="ft-cell-sched">
+                        {(() => {
+                          const dev = scheduleDeviations[v.routeNumber];
+                          if (!dev) return '—';
+                          const dotColor = dev.status === 'on-track' ? '#22c55e'
+                            : dev.status === 'behind' ? '#ef4444' : '#9ca3af';
+                          return (
+                            <span className="ft-sched-badge" style={{ color: dotColor }}>
+                              <span className="ft-sched-dot" style={{ background: dotColor }} />
+                              {dev.message}
+                            </span>
+                          );
+                        })()}
                       </td>
                     )}
                   </tr>

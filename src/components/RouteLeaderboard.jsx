@@ -1,138 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import {
+  getLatestDate, getDaysSinceVisit, getGrade, getStatusCounts,
+  getDaysBetween, getScheduleAdherence, getAlertStats,
+} from '../utils/driverMetrics';
 
 function isCashStop(store) {
   return store.id.toLowerCase().startsWith('cash');
 }
 
-function getDaysSinceVisit(lastVisited) {
-  if (!lastVisited) return null;
-  const raw = lastVisited.split('T')[0];
-  const visited = new Date(raw + 'T00:00:00');
-  if (isNaN(visited.getTime())) return null;
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return Math.floor((now - visited) / (1000 * 60 * 60 * 24));
-}
-
-function getGrade(pct) {
-  if (pct >= 90) return { letter: 'A', color: '#22c55e' };
-  if (pct >= 75) return { letter: 'B', color: '#3b82f6' };
-  if (pct >= 55) return { letter: 'C', color: '#eab308' };
-  if (pct >= 30) return { letter: 'D', color: '#f97316' };
-  return { letter: 'F', color: '#ef4444' };
-}
-
 function isDormant(lastVisited) {
   const days = getDaysSinceVisit(lastVisited);
   return days === null || days >= 90;
-}
-
-function getStatusCounts(stores) {
-  const counts = { onTrack: 0, overdue1: 0, overdue2: 0, critical: 0, never: 0, dormant: 0 };
-  stores.forEach((s) => {
-    const days = getDaysSinceVisit(s.lastVisited);
-    if (days === null) counts.never++;
-    else if (days >= 90) counts.dormant++;
-    else if (days <= 7) counts.onTrack++;
-    else if (days <= 14) counts.overdue1++;
-    else if (days <= 30) counts.overdue2++;
-    else counts.critical++;
-  });
-  return counts;
-}
-
-function getDaysBetween(dateA, dateB) {
-  if (!dateA || !dateB) return null;
-  const a = new Date(dateA);
-  const b = new Date(dateB);
-  if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
-  return Math.floor((b - a) / (1000 * 60 * 60 * 24));
-}
-
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-const DAY_OFFSETS = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
-
-function getMonday(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  return d.toISOString().split('T')[0];
-}
-
-function getDayDate(weekOf, day) {
-  const d = new Date(weekOf + 'T00:00:00');
-  d.setDate(d.getDate() + DAY_OFFSETS[day]);
-  return d.toISOString().split('T')[0];
-}
-
-function getScheduleAdherence(schedules, route, visitHistoryMap) {
-  const currentWeek = getMonday(new Date());
-  const key = `${route}_${currentWeek}`;
-  const schedule = schedules[key];
-  if (!schedule) return null;
-
-  let total = 0, exact = 0, sameWeek = 0, missed = 0, future = 0;
-  const today = new Date().toISOString().split('T')[0];
-
-  DAYS.forEach(day => {
-    (schedule[day] || []).forEach(item => {
-      total++;
-      const scheduledDate = getDayDate(currentWeek, day);
-      const weekEnd = getDayDate(currentWeek, 'friday');
-      const visits = visitHistoryMap[item.storeId] || [];
-
-      if (visits.includes(scheduledDate)) {
-        exact++;
-      } else {
-        const sameWeekVisit = visits.find(v => v >= currentWeek && v <= weekEnd);
-        if (sameWeekVisit) sameWeek++;
-        else if (scheduledDate > today) future++;
-        else missed++;
-      }
-    });
-  });
-
-  if (total === 0) return null;
-  const completed = exact + sameWeek;
-  const scorable = total - future;
-  const adherence = scorable > 0 ? Math.round((completed / scorable) * 100) : 0;
-  return { total, exact, sameWeek, missed, future, completed, adherence };
-}
-
-function getAlertStats(alerts, stores) {
-  const storeMap = {};
-  stores.forEach(s => { storeMap[s.id] = s; });
-
-  let total = 0;
-  let resolved = 0;
-  let unresolved = 0;
-  let totalResponseDays = 0;
-  let responseCount = 0;
-
-  alerts.forEach(a => {
-    total++;
-    const store = storeMap[a.storeId];
-    if (!store || !a.dateReceived) {
-      unresolved++;
-      return;
-    }
-    const lv = (store.lastVisited || '').split('T')[0].split(' ')[0];
-    if (lv && lv >= a.dateReceived) {
-      resolved++;
-      const days = getDaysBetween(a.dateReceived, lv);
-      if (days !== null) {
-        totalResponseDays += days;
-        responseCount++;
-      }
-    } else {
-      unresolved++;
-    }
-  });
-
-  const avgResponse = responseCount > 0 ? Math.round(totalResponseDays / responseCount) : null;
-  return { total, resolved, unresolved, avgResponse };
 }
 
 export default function RouteLeaderboard() {
@@ -413,17 +292,17 @@ export default function RouteLeaderboard() {
               {isExpanded && (
                 <div className="route-store-list">
                   {r.required
-                    .filter((s) => !isDormant(s.lastVisited))
+                    .filter((s) => !isDormant(getLatestDate(s)))
                     .sort((a, b) => {
-                      const da = getDaysSinceVisit(a.lastVisited);
-                      const db = getDaysSinceVisit(b.lastVisited);
+                      const da = getDaysSinceVisit(getLatestDate(a));
+                      const db = getDaysSinceVisit(getLatestDate(b));
                       if (da === null && db === null) return 0;
                       if (da === null) return 1;
                       if (db === null) return -1;
                       return db - da;
                     })
                     .map((s) => {
-                      const days = getDaysSinceVisit(s.lastVisited);
+                      const days = getDaysSinceVisit(getLatestDate(s));
                       let statusColor = '#9ca3af';
                       let statusText = 'Never';
                       if (days !== null) {
@@ -451,9 +330,9 @@ export default function RouteLeaderboard() {
                     <div className="route-cash-section">
                       <div className="cash-section-label">Dormant stores ({r.counts.dormant + r.counts.never}) — not scored</div>
                       {r.required
-                        .filter((s) => isDormant(s.lastVisited))
+                        .filter((s) => isDormant(getLatestDate(s)))
                         .map((s) => {
-                          const days = getDaysSinceVisit(s.lastVisited);
+                          const days = getDaysSinceVisit(getLatestDate(s));
                           return (
                             <div key={s.id} className="route-store-item">
                               <span className="store-status-dot" style={{ background: '#6b7280' }}></span>

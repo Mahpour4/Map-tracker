@@ -8,6 +8,7 @@ import DataImport from './components/DataImport';
 import AlertLog from './components/AlertLog';
 import AlertAnalytics from './components/AlertAnalytics';
 import FleetTracker from './components/FleetTracker';
+import DriverDashboard from './components/DriverDashboard';
 import TravelLog from './components/TravelLog';
 import WarehouseSettings from './components/WarehouseSettings';
 import './App.css';
@@ -32,6 +33,12 @@ function AppContent() {
             onClick={() => setPage('leaderboard')}
           >
             Route Leaderboard
+          </button>
+          <button
+            className={`page-nav-btn ${page === 'drivers' ? 'active' : ''}`}
+            onClick={() => setPage('drivers')}
+          >
+            Driver Dashboard
           </button>
           <button
             className={`page-nav-btn ${page === 'visits' ? 'active' : ''}`}
@@ -78,6 +85,7 @@ function AppContent() {
         </div>
         {page === 'map' && <MapView />}
         {page === 'leaderboard' && <RouteLeaderboard />}
+        {page === 'drivers' && <DriverDashboard />}
         {page === 'visits' && <VisitHistory />}
         {page === 'schedule' && <RouteSchedule />}
         {page === 'import' && <DataImport />}

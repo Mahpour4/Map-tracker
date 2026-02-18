@@ -59,6 +59,11 @@ const recencyTiers = [
 ];
 const neverVisitedTier = { label: 'Never visited', color: '#9ca3af', pulse: null };
 
+// Return the most recent of lastSaleDate and lastVisited
+function getLatestDate(store) {
+  return [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
+}
+
 function getDaysSinceVisit(lastVisited) {
   if (!lastVisited) return null;
   const raw = lastVisited.split('T')[0];
@@ -335,7 +340,7 @@ export default function MapView() {
     if (filterRoute === 'all') return [];
     return filteredStores
       .map((s) => {
-        const days = getDaysSinceVisit(s.lastVisited);
+        const days = getDaysSinceVisit(getLatestDate(s));
         return { ...s, daysSince: days };
       })
       .filter((s) => s.daysSince !== null && s.daysSince > 7)
@@ -350,10 +355,12 @@ export default function MapView() {
     const routeLabel = filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`;
     let msg = `${routeLabel}${typeLabel} - ${staleStores.length} store${staleStores.length === 1 ? '' : 's'} out of date\n`;
     staleStores.forEach((s, i) => {
-      const lastVisit = s.lastVisited ? formatDate(s.lastVisited).split(' (')[0] : 'Never';
+      const sale = s.lastSaleDate ? formatDate(s.lastSaleDate).split(' (')[0] : null;
+      const visit = s.lastVisited ? formatDate(s.lastVisited).split(' (')[0] : null;
+      const dateStr = [sale ? `Sale: ${sale}` : null, visit ? `Visit: ${visit}` : null].filter(Boolean).join(' / ') || 'Never';
       const daysText = s.daysSince === null ? 'Never visited' : `${s.daysSince} days`;
       const routeInfo = filterRoute === 'MIL' && s.routeNumber ? ` (Rt ${s.routeNumber})` : '';
-      msg += `${i + 1}. ${s.id}, ${s.name}${routeInfo}, ${s.city}, Last visit: ${lastVisit}, ${daysText}\n`;
+      msg += `${i + 1}. ${s.id}, ${s.name}${routeInfo}, ${s.city}, ${dateStr}, ${daysText}\n`;
     });
     msg += `Please visit before the end of this week`;
     navigator.clipboard.writeText(msg).then(() => {
@@ -363,7 +370,9 @@ export default function MapView() {
   }, [staleStores, filterRoute, filterType]);
 
   const copyStoreAlert = useCallback((store) => {
-    const lastService = store.lastVisited ? formatDate(store.lastVisited).split(' (')[0] : 'Never';
+    const sale = store.lastSaleDate ? formatDate(store.lastSaleDate).split(' (')[0] : null;
+    const visit = store.lastVisited ? formatDate(store.lastVisited).split(' (')[0] : null;
+    const lastService = [sale ? `Sale: ${sale}` : null, visit ? `Visit: ${visit}` : null].filter(Boolean).join(' / ') || 'Never';
     const msg = `🚨 *ALERT - Service Required*\n\nStore: ${store.name}\nStore #: ${store.id}\nAddress: ${store.address}, ${store.city}, ${store.state} ${store.zip}\nLast Service: ${lastService}\n\n⚠️ This store needs to be serviced.`;
     navigator.clipboard.writeText(msg).then(() => {
       setCopiedPopupId(store.id);
@@ -440,7 +449,7 @@ export default function MapView() {
                     <div className="stale-item-name"><span className="stale-item-index">{i + 1}.</span> {s.id} — {s.name}</div>
                     <div className="stale-item-detail">
                       {s.city}
-                      <span className="stale-item-days" style={{ color: getRecencyTier(s.lastVisited).color }}>
+                      <span className="stale-item-days" style={{ color: getRecencyTier(getLatestDate(s)).color }}>
                         {s.daysSince === null ? 'Never' : `${s.daysSince}d ago`}
                       </span>
                     </div>
@@ -639,7 +648,7 @@ export default function MapView() {
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
-          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, store.lastVisited)}
+          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store))}
           eventHandlers={{
             click: () => {
               if (selectedStore === store.id) {
@@ -685,7 +694,10 @@ export default function MapView() {
                 onClick={() => popupEditId === store.id ? setPopupEditId(null) : openPopupEdit(store.id)}
                 title="Click to add visit date"
               >
-                Last visited: {formatDate(store.lastVisited)}
+                {store.lastSaleDate ? `Sale: ${formatDate(store.lastSaleDate)}` : ''}
+                {store.lastSaleDate && store.lastVisited ? ' / ' : ''}
+                {store.lastVisited ? `Visit: ${formatDate(store.lastVisited)}` : ''}
+                {!store.lastSaleDate && !store.lastVisited ? 'No date' : ''}
               </span>
               {popupEditId === store.id && (
                 <div className="popup-visit-edit">
@@ -704,12 +716,12 @@ export default function MapView() {
               <span
                 className="popup-visit-badge"
                 style={{
-                  background: getRecencyTier(store.lastVisited).color + '20',
-                  color: getRecencyTier(store.lastVisited).color,
-                  borderColor: getRecencyTier(store.lastVisited).color,
+                  background: getRecencyTier(getLatestDate(store)).color + '20',
+                  color: getRecencyTier(getLatestDate(store)).color,
+                  borderColor: getRecencyTier(getLatestDate(store)).color,
                 }}
               >
-                {getRecencyTier(store.lastVisited).label}
+                {getRecencyTier(getLatestDate(store)).label}
               </span>
               <div className="popup-actions">
                 <button

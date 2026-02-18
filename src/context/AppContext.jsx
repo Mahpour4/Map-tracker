@@ -2,12 +2,14 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
 import localWarehouses from '../data/warehouses.json';
 import localTravelLog from '../data/travelLog.json';
+import localAddressOverrides from '../data/addressOverrides.json';
+import localCustomLocations from '../data/customLocations.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -47,6 +49,8 @@ const initialState = {
   // Proximity auto-visit & travel log
   warehouses: localWarehouses, // [{ id, name, address, lat, lng }]
   travelLog: localTravelLog,  // { "YYYY-MM-DD": { "vehicleVin": [{ time, type, locationId, locationName }] } }
+  addressOverrides: localAddressOverrides, // { "destination address": "storeId" }
+  customLocations: localCustomLocations, // [{ id, name, type, address, lat, lng }]
   autoVisitEnabled: true,
 };
 
@@ -356,6 +360,22 @@ function reducer(state, action) {
     }
     case 'TOGGLE_AUTO_VISIT':
       return { ...state, autoVisitEnabled: !state.autoVisitEnabled };
+    // Address overrides (destination → storeId memory)
+    case 'LOAD_ADDRESS_OVERRIDES':
+      return { ...state, addressOverrides: action.payload };
+    case 'SET_ADDRESS_OVERRIDE': {
+      const { destination, storeId } = action.payload;
+      return { ...state, addressOverrides: { ...state.addressOverrides, [destination]: storeId } };
+    }
+    // Custom locations (gas stations, storage, meeting points, driver homes, etc.)
+    case 'LOAD_CUSTOM_LOCATIONS':
+      return { ...state, customLocations: action.payload };
+    case 'ADD_CUSTOM_LOCATION':
+      return { ...state, customLocations: [...state.customLocations, { id: uuidv4(), ...action.payload }] };
+    case 'UPDATE_CUSTOM_LOCATION':
+      return { ...state, customLocations: state.customLocations.map(cl => cl.id === action.payload.id ? { ...cl, ...action.payload } : cl) };
+    case 'DELETE_CUSTOM_LOCATION':
+      return { ...state, customLocations: state.customLocations.filter(cl => cl.id !== action.payload) };
     default:
       return state;
   }
@@ -736,12 +756,87 @@ export function AppProvider({ children }) {
 
     if (travelLogSaveTimer.current) clearTimeout(travelLogSaveTimer.current);
     travelLogSaveTimer.current = setTimeout(() => {
-      saveTravelLogJson(JSON.stringify(state.travelLog))
+      // Prune entries older than 40 days before saving
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 40);
+      const cutoffStr = localDateStr(cutoff);
+      const pruned = {};
+      for (const [date, vehicles] of Object.entries(state.travelLog)) {
+        if (date >= cutoffStr) pruned[date] = vehicles;
+      }
+      saveTravelLogJson(JSON.stringify(pruned))
         .catch((err) => console.error('Failed to save travel log:', err));
     }, 2000);
 
     return () => { if (travelLogSaveTimer.current) clearTimeout(travelLogSaveTimer.current); };
   }, [state.travelLog]);
+
+  // Load address overrides from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchAddressOverridesJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          dispatch({ type: 'LOAD_ADDRESS_OVERRIDES', payload: data });
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load address overrides:', err);
+      });
+  }, []);
+
+  // Auto-save address overrides to GitHub when they change
+  const prevAddressOverridesRef = useRef(state.addressOverrides);
+  const addressOverridesSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevAddressOverridesRef.current === state.addressOverrides) return;
+    prevAddressOverridesRef.current = state.addressOverrides;
+    if (Object.keys(state.addressOverrides).length === 0) return;
+
+    if (addressOverridesSaveTimer.current) clearTimeout(addressOverridesSaveTimer.current);
+    addressOverridesSaveTimer.current = setTimeout(() => {
+      saveAddressOverridesJson(JSON.stringify(state.addressOverrides))
+        .catch((err) => console.error('Failed to save address overrides:', err));
+    }, 2000);
+
+    return () => { if (addressOverridesSaveTimer.current) clearTimeout(addressOverridesSaveTimer.current); };
+  }, [state.addressOverrides]);
+
+  // Load custom locations from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchCustomLocationsJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (Array.isArray(data)) {
+            dispatch({ type: 'LOAD_CUSTOM_LOCATIONS', payload: data });
+          }
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load custom locations:', err);
+      });
+  }, []);
+
+  // Auto-save custom locations to GitHub when they change
+  const prevCustomLocationsRef = useRef(state.customLocations);
+  const customLocationsSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevCustomLocationsRef.current === state.customLocations) return;
+    prevCustomLocationsRef.current = state.customLocations;
+
+    if (customLocationsSaveTimer.current) clearTimeout(customLocationsSaveTimer.current);
+    customLocationsSaveTimer.current = setTimeout(() => {
+      saveCustomLocationsJson(JSON.stringify(state.customLocations))
+        .catch((err) => console.error('Failed to save custom locations:', err));
+    }, 2000);
+
+    return () => { if (customLocationsSaveTimer.current) clearTimeout(customLocationsSaveTimer.current); };
+  }, [state.customLocations]);
 
   const actions = {
     addStore: useCallback(
@@ -872,6 +967,24 @@ export function AppProvider({ children }) {
     ),
     toggleAutoVisit: useCallback(
       () => dispatch({ type: 'TOGGLE_AUTO_VISIT' }),
+      []
+    ),
+    // Address overrides
+    setAddressOverride: useCallback(
+      (destination, storeId) => dispatch({ type: 'SET_ADDRESS_OVERRIDE', payload: { destination, storeId } }),
+      []
+    ),
+    // Custom locations
+    addCustomLocation: useCallback(
+      (location) => dispatch({ type: 'ADD_CUSTOM_LOCATION', payload: location }),
+      []
+    ),
+    updateCustomLocation: useCallback(
+      (location) => dispatch({ type: 'UPDATE_CUSTOM_LOCATION', payload: location }),
+      []
+    ),
+    deleteCustomLocation: useCallback(
+      (id) => dispatch({ type: 'DELETE_CUSTOM_LOCATION', payload: id }),
       []
     ),
   };

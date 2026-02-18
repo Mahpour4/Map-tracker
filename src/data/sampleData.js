@@ -262,6 +262,7 @@ export const sampleStores = rawRows
       region: row.Region || 'Unassigned',
       territory: row.Territory || 'Unassigned',
       subTerritory: row['Sub-Territory'] || 'Unassigned',
+      lastSaleDate: row['Last Sale'] || null,
       lastVisited: row['Last Visited'] || null,
       type: detectStoreType(row['Store Name'], row.ID),
       zoneId: null,
@@ -397,6 +398,7 @@ export function processStoresFromCsv(csvText) {
         region: row.Region || 'Unassigned',
         territory: row.Territory || 'Unassigned',
         subTerritory: row['Sub-Territory'] || 'Unassigned',
+        lastSaleDate: row['Last Sale'] || null,
         lastVisited: row['Last Visited'] || null,
         type: detectStoreType(row['Store Name'], row.ID),
         zoneId: null,
@@ -424,11 +426,13 @@ export function processStoresFromCsv(csvText) {
   return { stores, zones };
 }
 
-const CSV_HEADER = 'ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Visited,Dormant';
+const CSV_HEADER = 'ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Sale,Last Visited,Dormant';
 
-function isDormantForCsv(lastVisited) {
-  if (!lastVisited) return true;
-  const raw = lastVisited.split('T')[0];
+function isDormantForCsv(store) {
+  // Use the most recent of lastSaleDate or lastVisited
+  const latest = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop();
+  if (!latest) return true;
+  const raw = latest.split('T')[0];
   const d = new Date(raw + 'T00:00:00');
   if (isNaN(d.getTime())) return true;
   const now = new Date();
@@ -462,8 +466,9 @@ export function storesToCsv(stores) {
       escapeCsvField(s.subTerritory),
       escapeCsvField(s.lat),
       escapeCsvField(s.lng),
+      escapeCsvField(s.lastSaleDate || ''),
       escapeCsvField(s.lastVisited || ''),
-      escapeCsvField(isDormantForCsv(s.lastVisited) ? 'Yes' : 'No'),
+      escapeCsvField(isDormantForCsv(s) ? 'Yes' : 'No'),
     ].join(','));
   });
   return lines.join('\n') + '\n';

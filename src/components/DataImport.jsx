@@ -243,8 +243,8 @@ export default function DataImport() {
       if (existing) {
         // Update existing store
         const changes = {};
-        if (lastSale && lastSale > (existing.lastVisited || '')) {
-          changes.lastVisited = lastSale;
+        if (lastSale && lastSale > (existing.lastSaleDate || '')) {
+          changes.lastSaleDate = lastSale;
         }
         if (Object.keys(changes).length > 0) {
           updates.push({ id, ...changes, _displayName: existing.name });
@@ -272,7 +272,8 @@ export default function DataImport() {
           subTerritory: region.sub,
           lat: coords.lat,
           lng: coords.lng,
-          lastVisited: lastSale || null,
+          lastSaleDate: lastSale || null,
+          lastVisited: null,
           type: detectStoreType(name, id),
           zoneId: null,
           subZoneId: null,
@@ -287,19 +288,10 @@ export default function DataImport() {
     if (!parsed || parsed.error) return;
     bulkImportStores(parsed.updates, parsed.additions);
 
-    // Record visit dates in visit history so they persist
-    const visitEntries = [
-      ...parsed.updates.filter(u => u.lastVisited).map(u => ({ storeId: u.id, date: u.lastVisited.split('T')[0] })),
-      ...parsed.additions.filter(a => a.lastVisited).map(a => ({ storeId: a.id, date: a.lastVisited.split('T')[0] })),
-    ];
-    if (visitEntries.length > 0) {
-      bulkRecordVisits(visitEntries);
-    }
-
     // Build import log entry
     const logStores = [
-      ...parsed.updates.map(u => ({ id: u.id, name: u._displayName || u.id, date: u.lastVisited, type: 'update' })),
-      ...parsed.additions.map(a => ({ id: a.id, name: a.name, date: a.lastVisited, type: 'new' })),
+      ...parsed.updates.map(u => ({ id: u.id, name: u._displayName || u.id, date: u.lastSaleDate, type: 'update' })),
+      ...parsed.additions.map(a => ({ id: a.id, name: a.name, date: a.lastSaleDate, type: 'new' })),
     ];
     addImportEntry({
       totalInFeed: parsed.total,
@@ -473,7 +465,7 @@ export default function DataImport() {
                   <div key={u.id} className="import-table-row">
                     <span className="import-col-id">{u.id}</span>
                     <span className="import-col-name">{u._displayName}</span>
-                    <span className="import-col-date">{u.lastVisited}</span>
+                    <span className="import-col-date">{u.lastSaleDate}</span>
                   </div>
                 ))}
               </div>
@@ -498,7 +490,7 @@ export default function DataImport() {
                     <span className="import-col-name">{a.name}</span>
                     <span className="import-col-city">{a.city}, {a.state}</span>
                     <span className="import-col-route">{a.routeNumber}</span>
-                    <span className="import-col-date">{a.lastVisited}</span>
+                    <span className="import-col-date">{a.lastSaleDate}</span>
                   </div>
                 ))}
               </div>
