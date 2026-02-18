@@ -236,6 +236,64 @@ export async function fetchVehicleLocationHistory(motiveId, startDate, endDate) 
   })).filter(loc => loc.lat != null && loc.lng != null && loc.time);
 }
 
+/**
+ * Fetch driving periods for vehicles over a date range.
+ * GET /v1/driving_periods
+ * Returns driving segments with origin/destination coords, driver info, duration, and distance.
+ *
+ * @param {Object} opts
+ * @param {string[]} [opts.vehicleIds] - Motive vehicle IDs to filter by
+ * @param {string} [opts.startDate] - YYYY-MM-DD (default: 7 days ago)
+ * @param {string} [opts.endDate] - YYYY-MM-DD (default: today)
+ * @param {string} [opts.status] - 'in_progress', 'complete', 'interrupted'
+ * @returns {Array} Parsed driving periods
+ */
+export async function fetchDrivingPeriods(opts = {}) {
+  const params = { per_page: 25 };
+  if (opts.startDate) params.start_date = opts.startDate;
+  if (opts.endDate) params.end_date = opts.endDate;
+  if (opts.status) params.status = opts.status;
+
+  // vehicle_ids[] needs special handling — add as repeated params
+  let path = '/v1/driving_periods';
+  if (opts.vehicleIds && opts.vehicleIds.length > 0) {
+    const idParams = opts.vehicleIds.map(id => `vehicle_ids[]=${encodeURIComponent(id)}`).join('&');
+    path = `/v1/driving_periods?${idParams}`;
+  }
+
+  const raw = await fetchAllPages(path, 'driving_periods', params);
+  console.log(`[Motive] Driving periods: ${raw.length} total`);
+
+  return raw.map(dp => {
+    const period = dp.driving_period || dp;
+    const driver = period.driver || {};
+    const vehicle = period.vehicle || {};
+
+    return {
+      id: period.id,
+      startTime: period.start_time || null,
+      endTime: period.end_time || null,
+      duration: period.duration || 0,
+      distance: period.distance ? parseFloat(period.distance) : 0,
+      status: period.status || null,
+      type: period.type || null,
+      originLat: period.origin_lat != null ? parseFloat(period.origin_lat) : null,
+      originLng: period.origin_lon != null ? parseFloat(period.origin_lon) : null,
+      origin: period.origin || '',
+      destinationLat: period.destination_lat != null ? parseFloat(period.destination_lat) : null,
+      destinationLng: period.destination_lon != null ? parseFloat(period.destination_lon) : null,
+      destination: period.destination || '',
+      driverName: driver.first_name ? `${driver.first_name} ${driver.last_name || ''}`.trim() : null,
+      driverId: driver.id || null,
+      vehicleId: vehicle.id || null,
+      vehicleNumber: vehicle.number || null,
+      vehicleVin: vehicle.vin || null,
+      startKm: period.start_kilometers || 0,
+      endKm: period.end_kilometers || 0,
+    };
+  });
+}
+
 export async function testMotiveConnection() {
   try {
     await motiveFetch('/v1/vehicles', { per_page: 1 });
