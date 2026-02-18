@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { reverseGeocode } from '../utils/geocodeAddress';
 
 const CUSTOM_TYPE_LABELS = {
   'gas-station': 'Gas Station',
@@ -31,6 +32,21 @@ export default function CustomLocations() {
   const [form, setForm] = useState({ name: '', type: 'gas-station', address: '', lat: '', lng: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [lookingUp, setLookingUp] = useState(false);
+  const lookupRef = useRef(0);
+
+  const doReverseLookup = useCallback(async (lat, lng) => {
+    const id = ++lookupRef.current;
+    setLookingUp(true);
+    try {
+      const addr = await reverseGeocode(parseFloat(lat), parseFloat(lng));
+      if (id === lookupRef.current && addr) {
+        setForm(f => f.address ? f : { ...f, address: addr });
+      }
+    } finally {
+      if (id === lookupRef.current) setLookingUp(false);
+    }
+  }, []);
 
   const filteredLocations = useMemo(() => {
     let result = customLocations;
@@ -61,6 +77,9 @@ export default function CustomLocations() {
       lat: String(loc.lat || ''),
       lng: String(loc.lng || ''),
     });
+    if (!loc.address && loc.lat && loc.lng) {
+      doReverseLookup(loc.lat, loc.lng);
+    }
   }
 
   function handleSave() {
@@ -161,7 +180,7 @@ export default function CustomLocations() {
                 </select>
                 <input
                   className="cl-input"
-                  placeholder="Address (optional)"
+                  placeholder={lookingUp ? 'Looking up address...' : 'Address (optional)'}
                   value={form.address}
                   onChange={e => setForm({ ...form, address: e.target.value })}
                 />
@@ -220,7 +239,7 @@ export default function CustomLocations() {
               </select>
               <input
                 className="cl-input"
-                placeholder="Address (optional)"
+                placeholder={lookingUp ? 'Looking up address...' : 'Address (optional — auto-fills from coordinates)'}
                 value={form.address}
                 onChange={e => setForm({ ...form, address: e.target.value })}
               />
@@ -232,6 +251,9 @@ export default function CustomLocations() {
                   step="any"
                   value={form.lat}
                   onChange={e => setForm({ ...form, lat: e.target.value })}
+                  onBlur={() => {
+                    if (form.lat && form.lng && !form.address) doReverseLookup(form.lat, form.lng);
+                  }}
                 />
                 <input
                   className="cl-input cl-coord"
@@ -240,6 +262,9 @@ export default function CustomLocations() {
                   step="any"
                   value={form.lng}
                   onChange={e => setForm({ ...form, lng: e.target.value })}
+                  onBlur={() => {
+                    if (form.lat && form.lng && !form.address) doReverseLookup(form.lat, form.lng);
+                  }}
                 />
               </div>
               <div className="cl-form-actions">
