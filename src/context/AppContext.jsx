@@ -370,6 +370,30 @@ function reducer(state, action) {
       });
       return { ...state, travelLog: newLog };
     }
+    case 'MANUAL_MATCH_ENTRIES': {
+      // Replace driving entries in-place with matched location entries
+      const updates = action.payload; // Array of { vehicleVin, date, oldLocationId, newEntry }
+      const newLog = { ...state.travelLog };
+      for (const { vehicleVin, date, oldLocationId, newEntry } of updates) {
+        if (!newLog[date] || !newLog[date][vehicleVin]) continue;
+        newLog[date] = { ...newLog[date] };
+        const entries = [...newLog[date][vehicleVin]];
+        const idx = entries.findIndex(e => e.locationId === oldLocationId);
+        if (idx !== -1) {
+          // Replace: keep driving metadata (times, distance, destination) but update location info
+          entries[idx] = {
+            ...entries[idx],
+            type: newEntry.type,
+            locationId: newEntry.locationId,
+            locationName: newEntry.locationName,
+            lat: newEntry.lat,
+            lng: newEntry.lng,
+          };
+          newLog[date][vehicleVin] = entries;
+        }
+      }
+      return { ...state, travelLog: newLog };
+    }
     case 'TOGGLE_AUTO_VISIT':
       return { ...state, autoVisitEnabled: !state.autoVisitEnabled };
     // Address overrides (destination → storeId memory)
@@ -1006,6 +1030,10 @@ export function AppProvider({ children }) {
     // Travel log
     logTravelEntries: useCallback(
       (entries) => dispatch({ type: 'LOG_TRAVEL_ENTRIES', payload: entries }),
+      []
+    ),
+    manualMatchEntries: useCallback(
+      (updates) => dispatch({ type: 'MANUAL_MATCH_ENTRIES', payload: updates }),
       []
     ),
     toggleAutoVisit: useCallback(
