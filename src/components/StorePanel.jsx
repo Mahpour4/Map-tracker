@@ -60,7 +60,9 @@ function StoreCard({ store, index, routes }) {
 
   const copyAlert = (e) => {
     e.stopPropagation();
-    const lastService = formatDate(store.lastVisited) || 'Never';
+    const sale = store.lastSaleDate ? formatDate(store.lastSaleDate) : null;
+    const visit = store.lastVisited ? formatDate(store.lastVisited) : null;
+    const lastService = [sale ? `Sale: ${sale}` : null, visit ? `Visit: ${visit}` : null].filter(Boolean).join(' / ') || 'Never';
     const msg = `🚨 *ALERT - Service Required*\n\nStore: ${store.name}\nStore #: ${store.id}\nAddress: ${store.address}, ${store.city}, ${store.state} ${store.zip}\nLast Service: ${lastService}\n\n⚠️ This store needs to be serviced.`;
     navigator.clipboard.writeText(msg).then(() => {
       setCopied(true);
@@ -139,7 +141,10 @@ function StoreCard({ store, index, routes }) {
           onClick={openVisitEdit}
           title="Click to edit visit date"
         >
-          {store.lastVisited ? `Visited ${formatDate(store.lastVisited)}` : 'No visit date'}
+          {store.lastSaleDate ? `Sale: ${formatDate(store.lastSaleDate)}` : ''}
+          {store.lastSaleDate && store.lastVisited ? ' / ' : ''}
+          {store.lastVisited ? `Visit: ${formatDate(store.lastVisited)}` : ''}
+          {!store.lastSaleDate && !store.lastVisited ? 'No date' : ''}
         </span>
       </div>
       {editingVisit && (

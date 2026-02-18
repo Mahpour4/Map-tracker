@@ -173,7 +173,9 @@ export default function RouteSchedule() {
     DAYS.forEach(day => {
       (schedule[day] || []).forEach(item => {
         total++;
-        const c = getStopCompliance(item.storeId, day, weekOf, storeMap[item.storeId]?.lastVisited, visitHistoryMap);
+        const st = storeMap[item.storeId];
+        const stLatest = st ? ([st.lastSaleDate, st.lastVisited].filter(Boolean).sort().pop() || null) : null;
+        const c = getStopCompliance(item.storeId, day, weekOf, stLatest, visitHistoryMap);
         if (c.status === 'exact') exact++;
         else if (c.status === 'sameWeek') sameWeek++;
         else if (c.status === 'missed') missed++;
@@ -398,10 +400,13 @@ export default function RouteSchedule() {
       const tableData = stops.map(item => {
         const store = storeMap[item.storeId];
         if (!store) return [item.stopNumber, item.storeId, '—', '—', '—', '—', '—', item.notes || ''];
-        const days = getDaysSinceVisit(store.lastVisited);
-        const lastVisit = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : 'Never';
+        const latest = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
+        const days = getDaysSinceVisit(latest);
+        const sale = store.lastSaleDate ? store.lastSaleDate.split('T')[0].split(' ')[0] : null;
+        const visit = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;
+        const lastVisit = [sale ? `S:${sale}` : null, visit ? `V:${visit}` : null].filter(Boolean).join('/') || 'Never';
         const daysText = days !== null ? `${days}d` : 'Never';
-        const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited, visitHistoryMap);
+        const compliance = getStopCompliance(item.storeId, day, weekOf, latest, visitHistoryMap);
         return [
           item.stopNumber,
           store.id,
@@ -583,7 +588,8 @@ export default function RouteSchedule() {
             </div>
             <div className="schedule-pool-list">
               {unscheduledStores.map(s => {
-                const days = getDaysSinceVisit(s.lastVisited);
+                const latest = [s.lastSaleDate, s.lastVisited].filter(Boolean).sort().pop() || null;
+                const days = getDaysSinceVisit(latest);
                 return (
                   <div
                     key={s.id}
@@ -605,7 +611,7 @@ export default function RouteSchedule() {
                       onClick={(e) => { e.stopPropagation(); openVisitEdit(s.id); }}
                       title="Click to edit visit date"
                     >
-                      Last: {formatVisitDate(s.lastVisited)}
+                      {s.lastSaleDate ? `S: ${formatVisitDate(s.lastSaleDate)}` : ''}{s.lastSaleDate && s.lastVisited ? ' / ' : ''}{s.lastVisited ? `V: ${formatVisitDate(s.lastVisited)}` : ''}{!s.lastSaleDate && !s.lastVisited ? 'No date' : ''}
                     </div>
                     {visitEditId === s.id && (
                       <div className="schedule-visit-edit">
@@ -665,8 +671,9 @@ export default function RouteSchedule() {
                     {dayStops.map((item, idx) => {
                       const store = storeMap[item.storeId];
                       if (!store) return null;
-                      const days = getDaysSinceVisit(store.lastVisited);
-                      const compliance = getStopCompliance(item.storeId, day, weekOf, store.lastVisited, visitHistoryMap);
+                      const latest = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
+                      const days = getDaysSinceVisit(latest);
+                      const compliance = getStopCompliance(item.storeId, day, weekOf, latest, visitHistoryMap);
                       const isEditingNote = noteEditing === `${day}_${item.storeId}`;
                       return (
                         <div

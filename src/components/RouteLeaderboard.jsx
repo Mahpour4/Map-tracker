@@ -5,6 +5,10 @@ function isCashStop(store) {
   return store.id.toLowerCase().startsWith('cash');
 }
 
+function getLatestDate(store) {
+  return [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
+}
+
 function getDaysSinceVisit(lastVisited) {
   if (!lastVisited) return null;
   const raw = lastVisited.split('T')[0];
@@ -31,7 +35,7 @@ function isDormant(lastVisited) {
 function getStatusCounts(stores) {
   const counts = { onTrack: 0, overdue1: 0, overdue2: 0, critical: 0, never: 0, dormant: 0 };
   stores.forEach((s) => {
-    const days = getDaysSinceVisit(s.lastVisited);
+    const days = getDaysSinceVisit(getLatestDate(s));
     if (days === null) counts.never++;
     else if (days >= 90) counts.dormant++;
     else if (days <= 7) counts.onTrack++;
@@ -118,7 +122,7 @@ function getAlertStats(alerts, stores) {
       unresolved++;
       return;
     }
-    const lv = (store.lastVisited || '').split('T')[0].split(' ')[0];
+    const lv = (getLatestDate(store) || '').split('T')[0].split(' ')[0];
     if (lv && lv >= a.dateReceived) {
       resolved++;
       const days = getDaysBetween(a.dateReceived, lv);
@@ -413,17 +417,17 @@ export default function RouteLeaderboard() {
               {isExpanded && (
                 <div className="route-store-list">
                   {r.required
-                    .filter((s) => !isDormant(s.lastVisited))
+                    .filter((s) => !isDormant(getLatestDate(s)))
                     .sort((a, b) => {
-                      const da = getDaysSinceVisit(a.lastVisited);
-                      const db = getDaysSinceVisit(b.lastVisited);
+                      const da = getDaysSinceVisit(getLatestDate(a));
+                      const db = getDaysSinceVisit(getLatestDate(b));
                       if (da === null && db === null) return 0;
                       if (da === null) return 1;
                       if (db === null) return -1;
                       return db - da;
                     })
                     .map((s) => {
-                      const days = getDaysSinceVisit(s.lastVisited);
+                      const days = getDaysSinceVisit(getLatestDate(s));
                       let statusColor = '#9ca3af';
                       let statusText = 'Never';
                       if (days !== null) {
@@ -451,9 +455,9 @@ export default function RouteLeaderboard() {
                     <div className="route-cash-section">
                       <div className="cash-section-label">Dormant stores ({r.counts.dormant + r.counts.never}) — not scored</div>
                       {r.required
-                        .filter((s) => isDormant(s.lastVisited))
+                        .filter((s) => isDormant(getLatestDate(s)))
                         .map((s) => {
-                          const days = getDaysSinceVisit(s.lastVisited);
+                          const days = getDaysSinceVisit(getLatestDate(s));
                           return (
                             <div key={s.id} className="route-store-item">
                               <span className="store-status-dot" style={{ background: '#6b7280' }}></span>

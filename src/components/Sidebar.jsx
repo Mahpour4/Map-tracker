@@ -180,14 +180,14 @@ export default function Sidebar() {
           {state.alerts.filter(a => {
             const store = state.stores.find(s => s.id === a.storeId);
             if (!store || !a.dateReceived) return true;
-            const lv = (store.lastVisited || '').split('T')[0].split(' ')[0];
+            const lv = ([store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || '').split('T')[0].split(' ')[0];
             return !lv || lv < a.dateReceived;
           }).length > 0 && (
             <span className="alert-badge-count">
               {state.alerts.filter(a => {
                 const store = state.stores.find(s => s.id === a.storeId);
                 if (!store || !a.dateReceived) return true;
-                const lv = (store.lastVisited || '').split('T')[0].split(' ')[0];
+                const lv = ([store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || '').split('T')[0].split(' ')[0];
                 return !lv || lv < a.dateReceived;
               }).length}
             </span>

@@ -18,7 +18,7 @@ function getDaysBetween(dateA, dateB) {
 
 function getAlertStatus(alert, store) {
   if (!store || !alert.dateReceived) return { status: 'unknown', color: '#9ca3af' };
-  const lastVisited = store.lastVisited;
+  const lastVisited = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
   if (!lastVisited) return { status: 'unresolved', color: '#ef4444', days: null };
 
   const visitDate = lastVisited.split('T')[0].split(' ')[0];

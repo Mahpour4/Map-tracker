@@ -212,11 +212,15 @@ export default function VisitHistory() {
     return stores
       .filter((s) => s.routeNumber && s.routeNumber !== '0')
       .map((s) => {
-        // Get visit dates from context (single source of truth), merge lastVisited as safety net
+        // Get visit dates from context (single source of truth), merge lastVisited/lastSaleDate as safety net
         const dates = new Set(state.visitHistory[s.id] || []);
         if (s.lastVisited) {
           const csvDate = toYMD(s.lastVisited);
           if (csvDate) dates.add(csvDate);
+        }
+        if (s.lastSaleDate) {
+          const saleDate = toYMD(s.lastSaleDate);
+          if (saleDate) dates.add(saleDate);
         }
         const history = [...dates].sort().reverse();
         const lastVisit = history[0] || null;
