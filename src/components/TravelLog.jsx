@@ -453,7 +453,31 @@ export default function TravelLog() {
                 </div>
                 <div className="tl-entry-dot" />
                 <div className="tl-entry-content">
-                  <div className="tl-entry-name">{cleanLocationName(entry.locationName)}</div>
+                  <div className="tl-entry-name">
+                    {entry.type === 'driving' ? (() => {
+                      const parts = cleanLocationName(entry.locationName).split(' \u2192 ');
+                      const origin = parts[0] || 'Unknown';
+                      const dest = parts[1] || 'Unknown';
+                      const originQ = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(origin);
+                      const destQ = (entry.destinationLat && entry.destinationLng) ? `${entry.destinationLat},${entry.destinationLng}` : encodeURIComponent(dest);
+                      return (
+                        <>
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{origin}</a>
+                          {' \u2192 '}
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
+                        </>
+                      );
+                    })() : (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${(entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(entry.locationName)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="tl-map-link"
+                      >
+                        {cleanLocationName(entry.locationName)}
+                      </a>
+                    )}
+                  </div>
                   <div className="tl-entry-meta">
                     <span className={`tl-type-badge ${entry.type}`}>{entry.type}</span>
                     {selectedVehicle === 'all' && (
