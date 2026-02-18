@@ -50,6 +50,32 @@ function headers() {
 }
 
 /**
+ * PUT content to a GitHub file with retry on 409 SHA conflict.
+ * Retries up to maxRetries times with increasing delays.
+ */
+async function githubPutWithRetry({ url, encoded, message, sha, fetchFn, saveShaFn, maxRetries = 3 }) {
+  let currentSha = sha;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const body = { message, content: encoded };
+    if (currentSha) body.sha = currentSha;
+    const res = await fetch(url, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    if (res.ok) {
+      const data = await res.json();
+      saveShaFn(data.content.sha);
+      return data;
+    }
+    if (res.status === 409 && attempt < maxRetries) {
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+      const fresh = await fetchFn();
+      currentSha = fresh.sha;
+      continue;
+    }
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub save failed: ${res.status}`);
+  }
+}
+
+/**
  * Fetch stores.csv content from GitHub.
  * Returns { content: string, sha: string } or throws.
  */
@@ -76,59 +102,19 @@ export async function fetchStoresCsv() {
  */
 export async function saveStoresCsv(csvContent, message) {
   let sha = getSavedSha();
-
-  // If we don't have a SHA, fetch the latest first
   if (!sha) {
     const current = await fetchStoresCsv();
     sha = current.sha;
   }
-
   const encoded = btoa(unescape(encodeURIComponent(csvContent)));
-
-  const res = await fetch(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
-    {
-      method: 'PUT',
-      headers: headers(),
-      body: JSON.stringify({
-        message: message || 'Update stores.csv from Map Tracker app',
-        content: encoded,
-        sha,
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    // SHA mismatch means file was updated externally - refetch and retry once
-    if (res.status === 409) {
-      const fresh = await fetchStoresCsv();
-      const retryRes = await fetch(
-        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
-        {
-          method: 'PUT',
-          headers: headers(),
-          body: JSON.stringify({
-            message: message || 'Update stores.csv from Map Tracker app',
-            content: encoded,
-            sha: fresh.sha,
-          }),
-        }
-      );
-      if (!retryRes.ok) {
-        const retryErr = await retryRes.json().catch(() => ({}));
-        throw new Error(retryErr.message || `GitHub save failed: ${retryRes.status}`);
-      }
-      const retryData = await retryRes.json();
-      saveSha(retryData.content.sha);
-      return retryData;
-    }
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  saveSha(data.content.sha);
-  return data;
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
+    encoded,
+    message: message || 'Update stores.csv from Map Tracker app',
+    sha,
+    fetchFn: fetchStoresCsv,
+    saveShaFn: saveSha,
+  });
 }
 
 // ---- Alerts CSV (GitHub sync) ----
@@ -164,46 +150,16 @@ export async function fetchAlertsCsv() {
 }
 
 export async function saveAlertsCsv(csvContent, message) {
-  // Use cached SHA if available; if not, GitHub will create the file (no SHA needed)
   const sha = getAlertsSha();
-
   const encoded = btoa(unescape(encodeURIComponent(csvContent)));
-
-  const body = {
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
+    encoded,
     message: message || 'Update alerts.csv from Map Tracker app',
-    content: encoded,
-  };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
-    {
-      method: 'PUT',
-      headers: headers(),
-      body: JSON.stringify(body),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 409) {
-      const fresh = await fetchAlertsCsv();
-      const retryBody = { ...body, sha: fresh.sha };
-      const retryRes = await fetch(
-        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
-        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
-      );
-      if (!retryRes.ok) throw new Error('Failed to save alerts after retry');
-      const retryData = await retryRes.json();
-      saveAlertsSha(retryData.content.sha);
-      return retryData;
-    }
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  saveAlertsSha(data.content.sha);
-  return data;
+    sha,
+    fetchFn: fetchAlertsCsv,
+    saveShaFn: saveAlertsSha,
+  });
 }
 
 // ---- Schedules JSON (GitHub sync) ----
@@ -239,47 +195,18 @@ export async function fetchSchedulesJson() {
 
 export async function saveSchedulesJson(jsonContent, message) {
   let sha = getSchedulesSha();
-
   if (!sha) {
-    try {
-      const current = await fetchSchedulesJson();
-      sha = current.sha;
-    } catch { /* file may not exist */ }
+    try { sha = (await fetchSchedulesJson()).sha; } catch { /* file may not exist */ }
   }
-
   const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
-
-  const body = {
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
+    encoded,
     message: message || 'Update schedules.json from Map Tracker app',
-    content: encoded,
-  };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
-    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 409) {
-      const fresh = await fetchSchedulesJson();
-      const retryBody = { ...body, sha: fresh.sha };
-      const retryRes = await fetch(
-        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
-        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
-      );
-      if (!retryRes.ok) throw new Error('Failed to save schedules after retry');
-      const retryData = await retryRes.json();
-      saveSchedulesSha(retryData.content.sha);
-      return retryData;
-    }
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  saveSchedulesSha(data.content.sha);
-  return data;
+    sha,
+    fetchFn: fetchSchedulesJson,
+    saveShaFn: saveSchedulesSha,
+  });
 }
 
 // ---- Import Log JSON (GitHub sync) ----
@@ -315,47 +242,18 @@ export async function fetchImportLog() {
 
 export async function saveImportLog(jsonContent, message) {
   let sha = getImportLogSha();
-
   if (!sha) {
-    try {
-      const current = await fetchImportLog();
-      sha = current.sha;
-    } catch { /* file may not exist */ }
+    try { sha = (await fetchImportLog()).sha; } catch { /* file may not exist */ }
   }
-
   const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
-
-  const body = {
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
+    encoded,
     message: message || 'Update importLog.json from Map Tracker app',
-    content: encoded,
-  };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
-    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 409) {
-      const fresh = await fetchImportLog();
-      const retryBody = { ...body, sha: fresh.sha };
-      const retryRes = await fetch(
-        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
-        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
-      );
-      if (!retryRes.ok) throw new Error('Failed to save import log after retry');
-      const retryData = await retryRes.json();
-      saveImportLogSha(retryData.content.sha);
-      return retryData;
-    }
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  saveImportLogSha(data.content.sha);
-  return data;
+    sha,
+    fetchFn: fetchImportLog,
+    saveShaFn: saveImportLogSha,
+  });
 }
 
 // ---- Visit History JSON (GitHub sync) ----
@@ -391,47 +289,18 @@ export async function fetchVisitHistoryJson() {
 
 export async function saveVisitHistoryJson(jsonContent, message) {
   let sha = getVisitHistorySha();
-
   if (!sha) {
-    try {
-      const current = await fetchVisitHistoryJson();
-      sha = current.sha;
-    } catch { /* file may not exist */ }
+    try { sha = (await fetchVisitHistoryJson()).sha; } catch { /* file may not exist */ }
   }
-
   const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
-
-  const body = {
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${VISITHISTORY_FILE_PATH}`,
+    encoded,
     message: message || 'Update visitHistory.json from Map Tracker app',
-    content: encoded,
-  };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${VISITHISTORY_FILE_PATH}`,
-    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 409) {
-      const fresh = await fetchVisitHistoryJson();
-      const retryBody = { ...body, sha: fresh.sha };
-      const retryRes = await fetch(
-        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${VISITHISTORY_FILE_PATH}`,
-        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
-      );
-      if (!retryRes.ok) throw new Error('Failed to save visit history after retry');
-      const retryData = await retryRes.json();
-      saveVisitHistorySha(retryData.content.sha);
-      return retryData;
-    }
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  saveVisitHistorySha(data.content.sha);
-  return data;
+    sha,
+    fetchFn: fetchVisitHistoryJson,
+    saveShaFn: saveVisitHistorySha,
+  });
 }
 
 // ---- Warehouses JSON (GitHub sync) ----
@@ -467,47 +336,18 @@ export async function fetchWarehousesJson() {
 
 export async function saveWarehousesJson(jsonContent, message) {
   let sha = getWarehousesSha();
-
   if (!sha) {
-    try {
-      const current = await fetchWarehousesJson();
-      sha = current.sha;
-    } catch { /* file may not exist */ }
+    try { sha = (await fetchWarehousesJson()).sha; } catch { /* file may not exist */ }
   }
-
   const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
-
-  const body = {
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
+    encoded,
     message: message || 'Update warehouses.json from Map Tracker app',
-    content: encoded,
-  };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
-    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 409) {
-      const fresh = await fetchWarehousesJson();
-      const retryBody = { ...body, sha: fresh.sha };
-      const retryRes = await fetch(
-        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
-        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
-      );
-      if (!retryRes.ok) throw new Error('Failed to save warehouses after retry');
-      const retryData = await retryRes.json();
-      saveWarehousesSha(retryData.content.sha);
-      return retryData;
-    }
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  saveWarehousesSha(data.content.sha);
-  return data;
+    sha,
+    fetchFn: fetchWarehousesJson,
+    saveShaFn: saveWarehousesSha,
+  });
 }
 
 // ---- Travel Log JSON (GitHub sync) ----
@@ -543,47 +383,18 @@ export async function fetchTravelLogJson() {
 
 export async function saveTravelLogJson(jsonContent, message) {
   let sha = getTravelLogSha();
-
   if (!sha) {
-    try {
-      const current = await fetchTravelLogJson();
-      sha = current.sha;
-    } catch { /* file may not exist */ }
+    try { sha = (await fetchTravelLogJson()).sha; } catch { /* file may not exist */ }
   }
-
   const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
-
-  const body = {
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
+    encoded,
     message: message || 'Update travelLog.json from Map Tracker app',
-    content: encoded,
-  };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(
-    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
-    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 409) {
-      const fresh = await fetchTravelLogJson();
-      const retryBody = { ...body, sha: fresh.sha };
-      const retryRes = await fetch(
-        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
-        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
-      );
-      if (!retryRes.ok) throw new Error('Failed to save travel log after retry');
-      const retryData = await retryRes.json();
-      saveTravelLogSha(retryData.content.sha);
-      return retryData;
-    }
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  saveTravelLogSha(data.content.sha);
-  return data;
+    sha,
+    fetchFn: fetchTravelLogJson,
+    saveShaFn: saveTravelLogSha,
+  });
 }
 
 /**

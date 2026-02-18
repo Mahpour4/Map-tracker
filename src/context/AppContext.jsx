@@ -316,18 +316,22 @@ function reducer(state, action) {
     case 'LOAD_TRAVEL_LOG':
       return { ...state, travelLog: action.payload };
     case 'LOG_TRAVEL_ENTRIES': {
-      // action.payload: [{ vehicleVin, type, locationId, locationName, lat, lng, time }]
-      const entries = action.payload;
+      // action.payload: { entries, date } or [entries] (legacy)
+      const raw = action.payload;
+      const entries = Array.isArray(raw) ? raw : raw.entries;
+      const forceDate = !Array.isArray(raw) && raw.date ? raw.date : null;
       if (entries.length === 0) return state;
-      const today = localDateStr();
+      const fallbackDate = localDateStr();
       const newLog = { ...state.travelLog };
-      if (!newLog[today]) newLog[today] = {};
       entries.forEach(entry => {
-        if (!newLog[today][entry.vehicleVin]) newLog[today][entry.vehicleVin] = [];
-        // Dedup: skip if already logged this location today for this vehicle
-        const existing = newLog[today][entry.vehicleVin];
+        // Derive date from entry time, or use the forced date, or fallback to today
+        const dateKey = forceDate || (entry.time ? entry.time.slice(0, 10) : fallbackDate);
+        if (!newLog[dateKey]) newLog[dateKey] = {};
+        if (!newLog[dateKey][entry.vehicleVin]) newLog[dateKey][entry.vehicleVin] = [];
+        // Dedup: skip if already logged this location for this vehicle on this date
+        const existing = newLog[dateKey][entry.vehicleVin];
         if (!existing.some(e => e.locationId === entry.locationId)) {
-          existing.push({
+          const record = {
             time: entry.time,
             type: entry.type,
             locationId: entry.locationId,
@@ -335,7 +339,17 @@ function reducer(state, action) {
             lat: entry.lat,
             lng: entry.lng,
             distance: entry.distance,
-          });
+          };
+          if (entry.type === 'driving') {
+            record.arrivalTime = entry.arrivalTime;
+            record.departureTime = entry.departureTime;
+            record.dwellMinutes = entry.dwellMinutes;
+            record.driverName = entry.driverName;
+            record.destinationLat = entry.destinationLat;
+            record.destinationLng = entry.destinationLng;
+            record.destination = entry.destination;
+          }
+          existing.push(record);
         }
       });
       return { ...state, travelLog: newLog };
