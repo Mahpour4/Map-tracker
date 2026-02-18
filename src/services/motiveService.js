@@ -154,20 +154,29 @@ export async function fetchVehicles() {
 }
 
 export async function fetchVehicleLocations() {
-  // Motive SDK's fetchAListOfAllTheVehiclesAndTheirLocations
-  // Response: { vehicles: [{ vehicle: { id, vin, current_location: {...}, current_driver: {...} } }] }
-  // Data key is "vehicles", NOT "vehicle_locations"
-  const raw = await fetchAllPages('/v1/vehicle_locations', 'vehicles');
-  console.log('[Motive] Raw vehicles with locations (' + raw.length + ' items)');
+  // Use v3 endpoint — returns vehicle_state, kph, city/state fields
+  // Response: { vehicles: [{ vehicle: { id, vin, current_location: { lat, lon, vehicle_state, kph, city, state, ... } } }] }
+  const raw = await fetchAllPages('/v3/vehicle_locations', 'vehicles');
+  console.log('[Motive] Raw v3 vehicles with locations (' + raw.length + ' items)');
   if (raw.length > 0) {
     console.log('[Motive] Sample item [0]:', JSON.stringify(raw[0], null, 2));
   }
 
   const mapped = raw.map(vl => {
-    // Each item is { vehicle: { ..., current_location: {...}, current_driver: {...} } }
     const vehicle = vl.vehicle || vl;
     const loc = vehicle.current_location || {};
     const driver = vehicle.current_driver || {};
+
+    // v3 uses kph for speed — convert to mph
+    const speedMph = loc.kph != null ? parseFloat(loc.kph) * 0.621371 : null;
+
+    // v3 uses vehicle_state ("on"/"off") instead of type
+    const engineStatus = loc.vehicle_state || null;
+
+    // v3 has city/state and current_location (string) for address
+    const description = typeof loc.current_location === 'string'
+      ? loc.current_location
+      : [loc.city, loc.state].filter(Boolean).join(', ');
 
     return {
       id: vehicle.id,
@@ -179,11 +188,11 @@ export async function fetchVehicleLocations() {
       licensePlate: vehicle.license_plate_number || null,
       lat: loc.lat != null ? parseFloat(loc.lat) : null,
       lng: loc.lon != null ? parseFloat(loc.lon) : null,
-      speed: loc.speed != null ? parseFloat(loc.speed) : null,
+      speed: speedMph,
       bearing: loc.bearing != null ? parseFloat(loc.bearing) : null,
-      engineStatus: loc.type === 'vehicle_moving' ? 'on' : loc.type === 'vehicle_stopped' ? 'off' : (loc.type || null),
+      engineStatus,
       locatedAt: loc.located_at || null,
-      description: loc.description || '',
+      description,
       driverName: driver.first_name ? `${driver.first_name} ${driver.last_name || ''}`.trim() : null,
       driverStatus: driver.status || null,
     };
