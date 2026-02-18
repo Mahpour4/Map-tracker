@@ -161,6 +161,20 @@ export default function TravelLog() {
     // Log stores info once for debugging
     console.log(`[TravelLog] Stores in context: ${stores.length}, sample routeNumbers:`, [...new Set(stores.slice(0, 20).map(s => s.routeNumber))]);
 
+    // Fetch ALL driving periods for the date in one call (no vehicle filter —
+    // the Motive API silently returns empty when vehicle_ids[] is passed).
+    let allDrivingPeriods = [];
+    try {
+      allDrivingPeriods = await fetchDrivingPeriods({
+        startDate: selectedDate,
+        endDate: selectedDate,
+      });
+      console.log(`[TravelLog] Fetched ${allDrivingPeriods.length} total driving periods for ${selectedDate}`);
+    } catch (err) {
+      console.error('[TravelLog] Error fetching driving periods:', err);
+      errors.push(`Driving periods: ${err.message}`);
+    }
+
     for (const vehicle of vehiclesWithMotiveId) {
       try {
         setProcessStatus({
@@ -168,18 +182,22 @@ export default function TravelLog() {
           type: 'info',
         });
 
-        // Fetch breadcrumbs + driving periods for this vehicle in parallel
-        const [breadcrumbs, periods] = await Promise.all([
-          fetchVehicleLocationHistory(vehicle.motiveId, selectedDate, selectedDate),
-          fetchDrivingPeriods({
-            vehicleIds: [String(vehicle.motiveId)],
-            startDate: selectedDate,
-            endDate: selectedDate,
-            status: 'complete',
-          }),
-        ]);
+        // Fetch breadcrumbs for this vehicle
+        let breadcrumbs = [];
+        try {
+          breadcrumbs = await fetchVehicleLocationHistory(vehicle.motiveId, selectedDate, selectedDate);
+        } catch (err) {
+          console.error(`[TravelLog] Breadcrumb error for ${vehicle.label}:`, err);
+          errors.push(`${vehicle.label} breadcrumbs: ${err.message}`);
+        }
 
-        console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs, ${periods.length} driving periods`);
+        // Filter driving periods for this vehicle by motiveId or VIN
+        const periods = allDrivingPeriods.filter(dp =>
+          String(dp.vehicleId) === String(vehicle.motiveId) ||
+          (dp.vehicleVin && dp.vehicleVin === vehicle.vin)
+        );
+
+        console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs, ${periods.length} driving periods (motiveId=${vehicle.motiveId}, vin=${vehicle.vin})`);
 
         // Store visits from breadcrumbs
         if (breadcrumbs.length > 0) {
