@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import cityCoords from '../data/cityCoords';
+import { batchGeocode, geocodeAddress } from '../utils/geocodeAddress';
 
 // Known city names from cityCoords for address parsing
 const KNOWN_CITIES = Object.keys(cityCoords).map(k => {
@@ -206,6 +207,11 @@ export default function DataImport() {
   const [applied, setApplied] = useState(false);
   const [expandedEntry, setExpandedEntry] = useState(null); // id of expanded log entry
 
+  // Re-geocode state
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeProgress, setGeocodeProgress] = useState('');
+  const [geocodeResult, setGeocodeResult] = useState(null);
+
   // Store lookup
   const storeMap = useMemo(() => {
     const map = {};
@@ -213,7 +219,7 @@ export default function DataImport() {
     return map;
   }, [stores]);
 
-  function handleParse() {
+  async function handleParse() {
     setApplied(false);
     const feedStores = parsePythonFeed(rawInput);
 
@@ -226,7 +232,7 @@ export default function DataImport() {
     const additions = [];
     const skipped = [];
 
-    feedStores.forEach(fs => {
+    for (const fs of feedStores) {
       const id = fs['Store Id'];
       const name = fs['Name'] || '';
       const route = String(fs['Route/Jobber'] || '');
@@ -246,10 +252,11 @@ export default function DataImport() {
           skipped.push({ id, name: existing.name, reason: 'Already current' });
         }
       } else {
-        // New store - geocode using cityCoords
+        // New store - try address-level geocoding first, fall back to city
         const addr = parseAddress(address);
         const region = getRegionInfo(addr.city);
-        const coords = geocodeCity(addr.city, addr.state);
+        let coords = await geocodeAddress(addr.street, addr.city, addr.state, addr.zip);
+        if (!coords) coords = geocodeCity(addr.city, addr.state);
         additions.push({
           id,
           storeNumber: id,
@@ -271,7 +278,7 @@ export default function DataImport() {
           subZoneId: null,
         });
       }
-    });
+    }
 
     setParsed({ updates, additions, skipped, total: feedStores.length });
   }
@@ -311,6 +318,33 @@ export default function DataImport() {
     setApplied(false);
   }
 
+  const handleRegeocode = useCallback(async () => {
+    setGeocoding(true);
+    setGeocodeResult(null);
+    setGeocodeProgress('Starting...');
+
+    try {
+      const updates = await batchGeocode(stores, (i, total) => {
+        setGeocodeProgress(`Geocoding ${i} / ${total}...`);
+      }, 200);
+
+      if (updates.length > 0) {
+        bulkImportStores(updates.map(u => ({ id: u.id, lat: u.lat, lng: u.lng })), []);
+      }
+
+      setGeocodeResult({
+        total: stores.length,
+        updated: updates.length,
+        stores: updates,
+      });
+    } catch (err) {
+      setGeocodeResult({ error: err.message });
+    } finally {
+      setGeocoding(false);
+      setGeocodeProgress('');
+    }
+  }, [stores, bulkImportStores]);
+
   return (
     <div className="data-import-page">
       <div className="data-import-header">
@@ -318,6 +352,48 @@ export default function DataImport() {
         <p className="data-import-desc">
           Paste Python-format store feed data to update last sale dates and add new stores.
         </p>
+      </div>
+
+      {/* Re-geocode Section */}
+      <div className="data-import-geocode-section">
+        <h3>Re-geocode Store Coordinates</h3>
+        <p className="data-import-desc" style={{ margin: '4px 0 10px' }}>
+          Fix stores with inaccurate lat/lng by looking up their actual address.
+          Uses OpenStreetMap (free). Takes ~1 second per store due to rate limits.
+          {stores.length > 0 && ` (${stores.length} stores)`}
+        </p>
+        <div className="data-import-actions">
+          <button
+            className="btn btn-primary"
+            onClick={handleRegeocode}
+            disabled={geocoding || stores.length === 0}
+          >
+            {geocoding ? geocodeProgress : 'Re-geocode All Stores'}
+          </button>
+        </div>
+        {geocodeResult && !geocodeResult.error && (
+          <div className="data-import-success" style={{ marginTop: 8 }}>
+            Done! {geocodeResult.updated} of {geocodeResult.total} stores had coordinates
+            updated (moved &gt;200m from previous position).
+            {geocodeResult.updated > 0 && (
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12 }}>
+                {geocodeResult.stores.map(s => {
+                  const orig = stores.find(st => st.id === s.id);
+                  return (
+                    <li key={s.id}>
+                      {orig?.name || s.id}: {orig?.lat?.toFixed(4)},{orig?.lng?.toFixed(4)} → {s.lat.toFixed(4)},{s.lng.toFixed(4)}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+        {geocodeResult?.error && (
+          <div className="data-import-error" style={{ marginTop: 8 }}>
+            Geocoding failed: {geocodeResult.error}
+          </div>
+        )}
       </div>
 
       <div className="data-import-input-section">

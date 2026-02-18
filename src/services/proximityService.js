@@ -1,11 +1,11 @@
 import { haversineDistance } from '../utils/geoUtils';
 
-// Chain stores get 250m (~820ft) radius; independent/cash stores get 50m (~165ft)
+// Chain stores get 805m (~0.5 mi) radius; independent/cash stores get 200m (~650ft)
 const CHAIN_TYPES = new Set([
   'food-lion', 'shoppers', 'wegmans', 'walmart', 'giant-martins',
   'weis', 'redners', 'acme', 'geresbecks', 'military',
 ]);
-const CHAIN_RADIUS_M = 500;
+const CHAIN_RADIUS_M = 805;
 const INDEPENDENT_RADIUS_M = 200;
 const WAREHOUSE_RADIUS_M = 500;
 const MIN_DWELL_MS = 10 * 60 * 1000; // 10 minutes

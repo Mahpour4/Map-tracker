@@ -3759,6 +3759,19 @@ textarea {
   margin: 0 0 16px;
 }
 
+.data-import-geocode-section {
+  background: var(--card-bg, #f8fafc);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.data-import-geocode-section h3 {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+
 .data-import-input-section {
   margin-bottom: 16px;
 }
