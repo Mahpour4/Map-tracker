@@ -702,8 +702,11 @@ export default function TravelLog() {
                       );
                     })() : (() => {
                       const liveCl = isCustomType(entry.type) && entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
+                      const liveStore = entry.type === 'store' && entry.locationId ? stores.find(s => s.id === entry.locationId) : null;
+                      const liveWh = entry.type === 'warehouse' && entry.locationId ? warehouses.find(w => w.id === entry.locationId) : null;
                       const displayName = liveCl ? liveCl.name : cleanLocationName(entry.locationName);
-                      const addr = entry.destination || liveCl?.address || '';
+                      const storeAddr = liveStore ? [liveStore.address, liveStore.city, liveStore.state].filter(Boolean).join(', ') : '';
+                      const addr = entry.destination || liveCl?.address || storeAddr || liveWh?.address || '';
                       return (
                         <>
                           <a
@@ -712,9 +715,8 @@ export default function TravelLog() {
                             rel="noopener noreferrer"
                             className="tl-map-link"
                           >
-                            {displayName}
+                            {displayName}{addr ? `: ${addr}` : ''}
                           </a>
-                          {addr && <span className="tl-entry-addr">{addr}</span>}
                         </>
                       );
                     })()}

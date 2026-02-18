@@ -6329,11 +6329,10 @@ textarea {
 }
 
 .tl-entry-addr {
-  display: block;
+  display: inline;
   font-weight: 400;
   font-size: 0.78rem;
   color: #6b7280;
-  margin-top: 1px;
 }
 
 .tl-entry-meta {
