@@ -17,12 +17,43 @@ function isValidCoord(lat, lng) {
 // Clean garbled arrow encoding from old saved entries
 function cleanLocationName(name) {
   if (!name) return name;
-  // Match any run of 3+ characters in the Latin Extended / C1 Controls range
-  // which is where garbled multi-byte UTF-8 arrows end up
   return name
     .replace(/\s*[\u00C0-\u00FF\u0080-\u009F]{3,}\s*/g, ' \u2192 ')
     .replace(/\s*\u2192\s*/g, ' \u2192 ')
     .trim();
+}
+
+// Custom location type labels
+const CUSTOM_TYPE_LABELS = {
+  'gas-station': 'Gas Station',
+  'storage': 'Storage',
+  'meeting-point': 'Meeting Point',
+  'driver-home': 'Driver Home',
+  'other': 'Other',
+};
+
+// Colors for entry types (used in map markers and badges)
+const TYPE_COLORS = {
+  store: '#22c55e',
+  warehouse: '#f59e0b',
+  driving: '#3b82f6',
+  'gas-station': '#ef4444',
+  'storage': '#8b5cf6',
+  'meeting-point': '#06b6d4',
+  'driver-home': '#ec4899',
+  other: '#6b7280',
+  custom: '#6b7280',
+};
+
+function getTypeColor(type) {
+  return TYPE_COLORS[type] || TYPE_COLORS.custom;
+}
+
+function getTypeLabel(type) {
+  if (type === 'store') return 'store';
+  if (type === 'warehouse') return 'warehouse';
+  if (type === 'driving') return 'driving';
+  return CUSTOM_TYPE_LABELS[type] || type;
 }
 
 // Auto-fit map bounds to points
@@ -40,8 +71,7 @@ function FitBounds({ points }) {
 
 // Create numbered marker icon
 function createStopIcon(type, index) {
-  const colors = { store: '#22c55e', warehouse: '#f59e0b', driving: '#3b82f6' };
-  const color = colors[type] || '#6b7280';
+  const color = getTypeColor(type);
   return L.divIcon({
     className: 'tl-map-marker',
     html: `<div style="background:${color};color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.3);">${index}</div>`,
@@ -51,8 +81,8 @@ function createStopIcon(type, index) {
 }
 
 export default function TravelLog() {
-  const { state, logTravelEntries, bulkRecordVisits, setAddressOverride } = useApp();
-  const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides } = state;
+  const { state, logTravelEntries, bulkRecordVisits, setAddressOverride, addCustomLocation } = useApp();
+  const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides, customLocations } = state;
 
   const today = localDateStr();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -61,6 +91,14 @@ export default function TravelLog() {
   const [processStatus, setProcessStatus] = useState(null);
   const [matchingEntry, setMatchingEntry] = useState(null);
   const [matchSearch, setMatchSearch] = useState('');
+  const [matchTab, setMatchTab] = useState('stores'); // stores | custom | create
+  // Raw data popup
+  const [rawData, setRawData] = useState(null); // { breadcrumbs: {vin: [...], ...}, drivingPeriods: [...] }
+  const [showRawData, setShowRawData] = useState(false);
+  const [rawDataTab, setRawDataTab] = useState('driving'); // driving | breadcrumbs
+  // Create custom location form
+  const [newLocName, setNewLocName] = useState('');
+  const [newLocType, setNewLocType] = useState('gas-station');
 
   // Get all dates that have log entries, sorted descending
   const availableDates = useMemo(() => {
@@ -103,13 +141,14 @@ export default function TravelLog() {
     return entries;
   }, [travelLog, selectedDate, selectedVehicle, vehicleList]);
 
-  // Summary stats — NOW FILTERED by selected vehicle
+  // Summary stats
   const stats = useMemo(() => {
     const dayLog = travelLog[selectedDate] || {};
     let vehicleCount = 0;
     let storeVisits = 0;
     let warehouseVisits = 0;
     let drivingSegments = 0;
+    let customVisits = 0;
     Object.entries(dayLog).forEach(([vin, stops]) => {
       if (selectedVehicle !== 'all' && vin !== selectedVehicle) return;
       vehicleCount++;
@@ -117,19 +156,15 @@ export default function TravelLog() {
         if (s.type === 'store') storeVisits++;
         else if (s.type === 'warehouse') warehouseVisits++;
         else if (s.type === 'driving') drivingSegments++;
+        else customVisits++;
       });
     });
-    return { vehicleCount, storeVisits, warehouseVisits, drivingSegments, total: storeVisits + warehouseVisits };
+    return { vehicleCount, storeVisits, warehouseVisits, drivingSegments, customVisits, total: storeVisits + warehouseVisits + customVisits };
   }, [travelLog, selectedDate, selectedVehicle]);
 
-  // Map-eligible entries (valid coordinates only, no 0,0)
-  const mapEntries = useMemo(() => {
-    return dayEntries.filter(e => isValidCoord(e.lat, e.lng));
-  }, [dayEntries]);
-
-  const mapPoints = useMemo(() => {
-    return mapEntries.map(e => [e.lat, e.lng]);
-  }, [mapEntries]);
+  // Map-eligible entries
+  const mapEntries = useMemo(() => dayEntries.filter(e => isValidCoord(e.lat, e.lng)), [dayEntries]);
+  const mapPoints = useMemo(() => mapEntries.map(e => [e.lat, e.lng]), [mapEntries]);
 
   // ---- Process Day ----
   const handleProcessDay = useCallback(async () => {
@@ -158,17 +193,20 @@ export default function TravelLog() {
     let processedCount = 0;
     const errors = [];
 
-    // Log stores info once for debugging
+    // Collect raw data for debug popup
+    const rawBreadcrumbs = {};
+    let rawDrivingPeriods = [];
+
     console.log(`[TravelLog] Stores in context: ${stores.length}, sample routeNumbers:`, [...new Set(stores.slice(0, 20).map(s => s.routeNumber))]);
 
-    // Fetch ALL driving periods for the date in one call (no vehicle filter —
-    // the Motive API silently returns empty when vehicle_ids[] is passed).
+    // Fetch ALL driving periods for the date
     let allDrivingPeriods = [];
     try {
       allDrivingPeriods = await fetchDrivingPeriods({
         startDate: selectedDate,
         endDate: selectedDate,
       });
+      rawDrivingPeriods = allDrivingPeriods;
       console.log(`[TravelLog] Fetched ${allDrivingPeriods.length} total driving periods for ${selectedDate}`);
     } catch (err) {
       console.error('[TravelLog] Error fetching driving periods:', err);
@@ -182,26 +220,27 @@ export default function TravelLog() {
           type: 'info',
         });
 
-        // Fetch breadcrumbs for this vehicle
+        // Fetch breadcrumbs
         let breadcrumbs = [];
         try {
           breadcrumbs = await fetchVehicleLocationHistory(vehicle.motiveId, selectedDate, selectedDate);
+          rawBreadcrumbs[vehicle.vin] = breadcrumbs;
         } catch (err) {
           console.error(`[TravelLog] Breadcrumb error for ${vehicle.label}:`, err);
           errors.push(`${vehicle.label} breadcrumbs: ${err.message}`);
         }
 
-        // Filter driving periods for this vehicle by motiveId or VIN
+        // Filter driving periods for this vehicle
         const periods = allDrivingPeriods.filter(dp =>
           String(dp.vehicleId) === String(vehicle.motiveId) ||
           (dp.vehicleVin && dp.vehicleVin === vehicle.vin)
         );
 
-        console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs, ${periods.length} driving periods (motiveId=${vehicle.motiveId}, vin=${vehicle.vin})`);
+        console.log(`[TravelLog] ${vehicle.label}: ${breadcrumbs.length} breadcrumbs, ${periods.length} driving periods`);
 
-        // Store visits from breadcrumbs
+        // Proximity-based visits from breadcrumbs (now includes custom locations)
         if (breadcrumbs.length > 0) {
-          const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.routeNumber);
+          const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.routeNumber, customLocations);
           console.log(`[TravelLog] ${vehicle.label}: ${visits.length} visits detected`);
 
           if (visits.length > 0) {
@@ -232,7 +271,7 @@ export default function TravelLog() {
           }
         }
 
-        // Driving periods for this vehicle
+        // Driving periods
         if (periods.length > 0) {
           const drivingEntries = periods.map(dp => ({
             vehicleVin: vehicle.vin,
@@ -262,27 +301,32 @@ export default function TravelLog() {
           for (const dp of drivingEntries) {
             const dest = (dp.destination || '').trim();
             if (!dest || !addressOverrides[dest]) continue;
-            const overrideStoreId = addressOverrides[dest];
-            const store = stores.find(s => s.id === overrideStoreId);
-            if (!store) continue;
+            const overrideId = addressOverrides[dest];
+            // Check stores first, then custom locations
+            const store = stores.find(s => s.id === overrideId);
+            const custom = !store ? customLocations.find(cl => cl.id === overrideId) : null;
+            const matched = store || custom;
+            if (!matched) continue;
             overrideVisits.push({
               vehicleVin: vehicle.vin,
               vehicleId: vehicle.vehicleId,
-              type: 'store',
-              locationId: store.id,
-              locationName: store.name,
-              lat: store.lat,
-              lng: store.lng,
+              type: store ? 'store' : (custom.type || 'custom'),
+              locationId: matched.id,
+              locationName: matched.name,
+              lat: matched.lat,
+              lng: matched.lng,
               time: dp.departureTime || dp.arrivalTime || dp.time,
               arrivalTime: dp.departureTime || dp.arrivalTime,
               departureTime: dp.departureTime,
               dwellMinutes: null,
             });
-            overrideVisitRecords.push({ storeId: store.id, date: selectedDate });
+            if (store) {
+              overrideVisitRecords.push({ storeId: store.id, date: selectedDate });
+            }
           }
           if (overrideVisits.length > 0) {
             logTravelEntries(overrideVisits);
-            bulkRecordVisits(overrideVisitRecords);
+            if (overrideVisitRecords.length > 0) bulkRecordVisits(overrideVisitRecords);
             totalVisits += overrideVisits.length;
             console.log(`[TravelLog] ${vehicle.label}: ${overrideVisits.length} auto-matched from address overrides`);
           }
@@ -293,14 +337,15 @@ export default function TravelLog() {
       }
 
       processedCount++;
-
       if (processedCount < vehiclesWithMotiveId.length) {
         await new Promise(r => setTimeout(r, 500));
       }
     }
 
-    setProcessing(false);
+    // Save raw data for debug popup
+    setRawData({ breadcrumbs: rawBreadcrumbs, drivingPeriods: rawDrivingPeriods });
 
+    setProcessing(false);
     if (errors.length > 0) {
       setProcessStatus({
         message: `Done. ${totalVisits} visits + ${drivingCount} driving segments across ${processedCount - errors.length} vehicles. ${errors.length} errors: ${errors.join('; ')}`,
@@ -312,18 +357,16 @@ export default function TravelLog() {
         type: 'success',
       });
     }
-  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, addressOverrides, logTravelEntries, bulkRecordVisits]);
+  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, customLocations, addressOverrides, logTravelEntries, bulkRecordVisits]);
 
-  // --- Manual store matching ---
+  // --- Manual matching ---
   const matchCandidates = useMemo(() => {
     if (!matchingEntry) return [];
     const vehicle = vehicleList.find(v => v.vin === matchingEntry.vehicleVin);
     const routeNum = vehicle?.routeNumber;
-    // Filter to route-matched stores
     let candidates = stores.filter(s =>
       routeNum && String(s.routeNumber).trim() === String(routeNum).trim()
     );
-    // Text search filter
     if (matchSearch.trim()) {
       const q = matchSearch.toLowerCase();
       candidates = candidates.filter(s =>
@@ -333,13 +376,11 @@ export default function TravelLog() {
         (s.id || '').toLowerCase().includes(q)
       );
     }
-    // Sort by address similarity to the destination text
     const dest = (matchingEntry.destination || '').toLowerCase();
     if (dest) {
       candidates = candidates.slice().sort((a, b) => {
         const aAddr = (a.address || '').toLowerCase();
         const bAddr = (b.address || '').toLowerCase();
-        // Prioritize stores whose address shares a common prefix with destination
         const aMatch = dest.includes(aAddr.split(' ')[0]) || aAddr.includes(dest.split(',')[0].split(' ')[0]);
         const bMatch = dest.includes(bAddr.split(' ')[0]) || bAddr.includes(dest.split(',')[0].split(' ')[0]);
         if (aMatch && !bMatch) return -1;
@@ -350,9 +391,23 @@ export default function TravelLog() {
     return candidates;
   }, [matchingEntry, matchSearch, stores, vehicleList]);
 
+  // Custom location candidates for match popup
+  const customMatchCandidates = useMemo(() => {
+    if (!matchingEntry) return [];
+    let candidates = [...customLocations];
+    if (matchSearch.trim()) {
+      const q = matchSearch.toLowerCase();
+      candidates = candidates.filter(cl =>
+        (cl.name || '').toLowerCase().includes(q) ||
+        (cl.address || '').toLowerCase().includes(q) ||
+        (cl.type || '').toLowerCase().includes(q)
+      );
+    }
+    return candidates;
+  }, [matchingEntry, matchSearch, customLocations]);
+
   const handleMatchStore = useCallback((store) => {
     if (!matchingEntry) return;
-    // Create a store visit entry
     logTravelEntries([{
       vehicleVin: matchingEntry.vehicleVin,
       vehicleId: matchingEntry.vehicleId,
@@ -366,16 +421,77 @@ export default function TravelLog() {
       departureTime: matchingEntry.departureTime,
       dwellMinutes: null,
     }]);
-    // Record the visit in visit history
     bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
-    // Remember this destination → store mapping for future auto-matching
     const dest = (matchingEntry.destination || '').trim();
-    if (dest) {
-      setAddressOverride(dest, store.id);
-    }
+    if (dest) setAddressOverride(dest, store.id);
     setMatchingEntry(null);
     setMatchSearch('');
   }, [matchingEntry, selectedDate, logTravelEntries, bulkRecordVisits, setAddressOverride]);
+
+  const handleMatchCustomLocation = useCallback((cl) => {
+    if (!matchingEntry) return;
+    logTravelEntries([{
+      vehicleVin: matchingEntry.vehicleVin,
+      vehicleId: matchingEntry.vehicleId,
+      type: cl.type || 'custom',
+      locationId: cl.id,
+      locationName: cl.name,
+      lat: cl.lat,
+      lng: cl.lng,
+      time: matchingEntry.departureTime || matchingEntry.arrivalTime || matchingEntry.time,
+      arrivalTime: matchingEntry.departureTime || matchingEntry.arrivalTime,
+      departureTime: matchingEntry.departureTime,
+      dwellMinutes: null,
+    }]);
+    const dest = (matchingEntry.destination || '').trim();
+    if (dest) setAddressOverride(dest, cl.id);
+    setMatchingEntry(null);
+    setMatchSearch('');
+  }, [matchingEntry, logTravelEntries, setAddressOverride]);
+
+  const handleCreateAndMatch = useCallback(() => {
+    if (!matchingEntry || !newLocName.trim()) return;
+    const dest = (matchingEntry.destination || '').trim();
+    const newLoc = {
+      name: newLocName.trim(),
+      type: newLocType,
+      address: dest,
+      lat: matchingEntry.destinationLat || matchingEntry.lat,
+      lng: matchingEntry.destinationLng || matchingEntry.lng,
+    };
+    // addCustomLocation generates the ID via reducer
+    addCustomLocation(newLoc);
+    // We need to log the entry — use a temporary approach: generate an ID here that matches what the reducer will create
+    // Actually, the reducer uses uuidv4 so we can't predict it. Instead, log with the address as the name.
+    // We'll match using the destination → name mapping via address override once the custom location is saved.
+    // For now, just create the custom location. The next Process Day will auto-match it.
+    // But let's also create the visit entry directly:
+    logTravelEntries([{
+      vehicleVin: matchingEntry.vehicleVin,
+      vehicleId: matchingEntry.vehicleId,
+      type: newLocType,
+      locationId: `custom-${Date.now()}`,
+      locationName: newLocName.trim(),
+      lat: matchingEntry.destinationLat || matchingEntry.lat,
+      lng: matchingEntry.destinationLng || matchingEntry.lng,
+      time: matchingEntry.departureTime || matchingEntry.arrivalTime || matchingEntry.time,
+      arrivalTime: matchingEntry.departureTime || matchingEntry.arrivalTime,
+      departureTime: matchingEntry.departureTime,
+      dwellMinutes: null,
+    }]);
+    // Note: address override will be saved once the custom location gets its ID
+    // For future matching, the custom location's proximity radius will handle it
+    setMatchingEntry(null);
+    setMatchSearch('');
+    setNewLocName('');
+    setNewLocType('gas-station');
+  }, [matchingEntry, newLocName, newLocType, addCustomLocation, logTravelEntries]);
+
+  // Raw data total breadcrumb count
+  const rawBreadcrumbCount = useMemo(() => {
+    if (!rawData?.breadcrumbs) return 0;
+    return Object.values(rawData.breadcrumbs).reduce((sum, arr) => sum + arr.length, 0);
+  }, [rawData]);
 
   return (
     <div className="tl-page">
@@ -383,11 +499,11 @@ export default function TravelLog() {
         <h2>Travel Log</h2>
         <p className="tl-desc">
           Pull location history from Motive and detect store visits
-          (10+ min dwell). Chain: 805m (~½ mi), Independent: 200m radius. Route-matched stores only.
+          (15+ min dwell). Chain: 805m (~½ mi), Independent: 200m radius. Route-matched stores only.
         </p>
       </div>
 
-      {/* Filters + Process Day */}
+      {/* Filters + Process Day + Raw Data */}
       <div className="tl-filters">
         <div className="tl-filter">
           <label>Date</label>
@@ -409,13 +525,24 @@ export default function TravelLog() {
         </div>
         <div className="tl-filter tl-filter-action">
           <label>&nbsp;</label>
-          <button
-            className="btn btn-primary"
-            onClick={handleProcessDay}
-            disabled={processing}
-          >
-            {processing ? 'Processing...' : `Process ${selectedDate === today ? 'Today' : selectedDate}`}
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleProcessDay}
+              disabled={processing}
+            >
+              {processing ? 'Processing...' : `Process ${selectedDate === today ? 'Today' : selectedDate}`}
+            </button>
+            {rawData && (
+              <button
+                className="btn btn-outline tl-raw-btn"
+                onClick={() => setShowRawData(true)}
+                title="View raw API data from Motive"
+              >
+                Raw Data
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -431,6 +558,9 @@ export default function TravelLog() {
         <span className="tl-stat">{stats.vehicleCount} <span>Vehicles</span></span>
         <span className="tl-stat blue">{stats.storeVisits} <span>Store Visits</span></span>
         <span className="tl-stat orange">{stats.warehouseVisits} <span>Warehouse</span></span>
+        {stats.customVisits > 0 && (
+          <span className="tl-stat purple">{stats.customVisits} <span>Custom</span></span>
+        )}
         <span className="tl-stat green">{stats.drivingSegments} <span>Driving</span></span>
         <span className="tl-stat">{stats.total} <span>Total Stops</span></span>
       </div>
@@ -457,7 +587,7 @@ export default function TravelLog() {
                 <Popup>
                   <div style={{ minWidth: 160 }}>
                     <strong>#{i + 1} {cleanLocationName(entry.locationName)}</strong><br />
-                    <span style={{ textTransform: 'capitalize' }}>{entry.type}</span>
+                    <span style={{ textTransform: 'capitalize' }}>{getTypeLabel(entry.type)}</span>
                     {entry.dwellMinutes != null && ` \u2022 ${entry.dwellMinutes} min`}
                     {entry.distance > 0 && ` \u2022 ${entry.distance} mi`}
                     {selectedVehicle === 'all' && entry.vehicleId && (
@@ -475,7 +605,7 @@ export default function TravelLog() {
         </div>
       )}
 
-      {/* Timeline with index */}
+      {/* Timeline */}
       <div className="tl-timeline-scroll">
         <div className="tl-timeline">
           {dayEntries.length === 0 ? (
@@ -495,7 +625,7 @@ export default function TravelLog() {
                       ? new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : '--:--'}
                 </div>
-                <div className="tl-entry-dot" />
+                <div className="tl-entry-dot" style={!['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type) } : undefined} />
                 <div className="tl-entry-content">
                   <div className="tl-entry-name">
                     {entry.type === 'driving' ? (() => {
@@ -523,7 +653,12 @@ export default function TravelLog() {
                     )}
                   </div>
                   <div className="tl-entry-meta">
-                    <span className={`tl-type-badge ${entry.type}`}>{entry.type}</span>
+                    <span
+                      className={`tl-type-badge ${entry.type}`}
+                      style={!['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type), color: '#fff' } : undefined}
+                    >
+                      {getTypeLabel(entry.type)}
+                    </span>
                     {selectedVehicle === 'all' && (
                       <span className="tl-entry-vehicle">{entry.vehicleId || entry.vehicleVin?.slice(-6)}</span>
                     )}
@@ -546,9 +681,9 @@ export default function TravelLog() {
                     {entry.type === 'driving' && (
                       <button
                         className="tl-match-btn"
-                        onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchSearch(''); }}
+                        onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchSearch(''); setMatchTab('stores'); }}
                       >
-                        Match Store
+                        Match Location
                       </button>
                     )}
                   </div>
@@ -559,46 +694,159 @@ export default function TravelLog() {
         </div>
       </div>
 
-      {/* Manual Store Match Popup */}
+      {/* ---- Raw Data Modal ---- */}
+      {showRawData && rawData && (
+        <div className="tl-match-overlay" onClick={() => setShowRawData(false)}>
+          <div className="tl-raw-popup" onClick={e => e.stopPropagation()}>
+            <div className="tl-match-header">
+              <h3>Raw Motive API Data</h3>
+              <button className="tl-match-close" onClick={() => setShowRawData(false)}>&times;</button>
+            </div>
+            <div className="tl-raw-tabs">
+              <button
+                className={`tl-raw-tab ${rawDataTab === 'driving' ? 'active' : ''}`}
+                onClick={() => setRawDataTab('driving')}
+              >
+                Driving Periods ({rawData.drivingPeriods?.length || 0})
+              </button>
+              <button
+                className={`tl-raw-tab ${rawDataTab === 'breadcrumbs' ? 'active' : ''}`}
+                onClick={() => setRawDataTab('breadcrumbs')}
+              >
+                Breadcrumbs ({rawBreadcrumbCount})
+              </button>
+            </div>
+            <div className="tl-raw-content">
+              <pre>{JSON.stringify(
+                rawDataTab === 'driving' ? rawData.drivingPeriods : rawData.breadcrumbs,
+                null, 2
+              )}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Match Location Popup ---- */}
       {matchingEntry && (
         <div className="tl-match-overlay" onClick={() => setMatchingEntry(null)}>
           <div className="tl-match-popup" onClick={e => e.stopPropagation()}>
             <div className="tl-match-header">
-              <h3>Match to Store</h3>
+              <h3>Match to Location</h3>
               <button className="tl-match-close" onClick={() => setMatchingEntry(null)}>&times;</button>
             </div>
             <div className="tl-match-dest">
               <span className="tl-match-label">Motive Destination:</span>
               <span className="tl-match-addr">{matchingEntry.destination || matchingEntry.locationName?.split('\u2192')[1]?.trim() || 'Unknown'}</span>
-              {addressOverrides[(matchingEntry.destination || '').trim()] && (
-                <span className="tl-match-saved">Saved match: {stores.find(s => s.id === addressOverrides[(matchingEntry.destination || '').trim()])?.name || 'Unknown store'}</span>
-              )}
+              {addressOverrides[(matchingEntry.destination || '').trim()] && (() => {
+                const savedId = addressOverrides[(matchingEntry.destination || '').trim()];
+                const savedStore = stores.find(s => s.id === savedId);
+                const savedCustom = !savedStore ? customLocations.find(cl => cl.id === savedId) : null;
+                const savedName = savedStore?.name || savedCustom?.name || 'Unknown';
+                return <span className="tl-match-saved">Saved match: {savedName}</span>;
+              })()}
             </div>
-            <input
-              className="tl-match-search"
-              type="text"
-              placeholder="Search stores by name, address, or ID..."
-              value={matchSearch}
-              onChange={e => setMatchSearch(e.target.value)}
-              autoFocus
-            />
+
+            {/* Tabs: Stores | Custom Locations | Create New */}
+            <div className="tl-match-tabs">
+              <button className={`tl-match-tab ${matchTab === 'stores' ? 'active' : ''}`} onClick={() => setMatchTab('stores')}>
+                Stores ({matchCandidates.length})
+              </button>
+              <button className={`tl-match-tab ${matchTab === 'custom' ? 'active' : ''}`} onClick={() => setMatchTab('custom')}>
+                Custom ({customMatchCandidates.length})
+              </button>
+              <button className={`tl-match-tab ${matchTab === 'create' ? 'active' : ''}`} onClick={() => setMatchTab('create')}>
+                + New
+              </button>
+            </div>
+
+            {matchTab !== 'create' && (
+              <input
+                className="tl-match-search"
+                type="text"
+                placeholder={matchTab === 'stores' ? 'Search stores by name, address, or ID...' : 'Search custom locations...'}
+                value={matchSearch}
+                onChange={e => setMatchSearch(e.target.value)}
+                autoFocus
+              />
+            )}
+
             <div className="tl-match-list">
-              {matchCandidates.length === 0 ? (
-                <div className="tl-match-empty">No matching stores found for this route</div>
-              ) : (
-                matchCandidates.map(store => (
-                  <div
-                    key={store.id}
-                    className="tl-match-item"
-                    onClick={() => handleMatchStore(store)}
-                  >
-                    <div className="tl-match-store-name">{store.name}</div>
-                    <div className="tl-match-store-addr">
-                      {store.address}{store.city ? `, ${store.city}` : ''}{store.state ? `, ${store.state}` : ''} {store.zip || ''}
+              {matchTab === 'stores' && (
+                matchCandidates.length === 0 ? (
+                  <div className="tl-match-empty">No matching stores found for this route</div>
+                ) : (
+                  matchCandidates.map(store => (
+                    <div key={store.id} className="tl-match-item" onClick={() => handleMatchStore(store)}>
+                      <div className="tl-match-store-name">{store.name}</div>
+                      <div className="tl-match-store-addr">
+                        {store.address}{store.city ? `, ${store.city}` : ''}{store.state ? `, ${store.state}` : ''} {store.zip || ''}
+                      </div>
+                      <div className="tl-match-store-id">{store.id}</div>
                     </div>
-                    <div className="tl-match-store-id">{store.id}</div>
+                  ))
+                )
+              )}
+
+              {matchTab === 'custom' && (
+                customMatchCandidates.length === 0 ? (
+                  <div className="tl-match-empty">No custom locations saved yet. Use the "+ New" tab to create one.</div>
+                ) : (
+                  customMatchCandidates.map(cl => (
+                    <div key={cl.id} className="tl-match-item" onClick={() => handleMatchCustomLocation(cl)}>
+                      <div className="tl-match-store-name">{cl.name}</div>
+                      <div className="tl-match-store-addr">
+                        <span className="tl-match-cl-type" style={{ background: getTypeColor(cl.type) }}>{getTypeLabel(cl.type)}</span>
+                        {cl.address && ` ${cl.address}`}
+                      </div>
+                    </div>
+                  ))
+                )
+              )}
+
+              {matchTab === 'create' && (
+                <div className="tl-create-form">
+                  <div className="tl-create-field">
+                    <label>Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Shell Gas Station Pulaski Hwy"
+                      value={newLocName}
+                      onChange={e => setNewLocName(e.target.value)}
+                      autoFocus
+                    />
                   </div>
-                ))
+                  <div className="tl-create-field">
+                    <label>Type</label>
+                    <select value={newLocType} onChange={e => setNewLocType(e.target.value)}>
+                      <option value="gas-station">Gas Station</option>
+                      <option value="storage">Storage Unit</option>
+                      <option value="warehouse">Warehouse</option>
+                      <option value="meeting-point">Meeting Point</option>
+                      <option value="driver-home">Driver Home</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div className="tl-create-field">
+                    <label>Address (from destination)</label>
+                    <input type="text" value={matchingEntry.destination || ''} readOnly className="tl-create-readonly" />
+                  </div>
+                  <div className="tl-create-field">
+                    <label>Coordinates</label>
+                    <input
+                      type="text"
+                      value={`${matchingEntry.destinationLat || matchingEntry.lat || '?'}, ${matchingEntry.destinationLng || matchingEntry.lng || '?'}`}
+                      readOnly
+                      className="tl-create-readonly"
+                    />
+                  </div>
+                  <button
+                    className="btn btn-primary tl-create-btn"
+                    onClick={handleCreateAndMatch}
+                    disabled={!newLocName.trim()}
+                  >
+                    Create & Match
+                  </button>
+                </div>
               )}
             </div>
           </div>

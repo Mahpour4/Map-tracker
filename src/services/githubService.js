@@ -8,6 +8,7 @@ const VISITHISTORY_FILE_PATH = 'src/data/visitHistory.json';
 const WAREHOUSES_FILE_PATH = 'src/data/warehouses.json';
 const TRAVELLOG_FILE_PATH = 'src/data/travelLog.json';
 const ADDRESS_OVERRIDES_FILE_PATH = 'src/data/addressOverrides.json';
+const CUSTOM_LOCATIONS_FILE_PATH = 'src/data/customLocations.json';
 const API_BASE = 'https://api.github.com';
 
 const TOKEN_KEY = 'github_pat';
@@ -19,6 +20,7 @@ const VISITHISTORY_SHA_KEY = 'github_visithistory_sha';
 const WAREHOUSES_SHA_KEY = 'github_warehouses_sha';
 const TRAVELLOG_SHA_KEY = 'github_travellog_sha';
 const ADDRESS_OVERRIDES_SHA_KEY = 'github_addressoverrides_sha';
+const CUSTOM_LOCATIONS_SHA_KEY = 'github_customlocations_sha';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -443,6 +445,53 @@ export async function saveAddressOverridesJson(jsonContent, message) {
     sha,
     fetchFn: fetchAddressOverridesJson,
     saveShaFn: saveAddressOverridesSha,
+  });
+}
+
+// ---- Custom Locations JSON (GitHub sync) ----
+
+function getCustomLocationsSha() {
+  return localStorage.getItem(CUSTOM_LOCATIONS_SHA_KEY) || '';
+}
+
+function saveCustomLocationsSha(sha) {
+  localStorage.setItem(CUSTOM_LOCATIONS_SHA_KEY, sha);
+}
+
+export async function fetchCustomLocationsJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CUSTOM_LOCATIONS_FILE_PATH}`,
+    { headers: headers() }
+  );
+
+  if (res.status === 404) {
+    return { content: '[]', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveCustomLocationsSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveCustomLocationsJson(jsonContent, message) {
+  let sha = getCustomLocationsSha();
+  if (!sha) {
+    try { sha = (await fetchCustomLocationsJson()).sha; } catch { /* file may not exist */ }
+  }
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CUSTOM_LOCATIONS_FILE_PATH}`,
+    encoded,
+    message: message || 'Update customLocations.json from Map Tracker app',
+    sha,
+    fetchFn: fetchCustomLocationsJson,
+    saveShaFn: saveCustomLocationsSha,
   });
 }
 

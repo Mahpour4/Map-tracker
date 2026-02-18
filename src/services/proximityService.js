@@ -8,7 +8,8 @@ const CHAIN_TYPES = new Set([
 const CHAIN_RADIUS_M = 805;
 const INDEPENDENT_RADIUS_M = 200;
 const WAREHOUSE_RADIUS_M = 500;
-const MIN_DWELL_MS = 10 * 60 * 1000; // 10 minutes
+const CUSTOM_LOCATION_RADIUS_M = 500;
+const MIN_DWELL_MS = 15 * 60 * 1000; // 15 minutes
 
 /**
  * Get the proximity radius for a store based on its type.
@@ -29,9 +30,10 @@ export function getProximityRadius(storeType) {
  * @param {Array} stores - Store list with lat, lng, type, routeNumber
  * @param {Array} warehouses - Warehouse list with lat, lng
  * @param {string} vehicleRouteNumber - The route number assigned to this vehicle
+ * @param {Array} [customLocations] - Custom locations (gas stations, storage, etc.) with lat, lng, type
  * @returns {Array} Detected visits: [{ type, locationId, locationName, lat, lng, arrivalTime, departureTime, dwellMinutes }]
  */
-export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleRouteNumber) {
+export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleRouteNumber, customLocations = []) {
   if (!breadcrumbs || breadcrumbs.length === 0) return [];
 
   // Debug: show what we're comparing
@@ -75,7 +77,21 @@ export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleR
     });
   });
 
-  console.log(`[Proximity] Route ${vehicleRouteNumber}: ${locations.length} locations to check (${locations.filter(l => l.type === 'store').length} stores, ${locations.filter(l => l.type === 'warehouse').length} warehouses)`);
+  // Custom locations (gas stations, storage, meeting points, driver homes, etc.)
+  customLocations.forEach(cl => {
+    if (cl.lat == null || cl.lng == null) return;
+    locations.push({
+      type: cl.type || 'custom',
+      id: cl.id,
+      name: cl.name,
+      lat: cl.lat,
+      lng: cl.lng,
+      radius: CUSTOM_LOCATION_RADIUS_M,
+    });
+  });
+
+  const customCount = customLocations.filter(cl => cl.lat != null && cl.lng != null).length;
+  console.log(`[Proximity] Route ${vehicleRouteNumber}: ${locations.length} locations to check (${locations.filter(l => l.type === 'store').length} stores, ${locations.filter(l => l.type === 'warehouse').length} warehouses, ${customCount} custom)`);
   if (locations.length === 0) return [];
 
   // Track closest approach for diagnostics

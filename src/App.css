@@ -6362,3 +6362,145 @@ textarea {
   margin-top: 2px;
 }
 
+/* --- Raw Data Modal --- */
+.tl-raw-btn {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.tl-raw-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+.tl-raw-popup {
+  background: var(--bg-card);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  width: 800px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.tl-raw-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.tl-raw-tab {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tl-raw-tab.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+.tl-raw-content {
+  overflow: auto;
+  flex: 1;
+  padding: 12px 20px 20px;
+  max-height: 60vh;
+}
+.tl-raw-content pre {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--text);
+}
+
+/* --- Match Popup Tabs --- */
+.tl-match-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.tl-match-tab {
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tl-match-tab.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+/* Custom location type badge in match list */
+.tl-match-cl-type {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #fff;
+  font-weight: 600;
+  text-transform: capitalize;
+  vertical-align: middle;
+}
+
+/* --- Create Custom Location Form --- */
+.tl-create-form {
+  padding: 4px 0;
+}
+.tl-create-field {
+  margin-bottom: 12px;
+}
+.tl-create-field label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.tl-create-field input,
+.tl-create-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+.tl-create-field input:focus,
+.tl-create-field select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+.tl-create-readonly {
+  background: #f1f5f9;
+  color: var(--text-muted);
+  cursor: default;
+}
+.tl-create-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* --- Custom stat color --- */
+.tl-stat.purple span {
+  color: #8b5cf6;
+}
+
