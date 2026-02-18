@@ -37,15 +37,18 @@ export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleR
   // Only check stores on this vehicle's assigned route
   const routeStores = stores.filter(s => {
     if (!s.routeNumber || !vehicleRouteNumber) return false;
-    return String(s.routeNumber) === String(vehicleRouteNumber);
+    return String(s.routeNumber).trim() === String(vehicleRouteNumber).trim();
   });
+
+  console.log(`[Proximity] Route ${vehicleRouteNumber}: ${routeStores.length} stores matched out of ${stores.length} total`);
 
   // Build a list of all known locations to check against
   const locations = [];
 
   routeStores.forEach(s => {
     if (s.lat == null || s.lng == null) return;
-    if (s._fallbackCoords) return; // skip imprecise coordinates
+    // Skip fallback coords only if explicitly flagged (currently not used)
+    if (s._fallbackCoords) return;
     locations.push({
       type: 'store',
       id: s.id,
@@ -68,7 +71,12 @@ export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleR
     });
   });
 
+  console.log(`[Proximity] Route ${vehicleRouteNumber}: ${locations.length} locations to check (${locations.filter(l => l.type === 'store').length} stores, ${locations.filter(l => l.type === 'warehouse').length} warehouses)`);
   if (locations.length === 0) return [];
+
+  // Track closest approach for diagnostics
+  let globalMinDist = Infinity;
+  let globalMinLoc = null;
 
   // For each breadcrumb, find which location (if any) it's near
   const visits = [];
@@ -82,6 +90,10 @@ export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleR
 
     for (const loc of locations) {
       const dist = haversineDistance(bc.lat, bc.lng, loc.lat, loc.lng);
+      if (dist < globalMinDist) {
+        globalMinDist = dist;
+        globalMinLoc = loc;
+      }
       if (dist <= loc.radius && dist < nearestDist) {
         nearestLoc = loc;
         nearestDist = dist;
@@ -154,6 +166,11 @@ export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleR
         dwellMinutes: Math.round(dwell / 60000),
       });
     }
+  }
+
+  // Diagnostic: log closest approach
+  if (globalMinLoc) {
+    console.log(`[Proximity] Route ${vehicleRouteNumber}: closest approach = ${Math.round(globalMinDist)}m to "${globalMinLoc.name}" (radius: ${globalMinLoc.radius}m). ${visits.length} visits found.`);
   }
 
   return visits;
