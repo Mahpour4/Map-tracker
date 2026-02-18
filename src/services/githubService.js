@@ -54,29 +54,44 @@ function headers() {
 }
 
 /**
- * PUT content to a GitHub file with retry on 409 SHA conflict.
- * Retries up to maxRetries times with increasing delays.
+ * Serialize all GitHub writes through a queue so only one PUT
+ * runs at a time, preventing concurrent SHA conflicts.
  */
-async function githubPutWithRetry({ url, encoded, message, sha, fetchFn, saveShaFn, maxRetries = 3 }) {
-  let currentSha = sha;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const body = { message, content: encoded };
-    if (currentSha) body.sha = currentSha;
-    const res = await fetch(url, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
-    if (res.ok) {
-      const data = await res.json();
-      saveShaFn(data.content.sha);
-      return data;
+let saveQueue = Promise.resolve();
+
+/**
+ * PUT content to a GitHub file with retry on 409 SHA conflict.
+ * Serialized through saveQueue to prevent concurrent write conflicts.
+ * Always fetches fresh SHA before each attempt to avoid stale cache.
+ */
+async function githubPutWithRetry({ url, encoded, message, sha, fetchFn, saveShaFn, maxRetries = 5 }) {
+  const doSave = async () => {
+    let currentSha = sha;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      // On retry (or if sha looks stale), fetch fresh SHA
+      if (attempt > 0) {
+        await new Promise(r => setTimeout(r, 300 * attempt + Math.random() * 200));
+        const fresh = await fetchFn();
+        currentSha = fresh.sha;
+      }
+      const body = { message, content: encoded };
+      if (currentSha) body.sha = currentSha;
+      const res = await fetch(url, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+      if (res.ok) {
+        const data = await res.json();
+        saveShaFn(data.content.sha);
+        return data;
+      }
+      if (res.status === 409 && attempt < maxRetries) {
+        continue;
+      }
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `GitHub save failed: ${res.status}`);
     }
-    if (res.status === 409 && attempt < maxRetries) {
-      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-      const fresh = await fetchFn();
-      currentSha = fresh.sha;
-      continue;
-    }
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `GitHub save failed: ${res.status}`);
-  }
+  };
+  // Queue this save so it waits for any in-flight save to finish first
+  saveQueue = saveQueue.catch(() => {}).then(doSave);
+  return saveQueue;
 }
 
 /**
@@ -86,7 +101,7 @@ async function githubPutWithRetry({ url, encoded, message, sha, fetchFn, saveSha
 export async function fetchStoresCsv() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (!res.ok) {
@@ -134,7 +149,7 @@ function saveAlertsSha(sha) {
 export async function fetchAlertsCsv() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ALERTS_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -179,7 +194,7 @@ function saveSchedulesSha(sha) {
 export async function fetchSchedulesJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SCHEDULES_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -226,7 +241,7 @@ function saveImportLogSha(sha) {
 export async function fetchImportLog() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${IMPORTLOG_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -273,7 +288,7 @@ function saveVisitHistorySha(sha) {
 export async function fetchVisitHistoryJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${VISITHISTORY_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -320,7 +335,7 @@ function saveWarehousesSha(sha) {
 export async function fetchWarehousesJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -367,7 +382,7 @@ function saveTravelLogSha(sha) {
 export async function fetchTravelLogJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -414,7 +429,7 @@ function saveAddressOverridesSha(sha) {
 export async function fetchAddressOverridesJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ADDRESS_OVERRIDES_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
@@ -461,7 +476,7 @@ function saveCustomLocationsSha(sha) {
 export async function fetchCustomLocationsJson() {
   const res = await fetch(
     `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CUSTOM_LOCATIONS_FILE_PATH}`,
-    { headers: headers() }
+    { headers: headers(), cache: 'no-store' }
   );
 
   if (res.status === 404) {
