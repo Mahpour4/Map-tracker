@@ -324,15 +324,16 @@ export default function TravelLog() {
             const dest = (dp.destination || '').trim();
             if (!dest || !addressOverrides[dest]) continue;
             const overrideId = addressOverrides[dest];
-            // Check stores first, then custom locations
+            // Check stores, then warehouses, then custom locations
             const store = stores.find(s => s.id === overrideId);
-            const custom = !store ? customLocations.find(cl => cl.id === overrideId) : null;
-            const matched = store || custom;
+            const wh = !store ? warehouses.find(w => w.id === overrideId) : null;
+            const custom = !store && !wh ? customLocations.find(cl => cl.id === overrideId) : null;
+            const matched = store || wh || custom;
             if (!matched) continue;
             overrideVisits.push({
               vehicleVin: vehicle.vin,
               vehicleId: vehicle.vehicleId,
-              type: store ? 'store' : (custom.type || 'custom'),
+              type: store ? 'store' : wh ? 'warehouse' : (custom.type || 'custom'),
               locationId: matched.id,
               locationName: matched.name,
               lat: matched.lat,
@@ -701,10 +702,10 @@ export default function TravelLog() {
                         </>
                       );
                     })() : (() => {
-                      const liveCl = isCustomType(entry.type) && entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
+                      const liveCl = entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
                       const liveStore = entry.type === 'store' && entry.locationId ? stores.find(s => s.id === entry.locationId) : null;
                       const liveWh = entry.type === 'warehouse' && entry.locationId ? warehouses.find(w => w.id === entry.locationId) : null;
-                      const displayName = liveCl ? liveCl.name : cleanLocationName(entry.locationName);
+                      const displayName = liveCl?.name || liveWh?.name || liveStore?.name || cleanLocationName(entry.locationName);
                       const storeAddr = liveStore ? [liveStore.address, liveStore.city, liveStore.state].filter(Boolean).join(', ') : '';
                       const addr = entry.destination || liveCl?.address || storeAddr || liveWh?.address || '';
                       return (
@@ -755,7 +756,7 @@ export default function TravelLog() {
                         Match Location
                       </button>
                     )}
-                    {isCustomType(entry.type) && entry.locationId && (() => {
+                    {entry.locationId && (() => {
                       const cl = customLocations.find(c => c.id === entry.locationId) || customLocations.find(c => c.name === entry.locationName);
                       return cl ? (
                         <>
@@ -847,8 +848,9 @@ export default function TravelLog() {
               {addressOverrides[(matchingEntry.destination || '').trim()] && (() => {
                 const savedId = addressOverrides[(matchingEntry.destination || '').trim()];
                 const savedStore = stores.find(s => s.id === savedId);
-                const savedCustom = !savedStore ? customLocations.find(cl => cl.id === savedId) : null;
-                const savedName = savedStore?.name || savedCustom?.name || 'Unknown';
+                const savedWh = !savedStore ? warehouses.find(w => w.id === savedId) : null;
+                const savedCustom = !savedStore && !savedWh ? customLocations.find(cl => cl.id === savedId) : null;
+                const savedName = savedStore?.name || savedWh?.name || savedCustom?.name || 'Unknown';
                 return <span className="tl-match-saved">Saved match: {savedName}</span>;
               })()}
             </div>
