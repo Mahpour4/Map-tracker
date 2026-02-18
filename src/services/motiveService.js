@@ -249,7 +249,8 @@ export async function fetchVehicleLocationHistory(motiveId, startDate, endDate) 
       description: loc.description || '',
       type: loc.type || null,
     };
-  }).filter(loc => loc.lat != null && loc.lng != null && loc.time);
+  }).filter(loc => loc.lat != null && loc.lng != null && loc.time)
+    .sort((a, b) => a.time.localeCompare(b.time));
 }
 
 /**

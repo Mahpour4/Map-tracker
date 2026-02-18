@@ -5,9 +5,9 @@ const CHAIN_TYPES = new Set([
   'food-lion', 'shoppers', 'wegmans', 'walmart', 'giant-martins',
   'weis', 'redners', 'acme', 'geresbecks', 'military',
 ]);
-const CHAIN_RADIUS_M = 250;
-const INDEPENDENT_RADIUS_M = 50;
-const WAREHOUSE_RADIUS_M = 250;
+const CHAIN_RADIUS_M = 500;
+const INDEPENDENT_RADIUS_M = 200;
+const WAREHOUSE_RADIUS_M = 500;
 const MIN_DWELL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
@@ -33,6 +33,10 @@ export function getProximityRadius(storeType) {
  */
 export function analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicleRouteNumber) {
   if (!breadcrumbs || breadcrumbs.length === 0) return [];
+
+  // Debug: show what we're comparing
+  const sampleRouteNumbers = [...new Set(stores.map(s => s.routeNumber).filter(Boolean))].slice(0, 10);
+  console.log(`[Proximity] Vehicle route: "${vehicleRouteNumber}" | Store route numbers sample: [${sampleRouteNumbers.join(', ')}] | Total stores: ${stores.length}`);
 
   // Only check stores on this vehicle's assigned route
   const routeStores = stores.filter(s => {

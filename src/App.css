@@ -5905,7 +5905,7 @@ textarea {
 /* ============ Travel Log ============ */
 .tl-page {
   padding: 20px 24px;
-  max-width: 900px;
+  max-width: 1000px;
 }
 
 .tl-header h2 {
@@ -6011,15 +6011,35 @@ textarea {
   color: #22c55e;
 }
 
+.tl-map-container {
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tl-map-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.tl-timeline-scroll {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 12px 12px 0;
+}
+
 .tl-timeline {
   position: relative;
-  padding-left: 40px;
+  padding-left: 80px;
 }
 
 .tl-timeline::before {
   content: '';
   position: absolute;
-  left: 18px;
+  left: 58px;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -6033,7 +6053,7 @@ textarea {
   text-align: center;
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  margin-left: -40px;
+  margin-left: -80px;
 }
 
 .tl-entry {
@@ -6044,21 +6064,32 @@ textarea {
   position: relative;
 }
 
+.tl-entry-index {
+  position: absolute;
+  left: -80px;
+  top: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 22px;
+  text-align: right;
+}
+
 .tl-entry-time {
   position: absolute;
-  left: -40px;
+  left: -54px;
   top: 12px;
   font-size: 0.7rem;
   color: var(--text-muted);
   font-family: monospace;
-  width: 36px;
+  width: 46px;
   text-align: right;
 }
 
 .tl-entry-dot {
   position: absolute;
   left: -25px;
-  top: 14px;
+  top: 15px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
