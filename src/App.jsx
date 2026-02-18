@@ -102,7 +102,7 @@ function AppContent() {
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
         {page === 'customLocations' && <CustomLocations />}
-        <div className="app-version">v1.9.4</div>
+        <div className="app-version">v1.9.5</div>
       </main>
     </div>
   );
