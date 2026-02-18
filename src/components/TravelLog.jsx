@@ -51,8 +51,8 @@ function createStopIcon(type, index) {
 }
 
 export default function TravelLog() {
-  const { state, logTravelEntries, bulkRecordVisits } = useApp();
-  const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses } = state;
+  const { state, logTravelEntries, bulkRecordVisits, setAddressOverride } = useApp();
+  const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides } = state;
 
   const today = localDateStr();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -255,6 +255,37 @@ export default function TravelLog() {
 
           logTravelEntries(drivingEntries);
           drivingCount += drivingEntries.length;
+
+          // Auto-match driving segments using saved address overrides
+          const overrideVisits = [];
+          const overrideVisitRecords = [];
+          for (const dp of drivingEntries) {
+            const dest = (dp.destination || '').trim();
+            if (!dest || !addressOverrides[dest]) continue;
+            const overrideStoreId = addressOverrides[dest];
+            const store = stores.find(s => s.id === overrideStoreId);
+            if (!store) continue;
+            overrideVisits.push({
+              vehicleVin: vehicle.vin,
+              vehicleId: vehicle.vehicleId,
+              type: 'store',
+              locationId: store.id,
+              locationName: store.name,
+              lat: store.lat,
+              lng: store.lng,
+              time: dp.departureTime || dp.arrivalTime || dp.time,
+              arrivalTime: dp.departureTime || dp.arrivalTime,
+              departureTime: dp.departureTime,
+              dwellMinutes: null,
+            });
+            overrideVisitRecords.push({ storeId: store.id, date: selectedDate });
+          }
+          if (overrideVisits.length > 0) {
+            logTravelEntries(overrideVisits);
+            bulkRecordVisits(overrideVisitRecords);
+            totalVisits += overrideVisits.length;
+            console.log(`[TravelLog] ${vehicle.label}: ${overrideVisits.length} auto-matched from address overrides`);
+          }
         }
       } catch (err) {
         console.error(`[TravelLog] Error processing ${vehicle.label}:`, err);
@@ -281,7 +312,7 @@ export default function TravelLog() {
         type: 'success',
       });
     }
-  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, logTravelEntries, bulkRecordVisits]);
+  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, addressOverrides, logTravelEntries, bulkRecordVisits]);
 
   // --- Manual store matching ---
   const matchCandidates = useMemo(() => {
@@ -337,9 +368,14 @@ export default function TravelLog() {
     }]);
     // Record the visit in visit history
     bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
+    // Remember this destination → store mapping for future auto-matching
+    const dest = (matchingEntry.destination || '').trim();
+    if (dest) {
+      setAddressOverride(dest, store.id);
+    }
     setMatchingEntry(null);
     setMatchSearch('');
-  }, [matchingEntry, selectedDate, logTravelEntries, bulkRecordVisits]);
+  }, [matchingEntry, selectedDate, logTravelEntries, bulkRecordVisits, setAddressOverride]);
 
   return (
     <div className="tl-page">
@@ -534,6 +570,9 @@ export default function TravelLog() {
             <div className="tl-match-dest">
               <span className="tl-match-label">Motive Destination:</span>
               <span className="tl-match-addr">{matchingEntry.destination || matchingEntry.locationName?.split('\u2192')[1]?.trim() || 'Unknown'}</span>
+              {addressOverrides[(matchingEntry.destination || '').trim()] && (
+                <span className="tl-match-saved">Saved match: {stores.find(s => s.id === addressOverrides[(matchingEntry.destination || '').trim()])?.name || 'Unknown store'}</span>
+              )}
             </div>
             <input
               className="tl-match-search"

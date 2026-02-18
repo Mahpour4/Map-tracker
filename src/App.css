@@ -6303,6 +6303,13 @@ textarea {
   font-weight: 600;
   color: #3b82f6;
 }
+.tl-match-saved {
+  display: block;
+  font-size: 0.75rem;
+  color: #22c55e;
+  margin-top: 2px;
+  font-weight: 500;
+}
 .tl-match-search {
   margin: 0 20px 12px;
   padding: 8px 12px;
