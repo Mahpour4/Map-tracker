@@ -716,7 +716,7 @@ export default function TravelLog() {
                         : (entry.destination || cleanLocationName(entry.locationName) || (entry.lat && entry.lng ? `${entry.lat}, ${entry.lng}` : 'Unknown'));
                       const storeAddr = liveStore ? [liveStore.address, liveStore.city, liveStore.state].filter(Boolean).join(', ') : '';
                       const addr = isResolved
-                        ? (entry.destination || liveCl?.address || storeAddr || liveWh?.address || '')
+                        ? ((entry.destination || '').trim() || liveCl?.address || storeAddr || liveWh?.address || '')
                         : '';
                       return (
                         <>
