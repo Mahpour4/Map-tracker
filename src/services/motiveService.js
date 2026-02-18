@@ -90,6 +90,7 @@ async function motiveFetch(path, params = {}) {
     }
   }
 
+  console.log('[Motive] Fetching:', fetchUrl);
   const res = await fetch(fetchUrl, {
     headers: {
       'X-Api-Key': apiKey,
@@ -97,13 +98,17 @@ async function motiveFetch(path, params = {}) {
     },
   });
 
-  if (res.status === 401) {
-    throw new Error('Invalid Motive API key or unauthorized');
-  }
+  console.log('[Motive] Response:', res.status, res.statusText);
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error_message || err.message || `Motive API error: ${res.status}`);
+    const body = await res.text();
+    console.error('[Motive] Error body:', body);
+    if (res.status === 401) {
+      throw new Error('Invalid Motive API key or unauthorized');
+    }
+    let parsed = {};
+    try { parsed = JSON.parse(body); } catch (_) { /* not JSON */ }
+    throw new Error(parsed.error_message || parsed.message || `Motive API error: ${res.status} — ${body.slice(0, 200)}`);
   }
 
   return res.json();

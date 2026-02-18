@@ -11,7 +11,18 @@ export default defineConfig({
         target: 'https://api.gomotive.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/motive/, ''),
-        secure: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('[Motive Proxy] →', req.method, req.url, '→', proxyReq.path);
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            console.log('[Motive Proxy] ←', proxyRes.statusCode, req.url);
+          });
+          proxy.on('error', (err, req) => {
+            console.error('[Motive Proxy] ERROR', req.url, err.message);
+          });
+        },
       },
     },
   },
