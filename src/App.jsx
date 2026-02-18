@@ -8,6 +8,8 @@ import DataImport from './components/DataImport';
 import AlertLog from './components/AlertLog';
 import AlertAnalytics from './components/AlertAnalytics';
 import FleetTracker from './components/FleetTracker';
+import TravelLog from './components/TravelLog';
+import WarehouseSettings from './components/WarehouseSettings';
 import './App.css';
 
 function AppContent() {
@@ -61,6 +63,18 @@ function AppContent() {
           >
             Fleet Tracker
           </button>
+          <button
+            className={`page-nav-btn ${page === 'travelLog' ? 'active' : ''}`}
+            onClick={() => setPage('travelLog')}
+          >
+            Travel Log
+          </button>
+          <button
+            className={`page-nav-btn ${page === 'warehouses' ? 'active' : ''}`}
+            onClick={() => setPage('warehouses')}
+          >
+            Warehouses
+          </button>
         </div>
         {page === 'map' && <MapView />}
         {page === 'leaderboard' && <RouteLeaderboard />}
@@ -70,7 +84,9 @@ function AppContent() {
         {page === 'alerts' && <AlertLog />}
         {page === 'alertAnalytics' && <AlertAnalytics />}
         {page === 'fleet' && <FleetTracker />}
-        <div className="app-version">v1.3.1</div>
+        {page === 'travelLog' && <TravelLog />}
+        {page === 'warehouses' && <WarehouseSettings />}
+        <div className="app-version">v1.4.0</div>
       </main>
     </div>
   );

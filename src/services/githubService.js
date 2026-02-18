@@ -5,6 +5,8 @@ const ALERTS_FILE_PATH = 'src/data/alerts.csv';
 const SCHEDULES_FILE_PATH = 'src/data/schedules.json';
 const IMPORTLOG_FILE_PATH = 'src/data/importLog.json';
 const VISITHISTORY_FILE_PATH = 'src/data/visitHistory.json';
+const WAREHOUSES_FILE_PATH = 'src/data/warehouses.json';
+const TRAVELLOG_FILE_PATH = 'src/data/travelLog.json';
 const API_BASE = 'https://api.github.com';
 
 const TOKEN_KEY = 'github_pat';
@@ -13,6 +15,8 @@ const ALERTS_SHA_KEY = 'github_alerts_sha';
 const SCHEDULES_SHA_KEY = 'github_schedules_sha';
 const IMPORTLOG_SHA_KEY = 'github_importlog_sha';
 const VISITHISTORY_SHA_KEY = 'github_visithistory_sha';
+const WAREHOUSES_SHA_KEY = 'github_warehouses_sha';
+const TRAVELLOG_SHA_KEY = 'github_travellog_sha';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -427,6 +431,158 @@ export async function saveVisitHistoryJson(jsonContent, message) {
 
   const data = await res.json();
   saveVisitHistorySha(data.content.sha);
+  return data;
+}
+
+// ---- Warehouses JSON (GitHub sync) ----
+
+function getWarehousesSha() {
+  return localStorage.getItem(WAREHOUSES_SHA_KEY) || '';
+}
+
+function saveWarehousesSha(sha) {
+  localStorage.setItem(WAREHOUSES_SHA_KEY, sha);
+}
+
+export async function fetchWarehousesJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
+    { headers: headers() }
+  );
+
+  if (res.status === 404) {
+    return { content: '[]', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveWarehousesSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveWarehousesJson(jsonContent, message) {
+  let sha = getWarehousesSha();
+
+  if (!sha) {
+    try {
+      const current = await fetchWarehousesJson();
+      sha = current.sha;
+    } catch { /* file may not exist */ }
+  }
+
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+
+  const body = {
+    message: message || 'Update warehouses.json from Map Tracker app',
+    content: encoded,
+  };
+  if (sha) body.sha = sha;
+
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
+    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      const fresh = await fetchWarehousesJson();
+      const retryBody = { ...body, sha: fresh.sha };
+      const retryRes = await fetch(
+        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WAREHOUSES_FILE_PATH}`,
+        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
+      );
+      if (!retryRes.ok) throw new Error('Failed to save warehouses after retry');
+      const retryData = await retryRes.json();
+      saveWarehousesSha(retryData.content.sha);
+      return retryData;
+    }
+    throw new Error(err.message || `GitHub save failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  saveWarehousesSha(data.content.sha);
+  return data;
+}
+
+// ---- Travel Log JSON (GitHub sync) ----
+
+function getTravelLogSha() {
+  return localStorage.getItem(TRAVELLOG_SHA_KEY) || '';
+}
+
+function saveTravelLogSha(sha) {
+  localStorage.setItem(TRAVELLOG_SHA_KEY, sha);
+}
+
+export async function fetchTravelLogJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
+    { headers: headers() }
+  );
+
+  if (res.status === 404) {
+    return { content: '{}', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveTravelLogSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveTravelLogJson(jsonContent, message) {
+  let sha = getTravelLogSha();
+
+  if (!sha) {
+    try {
+      const current = await fetchTravelLogJson();
+      sha = current.sha;
+    } catch { /* file may not exist */ }
+  }
+
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+
+  const body = {
+    message: message || 'Update travelLog.json from Map Tracker app',
+    content: encoded,
+  };
+  if (sha) body.sha = sha;
+
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
+    { method: 'PUT', headers: headers(), body: JSON.stringify(body) }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      const fresh = await fetchTravelLogJson();
+      const retryBody = { ...body, sha: fresh.sha };
+      const retryRes = await fetch(
+        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRAVELLOG_FILE_PATH}`,
+        { method: 'PUT', headers: headers(), body: JSON.stringify(retryBody) }
+      );
+      if (!retryRes.ok) throw new Error('Failed to save travel log after retry');
+      const retryData = await retryRes.json();
+      saveTravelLogSha(retryData.content.sha);
+      return retryData;
+    }
+    throw new Error(err.message || `GitHub save failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  saveTravelLogSha(data.content.sha);
   return data;
 }
 

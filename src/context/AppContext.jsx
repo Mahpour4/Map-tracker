@@ -2,10 +2,12 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
+import localWarehouses from '../data/warehouses.json';
+import localTravelLog from '../data/travelLog.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -42,6 +44,10 @@ const initialState = {
   fleetSyncStatus: 'idle', // idle | loading | error | connected
   fleetSyncError: null,
   showVehiclesOnMap: false,
+  // Proximity auto-visit & travel log
+  warehouses: localWarehouses, // [{ id, name, address, lat, lng }]
+  travelLog: localTravelLog,  // { "YYYY-MM-DD": { "vehicleVin": [{ time, type, locationId, locationName }] } }
+  autoVisitEnabled: true,
 };
 
 const easternShoreSubsections = {
@@ -301,6 +307,41 @@ function reducer(state, action) {
       return { ...state, showVehiclesOnMap: !state.showVehiclesOnMap };
     case 'SET_VEHICLES_ON_MAP':
       return { ...state, showVehiclesOnMap: action.payload };
+    // Warehouses
+    case 'LOAD_WAREHOUSES':
+      return { ...state, warehouses: action.payload };
+    case 'SET_WAREHOUSES':
+      return { ...state, warehouses: action.payload };
+    // Travel Log
+    case 'LOAD_TRAVEL_LOG':
+      return { ...state, travelLog: action.payload };
+    case 'LOG_TRAVEL_ENTRIES': {
+      // action.payload: [{ vehicleVin, type, locationId, locationName, lat, lng, time }]
+      const entries = action.payload;
+      if (entries.length === 0) return state;
+      const today = localDateStr();
+      const newLog = { ...state.travelLog };
+      if (!newLog[today]) newLog[today] = {};
+      entries.forEach(entry => {
+        if (!newLog[today][entry.vehicleVin]) newLog[today][entry.vehicleVin] = [];
+        // Dedup: skip if already logged this location today for this vehicle
+        const existing = newLog[today][entry.vehicleVin];
+        if (!existing.some(e => e.locationId === entry.locationId)) {
+          existing.push({
+            time: entry.time,
+            type: entry.type,
+            locationId: entry.locationId,
+            locationName: entry.locationName,
+            lat: entry.lat,
+            lng: entry.lng,
+            distance: entry.distance,
+          });
+        }
+      });
+      return { ...state, travelLog: newLog };
+    }
+    case 'TOGGLE_AUTO_VISIT':
+      return { ...state, autoVisitEnabled: !state.autoVisitEnabled };
     default:
       return state;
   }
@@ -621,6 +662,73 @@ export function AppProvider({ children }) {
     return () => { if (importLogSaveTimer.current) clearTimeout(importLogSaveTimer.current); };
   }, [state.importLog]);
 
+  // Load warehouses from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchWarehousesJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (Array.isArray(data)) {
+            dispatch({ type: 'LOAD_WAREHOUSES', payload: data });
+          }
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load warehouses:', err);
+      });
+  }, []);
+
+  // Auto-save warehouses to GitHub when they change
+  const prevWarehousesRef = useRef(state.warehouses);
+  const warehousesSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevWarehousesRef.current === state.warehouses) return;
+    prevWarehousesRef.current = state.warehouses;
+
+    if (warehousesSaveTimer.current) clearTimeout(warehousesSaveTimer.current);
+    warehousesSaveTimer.current = setTimeout(() => {
+      saveWarehousesJson(JSON.stringify(state.warehouses))
+        .catch((err) => console.error('Failed to save warehouses:', err));
+    }, 2000);
+
+    return () => { if (warehousesSaveTimer.current) clearTimeout(warehousesSaveTimer.current); };
+  }, [state.warehouses]);
+
+  // Load travel log from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchTravelLogJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          dispatch({ type: 'LOAD_TRAVEL_LOG', payload: data });
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load travel log:', err);
+      });
+  }, []);
+
+  // Auto-save travel log to GitHub when it changes
+  const prevTravelLogRef = useRef(state.travelLog);
+  const travelLogSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevTravelLogRef.current === state.travelLog) return;
+    prevTravelLogRef.current = state.travelLog;
+    if (Object.keys(state.travelLog).length === 0) return;
+
+    if (travelLogSaveTimer.current) clearTimeout(travelLogSaveTimer.current);
+    travelLogSaveTimer.current = setTimeout(() => {
+      saveTravelLogJson(JSON.stringify(state.travelLog))
+        .catch((err) => console.error('Failed to save travel log:', err));
+    }, 2000);
+
+    return () => { if (travelLogSaveTimer.current) clearTimeout(travelLogSaveTimer.current); };
+  }, [state.travelLog]);
+
   const actions = {
     addStore: useCallback(
       (store) => dispatch({ type: 'ADD_STORE', payload: store }),
@@ -736,6 +844,20 @@ export function AppProvider({ children }) {
     ),
     setVehiclesOnMap: useCallback(
       (show) => dispatch({ type: 'SET_VEHICLES_ON_MAP', payload: show }),
+      []
+    ),
+    // Warehouses
+    setWarehouses: useCallback(
+      (warehouses) => dispatch({ type: 'SET_WAREHOUSES', payload: warehouses }),
+      []
+    ),
+    // Travel log
+    logTravelEntries: useCallback(
+      (entries) => dispatch({ type: 'LOG_TRAVEL_ENTRIES', payload: entries }),
+      []
+    ),
+    toggleAutoVisit: useCallback(
+      () => dispatch({ type: 'TOGGLE_AUTO_VISIT' }),
       []
     ),
   };
