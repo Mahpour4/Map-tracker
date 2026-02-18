@@ -394,6 +394,39 @@ function reducer(state, action) {
       }
       return { ...state, travelLog: newLog };
     }
+    case 'UNMATCH_ENTRY': {
+      // Revert a matched entry back to driving / unmatched
+      const { vehicleVin: umVin, date: umDate, locationId: umLocId } = action.payload;
+      const umLog = { ...state.travelLog };
+      if (umLog[umDate] && umLog[umDate][umVin]) {
+        umLog[umDate] = { ...umLog[umDate] };
+        const umEntries = [...umLog[umDate][umVin]];
+        const umIdx = umEntries.findIndex(e => e.locationId === umLocId);
+        if (umIdx !== -1) {
+          const e = umEntries[umIdx];
+          const dest = (e.destination || '').trim();
+          umEntries[umIdx] = {
+            ...e,
+            type: 'driving',
+            locationId: `driving-${umDate}-${umVin}-${umIdx}`,
+            locationName: dest
+              ? `${e.locationName?.split(' → ')[0] || 'Unknown'} → ${dest}`
+              : (e.destination || e.locationName),
+          };
+          umLog[umDate][umVin] = umEntries;
+        }
+      }
+      // Also remove address override that pointed to this location
+      const newOverrides = { ...state.addressOverrides };
+      let overrideChanged = false;
+      Object.keys(newOverrides).forEach(key => {
+        if (newOverrides[key] === umLocId) {
+          delete newOverrides[key];
+          overrideChanged = true;
+        }
+      });
+      return { ...state, travelLog: umLog, ...(overrideChanged ? { addressOverrides: newOverrides } : {}) };
+    }
     case 'TOGGLE_AUTO_VISIT':
       return { ...state, autoVisitEnabled: !state.autoVisitEnabled };
     // Address overrides (destination → storeId memory)
@@ -441,8 +474,58 @@ function reducer(state, action) {
       });
       return { ...state, customLocations: newCustomLocations, travelLog: logChanged ? newTravelLog : state.travelLog };
     }
-    case 'DELETE_CUSTOM_LOCATION':
-      return { ...state, customLocations: state.customLocations.filter(cl => cl.id !== action.payload) };
+    case 'DELETE_CUSTOM_LOCATION': {
+      const delId = action.payload;
+      const filteredCustomLocations = state.customLocations.filter(cl => cl.id !== delId);
+      // Revert travel log entries that reference this custom location back to driving
+      const delLog = { ...state.travelLog };
+      let delLogChanged = false;
+      Object.keys(delLog).forEach(dateKey => {
+        const dayLog = delLog[dateKey];
+        Object.keys(dayLog).forEach(vin => {
+          const entries = dayLog[vin];
+          for (let i = 0; i < entries.length; i++) {
+            if (entries[i].locationId === delId) {
+              if (!delLogChanged) {
+                delLog[dateKey] = { ...dayLog };
+                delLog[dateKey][vin] = [...entries];
+                delLogChanged = true;
+              } else if (delLog[dateKey] === dayLog) {
+                delLog[dateKey] = { ...dayLog };
+                delLog[dateKey][vin] = [...entries];
+              } else if (delLog[dateKey][vin] === entries) {
+                delLog[dateKey][vin] = [...entries];
+              }
+              const e = delLog[dateKey][vin][i];
+              const dest = (e.destination || '').trim();
+              delLog[dateKey][vin][i] = {
+                ...e,
+                type: 'driving',
+                locationId: `driving-${dateKey}-${vin}-${i}`,
+                locationName: dest
+                  ? `${e.locationName?.split(' → ')[0] || 'Unknown'} → ${dest}`
+                  : (e.destination || (e.lat && e.lng ? `${e.lat}, ${e.lng}` : e.locationName)),
+              };
+            }
+          }
+        });
+      });
+      // Also remove address overrides that pointed to this custom location
+      const delOverrides = { ...state.addressOverrides };
+      let delOverrideChanged = false;
+      Object.keys(delOverrides).forEach(key => {
+        if (delOverrides[key] === delId) {
+          delete delOverrides[key];
+          delOverrideChanged = true;
+        }
+      });
+      return {
+        ...state,
+        customLocations: filteredCustomLocations,
+        travelLog: delLogChanged ? delLog : state.travelLog,
+        ...(delOverrideChanged ? { addressOverrides: delOverrides } : {}),
+      };
+    }
     default:
       return state;
   }
@@ -1034,6 +1117,10 @@ export function AppProvider({ children }) {
     ),
     manualMatchEntries: useCallback(
       (updates) => dispatch({ type: 'MANUAL_MATCH_ENTRIES', payload: updates }),
+      []
+    ),
+    unmatchEntry: useCallback(
+      (vehicleVin, date, locationId) => dispatch({ type: 'UNMATCH_ENTRY', payload: { vehicleVin, date, locationId } }),
       []
     ),
     toggleAutoVisit: useCallback(
