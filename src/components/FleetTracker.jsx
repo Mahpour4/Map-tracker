@@ -12,7 +12,6 @@ import {
   setCorsProxy,
   isMotiveConnected,
   fetchVehicleLocations,
-  fetchDrivers,
   testMotiveConnection,
 } from '../services/motiveService';
 
@@ -89,22 +88,8 @@ export default function FleetTracker() {
     if (!isMotiveConnected()) return;
     setFleetSyncStatus('loading');
     try {
-      const [locations, drivers] = await Promise.all([
-        fetchVehicleLocations(),
-        fetchDrivers().catch(() => []),
-      ]);
-
-      const driverByVehicleId = {};
-      drivers.forEach(d => {
-        if (d.vehicles) {
-          d.vehicles.forEach(v => {
-            driverByVehicleId[v.id] = {
-              name: `${d.first_name || ''} ${d.last_name || ''}`.trim(),
-              status: d.duty_status || null,
-            };
-          });
-        }
-      });
+      // v2 vehicle_locations includes driver info — no separate drivers call needed
+      const locations = await fetchVehicleLocations();
 
       console.log('[Fleet] Merging', locations.length, 'API locations with', fleetVehicles.length, 'local vehicles');
       const merged = fleetVehicles.map(fv => {
