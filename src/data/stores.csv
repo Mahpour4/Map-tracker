@@ -89,11 +89,11 @@ FLW02117,FLW02117,Food Lion 2117,31810 River Rd,Millington,MD,21651,210,Route 21
 FLW02123,FLW02123,Food Lion 2123,37468 LION DR,Selbyville,DE,19975,206,Route 206 Driver,Delaware,Selbyville,Selbyville,38.4741288,-75.1062007,2026-02-12,2026-02-12,No
 FLW02224,02224,Food Lion,22954 SUSSEX HWY,SEAFORD,DE,19973,210,Route 210 Driver,Delaware,SEAFORD,SEAFORD,38.6529282,-75.594538,,2026-02-18,No
 FLW00246,FLW00246,Food Lion 246,11801 COASTAL HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.42258,-75.0560709,2026-02-12,2026-02-12,No
-FLW02508,02508,Food Lion 2508,22485 Lankford Hwy,Cape Charles,VA,23310,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.2693824,-75.973054,,2026-02-17,No
+FLW02508,02508,Food Lion 2508,22485 Lankford Hwy,Cape Charles,VA,23310,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.2693824,-75.973054,2026-02-17,2026-02-17,No
 FLW02521,FLW02521,Food Lion 2521,9537 Bridgeville Center Rd,Bridgeville,DE,19933,210,Route 210 Driver,Delaware,Bridgeville,Bridgeville,38.7191431,-75.5851018,,2026-02-12,No
-FLW02561,02561,Food Lion 2561,110 BROADKILL RD,Milton,DE,19968,206,Route 206 Driver,Delaware,Milton,Milton,38.7901428,-75.3148388,,2026-02-11,No
-FLW02614,FLW02614,Food Lion 2614,11007 MANKLIN CREEK RD,Berlin,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,Berlin,Berlin,38.3226,-75.2177,,2026-02-12,No
-FLW02688,02688,Food Lion 2688,1 JACKSONVILLE RD,Crisfield,MD,21817,210,Route 210 Driver,Eastern Shore Maryland,Crisfield,Crisfield,37.9919984,-75.8445847,,2026-02-10,No
+FLW02561,02561,Food Lion 2561,110 BROADKILL RD,Milton,DE,19968,206,Route 206 Driver,Delaware,Milton,Milton,38.7901428,-75.3148388,2026-02-11,2026-02-11,No
+FLW02614,FLW02614,Food Lion 2614,11007 MANKLIN CREEK RD,Berlin,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,Berlin,Berlin,38.3226,-75.2177,2026-02-12,2026-02-12,No
+FLW02688,02688,Food Lion 2688,1 JACKSONVILLE RD,Crisfield,MD,21817,210,Route 210 Driver,Eastern Shore Maryland,Crisfield,Crisfield,37.9919984,-75.8445847,2026-02-17,2026-02-10,No
 FLW00397,FLW00397,Food Lion 397,9936 STEPHEN DECATUR HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.335623,-75.111881,2026-02-12,2026-02-12,No
 FLW00490,00490,Food Lion 490,25102 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.7012511,-75.7148439,2026-02-17,2026-02-17,No
 FLW00658,FLW00658,Food Lion 658,10138 OLD OCEAN CITY BLVD,BERLIN,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,BERLIN,BERLIN,38.333511,-75.2112983,2026-02-12,2026-02-12,No
@@ -107,17 +107,17 @@ IND00106,IND00106,OC Dollar Plus,203 Philadelphia Ave,Ocean City,MD,21842,210,Ro
 IND00107,IND00107,Ocean Exxon,324 Sunburst Hwy,Cambridge,MD,21613,210,Route 210 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.5640555,-76.0654365,,,Yes
 RDW00013,RDW00013,Redners 13,1388 SALT CREEK DR,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.161852568574055,-75.51963987995825,,2026-02-11,No
 RDW00056,RDW00056,Redners 56,24120 Zinfandel Ln,Lewes,DE,19958,210,Route 210 Driver,Delaware,Lewes,Lewes,38.7447928,-75.186878,,2026-02-13,No
-RDW00057,RDW00057,Redners 15,28253 LEXUS DR,Milford,DE,19963,210,Route 210 Driver,Delaware,Milford,Milford,38.8973253,-75.4412135,,2026-02-11,No
+RDW00057,RDW00057,Redners 15,28253 LEXUS DR,Milford,DE,19963,210,Route 210 Driver,Delaware,Milford,Milford,38.8973253,-75.4412135,2026-02-11,2026-02-11,No
 RDW00044,RDW00044,Redners 16,25 GREENTREE DR,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1609269,-75.5567543,,2026-02-11,No
 IND00108,IND00108,Seaside Deli,7207 Coastal Hwy,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.3937273,-75.0639322,,,Yes
 AMW02679,AMW02679,Acme 2679,18578 Coastal Hwy,Lewes,DE,19958,210,Route 210 Driver,Delaware,Lewes,Lewes,38.774761467228245,-75.14238858409426,2026-02-13,2026-02-13,No
 IND00102,IND00102,Exxon,100 Dominion Rd,Cambridge,MD,21613,210,Route 210 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.566852568574056,-76.07413987995825,,,Yes
-IND20000,IND20000,G&E Hocker's,695 Bethany Loop,Bethany Beach,DE,19930,206,Route 206 Driver,Delaware,Bethany Beach,Bethany Beach,38.5546721,-75.0824879,,2026-02-12,No
+IND20000,IND20000,G&E Hocker's,695 Bethany Loop,Bethany Beach,DE,19930,206,Route 206 Driver,Delaware,Bethany Beach,Bethany Beach,38.5546721,-75.0824879,2026-02-12,2026-02-12,No
 IND00103,IND00103,Linkwood Market,Linkwood,Linkwood,MD,21835,210,Route 210 Driver,Eastern Shore Maryland,MD,MD,38.5367424,-75.9555906,,,Yes
 IND00104,IND00104,Montego Bay Supermarket,12903 COASTAL HWY,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4345355,-75.0542625,,,Yes
-RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,210,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,,2026-02-13,No
+RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,210,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,2026-02-13,2026-02-13,No
 FLW02522,FLW02522,Food Lion 2522,2466 CENTREVILLE RD,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.044,-76.0667,,2026-02-12,No
-FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,,2026-02-17,No
+FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,2026-02-17,2026-02-17,No
 WMW00272,WMW00272,Weis Market 272,24832 JOHN J WILLIAMS HWY,Millsboro,DE,19966,210,Route 210 Driver,Delaware,Millsboro,Millsboro,38.6369733,-75.1950002,,2026-02-13,No
 AMW02836,AMW02836,Acme 2836,236 E Glenwood Ave,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Smyrna,Smyrna,39.3051701,-75.6090861,,2026-02-17,No
 AMW00293,AMW00293,Acme 293,9507 COASTAL HWY,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4104309,-75.0582964,2026-02-05,2025-10-30 10:48:48,No
@@ -281,7 +281,7 @@ CASH0174,CASH0174,Gomez K&S Grocery Stores,1301 N Luzerne Ave,Baltimore,MD,,204,
 CASH0247,CASH0247,M&P Grocery,2600 E Chase St,Baltimore,MD,21213,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3039115,-76.5810478,,2026-02-10,No
 CASH0384,CASH0384,Taylor Market And Tobacco,4123 Frederick Ave,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2815062,-76.6844563,,2026-02-10,No
 CASH3035,CASH3035,Broway Mart,1000 N Broadway,Baltimore,MD,21205,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3019796,-76.5948618,,2026-02-10,No
-WAW01890,WAW01890,Walmart 1890,2702 N Salisbury Blvd,Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4150861,-75.5661521,,2026-02-10,No
+WAW01890,WAW01890,Walmart 1890,2702 N Salisbury Blvd,Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4150861,-75.5661521,2026-02-10,2026-02-10,No
 IND00045,IND00045,Ner Israel Rabbinical Col,400 Mount Wilson Ln,Baltimore,MD,21208,211,Route 211 Driver,Baltimore County,Baltimore County,Baltimore County,39.3894014,-76.7529373,,2026-02-13,No
 SV000001,SV000001,Seven Mile Market,201 Reisterstown Rd,Pikesville,MD,21208,211,Route 211 Driver,Baltimore County,Baltimore County,Baltimore County,39.3659267,-76.7125918,,2026-02-16,No
 CASH0002,CASH0002,24/7 Supermart,329 S Marlyn Ave,Essex,MD,21221,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.3084747,-76.4641879,,2025-09-18,Yes
@@ -348,9 +348,9 @@ WGW00056,00056,Wegmans 056,20600 SENECA MEADOWS PKWY,Germantown,MD,20876,207,Rou
 CMW05217,05217,Comm Dover AFB 5217,268 GALAXY ST,Dover AFB,DE,19902,206,Route 206 Driver,Delaware,Dover,Dover,39.1582,-75.5244,,,Yes
 CMW05720,05720,Comm Aberdeen Navy 5720,3400 SPRINGFIELD ST,Aberdeen Proving Ground,MD,21005,200,Route 200 Driver,Harford County,Aberdeen,Aberdeen,39.5093,-76.1641,,,Yes
 CMW06264,06264,Comm Ft Detrick 6264,1510 PORTER ST,Frederick,MD,21702,201,Route 201 Driver,Frederick County,Frederick,Frederick,39.4362646,-77.4240179,,2026-02-13,No
-IND20001,IND20001,Hocker's Supercenter,34960 Atlantic Ave,Ocean View,DE,19970,206,Route 206 Driver,Delaware,Ocean View,Ocean View,38.5432866,-75.085131,,2026-01-30,No
-IND20002,IND20002,Ocean Waves,2 Dorchester St unit 108/109,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3284,-75.087,,2025-07-16,Yes
-RDW00091,RDW00091,REDNERS MARKET 91,24120 Zinfandel Ln,Lewes,DE,19958,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.7447928,-75.186878,,2026-02-13,No
+IND20001,IND20001,Hocker's Supercenter,34960 Atlantic Ave,Ocean View,DE,19970,206,Route 206 Driver,Delaware,Ocean View,Ocean View,38.5432866,-75.085131,2026-01-30,2026-01-30,No
+IND20002,IND20002,Ocean Waves,2 Dorchester St unit 108/109,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3284,-75.087,2025-07-16,2025-07-16,Yes
+RDW00091,RDW00091,REDNERS MARKET 91,24120 Zinfandel Ln,Lewes,DE,19958,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.7447928,-75.186878,2026-02-13,2026-02-13,No
 SL000002,SL000002,Save A Lot- Salisbury,220 Cypress St,Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Lower Shore,38.3687172,-75.6065072,,,Yes
 WAW02560,WAW02560,WALMART 2560,11416 Ocean Gtwy,Berlin,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,Berlin,Ocean City & Coastal,38.3226,-75.2177,,2025-03-11,Yes
 WAW02791,WAW02791,Walmart 2791,4 College Park Dr,Georgetown,DE,19947,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.6904,-75.3857,,,Yes
@@ -701,3 +701,5 @@ CASH0542,CASH0542,B&J Market,31795 Mt Hermon Rd,Salisbury,MD,21804,206,Route 206
 CASH3007,CASH3007,OC Dollar Plus,203 Philadelphia Ave,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.32763673022289,-75.086462833599,2025-07-30,,Yes
 CASH3018,CASH3018,Crown Gas and Diesel Station,"28768 Ocean Gtwy,",Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Lower Shore,38.33852689121973,-75.59021559762324,,,Yes
 CASH3027,CASH3027,Friendly Grocery,2819 E Madison St,Baltimore,MD,21205,206,Route 206 Driver,Baltimore City,Baltimore City,Baltimore City,39.28153673022289,-76.613762833599,,,Yes
+MISC0206,MISC0206,Misc Cash 206,,,,,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,,,,,Yes
+WAW02419,WAW02419,WALMART 2419,18922 Rehoboth Mall Blvd Rehoboth,Beach,DE,19971,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.7272164,-75.1323889,,,Yes
