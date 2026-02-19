@@ -781,12 +781,22 @@ export default function TravelLog() {
               const dest = isGarbageLocation(parts[1]) ? 'Unknown' : parts[1];
               const originQ = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(origin);
               const destQ = (entry.destinationLat && entry.destinationLng) ? `${entry.destinationLat},${entry.destinationLng}` : encodeURIComponent(dest);
+              const originText = entry.origin || cleanLocationName(entry.locationName || '').split(' \u2192 ')[0] || '';
               return (
-                <>
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{origin}</a>
-                  {' \u2192 '}
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
-                </>
+                <div className="tl-driving-endpoints">
+                  <div className="tl-driving-row">
+                    <span className="tl-driving-label">Start:</span>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{origin}</a>
+                    {!isGarbageLocation(originText) && (
+                      <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}>Match Origin</button>
+                    )}
+                  </div>
+                  <div className="tl-driving-row">
+                    <span className="tl-driving-label">End:</span>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
+                    <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match Dest</button>
+                  </div>
+                </div>
               );
             })() : (() => {
               const displayName = isResolved
@@ -857,28 +867,14 @@ export default function TravelLog() {
                 </>
               );
             })()}
-            {(entry.type === 'driving' || effectivelyUnmatched) && (() => {
-              const originText = entry.origin ||
-                cleanLocationName(entry.locationName || '').split(' \u2192 ')[0] || '';
-              return (
-                <>
-                  {!isGarbageLocation(originText) && (
-                    <button
-                      className="tl-match-btn"
-                      onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}
-                    >
-                      Match Origin
-                    </button>
-                  )}
-                  <button
-                    className="tl-match-btn"
-                    onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}
-                  >
-                    Match Dest
-                  </button>
-                </>
-              );
-            })()}
+            {effectivelyUnmatched && (
+              <button
+                className="tl-match-btn"
+                onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}
+              >
+                Match Location
+              </button>
+            )}
             {entry.locationId && liveCl && (
               <>
                 <button

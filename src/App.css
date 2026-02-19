@@ -6735,6 +6735,26 @@ textarea {
   border-bottom-style: solid;
 }
 
+/* Driving period two-row start/end layout */
+.tl-driving-endpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tl-driving-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tl-driving-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
 /* Address-match suggestion badge */
 .tl-suggestion-badge {
   display: inline-flex;
