@@ -344,14 +344,20 @@ function reducer(state, action) {
         const dateKey = forceDate || (entry.time ? entry.time.slice(0, 10) : fallbackDate);
         if (!newLog[dateKey]) newLog[dateKey] = {};
         if (!newLog[dateKey][entry.vehicleVin]) newLog[dateKey][entry.vehicleVin] = [];
-        // Dedup: skip if already logged this location for this vehicle on this date
+        // Dedup: skip if already logged this exact location+time for this vehicle
+        // Use locationId + time-to-the-minute so the same place can be visited multiple times per day
         const existing = newLog[dateKey][entry.vehicleVin];
-        if (!existing.some(e => e.locationId === entry.locationId)) {
+        const entryTimeKey = (entry.time || '').slice(0, 16);
+        if (!existing.some(e => e.locationId === entry.locationId && (e.time || '').slice(0, 16) === entryTimeKey)) {
+          // Sanitize locationName: repair double-encoded → arrow characters
+          const cleanName = (n) => n
+            ? n.replace(/\s*[\u00C0-\u00FF\u0080-\u009F]{3,}\s*/g, ' \u2192 ').replace(/\s*\u2192\s*/g, ' \u2192 ').trim()
+            : n;
           const record = {
             time: entry.time,
             type: entry.type,
             locationId: entry.locationId,
-            locationName: entry.locationName,
+            locationName: cleanName(entry.locationName),
             lat: entry.lat,
             lng: entry.lng,
             distance: entry.distance,

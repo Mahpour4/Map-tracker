@@ -6499,6 +6499,27 @@ textarea {
   font-weight: 400;
   color: #6b7280;
 }
+.tl-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tl-map-toggle-btn {
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tl-map-toggle-btn.active {
+  border-color: #6ee7b7;
+  background: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
 
 .tl-panel-scroll {
   flex: 1;
@@ -6752,6 +6773,16 @@ textarea {
   font-weight: 700;
   color: #6b7280;
   min-width: 36px;
+  flex-shrink: 0;
+}
+.tl-driving-matched {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  padding: 2px 8px;
   flex-shrink: 0;
 }
 

@@ -127,6 +127,9 @@ export default function TravelLog() {
   // Panel visibility toggles
   const [showBreadcrumbs, setShowBreadcrumbs] = useState(true);
   const [showDrivingPeriods, setShowDrivingPeriods] = useState(true);
+  // Per-panel map point toggles
+  const [breadcrumbsOnMap, setBreadcrumbsOnMap] = useState(true);
+  const [drivingOnMap, setDrivingOnMap] = useState(true);
 
   // Get all dates that have log entries, sorted descending
   const availableDates = useMemo(() => {
@@ -194,14 +197,14 @@ export default function TravelLog() {
     return { vehicleCount, storeVisits, warehouseVisits, drivingSegments, customVisits, total: storeVisits + warehouseVisits + customVisits };
   }, [travelLog, selectedDate, selectedVehicle]);
 
-  // Map-eligible entries — respects panel visibility toggles
+  // Map-eligible entries — respects both panel visibility and per-panel map toggles
   const mapEntries = useMemo(() => {
     let visible = [];
-    if (showBreadcrumbs) visible = visible.concat(breadcrumbEntries);
-    if (showDrivingPeriods) visible = visible.concat(drivingEntries);
+    if (showBreadcrumbs && breadcrumbsOnMap) visible = visible.concat(breadcrumbEntries);
+    if (showDrivingPeriods && drivingOnMap) visible = visible.concat(drivingEntries);
     visible.sort((a, b) => (a.arrivalTime || a.time || '').localeCompare(b.arrivalTime || b.time || ''));
     return visible.filter(e => isValidCoord(e.lat, e.lng));
-  }, [showBreadcrumbs, showDrivingPeriods, breadcrumbEntries, drivingEntries]);
+  }, [showBreadcrumbs, showDrivingPeriods, breadcrumbsOnMap, drivingOnMap, breadcrumbEntries, drivingEntries]);
   const mapPoints = useMemo(() => mapEntries.map(e => [e.lat, e.lng]), [mapEntries]);
 
   // Reactively compute address-match suggestions for all unmatched driving entries
@@ -781,20 +784,34 @@ export default function TravelLog() {
               const dest = isGarbageLocation(parts[1]) ? 'Unknown' : parts[1];
               const originQ = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(origin);
               const destQ = (entry.destinationLat && entry.destinationLng) ? `${entry.destinationLat},${entry.destinationLng}` : encodeURIComponent(dest);
-              const originText = entry.origin || cleanLocationName(entry.locationName || '').split(' \u2192 ')[0] || '';
+              const originText = (entry.origin || cleanLocationName(entry.locationName || '').split(' \u2192 ')[0] || '').trim();
+              const destText = (entry.destination || '').trim();
+              // Resolve via address overrides for immediate visual feedback after matching
+              const resolveId = (addr) => addr ? addressOverrides[addr] : null;
+              const resolveName = (id) => id
+                ? (customLocations.find(c => c.id === id)?.name || stores.find(s => s.id === id)?.name || warehouses.find(w => w.id === id)?.name)
+                : null;
+              const originResolvedName = resolveName(resolveId(originText));
+              const destResolvedName = resolveName(resolveId(destText));
               return (
                 <div className="tl-driving-endpoints">
                   <div className="tl-driving-row">
                     <span className="tl-driving-label">Start:</span>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{origin}</a>
-                    {!isGarbageLocation(originText) && (
-                      <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}>Match Start</button>
-                    )}
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{originResolvedName || origin}</a>
+                    {originResolvedName
+                      ? <span className="tl-driving-matched">✓ Matched</span>
+                      : !isGarbageLocation(originText) && (
+                          <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}>Match Start</button>
+                        )
+                    }
                   </div>
                   <div className="tl-driving-row">
                     <span className="tl-driving-label">End:</span>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
-                    <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match End</button>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{destResolvedName || dest}</a>
+                    {destResolvedName
+                      ? <span className="tl-driving-matched">✓ Matched</span>
+                      : <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match End</button>
+                    }
                   </div>
                 </div>
               );
@@ -1065,7 +1082,16 @@ export default function TravelLog() {
           <div className="tl-panel tl-panel-breadcrumbs">
             <div className="tl-panel-header">
               <span>Breadcrumb Visits</span>
-              <span className="tl-panel-count">{breadcrumbEntries.length} stops</span>
+              <div className="tl-panel-header-actions">
+                <span className="tl-panel-count">{breadcrumbEntries.length} stops</span>
+                <button
+                  className={`tl-map-toggle-btn${breadcrumbsOnMap ? ' active' : ''}`}
+                  onClick={() => setBreadcrumbsOnMap(b => !b)}
+                  title={breadcrumbsOnMap ? 'Hide on map' : 'Show on map'}
+                >
+                  {breadcrumbsOnMap ? '📍 Map On' : '📍 Map Off'}
+                </button>
+              </div>
             </div>
             <div className="tl-panel-scroll">
               <div className="tl-timeline">
@@ -1080,7 +1106,16 @@ export default function TravelLog() {
           <div className="tl-panel tl-panel-driving">
             <div className="tl-panel-header">
               <span>Driving Periods</span>
-              <span className="tl-panel-count">{drivingEntries.length} segments</span>
+              <div className="tl-panel-header-actions">
+                <span className="tl-panel-count">{drivingEntries.length} segments</span>
+                <button
+                  className={`tl-map-toggle-btn${drivingOnMap ? ' active' : ''}`}
+                  onClick={() => setDrivingOnMap(b => !b)}
+                  title={drivingOnMap ? 'Hide on map' : 'Show on map'}
+                >
+                  {drivingOnMap ? '📍 Map On' : '📍 Map Off'}
+                </button>
+              </div>
             </div>
             <div className="tl-panel-scroll">
               <div className="tl-timeline">
