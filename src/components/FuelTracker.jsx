@@ -3,15 +3,23 @@ import { fetchCardTransactions, fetchMotiveCards, fetchVehicles } from '../servi
 import { fleetVehicles } from '../data/fleetData';
 
 // ---- Persistence ----
-const CARD_ROUTE_MAP_KEY = 'fuel_card_route_map';
+const CARD_ROUTE_MAP_KEY    = 'fuel_card_route_map';
+const DECLINED_RECEIPTS_KEY = 'fuel_declined_receipts';
 
 function loadCardRouteMap() {
   try { return JSON.parse(localStorage.getItem(CARD_ROUTE_MAP_KEY) || '{}'); }
   catch { return {}; }
 }
-
 function saveCardRouteMap(map) {
   localStorage.setItem(CARD_ROUTE_MAP_KEY, JSON.stringify(map));
+}
+
+function loadDeclinedReceipts() {
+  try { return JSON.parse(localStorage.getItem(DECLINED_RECEIPTS_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveDeclinedReceipts(map) {
+  localStorage.setItem(DECLINED_RECEIPTS_KEY, JSON.stringify(map));
 }
 
 // ---- Route options from fleet data ----
@@ -77,6 +85,11 @@ export default function FuelTracker() {
   // motiveVehicleId → routeNumber (built when fetching)
   const [vehicleRouteMap, setVehicleRouteMap] = useState({});
 
+  // declined transaction receipt overrides
+  const [declinedReceipts, setDeclinedReceipts] = useState(loadDeclinedReceipts);
+  const [editingReceiptId, setEditingReceiptId] = useState(null);
+  const [receiptInput, setReceiptInput]         = useState('');
+
   const [activeTab, setActiveTab] = useState('route');
   const [filterRoute, setFilterRoute]   = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -98,13 +111,19 @@ export default function FuelTracker() {
     return null;
   }, [cardRouteMap, vehicleRouteMap]);
 
-  // ---- Enriched transactions (add route + card last4) ----
-  const enriched = useMemo(() => transactions.map(tx => ({
-    ...tx,
-    route: resolveRoute(tx) || 'Unknown',
-    last4: tx.last4 || cardInfoMap[tx.cardId]?.last4 || '',
-    cardName: cardInfoMap[tx.cardId]?.entityName || '',
-  })), [transactions, resolveRoute, cardInfoMap]);
+  // ---- Enriched transactions (route + card info + receipt override) ----
+  const enriched = useMemo(() => transactions.map(tx => {
+    const receipt = declinedReceipts[tx.id];
+    return {
+      ...tx,
+      route: resolveRoute(tx) || 'Unknown',
+      last4: tx.last4 || cardInfoMap[tx.cardId]?.last4 || '',
+      cardName: cardInfoMap[tx.cardId]?.entityName || '',
+      hasReceipt:    !!receipt,
+      receiptAmount: receipt ? parseFloat(receipt.amount) : 0,
+      receiptSavedAt: receipt ? receipt.savedAt : null,
+    };
+  }), [transactions, resolveRoute, cardInfoMap, declinedReceipts]);
 
   // ---- Fetch transactions + vehicles ----
   const fetchData = useCallback(async () => {
@@ -157,17 +176,39 @@ export default function FuelTracker() {
     });
   }, []);
 
+  // ---- Declined receipt management ----
+  const saveReceipt = useCallback((txId, amountStr) => {
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) return;
+    const updated = { ...declinedReceipts, [txId]: { amount, savedAt: new Date().toISOString() } };
+    setDeclinedReceipts(updated);
+    saveDeclinedReceipts(updated);
+    setEditingReceiptId(null);
+    setReceiptInput('');
+  }, [declinedReceipts]);
+
+  const removeReceipt = useCallback((txId) => {
+    const updated = { ...declinedReceipts };
+    delete updated[txId];
+    setDeclinedReceipts(updated);
+    saveDeclinedReceipts(updated);
+  }, [declinedReceipts]);
+
   // ---- Summary stats ----
   const summary = useMemo(() => {
-    let totalSpend = 0, totalGallons = 0, totalRebates = 0, declinedCount = 0;
+    let totalSpend = 0, totalGallons = 0, totalRebates = 0, declinedCount = 0, receiptCount = 0;
     enriched.forEach(tx => {
-      if (tx.declined) { declinedCount++; return; }
+      if (tx.declined) {
+        declinedCount++;
+        if (tx.hasReceipt) { receiptCount++; totalSpend += tx.receiptAmount; }
+        return;
+      }
       totalSpend   += tx.totalAmount;
       totalGallons += tx.totalGallons;
       totalRebates += tx.rebateAmount;
     });
     const avgPpg = totalGallons > 0 ? totalSpend / totalGallons : 0;
-    return { totalSpend, totalGallons, avgPpg, totalRebates, declinedCount, total: enriched.length };
+    return { totalSpend, totalGallons, avgPpg, totalRebates, declinedCount, receiptCount, total: enriched.length };
   }, [enriched]);
 
   // ---- Route stats ----
@@ -182,6 +223,11 @@ export default function FuelTracker() {
       ensureRoute(r);
       if (tx.declined) {
         map[r].declined++;
+        // Receipt confirmed — count toward route spend even though card was declined
+        if (tx.hasReceipt) {
+          map[r].count++;
+          map[r].spend += tx.receiptAmount;
+        }
         return;
       }
       map[r].count++;
@@ -346,7 +392,14 @@ export default function FuelTracker() {
           </div>
           <div className="fuel-stat-divider" />
           <div className="fuel-stat">
-            <span className="fuel-stat-val fuel-stat-red">{summary.declinedCount}</span>
+            <span className="fuel-stat-val fuel-stat-red">
+              {summary.declinedCount}
+              {summary.receiptCount > 0 && (
+                <span className="fuel-receipt-badge" title={`${summary.receiptCount} receipt(s) added`}>
+                  {summary.receiptCount} rcpt
+                </span>
+              )}
+            </span>
             <span className="fuel-stat-lbl">Declined</span>
           </div>
           <div className="fuel-stat-divider" />
@@ -537,11 +590,12 @@ export default function FuelTracker() {
                     <th className="fuel-th-sort" onClick={() => toggleSort('amount')}>Amount{sortIcon('amount')}</th>
                     <th>Odometer</th>
                     <th>Status</th>
+                    <th>Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTx.map(tx => (
-                    <tr key={tx.id} className={tx.declined ? 'fuel-row-declined' : ''}>
+                    <tr key={tx.id} className={tx.declined ? (tx.hasReceipt ? 'fuel-row-declined-receipt' : 'fuel-row-declined') : ''}>
                       <td className="fuel-td-mono">{tx.transactedAt ? tx.transactedAt.replace('T', ' ').slice(0, 16) : '—'}</td>
                       <td>
                         {tx.route !== 'Unknown'
@@ -559,6 +613,42 @@ export default function FuelTracker() {
                       <td className={tx.totalAmount > 0 ? 'fuel-td-amount' : ''}>{tx.totalAmount > 0 ? fmt$(tx.totalAmount) : '—'}</td>
                       <td className="fuel-td-mono">{tx.odometerRaw != null ? tx.odometerRaw.toFixed(0) : '—'}</td>
                       <td><span className={`fuel-status fuel-status-${tx.status || 'unknown'}`}>{tx.status || '—'}</span></td>
+                      <td className="fuel-receipt-cell">
+                        {tx.declined ? (
+                          tx.hasReceipt ? (
+                            <div className="fuel-receipt-confirmed">
+                              <span className="fuel-receipt-icon" title={`Saved ${tx.receiptSavedAt ? new Date(tx.receiptSavedAt).toLocaleDateString() : ''}`}>📄</span>
+                              <span className="fuel-receipt-amount">{fmt$(tx.receiptAmount)}</span>
+                              <button className="fuel-clear-btn" onClick={() => removeReceipt(tx.id)} title="Remove receipt">✕</button>
+                            </div>
+                          ) : editingReceiptId === tx.id ? (
+                            <div className="fuel-receipt-edit">
+                              <span className="fuel-receipt-edit-label">$</span>
+                              <input
+                                className="fuel-receipt-input"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={receiptInput}
+                                onChange={e => setReceiptInput(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') saveReceipt(tx.id, receiptInput);
+                                  if (e.key === 'Escape') { setEditingReceiptId(null); setReceiptInput(''); }
+                                }}
+                                autoFocus
+                              />
+                              <button className="fuel-receipt-save-btn" onClick={() => saveReceipt(tx.id, receiptInput)} title="Save receipt">✓</button>
+                              <button className="fuel-clear-btn" onClick={() => { setEditingReceiptId(null); setReceiptInput(''); }} title="Cancel">✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              className="fuel-add-receipt-btn"
+                              onClick={() => { setEditingReceiptId(tx.id); setReceiptInput(''); }}
+                            >+ Receipt</button>
+                          )
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
