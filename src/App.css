@@ -6776,14 +6776,30 @@ textarea {
   flex-shrink: 0;
 }
 .tl-driving-matched {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #16a34a;
+  /* hide JSX text; content shown via ::before */
+  font-size: 0;
+  color: transparent;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 20px;
-  padding: 2px 8px;
+  padding: 2px 10px;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.tl-driving-matched::before {
+  content: '✓ Matched';
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #16a34a;
+}
+.tl-driving-matched:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+.tl-driving-matched:hover::before {
+  content: 'Unmatch';
+  color: #dc2626;
 }
 
 /* Address-match suggestion badge */

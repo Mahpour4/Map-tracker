@@ -98,7 +98,7 @@ function createStopIcon(type, index) {
 }
 
 export default function TravelLog() {
-  const { state, logTravelEntries, manualMatchEntries, unmatchEntry, bulkRecordVisits, setAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
+  const { state, logTravelEntries, manualMatchEntries, unmatchEntry, bulkRecordVisits, setAddressOverride, removeAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
   const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides, customLocations } = state;
 
   const today = localDateStr();
@@ -788,18 +788,27 @@ export default function TravelLog() {
               const destText = (entry.destination || '').trim();
               // Resolve via address overrides for immediate visual feedback after matching
               const resolveId = (addr) => addr ? addressOverrides[addr] : null;
-              const resolveName = (id) => id
-                ? (customLocations.find(c => c.id === id)?.name || stores.find(s => s.id === id)?.name || warehouses.find(w => w.id === id)?.name)
-                : null;
-              const originResolvedName = resolveName(resolveId(originText));
-              const destResolvedName = resolveName(resolveId(destText));
+              const resolveLocation = (id) => {
+                if (!id) return null;
+                const cl = customLocations.find(c => c.id === id);
+                if (cl) return { name: cl.name, addr: cl.address || '' };
+                const st = stores.find(s => s.id === id);
+                if (st) return { name: st.name, addr: [st.address, st.city, st.state].filter(Boolean).join(', ') };
+                const wh = warehouses.find(w => w.id === id);
+                if (wh) return { name: wh.name, addr: wh.address || '' };
+                return null;
+              };
+              const originResolved = resolveLocation(resolveId(originText));
+              const destResolved = resolveLocation(resolveId(destText));
               return (
                 <div className="tl-driving-endpoints">
                   <div className="tl-driving-row">
                     <span className="tl-driving-label">Start:</span>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{originResolvedName || origin}</a>
-                    {originResolvedName
-                      ? <span className="tl-driving-matched">✓ Matched</span>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">
+                      {originResolved ? `${originResolved.name}${originResolved.addr ? ': ' + originResolved.addr : ''}` : origin}
+                    </a>
+                    {originResolved
+                      ? <button className="tl-driving-matched" onClick={(e) => { e.stopPropagation(); removeAddressOverride(originText); }}>✓ Matched</button>
                       : !isGarbageLocation(originText) && (
                           <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}>Match Start</button>
                         )
@@ -807,9 +816,11 @@ export default function TravelLog() {
                   </div>
                   <div className="tl-driving-row">
                     <span className="tl-driving-label">End:</span>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{destResolvedName || dest}</a>
-                    {destResolvedName
-                      ? <span className="tl-driving-matched">✓ Matched</span>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">
+                      {destResolved ? `${destResolved.name}${destResolved.addr ? ': ' + destResolved.addr : ''}` : dest}
+                    </a>
+                    {destResolved
+                      ? <button className="tl-driving-matched" onClick={(e) => { e.stopPropagation(); removeAddressOverride(destText); }}>✓ Matched</button>
                       : <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match End</button>
                     }
                   </div>

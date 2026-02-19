@@ -442,6 +442,12 @@ function reducer(state, action) {
       const { destination, storeId } = action.payload;
       return { ...state, addressOverrides: { ...state.addressOverrides, [destination]: storeId } };
     }
+    case 'REMOVE_ADDRESS_OVERRIDE': {
+      const { destination } = action.payload;
+      const next = { ...state.addressOverrides };
+      delete next[destination];
+      return { ...state, addressOverrides: next };
+    }
     // Custom locations (gas stations, storage, meeting points, driver homes, etc.)
     case 'LOAD_CUSTOM_LOCATIONS':
       return { ...state, customLocations: action.payload };
@@ -1136,6 +1142,10 @@ export function AppProvider({ children }) {
     // Address overrides
     setAddressOverride: useCallback(
       (destination, storeId) => dispatch({ type: 'SET_ADDRESS_OVERRIDE', payload: { destination, storeId } }),
+      []
+    ),
+    removeAddressOverride: useCallback(
+      (destination) => dispatch({ type: 'REMOVE_ADDRESS_OVERRIDE', payload: { destination } }),
       []
     ),
     // Custom locations
