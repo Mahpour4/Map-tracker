@@ -109,8 +109,8 @@ export default function TravelLog() {
   const [matchingEntry, setMatchingEntry] = useState(null);
   const [matchSearch, setMatchSearch] = useState('');
   const [matchTab, setMatchTab] = useState('stores'); // stores | custom | create
-  // Address-match suggestions: Map of locationId → store object
-  const [suggestions, setSuggestions] = useState(new Map());
+  // Dismissed suggestion keys: Set of "${locationId}-origin" or "${locationId}-dest"
+  const [dismissedSuggestions, setDismissedSuggestions] = useState(new Set());
   // Raw data popup
   const [rawData, setRawData] = useState(null); // { breadcrumbs: {vin: [...], ...}, drivingPeriods: [...] }
   const [showRawData, setShowRawData] = useState(false);
@@ -189,6 +189,32 @@ export default function TravelLog() {
   // Map-eligible entries
   const mapEntries = useMemo(() => dayEntries.filter(e => isValidCoord(e.lat, e.lng)), [dayEntries]);
   const mapPoints = useMemo(() => mapEntries.map(e => [e.lat, e.lng]), [mapEntries]);
+
+  // Reactively compute address-match suggestions for all unmatched driving entries
+  const suggestions = useMemo(() => {
+    const result = new Map();
+    dayEntries.forEach(entry => {
+      if (entry.type !== 'driving') return;
+      const vehicle = vehicleList.find(v => v.vin === entry.vehicleVin);
+      const routeStores = stores.filter(s =>
+        vehicle?.routeNumber && String(s.routeNumber).trim() === String(vehicle.routeNumber).trim()
+      );
+      const dest = (entry.destination || '').trim();
+      const origin = (entry.origin || '').trim();
+      const suggestionEntry = {};
+
+      if (dest && !addressOverrides[dest] && !dismissedSuggestions.has(`${entry.locationId}-dest`)) {
+        const m = findAddressMatch(dest, routeStores);
+        if (m?.confidence === 'low') suggestionEntry.dest = m.store;
+      }
+      if (origin && !addressOverrides[origin] && !dismissedSuggestions.has(`${entry.locationId}-origin`)) {
+        const m = findAddressMatch(origin, routeStores);
+        if (m?.confidence === 'low') suggestionEntry.origin = m.store;
+      }
+      if (Object.keys(suggestionEntry).length > 0) result.set(entry.locationId, suggestionEntry);
+    });
+    return result;
+  }, [dayEntries, stores, vehicleList, addressOverrides, dismissedSuggestions]);
 
   // ---- Process Day ----
   const handleProcessDay = useCallback(async () => {
@@ -363,71 +389,55 @@ export default function TravelLog() {
           );
           const addrAutoMatches = [];
           const addrAutoVisitRecords = [];
-          const newSuggestions = new Map();
 
           for (const dp of drivingEntries) {
             const dest = (dp.destination || '').trim();
             const origin = (dp.origin || '').trim();
-            const suggestionEntry = {};
 
-            // Destination matching
+            // Destination matching (high confidence only — low confidence shown via reactive suggestions)
             if (dest && !addressOverrides[dest]) {
               const destMatch = findAddressMatch(dest, routeStores);
-              if (destMatch) {
-                if (destMatch.confidence === 'high') {
-                  addrAutoMatches.push({
-                    vehicleVin: vehicle.vin,
-                    date: selectedDate,
-                    oldLocationId: dp.locationId,
-                    newEntry: {
-                      type: 'store',
-                      locationId: destMatch.store.id,
-                      locationName: destMatch.store.name,
-                      lat: destMatch.store.lat,
-                      lng: destMatch.store.lng,
-                    },
-                  });
-                  addrAutoVisitRecords.push({ storeId: destMatch.store.id, date: selectedDate });
-                  setAddressOverride(dest, destMatch.store.id);
-                  console.log(`[TravelLog] ${vehicle.label}: address match (high) dest "${dest}" → "${destMatch.store.name}"`);
-                } else {
-                  suggestionEntry.dest = destMatch.store;
-                  console.log(`[TravelLog] ${vehicle.label}: address suggestion (low) dest "${dest}" → "${destMatch.store.name}"`);
-                }
+              if (destMatch?.confidence === 'high') {
+                addrAutoMatches.push({
+                  vehicleVin: vehicle.vin,
+                  date: selectedDate,
+                  oldLocationId: dp.locationId,
+                  newEntry: {
+                    type: 'store',
+                    locationId: destMatch.store.id,
+                    locationName: destMatch.store.name,
+                    lat: destMatch.store.lat,
+                    lng: destMatch.store.lng,
+                  },
+                });
+                addrAutoVisitRecords.push({ storeId: destMatch.store.id, date: selectedDate });
+                setAddressOverride(dest, destMatch.store.id);
+                console.log(`[TravelLog] ${vehicle.label}: address match (high) dest "${dest}" → "${destMatch.store.name}"`);
               }
             }
 
-            // Origin matching
+            // Origin matching (high confidence only)
             if (origin && !addressOverrides[origin]) {
               const originMatch = findAddressMatch(origin, routeStores);
-              if (originMatch) {
-                if (originMatch.confidence === 'high') {
-                  logTravelEntries([{
-                    vehicleVin: vehicle.vin,
-                    vehicleId: vehicle.vehicleId,
-                    type: 'store',
-                    locationId: originMatch.store.id,
-                    locationName: originMatch.store.name,
-                    lat: originMatch.store.lat,
-                    lng: originMatch.store.lng,
-                    time: dp.arrivalTime,
-                    arrivalTime: dp.arrivalTime,
-                    departureTime: dp.arrivalTime,
-                    dwellMinutes: null,
-                  }]);
-                  addrAutoVisitRecords.push({ storeId: originMatch.store.id, date: selectedDate });
-                  setAddressOverride(origin, originMatch.store.id);
-                  totalVisits++;
-                  console.log(`[TravelLog] ${vehicle.label}: address match (high) origin "${origin}" → "${originMatch.store.name}"`);
-                } else {
-                  suggestionEntry.origin = originMatch.store;
-                  console.log(`[TravelLog] ${vehicle.label}: address suggestion (low) origin "${origin}" → "${originMatch.store.name}"`);
-                }
+              if (originMatch?.confidence === 'high') {
+                logTravelEntries([{
+                  vehicleVin: vehicle.vin,
+                  vehicleId: vehicle.vehicleId,
+                  type: 'store',
+                  locationId: originMatch.store.id,
+                  locationName: originMatch.store.name,
+                  lat: originMatch.store.lat,
+                  lng: originMatch.store.lng,
+                  time: dp.arrivalTime,
+                  arrivalTime: dp.arrivalTime,
+                  departureTime: dp.arrivalTime,
+                  dwellMinutes: null,
+                }]);
+                addrAutoVisitRecords.push({ storeId: originMatch.store.id, date: selectedDate });
+                setAddressOverride(origin, originMatch.store.id);
+                totalVisits++;
+                console.log(`[TravelLog] ${vehicle.label}: address match (high) origin "${origin}" → "${originMatch.store.name}"`);
               }
-            }
-
-            if (Object.keys(suggestionEntry).length > 0) {
-              newSuggestions.set(dp.locationId, suggestionEntry);
             }
           }
 
@@ -435,9 +445,6 @@ export default function TravelLog() {
             manualMatchEntries(addrAutoMatches);
             if (addrAutoVisitRecords.length > 0) bulkRecordVisits(addrAutoVisitRecords);
             totalVisits += addrAutoMatches.length;
-          }
-          if (newSuggestions.size > 0) {
-            setSuggestions(prev => new Map([...prev, ...newSuggestions]));
           }
         }
       } catch (err) {
@@ -571,14 +578,7 @@ export default function TravelLog() {
     const dest = (entry.destination || '').trim();
     if (dest) setAddressOverride(dest, store.id);
     propagateMatchToSameDestination(entry, store, 'store');
-    setSuggestions(prev => {
-      const next = new Map(prev);
-      const existing = { ...(next.get(entry.locationId) || {}) };
-      delete existing.dest;
-      if (Object.keys(existing).length === 0) next.delete(entry.locationId);
-      else next.set(entry.locationId, existing);
-      return next;
-    });
+    setDismissedSuggestions(prev => new Set([...prev, `${entry.locationId}-dest`]));
   }, [selectedDate, manualMatchEntries, bulkRecordVisits, setAddressOverride, propagateMatchToSameDestination]);
 
   const handleAcceptOriginSuggestion = useCallback((entry, store) => {
@@ -598,25 +598,11 @@ export default function TravelLog() {
     bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
     const originAddr = (entry.origin || '').trim();
     if (originAddr) setAddressOverride(originAddr, store.id);
-    setSuggestions(prev => {
-      const next = new Map(prev);
-      const existing = { ...(next.get(entry.locationId) || {}) };
-      delete existing.origin;
-      if (Object.keys(existing).length === 0) next.delete(entry.locationId);
-      else next.set(entry.locationId, existing);
-      return next;
-    });
+    setDismissedSuggestions(prev => new Set([...prev, `${entry.locationId}-origin`]));
   }, [selectedDate, logTravelEntries, bulkRecordVisits, setAddressOverride]);
 
   const handleDismissSuggestion = useCallback((locationId, type) => {
-    setSuggestions(prev => {
-      const next = new Map(prev);
-      const existing = { ...(next.get(locationId) || {}) };
-      delete existing[type];
-      if (Object.keys(existing).length === 0) next.delete(locationId);
-      else next.set(locationId, existing);
-      return next;
-    });
+    setDismissedSuggestions(prev => new Set([...prev, `${locationId}-${type}`]));
   }, []);
 
   const handleMatchStore = useCallback((store) => {
