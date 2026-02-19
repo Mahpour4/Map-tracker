@@ -980,6 +980,15 @@ textarea {
   padding: 3px 4px;
   margin: 0 -4px;
   transition: background 0.12s;
+  user-select: none;
+}
+.legend-checkbox {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #3b82f6;
 }
 .legend-item-clickable:hover {
   background: rgba(0, 0, 0, 0.07);

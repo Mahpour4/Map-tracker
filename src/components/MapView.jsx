@@ -174,7 +174,7 @@ export default function MapView() {
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(false);
-  const [legendFilter, setLegendFilter] = useState(null); // tier label string or null
+  const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
   const [zonesOff, setZonesOff] = useState(false);
   const [hideCash, setHideCash] = useState(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
@@ -290,21 +290,18 @@ export default function MapView() {
       result = result.filter((s) => s.type !== 'other');
     }
 
-    // Legend tier filter (only active when visitMode is on and a tier is selected)
-    if (visitMode && legendFilter) {
-      if (legendFilter === neverVisitedTier.label) {
-        result = result.filter((s) => getLatestDate(s) === null);
-      } else {
-        const tier = [...recencyTiers, neverVisitedTier].find(t => t.label === legendFilter);
-        if (tier) {
-          result = result.filter((s) => {
-            const days = getDaysSinceVisit(getLatestDate(s));
-            if (days === null) return false;
-            const prevMax = recencyTiers[recencyTiers.indexOf(tier) - 1]?.maxDays ?? -1;
-            return days > prevMax && days <= tier.maxDays;
-          });
+    // Legend tier filter (only active when visitMode is on and at least one tier is checked)
+    if (visitMode && legendFilter.size > 0) {
+      result = result.filter((s) => {
+        const days = getDaysSinceVisit(getLatestDate(s));
+        if (days === null) return legendFilter.has(neverVisitedTier.label);
+        for (let idx = 0; idx < recencyTiers.length; idx++) {
+          const tier = recencyTiers[idx];
+          const prevMax = recencyTiers[idx - 1]?.maxDays ?? -1;
+          if (days > prevMax && days <= tier.maxDays) return legendFilter.has(tier.label);
         }
-      }
+        return false;
+      });
     }
 
     return result;
@@ -353,12 +350,13 @@ export default function MapView() {
     return numberedZones.filter((z) => hiddenZones.has(z.id));
   }, [numberedZones, hiddenZones]);
 
-  // Stale stores: >7 days since visit, or all stores matching a clicked legend tier
+  // Stale stores: >7 days since visit, or all stores matching checked legend tiers
   const staleStores = useMemo(() => {
-    // If a stale legend tier is active, show all filteredStores (already tier-filtered)
-    const usingLegendFilter = visitMode && legendFilter && legendFilter !== '0-7 days';
-    if (filterRoute === 'all' && !usingLegendFilter) return [];
-    const source = usingLegendFilter
+    const hasStaleFilter = visitMode && legendFilter.size > 0 && !legendFilter.has('0-7 days');
+    const onlyCurrentSelected = visitMode && legendFilter.size > 0 && [...legendFilter].every(l => l === '0-7 days');
+    if (filterRoute === 'all' && !hasStaleFilter) return [];
+    if (onlyCurrentSelected) return [];
+    const source = hasStaleFilter
       ? filteredStores
       : filteredStores.filter((s) => {
           const d = getDaysSinceVisit(getLatestDate(s));
@@ -444,14 +442,18 @@ export default function MapView() {
       )}
 
       {/* Stale Stores Panel */}
-      {staleStores.length > 0 && (filterRoute !== 'all' || (visitMode && legendFilter && legendFilter !== '0-7 days')) && (
+      {(() => {
+        const hasStaleFilter = visitMode && legendFilter.size > 0 && ![...legendFilter].every(l => l === '0-7 days');
+        const showPanel = staleStores.length > 0 && (filterRoute !== 'all' || hasStaleFilter);
+        if (!showPanel) return null;
+        const routeLabel = filterRoute !== 'all' ? (filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`) : 'All Routes';
+        const tierLabel = hasStaleFilter ? [...legendFilter].filter(l => l !== '0-7 days').join(', ') : null;
+        const title = tierLabel ? `${tierLabel} — ${routeLabel}` : `Stale Stores — ${routeLabel}`;
+        return (
         <div className={`stale-panel ${staleCollapsed ? 'collapsed' : ''}`}>
           <div className="stale-panel-header" onClick={() => setStaleCollapsed(!staleCollapsed)}>
             <span className="stale-panel-title">
-              {legendFilter && legendFilter !== '0-7 days'
-                ? `${legendFilter} — ${filterRoute !== 'all' ? (filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`) : 'All Routes'}`
-                : `Stale Stores — ${filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`}`}
-              {filterType !== 'all' && ` (${typeLabels[filterType] || filterType})`}
+              {title}{filterType !== 'all' && ` (${typeLabels[filterType] || filterType})`}
             </span>
             <div className="stale-panel-header-right">
               <span className="stale-panel-count">{staleStores.length}</span>
@@ -486,7 +488,8 @@ export default function MapView() {
             </>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* Copied flash */}
       {copiedFlash && (
@@ -501,7 +504,7 @@ export default function MapView() {
             checked={visitMode}
             onChange={(e) => {
               setVisitMode(e.target.checked);
-              if (!e.target.checked) setLegendFilter(null);
+              if (!e.target.checked) setLegendFilter(new Set());
               if (e.target.checked) hideAllZones();
             }}
           />
@@ -550,22 +553,32 @@ export default function MapView() {
           <>
             <div className="legend-title">
               Visit Recency
-              {legendFilter && (
-                <button className="legend-clear-btn" onClick={() => setLegendFilter(null)} title="Clear filter">✕</button>
+              {legendFilter.size > 0 && (
+                <button className="legend-clear-btn" onClick={() => setLegendFilter(new Set())} title="Clear all filters">✕</button>
               )}
             </div>
             {[...recencyTiers, neverVisitedTier].map((tier) => {
-              const isActive = legendFilter === tier.label;
+              const isActive = legendFilter.has(tier.label);
+              const toggle = () => setLegendFilter(prev => {
+                const next = new Set(prev);
+                isActive ? next.delete(tier.label) : next.add(tier.label);
+                return next;
+              });
               return (
-                <div
+                <label
                   key={tier.label}
                   className={`legend-item legend-item-clickable${isActive ? ' legend-item-active' : ''}`}
-                  onClick={() => setLegendFilter(isActive ? null : tier.label)}
-                  title={isActive ? 'Click to clear filter' : `Filter: ${tier.label}`}
+                  title={isActive ? 'Uncheck to remove filter' : `Check to filter: ${tier.label}`}
                 >
+                  <input
+                    type="checkbox"
+                    className="legend-checkbox"
+                    checked={isActive}
+                    onChange={toggle}
+                  />
                   <span className={`legend-dot ${tier.pulse || ''}`} style={{ background: tier.color }} />
                   <span>{tier.label}</span>
-                </div>
+                </label>
               );
             })}
           </>
