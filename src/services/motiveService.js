@@ -309,6 +309,115 @@ export async function fetchDrivingPeriods(opts = {}) {
   });
 }
 
+// ---- Motive Card API functions ----
+
+/**
+ * Fetch all Motive cards (card → driver/vehicle assignments).
+ * GET /motive_card/v1/cards
+ * Returns array of cards with entity assignment info.
+ */
+export async function fetchMotiveCards() {
+  const raw = await fetchAllPages('/motive_card/v1/cards', 'cards');
+  console.log(`[Motive] Cards: ${raw.length} total`);
+  return raw.map(item => {
+    const card = item.card || item;
+    const assigned = card.assigned_to || {};
+    return {
+      cardId: card.id,
+      last4: card.last_four || card.last4 || '',
+      status: card.status || null,
+      entityType: assigned.entity_type || null,   // 'driver' | 'vehicle'
+      entityId: assigned.entity_id || null,
+      entityName: assigned.entity_name || null,
+    };
+  });
+}
+
+/**
+ * Fetch card transactions (fuel purchases) over a date range.
+ * GET /motive_card/v2/transactions
+ * Note: uses page_number (not page_no) for pagination.
+ */
+export async function fetchCardTransactions(opts = {}) {
+  const allItems = [];
+  let pageNumber = 1;
+  let hasMore = true;
+  const perPage = 25;
+
+  const params = {
+    per_page: perPage,
+    sort_direction: 'desc',
+  };
+  if (opts.startDate) params.start_date = opts.startDate;
+  if (opts.endDate) params.end_date = opts.endDate;
+  if (opts.status) params.status = opts.status;
+
+  while (hasMore) {
+    const data = await motiveFetch('/motive_card/v2/transactions', { ...params, page_number: pageNumber });
+    const items = data.transactions || data.data || [];
+    allItems.push(...items);
+
+    const pagination = data.pagination || data;
+    const total = pagination.total || 0;
+    const totalPages = pagination.total_pages || Math.ceil(total / perPage);
+    console.log(`[Motive] Card Transactions page ${pageNumber}: ${items.length} items (total: ${total})`);
+
+    if (items.length === 0 || pageNumber >= totalPages) {
+      hasMore = false;
+    }
+    pageNumber++;
+  }
+
+  console.log(`[Motive] Total card transactions fetched: ${allItems.length}`);
+
+  return allItems.map(item => {
+    const tx = item.transaction || item;
+    const meta = tx.pre_transaction_metadata || {};
+    const orderItems = tx.order_items || [];
+
+    // Sum fuel from order_items
+    let totalGallons = 0;
+    let totalAmount = 0;
+    let fuelType = null;
+    let pricePerGallon = null;
+
+    orderItems.forEach(oi => {
+      const qty = parseFloat(oi.quantity || oi.volume_gallons || 0);
+      const unitPrice = parseFloat(oi.unit_price || oi.price_per_gallon || 0);
+      const lineTotal = parseFloat(oi.total || oi.amount || 0);
+      if (qty > 0) totalGallons += qty;
+      if (lineTotal > 0) totalAmount += lineTotal;
+      if (!fuelType && (oi.fuel_type || oi.description)) fuelType = oi.fuel_type || oi.description || null;
+      if (!pricePerGallon && unitPrice > 0) pricePerGallon = unitPrice;
+    });
+
+    // If order_items empty, fall back to top-level fields
+    if (totalAmount === 0 && tx.amount != null) totalAmount = parseFloat(tx.amount);
+
+    // Odometer: could be in miles or km — store raw, flag unit
+    const odomRaw = meta.odometer_reading != null ? parseFloat(meta.odometer_reading) : null;
+
+    return {
+      id: tx.id,
+      cardId: tx.card_id || null,
+      vehicleId: tx.vehicle_id || null,
+      driverId: tx.driver_id || null,
+      merchantName: tx.merchant_name || tx.merchant || '',
+      merchantCity: tx.merchant_city || '',
+      merchantState: tx.merchant_state || '',
+      transactedAt: tx.transacted_at || tx.created_at || null,
+      status: tx.status || null,
+      totalAmount,
+      totalGallons,
+      fuelType,
+      pricePerGallon,
+      odometerRaw: odomRaw,
+      rebateAmount: parseFloat(tx.rebate_amount || 0),
+      declined: tx.status === 'declined' || tx.declined === true,
+    };
+  });
+}
+
 export async function testMotiveConnection() {
   try {
     await motiveFetch('/v1/vehicles', { per_page: 1 });

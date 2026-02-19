@@ -9,6 +9,7 @@ import DataImport from './components/DataImport';
 import AlertLog from './components/AlertLog';
 import AlertAnalytics from './components/AlertAnalytics';
 import FleetTracker from './components/FleetTracker';
+import FuelTracker from './components/FuelTracker';
 import DriverDashboard from './components/DriverDashboard';
 import TravelLog from './components/TravelLog';
 import WarehouseSettings from './components/WarehouseSettings';
@@ -46,6 +47,7 @@ function AppContent() {
             <button className={`page-nav-btn ${page === 'import' ? 'active' : ''}`} onClick={() => nav('import')}>Data Import</button>
             <button className={`page-nav-btn ${page === 'alerts' || page === 'alertAnalytics' ? 'active' : ''}`} onClick={() => nav('alerts')}>Alert Log</button>
             <button className={`page-nav-btn ${page === 'fleet' ? 'active' : ''}`} onClick={() => nav('fleet')}>Fleet Tracker</button>
+            <button className={`page-nav-btn ${page === 'fuel' ? 'active' : ''}`} onClick={() => nav('fuel')}>Fuel Tracker</button>
             <button className={`page-nav-btn ${page === 'travelLog' ? 'active' : ''}`} onClick={() => nav('travelLog')}>Travel Log</button>
             <button className={`page-nav-btn ${page === 'warehouses' ? 'active' : ''}`} onClick={() => nav('warehouses')}>Warehouses</button>
             <button className={`page-nav-btn ${page === 'customLocations' ? 'active' : ''}`} onClick={() => nav('customLocations')}>Custom Locations</button>
@@ -98,10 +100,11 @@ function AppContent() {
         {page === 'alerts' && <AlertLog />}
         {page === 'alertAnalytics' && <AlertAnalytics />}
         {page === 'fleet' && <FleetTracker />}
+        {page === 'fuel' && <FuelTracker />}
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
         {page === 'customLocations' && <CustomLocations />}
-        <div className="app-version">v2.1.7</div>
+        <div className="app-version">v2.1.8</div>
       </main>
     </div>
   );
