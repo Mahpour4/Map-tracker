@@ -80,6 +80,7 @@ export default function FuelTracker() {
   const [activeTab, setActiveTab] = useState('route');
   const [filterRoute, setFilterRoute]   = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDate, setFilterDate]     = useState('all');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
 
@@ -251,6 +252,7 @@ export default function FuelTracker() {
   const filteredTx = useMemo(() => {
     let list = enriched;
     if (filterRoute !== 'all') list = list.filter(tx => tx.route === filterRoute);
+    if (filterDate !== 'all') list = list.filter(tx => tx.transactedAt && tx.transactedAt.startsWith(filterDate));
     if (filterStatus === 'declined') list = list.filter(tx => tx.declined);
     else if (filterStatus !== 'all') list = list.filter(tx => !tx.declined && tx.status === filterStatus);
 
@@ -399,7 +401,12 @@ export default function FuelTracker() {
                 </thead>
                 <tbody>
                   {routeStats.map(r => (
-                    <tr key={r.route} className={r.route === 'Unknown' ? 'fuel-row-unknown' : ''}>
+                    <tr
+                      key={r.route}
+                      className={`fuel-row-clickable${r.route === 'Unknown' ? ' fuel-row-unknown' : ''}`}
+                      title="Click to view individual transactions"
+                      onClick={() => { setFilterRoute(r.route); setActiveTab('transactions'); }}
+                    >
                       <td>
                         {r.route !== 'Unknown'
                           ? <span className="fuel-route-badge">Rt {r.route}</span>
@@ -451,7 +458,12 @@ export default function FuelTracker() {
                   {dailyStats.map(d => {
                     const dow = new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
                     return (
-                      <tr key={d.date}>
+                      <tr
+                        key={d.date}
+                        className="fuel-row-clickable"
+                        title="Click to view transactions for this day"
+                        onClick={() => { setFilterDate(d.date); setFilterRoute('all'); setActiveTab('transactions'); }}
+                      >
                         <td className="fuel-td-mono">{d.date}</td>
                         <td>{dow}</td>
                         <td>{d.count}</td>
@@ -489,7 +501,18 @@ export default function FuelTracker() {
                 <option value="declined">Declined</option>
               </select>
             </div>
+            {filterDate !== 'all' && (
+              <div className="fuel-active-filter-chip">
+                <span>{filterDate}</span>
+                <button className="fuel-clear-btn" onClick={() => setFilterDate('all')} title="Clear date filter">✕</button>
+              </div>
+            )}
             <span className="fuel-tx-count">{filteredTx.length} of {transactions.length} transactions</span>
+            {(filterRoute !== 'all' || filterDate !== 'all' || filterStatus !== 'all') && (
+              <button className="fuel-clear-all-btn" onClick={() => { setFilterRoute('all'); setFilterDate('all'); setFilterStatus('all'); }}>
+                Clear filters
+              </button>
+            )}
           </div>
 
           {filteredTx.length === 0 ? (

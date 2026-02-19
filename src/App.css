@@ -8141,6 +8141,30 @@ textarea {
 .fuel-select:focus { border-color: #3b82f6; }
 .fuel-select-sm { min-width: 160px; font-size: 0.78rem; }
 .fuel-routes-list { font-size: 0.75rem; color: #374151; }
+.fuel-row-clickable { cursor: pointer; }
+.fuel-row-clickable:hover { background: #f0f7ff !important; }
+.fuel-active-filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+.fuel-clear-all-btn {
+  padding: 4px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.fuel-clear-all-btn:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
 
 /* Card management */
 .fuel-cards-header {
