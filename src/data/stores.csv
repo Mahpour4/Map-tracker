@@ -115,7 +115,7 @@ IND00102,IND00102,Exxon,100 Dominion Rd,Cambridge,MD,21613,210,Route 210 Driver,
 IND20000,IND20000,G&E Hocker's,695 Bethany Loop,Bethany Beach,DE,19930,206,Route 206 Driver,Delaware,Bethany Beach,Bethany Beach,38.5546721,-75.0824879,2026-02-12,2026-02-12,No
 IND00103,IND00103,Linkwood Market,Linkwood,Linkwood,MD,21835,210,Route 210 Driver,Eastern Shore Maryland,MD,MD,38.5367424,-75.9555906,,,Yes
 IND00104,IND00104,Montego Bay Supermarket,12903 COASTAL HWY,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4345355,-75.0542625,,,Yes
-RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,210,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,2026-02-13,2026-02-13,No
+RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,0,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,2026-02-13,2026-02-13,No
 FLW02522,FLW02522,Food Lion 2522,2466 CENTREVILLE RD,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.044,-76.0667,,2026-02-12,No
 FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,2026-02-17,2026-02-17,No
 WMW00272,WMW00272,Weis Market 272,24832 JOHN J WILLIAMS HWY,Millsboro,DE,19966,210,Route 210 Driver,Delaware,Millsboro,Millsboro,38.6369733,-75.1950002,,2026-02-13,No
