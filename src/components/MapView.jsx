@@ -173,13 +173,14 @@ export default function MapView() {
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute, vehicleLocations, showVehiclesOnMap } = state;
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
-  const [visitMode, setVisitMode] = useState(false);
+  const [visitMode, setVisitMode] = useState(true);
   const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
   const [zonesOff, setZonesOff] = useState(true); // default: zones hidden
   const [hideCash, setHideCash] = useState(true);
   const [hideChain, setHideChain] = useState(false);
   const zonesInitialized = useRef(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
+  const [copiedRouteFlash, setCopiedRouteFlash] = useState(null);
   const [copiedPopupId, setCopiedPopupId] = useState(null);
   const [staleCollapsed, setStaleCollapsed] = useState(false);
   const [popupEditId, setPopupEditId] = useState(null);
@@ -368,8 +369,9 @@ export default function MapView() {
   const staleStores = useMemo(() => {
     const hasStaleFilter = visitMode && legendFilter.size > 0 && !legendFilter.has('0-7 days');
     const onlyCurrentSelected = visitMode && legendFilter.size > 0 && [...legendFilter].every(l => l === '0-7 days');
-    if (filterRoute === 'all' && !hasStaleFilter) return [];
     if (onlyCurrentSelected) return [];
+    // Show when visitMode is on OR a specific route is selected OR a legend tier is active
+    if (!visitMode && filterRoute === 'all' && !hasStaleFilter) return [];
     const source = hasStaleFilter
       ? filteredStores
       : filteredStores.filter((s) => {
@@ -380,6 +382,23 @@ export default function MapView() {
       .map((s) => ({ ...s, daysSince: getDaysSinceVisit(getLatestDate(s)) }))
       .sort((a, b) => (b.daysSince ?? Infinity) - (a.daysSince ?? Infinity));
   }, [filteredStores, filterRoute, visitMode, legendFilter]);
+
+  // Group stale stores by route for the panel
+  const staleByRoute = useMemo(() => {
+    const grouped = {};
+    staleStores.forEach(s => {
+      const route = s.routeNumber && s.routeNumber !== '0' ? s.routeNumber : 'Unassigned';
+      if (!grouped[route]) grouped[route] = [];
+      grouped[route].push(s);
+    });
+    return Object.entries(grouped).sort(([a], [b]) => {
+      if (a === 'Unassigned') return 1;
+      if (b === 'Unassigned') return -1;
+      const na = parseInt(a), nb = parseInt(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+  }, [staleStores]);
 
   const copyStaleMessage = useCallback(() => {
     if (staleStores.length === 0) return;
@@ -402,6 +421,23 @@ export default function MapView() {
       setTimeout(() => setCopiedFlash(false), 2000);
     });
   }, [staleStores, filterRoute, filterType]);
+
+  const copyRouteWhatsApp = useCallback((routeNumber, routeStoresList) => {
+    const routeLabel = routeNumber === 'Unassigned' ? 'Unassigned Stores' : `Route ${routeNumber}`;
+    let msg = `${routeLabel} — ${routeStoresList.length} store${routeStoresList.length === 1 ? '' : 's'} out of date\n`;
+    routeStoresList.forEach((s, i) => {
+      const sale = s.lastSaleDate ? formatDate(s.lastSaleDate).split(' (')[0] : null;
+      const visit = s.lastVisited ? formatDate(s.lastVisited).split(' (')[0] : null;
+      const dateStr = [sale ? `Sale: ${sale}` : null, visit ? `Visit: ${visit}` : null].filter(Boolean).join(' / ') || 'Never';
+      const daysText = s.daysSince === null ? 'Never visited' : `${s.daysSince} days`;
+      msg += `${i + 1}. ${s.id}, ${s.name}, ${s.city}, ${dateStr}, ${daysText}\n`;
+    });
+    msg += `Please visit before the end of this week`;
+    navigator.clipboard.writeText(msg).then(() => {
+      setCopiedRouteFlash(routeNumber);
+      setTimeout(() => setCopiedRouteFlash(null), 2000);
+    });
+  }, []);
 
   const copyStoreAlert = useCallback((store) => {
     const sale = store.lastSaleDate ? formatDate(store.lastSaleDate).split(' (')[0] : null;
@@ -458,11 +494,10 @@ export default function MapView() {
       {/* Stale Stores Panel */}
       {(() => {
         const hasStaleFilter = visitMode && legendFilter.size > 0 && ![...legendFilter].every(l => l === '0-7 days');
-        const showPanel = staleStores.length > 0 && (filterRoute !== 'all' || hasStaleFilter);
+        const showPanel = staleStores.length > 0 && (visitMode || filterRoute !== 'all' || hasStaleFilter);
         if (!showPanel) return null;
-        const routeLabel = filterRoute !== 'all' ? (filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`) : 'All Routes';
         const tierLabel = hasStaleFilter ? [...legendFilter].filter(l => l !== '0-7 days').join(', ') : null;
-        const title = tierLabel ? `${tierLabel} — ${routeLabel}` : `Stale Stores — ${routeLabel}`;
+        const title = tierLabel ? `${tierLabel}` : `Stale Stores`;
         return (
         <div className={`stale-panel ${staleCollapsed ? 'collapsed' : ''}`}>
           <div className="stale-panel-header" onClick={() => setStaleCollapsed(!staleCollapsed)}>
@@ -471,35 +506,54 @@ export default function MapView() {
             </span>
             <div className="stale-panel-header-right">
               <span className="stale-panel-count">{staleStores.length}</span>
+              <button
+                className="stale-copy-all-btn"
+                title="Copy all routes to clipboard"
+                onClick={(e) => { e.stopPropagation(); copyStaleMessage(); }}
+              >
+                {copiedFlash ? '✓' : '📋'}
+              </button>
               <span className="stale-panel-chevron">{staleCollapsed ? '\u25BC' : '\u25B2'}</span>
             </div>
           </div>
           {!staleCollapsed && (
-            <>
-              <div className="stale-panel-list">
-                {staleStores.map((s, i) => (
-                  <div
-                    key={s.id}
-                    className={`stale-panel-item ${selectedStore === s.id ? 'active' : ''}`}
-                    onClick={() => {
-                      selectStore(s.id);
-                      setMapView([s.lat, s.lng], 14);
-                    }}
-                  >
-                    <div className="stale-item-name"><span className="stale-item-index">{i + 1}.</span> {s.id} — {s.name}</div>
-                    <div className="stale-item-detail">
-                      {s.city}
-                      <span className="stale-item-days" style={{ color: getRecencyTier(getLatestDate(s)).color }}>
-                        {s.daysSince === null ? 'Never' : `${s.daysSince}d ago`}
-                      </span>
-                    </div>
+            <div className="stale-panel-list">
+              {staleByRoute.map(([routeNum, routeStores]) => (
+                <div key={routeNum} className="stale-route-group">
+                  <div className="stale-route-header">
+                    <span className="stale-route-label">
+                      {routeNum === 'Unassigned' ? 'Unassigned' : `Route ${routeNum}`}
+                    </span>
+                    <span className="stale-route-count">{routeStores.length}</span>
+                    <button
+                      className={`stale-route-wa-btn${copiedRouteFlash === routeNum ? ' copied' : ''}`}
+                      title={`Copy Route ${routeNum} WhatsApp message`}
+                      onClick={() => copyRouteWhatsApp(routeNum, routeStores)}
+                    >
+                      {copiedRouteFlash === routeNum ? '✓ Copied' : '📲 WhatsApp'}
+                    </button>
                   </div>
-                ))}
-              </div>
-              <button className="stale-panel-copy" onClick={copyStaleMessage}>
-                Copy WhatsApp Message
-              </button>
-            </>
+                  {routeStores.map((s, i) => (
+                    <div
+                      key={s.id}
+                      className={`stale-panel-item ${selectedStore === s.id ? 'active' : ''}`}
+                      onClick={() => {
+                        selectStore(s.id);
+                        setMapView([s.lat, s.lng], 14);
+                      }}
+                    >
+                      <div className="stale-item-name"><span className="stale-item-index">{i + 1}.</span> {s.id} — {s.name}</div>
+                      <div className="stale-item-detail">
+                        {s.city}
+                        <span className="stale-item-days" style={{ color: getRecencyTier(getLatestDate(s)).color }}>
+                          {s.daysSince === null ? 'Never' : `${s.daysSince}d ago`}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           )}
         </div>
         );
