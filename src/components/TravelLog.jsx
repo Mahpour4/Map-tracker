@@ -788,13 +788,13 @@ export default function TravelLog() {
                     <span className="tl-driving-label">Start:</span>
                     <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{origin}</a>
                     {!isGarbageLocation(originText) && (
-                      <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}>Match Origin</button>
+                      <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}>Match Start</button>
                     )}
                   </div>
                   <div className="tl-driving-row">
                     <span className="tl-driving-label">End:</span>
                     <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
-                    <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match Dest</button>
+                    <button className="tl-match-btn" onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match End</button>
                   </div>
                 </div>
               );
