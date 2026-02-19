@@ -160,6 +160,14 @@ export default function RouteSchedule() {
     return routeStores.filter(s => !scheduledIds.has(s.id));
   }, [routeStores, scheduledIds]);
 
+  const unscheduledChain = useMemo(() => {
+    return unscheduledStores.filter(s => s.type !== 'other' && s.type !== 'military');
+  }, [unscheduledStores]);
+
+  const unscheduledCash = useMemo(() => {
+    return unscheduledStores.filter(s => s.type === 'other' || s.type === 'military');
+  }, [unscheduledStores]);
+
   // Store lookup
   const storeMap = useMemo(() => {
     const map = {};
@@ -587,7 +595,13 @@ export default function RouteSchedule() {
               <span>Unscheduled ({unscheduledStores.length})</span>
             </div>
             <div className="schedule-pool-list">
-              {unscheduledStores.map(s => {
+              {/* Chain stores group */}
+              {unscheduledChain.length > 0 && (
+                <div className="schedule-pool-group-header schedule-pool-group-chain">
+                  Chain Stores ({unscheduledChain.length})
+                </div>
+              )}
+              {unscheduledChain.map(s => {
                 const latest = [s.lastSaleDate, s.lastVisited].filter(Boolean).sort().pop() || null;
                 const days = getDaysSinceVisit(latest);
                 return (
@@ -641,6 +655,71 @@ export default function RouteSchedule() {
                   </div>
                 );
               })}
+
+              {/* Cash / Independent stores group */}
+              {unscheduledCash.length > 0 && (
+                <div className="schedule-pool-group-header schedule-pool-group-cash">
+                  Cash / Independent ({unscheduledCash.length})
+                </div>
+              )}
+              {unscheduledCash.map(s => {
+                const latest = [s.lastSaleDate, s.lastVisited].filter(Boolean).sort().pop() || null;
+                const days = getDaysSinceVisit(latest);
+                return (
+                  <div
+                    key={s.id}
+                    className="schedule-store-chip schedule-chip-cash"
+                    draggable
+                    onDragStart={() => handleDragStart(s.id, null)}
+                  >
+                    <div className="schedule-chip-name">{s.id} — {s.name}</div>
+                    <div className="schedule-chip-detail">
+                      {s.city}
+                      <span className="schedule-chip-days" style={{
+                        color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
+                      }}>
+                        {days === null ? 'Never' : `${days}d`}
+                      </span>
+                    </div>
+                    <div
+                      className="schedule-chip-lastvisit schedule-stop-days-clickable"
+                      onClick={(e) => { e.stopPropagation(); openVisitEdit(s.id); }}
+                      title="Click to edit visit date"
+                    >
+                      {s.lastSaleDate ? `S: ${formatVisitDate(s.lastSaleDate)}` : ''}{s.lastSaleDate && s.lastVisited ? ' / ' : ''}{s.lastVisited ? `V: ${formatVisitDate(s.lastVisited)}` : ''}{!s.lastSaleDate && !s.lastVisited ? 'No date' : ''}
+                    </div>
+                    {visitEditId === s.id && (
+                      <div className="schedule-visit-edit">
+                        <input
+                          ref={visitDateRef}
+                          type="date"
+                          className="schedule-visit-date-input"
+                          value={visitEditDate}
+                          onChange={(e) => setVisitEditDate(e.target.value)}
+                        />
+                        <button className="schedule-visit-save-btn" onClick={() => saveVisitDate(s.id)} disabled={!visitEditDate}>Save</button>
+                        <button className="schedule-visit-cancel-btn" onClick={() => setVisitEditId(null)}>&times;</button>
+                      </div>
+                    )}
+                    <div className="schedule-chip-add-btns">
+                      {DAYS.map(d => (
+                        <button
+                          key={d}
+                          className="schedule-chip-add"
+                          onClick={() => addStoreToDay(s.id, d)}
+                          title={`Add to ${DAY_LABELS[d]}`}
+                        >
+                          {DAY_LABELS[d].charAt(0)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {unscheduledStores.length === 0 && (
+                <div className="schedule-pool-empty">All stores scheduled</div>
+              )}
             </div>
           </div>
 

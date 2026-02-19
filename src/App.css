@@ -3341,6 +3341,36 @@ textarea {
   gap: 4px;
 }
 
+.schedule-pool-group-header {
+  padding: 4px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+.schedule-pool-group-chain {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.schedule-pool-group-cash {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.schedule-pool-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.schedule-chip-cash {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
 .schedule-store-chip {
   padding: 6px 8px;
   background: var(--surface);
