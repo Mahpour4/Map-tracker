@@ -974,6 +974,39 @@ textarea {
   color: var(--text);
 }
 
+.legend-item-clickable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 3px 4px;
+  margin: 0 -4px;
+  transition: background 0.12s;
+}
+.legend-item-clickable:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+.legend-item-active {
+  background: rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+.legend-item-active .legend-dot {
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.25);
+}
+.legend-clear-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 2px;
+  line-height: 1;
+}
+.legend-clear-btn:hover { color: #ef4444; }
+.legend-title {
+  display: flex;
+  align-items: center;
+}
+
 .legend-dot {
   width: 10px;
   height: 10px;

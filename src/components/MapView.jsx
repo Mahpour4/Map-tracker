@@ -174,6 +174,7 @@ export default function MapView() {
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(false);
+  const [legendFilter, setLegendFilter] = useState(null); // tier label string or null
   const [zonesOff, setZonesOff] = useState(false);
   const [hideCash, setHideCash] = useState(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
@@ -289,8 +290,25 @@ export default function MapView() {
       result = result.filter((s) => s.type !== 'other');
     }
 
+    // Legend tier filter (only active when visitMode is on and a tier is selected)
+    if (visitMode && legendFilter) {
+      if (legendFilter === neverVisitedTier.label) {
+        result = result.filter((s) => getLatestDate(s) === null);
+      } else {
+        const tier = [...recencyTiers, neverVisitedTier].find(t => t.label === legendFilter);
+        if (tier) {
+          result = result.filter((s) => {
+            const days = getDaysSinceVisit(getLatestDate(s));
+            if (days === null) return false;
+            const prevMax = recencyTiers[recencyTiers.indexOf(tier) - 1]?.maxDays ?? -1;
+            return days > prevMax && days <= tier.maxDays;
+          });
+        }
+      }
+    }
+
     return result;
-  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash]);
+  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, visitMode, legendFilter]);
 
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
@@ -335,17 +353,21 @@ export default function MapView() {
     return numberedZones.filter((z) => hiddenZones.has(z.id));
   }, [numberedZones, hiddenZones]);
 
-  // Stale stores: >7 days since visit, excluding never-visited (may be seasonal)
+  // Stale stores: >7 days since visit, or all stores matching a clicked legend tier
   const staleStores = useMemo(() => {
-    if (filterRoute === 'all') return [];
-    return filteredStores
-      .map((s) => {
-        const days = getDaysSinceVisit(getLatestDate(s));
-        return { ...s, daysSince: days };
-      })
-      .filter((s) => s.daysSince !== null && s.daysSince > 7)
-      .sort((a, b) => b.daysSince - a.daysSince);
-  }, [filteredStores, filterRoute]);
+    // If a stale legend tier is active, show all filteredStores (already tier-filtered)
+    const usingLegendFilter = visitMode && legendFilter && legendFilter !== '0-7 days';
+    if (filterRoute === 'all' && !usingLegendFilter) return [];
+    const source = usingLegendFilter
+      ? filteredStores
+      : filteredStores.filter((s) => {
+          const d = getDaysSinceVisit(getLatestDate(s));
+          return d !== null && d > 7;
+        });
+    return source
+      .map((s) => ({ ...s, daysSince: getDaysSinceVisit(getLatestDate(s)) }))
+      .sort((a, b) => (b.daysSince ?? Infinity) - (a.daysSince ?? Infinity));
+  }, [filteredStores, filterRoute, visitMode, legendFilter]);
 
   const copyStaleMessage = useCallback(() => {
     if (staleStores.length === 0) return;
@@ -422,11 +444,13 @@ export default function MapView() {
       )}
 
       {/* Stale Stores Panel */}
-      {filterRoute !== 'all' && staleStores.length > 0 && (
+      {staleStores.length > 0 && (filterRoute !== 'all' || (visitMode && legendFilter && legendFilter !== '0-7 days')) && (
         <div className={`stale-panel ${staleCollapsed ? 'collapsed' : ''}`}>
           <div className="stale-panel-header" onClick={() => setStaleCollapsed(!staleCollapsed)}>
             <span className="stale-panel-title">
-              Stale Stores — {filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`}
+              {legendFilter && legendFilter !== '0-7 days'
+                ? `${legendFilter} — ${filterRoute !== 'all' ? (filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`) : 'All Routes'}`
+                : `Stale Stores — ${filterRoute === 'MIL' ? 'Military' : `Route ${filterRoute}`}`}
               {filterType !== 'all' && ` (${typeLabels[filterType] || filterType})`}
             </span>
             <div className="stale-panel-header-right">
@@ -477,6 +501,7 @@ export default function MapView() {
             checked={visitMode}
             onChange={(e) => {
               setVisitMode(e.target.checked);
+              if (!e.target.checked) setLegendFilter(null);
               if (e.target.checked) hideAllZones();
             }}
           />
@@ -523,17 +548,26 @@ export default function MapView() {
       <div className="map-legend">
         {visitMode ? (
           <>
-            <div className="legend-title">Visit Recency</div>
-            {recencyTiers.map((tier) => (
-              <div key={tier.label} className="legend-item">
-                <span className={`legend-dot ${tier.pulse || ''}`} style={{ background: tier.color }} />
-                <span>{tier.label}</span>
-              </div>
-            ))}
-            <div className="legend-item">
-              <span className={`legend-dot ${neverVisitedTier.pulse}`} style={{ background: neverVisitedTier.color }} />
-              <span>{neverVisitedTier.label}</span>
+            <div className="legend-title">
+              Visit Recency
+              {legendFilter && (
+                <button className="legend-clear-btn" onClick={() => setLegendFilter(null)} title="Clear filter">✕</button>
+              )}
             </div>
+            {[...recencyTiers, neverVisitedTier].map((tier) => {
+              const isActive = legendFilter === tier.label;
+              return (
+                <div
+                  key={tier.label}
+                  className={`legend-item legend-item-clickable${isActive ? ' legend-item-active' : ''}`}
+                  onClick={() => setLegendFilter(isActive ? null : tier.label)}
+                  title={isActive ? 'Click to clear filter' : `Filter: ${tier.label}`}
+                >
+                  <span className={`legend-dot ${tier.pulse || ''}`} style={{ background: tier.color }} />
+                  <span>{tier.label}</span>
+                </div>
+              );
+            })}
           </>
         ) : (
           <>
