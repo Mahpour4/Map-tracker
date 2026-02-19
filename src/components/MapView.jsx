@@ -175,14 +175,24 @@ export default function MapView() {
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(false);
   const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
-  const [zonesOff, setZonesOff] = useState(false);
+  const [zonesOff, setZonesOff] = useState(true); // default: zones hidden
   const [hideCash, setHideCash] = useState(false);
+  const [hideChain, setHideChain] = useState(false);
+  const zonesInitialized = useRef(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
   const [copiedPopupId, setCopiedPopupId] = useState(null);
   const [staleCollapsed, setStaleCollapsed] = useState(false);
   const [popupEditId, setPopupEditId] = useState(null);
   const [popupEditDate, setPopupEditDate] = useState('');
   const popupDateRef = useRef(null);
+
+  // Hide all zones on first load (zones default off)
+  useEffect(() => {
+    if (!zonesInitialized.current && zones.length > 0) {
+      zonesInitialized.current = true;
+      setHiddenZones(new Set(zones.filter(z => z.name !== 'Unassigned').map(z => z.id)));
+    }
+  }, [zones]);
 
   // Auto-deselect store after 10 seconds of blinking
   const blinkTimer = useRef(null);
@@ -290,6 +300,10 @@ export default function MapView() {
       result = result.filter((s) => s.type !== 'other');
     }
 
+    if (hideChain) {
+      result = result.filter((s) => s.type === 'other' || s.type === 'military');
+    }
+
     // Legend tier filter (only active when visitMode is on and at least one tier is checked)
     if (visitMode && legendFilter.size > 0) {
       result = result.filter((s) => {
@@ -305,7 +319,7 @@ export default function MapView() {
     }
 
     return result;
-  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, visitMode, legendFilter]);
+  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, hideChain, visitMode, legendFilter]);
 
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
@@ -527,6 +541,13 @@ export default function MapView() {
             {hideCash ? 'Show Cash' : 'Hide Cash'}
           </button>
         )}
+        <button
+          className={`zone-toggle-btn ${hideChain ? 'zones-hidden' : ''}`}
+          onClick={() => setHideChain(c => !c)}
+          title={hideChain ? 'Show chain stores' : 'Hide chain stores (Walmart, Wegmans, Food Lion, etc.)'}
+        >
+          {hideChain ? 'Show Chain' : 'Hide Chain'}
+        </button>
         {filterRoute !== 'all' && staleStores.length > 0 && (
           <button
             className={`zone-toggle-btn stale-toggle-btn ${staleCollapsed ? 'zones-hidden' : ''}`}
