@@ -6,7 +6,7 @@
 }
 
 :root {
-  --sidebar-width: 380px;
+  --sidebar-width: 320px;
   --bg: #f8fafc;
   --bg-card: #ffffff;
   --border: #e2e8f0;
@@ -29,21 +29,45 @@ html, body, #root {
 }
 
 .app-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
   height: 100vh;
   overflow: hidden;
+  transition: grid-template-columns 0.25s ease;
+}
+
+/* Sidebar collapsed — slide to zero */
+.app-layout.sidebar-collapsed {
+  grid-template-columns: 0 1fr;
+}
+
+.app-layout.sidebar-collapsed .sidebar {
+  overflow: hidden;
+  border-right: none;
+}
+
+/* Single-column on screens narrower than 1200px */
+@media (max-width: 1200px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
 }
 
 /* ============ Sidebar ============ */
 .sidebar {
-  width: var(--sidebar-width);
-  min-width: var(--sidebar-width);
-  height: 100vh;
+  /* Width comes from the grid column — no hard-coded px here */
+  height: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
   border-right: 1px solid var(--border);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-header {
@@ -190,11 +214,14 @@ html, body, #root {
 
 /* ============ Map ============ */
 .map-wrapper {
-  flex: 1;
-  height: 100vh;
+  /* Fills the 1fr grid column — no flex: 1 needed */
+  height: 100%;
+  min-width: 0;
+  width: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .map-container {
@@ -1231,23 +1258,67 @@ textarea {
 /* ============ Page Navigation ============ */
 .page-nav {
   display: flex;
-  justify-content: center;
-  background: var(--bg);
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
   flex-shrink: 0;
   z-index: 100;
+  padding: 0 12px;
+  min-height: 48px;
+  position: relative;
+}
+
+/* Brand — left */
+.page-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.page-nav-logo-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.page-nav-brand-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+/* Links — center */
+.page-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   overflow-x: auto;
+  scrollbar-width: none;
+  padding: 6px 0;
+}
+
+.page-nav-links::-webkit-scrollbar {
+  display: none;
 }
 
 .page-nav-btn {
-  padding: 8px 20px;
+  padding: 5px 13px;
   border: none;
   background: transparent;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .page-nav-btn:hover {
@@ -1257,7 +1328,145 @@ textarea {
 
 .page-nav-btn.active {
   background: var(--primary);
-  color: white;
+  color: #fff;
+  border-radius: 6px;
+}
+
+/* Actions — right */
+.page-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.page-nav-profile {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.page-nav-profile:hover {
+  background: var(--primary-hover);
+}
+
+.page-nav-profile svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Sidebar collapse toggle */
+.page-nav-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.page-nav-sidebar-toggle:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.page-nav-sidebar-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Hide collapse button on small screens where sidebar auto-hides */
+@media (max-width: 1200px) {
+  .page-nav-sidebar-toggle {
+    display: none;
+  }
+}
+
+/* Hamburger — hidden on desktop */
+.page-nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.page-nav-hamburger:hover {
+  background: #f1f5f9;
+}
+
+.page-nav-hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+/* Animate hamburger → X when open */
+.page-nav-hamburger.is-open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.page-nav-hamburger.is-open span:nth-child(2) {
+  opacity: 0;
+}
+.page-nav-hamburger.is-open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Mobile — < 768px */
+@media (max-width: 768px) {
+  .page-nav-links {
+    display: none;
+    position: absolute;
+    top: 48px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 200;
+    padding: 6px 8px;
+    gap: 2px;
+    overflow-x: visible;
+  }
+
+  .page-nav-links.open {
+    display: flex;
+  }
+
+  .page-nav-btn {
+    text-align: left;
+    border-radius: 6px;
+    padding: 8px 14px;
+    width: 100%;
+  }
+
+  .page-nav-hamburger {
+    display: flex;
+  }
 }
 
 /* ============ Visit Mode Toggle ============ */
@@ -6097,11 +6306,20 @@ textarea {
 
 /* ============ Travel Log ============ */
 .tl-page {
-  padding: 20px 24px;
-  max-width: 1000px;
+  /* Flex column — fills the 1fr grid cell, never overflows it */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 24px;
+  width: 100%;
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden; /* children handle their own scroll */
   background: var(--bg);
+}
+
+.tl-header {
+  flex-shrink: 0;
 }
 
 .tl-header h2 {
@@ -6113,14 +6331,15 @@ textarea {
 .tl-desc {
   color: var(--text-muted);
   font-size: 0.85rem;
-  margin-bottom: 16px;
+  margin-bottom: 0; /* parent gap handles spacing */
 }
 
 .tl-filters {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  align-items: flex-end;
+  flex-shrink: 0;
 }
 
 .tl-filter {
@@ -6143,7 +6362,8 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.85rem;
-  min-width: 180px;
+  min-width: 140px; /* narrower so it wraps gracefully on small screens */
+  width: 100%;
 }
 
 .tl-filter-action {
@@ -6154,7 +6374,7 @@ textarea {
   padding: 8px 12px;
   border-radius: var(--radius);
   font-size: 0.85rem;
-  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .tl-status-info {
@@ -6176,23 +6396,33 @@ textarea {
 }
 
 .tl-stats {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  /* Responsive grid of stat cards — no fixed widths, fills available width */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .tl-stat {
-  font-size: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--text);
+  box-shadow: var(--shadow);
 }
 
 .tl-stat span {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 500;
   color: var(--text-muted);
-  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .tl-stat.blue {
@@ -6208,7 +6438,7 @@ textarea {
 }
 
 .tl-map-container {
-  margin-bottom: 20px;
+  flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -6220,7 +6450,9 @@ textarea {
 }
 
 .tl-timeline-scroll {
-  max-height: 600px;
+  /* Fills all remaining vertical space — no fixed max-height */
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -6239,7 +6471,7 @@ textarea {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: var(--border);
+  background: #e5e7eb;
 }
 
 .tl-empty {
@@ -6284,13 +6516,14 @@ textarea {
 
 .tl-entry-dot {
   position: absolute;
-  left: -22px;
-  top: 12px;
-  width: 12px;
-  height: 12px;
+  left: -23px;
+  top: 11px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--border);
+  background: #d1d5db;
   border: 2px solid var(--bg-card);
+  box-shadow: 0 0 0 2px #e5e7eb;
   z-index: 1;
 }
 
@@ -6308,27 +6541,25 @@ textarea {
 
 .tl-entry-content {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid #e5e7eb;
   border-radius: var(--radius);
-  padding: 8px 12px;
+  padding: 12px 16px;
   flex: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.tl-entry.tl-store .tl-entry-content {
-  border-left: 3px solid #22c55e;
-}
-
-.tl-entry.tl-warehouse .tl-entry-content {
-  border-left: 3px solid #f59e0b;
-}
-
+/* Color accent lives on the dot — cards stay clean and neutral */
+.tl-entry.tl-store .tl-entry-content,
+.tl-entry.tl-warehouse .tl-entry-content,
 .tl-entry.tl-driving .tl-entry-content {
-  border-left: 3px solid #3b82f6;
+  border-left: 1px solid #e5e7eb;
 }
 
 .tl-entry-name {
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #111827;
+  line-height: 1.4;
 }
 
 .tl-entry-addr {
@@ -6347,32 +6578,32 @@ textarea {
 }
 
 .tl-type-badge {
-  font-size: 0.65rem;
-  padding: 1px 6px;
-  border-radius: 3px;
+  font-size: 0.62rem;
+  padding: 2px 10px;
+  border-radius: 20px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
 
 .tl-type-badge.store {
-  background: #dcfce7;
-  color: #166534;
+  background: #f0fdf4;
+  color: #16a34a;
 }
 
 .tl-type-badge.warehouse {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fffbeb;
+  color: #d97706;
 }
 
 .tl-type-badge.driving {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #eff6ff;
+  color: #3b82f6;
 }
 
 .tl-entry-vehicle {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  color: #9ca3af;
 }
 
 .tl-entry-dist {
@@ -6382,29 +6613,29 @@ textarea {
 }
 
 .tl-entry-dwell {
-  font-size: 0.75rem;
-  color: var(--text);
-  font-weight: 600;
+  font-size: 0.72rem;
+  color: #475569;
+  font-weight: 500;
   background: #f1f5f9;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 8px;
+  border-radius: 20px;
 }
 
 .tl-entry-distance {
-  font-size: 0.75rem;
-  color: #3b82f6;
-  font-weight: 600;
+  font-size: 0.72rem;
+  color: #60a5fa;
+  font-weight: 500;
 }
 
 .tl-entry-driver {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  color: #9ca3af;
   font-style: italic;
 }
 
 .tl-entry-timerange {
-  font-size: 0.7rem;
-  color: var(--text-muted);
+  font-size: 0.68rem;
+  color: #9ca3af;
   font-family: monospace;
 }
 
@@ -6426,11 +6657,11 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
-  border-radius: 4px;
-  padding: 1px 6px;
+  background: #fef9c3;
+  color: #854d0e;
+  border: none;
+  border-radius: 20px;
+  padding: 2px 10px;
   font-size: 0.68rem;
   font-weight: 500;
 }
@@ -6451,18 +6682,18 @@ textarea {
 /* Match Store button on driving entries */
 .tl-match-btn {
   font-size: 0.65rem;
-  padding: 1px 8px;
-  border-radius: 3px;
-  border: 1px solid #3b82f6;
-  background: transparent;
+  padding: 3px 12px;
+  border-radius: 20px;
+  border: none;
+  background: #eff6ff;
   color: #3b82f6;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .tl-match-btn:hover {
-  background: #3b82f6;
-  color: #fff;
+  background: #dbeafe;
+  color: #2563eb;
 }
 
 /* Match popup overlay */
@@ -6723,18 +6954,18 @@ textarea {
 
 /* --- Per-Row Raw Data Toggle --- */
 .tl-raw-toggle-btn {
-  font-size: 0.65rem;
-  padding: 1px 6px;
-  border-radius: 3px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
+  font-size: 0.62rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: none;
+  background: #f8fafc;
+  color: #94a3b8;
   font-family: 'SF Mono', 'Fira Code', monospace;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .tl-raw-toggle-btn:hover {
-  border-color: #8b5cf6;
+  background: #f3e8ff;
   color: #8b5cf6;
 }
 .tl-entry-raw {
@@ -6757,29 +6988,26 @@ textarea {
 .tl-edit-btn,
 .tl-delete-btn {
   font-size: 0.65rem;
-  padding: 1px 8px;
-  border-radius: 3px;
-  border: 1px solid var(--border);
-  background: transparent;
+  padding: 2px 10px;
+  border-radius: 20px;
+  border: none;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s;
 }
 .tl-edit-btn {
-  color: #f59e0b;
-  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #d97706;
 }
 .tl-edit-btn:hover {
-  background: #f59e0b;
-  color: #fff;
+  background: #fef3c7;
 }
 .tl-delete-btn {
+  background: #fef2f2;
   color: #ef4444;
-  border-color: #ef4444;
 }
 .tl-delete-btn:hover {
-  background: #ef4444;
-  color: #fff;
+  background: #fee2e2;
 }
 
 /* ============ Fleet Tracker — Schedule Alerts ============ */
