@@ -85,8 +85,21 @@ function getRegionInfo(city) {
   return cityRegionMap[city.toUpperCase()] || { region: 'Unassigned', territory: 'Unassigned', sub: 'Unassigned' };
 }
 
-/** Parse Python-format stores list into JS objects */
+/** Parse Python-format or JSON stores list into JS objects */
 function parsePythonFeed(text) {
+  // Try JSON first (double-quoted keys)
+  const trimmed = text.trim();
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      const valid = arr.filter(s => s['Store Id']);
+      if (valid.length > 0) return valid;
+    } catch (e) {
+      // fall through to Python regex parser
+    }
+  }
+
   const stores = [];
   // Match each dict: {'key': 'value', ...}
   const dictRegex = /\{([^}]+)\}/g;
