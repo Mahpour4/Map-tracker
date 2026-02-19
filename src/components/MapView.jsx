@@ -261,8 +261,13 @@ export default function MapView() {
     selectStore(null);
     selectZone(null);
     selectSubZone(null);
-    setHiddenZones(new Set());
-    setZonesOff(false);
+    // Restore default view state
+    setVisitMode(true);
+    setLegendFilter(new Set());
+    setHideCash(true);
+    setHideChain(false);
+    setStaleCollapsed(false);
+    hideAllZones();
     setMapView([39.0, -76.8], 8);
   }
 
