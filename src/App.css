@@ -3360,6 +3360,77 @@ textarea {
   background: #1d4ed8;
 }
 
+/* Split PDF export button + dropdown */
+.schedule-pdf-dropdown-wrap {
+  position: relative;
+}
+.schedule-pdf-split-btn {
+  display: flex;
+  align-items: stretch;
+}
+.schedule-pdf-main {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.schedule-pdf-main:hover { background: #1d4ed8; }
+.schedule-pdf-caret {
+  padding: 6px 9px;
+  font-size: 12px;
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-left: 1px solid #3b82f6;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.schedule-pdf-caret:hover { background: #1e40af; }
+.schedule-pdf-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  min-width: 280px;
+  z-index: 200;
+  overflow: hidden;
+}
+.schedule-pdf-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.schedule-pdf-menu-item:last-child { border-bottom: none; }
+.schedule-pdf-menu-item:hover { background: #eff6ff; }
+.schedule-pdf-menu-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.schedule-pdf-menu-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+.schedule-pdf-menu-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
 .schedule-empty {
   display: flex;
   align-items: center;

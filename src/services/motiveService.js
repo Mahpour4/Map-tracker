@@ -381,39 +381,45 @@ export async function fetchCardTransactions(opts = {}) {
     let fuelType = null;
     let pricePerGallon = null;
 
+    let rebateAmount = 0;
     orderItems.forEach(oi => {
-      const qty = parseFloat(oi.quantity || oi.volume_gallons || 0);
-      const unitPrice = parseFloat(oi.unit_price || oi.price_per_gallon || 0);
-      const lineTotal = parseFloat(oi.total || oi.amount || 0);
+      const qty       = parseFloat(oi.quantity || 0);
+      const unitPrice = parseFloat(oi.unit_price || 0);
+      const lineTotal = parseFloat(oi.gross_amount || 0);   // actual API field
       if (qty > 0) totalGallons += qty;
       if (lineTotal > 0) totalAmount += lineTotal;
-      if (!fuelType && (oi.fuel_type || oi.description)) fuelType = oi.fuel_type || oi.description || null;
+      rebateAmount += parseFloat(oi.rebate_amount || 0);
+      if (!fuelType && oi.product_type) fuelType = oi.product_type;
       if (!pricePerGallon && unitPrice > 0) pricePerGallon = unitPrice;
     });
 
-    // If order_items empty, fall back to top-level fields
-    if (totalAmount === 0 && tx.amount != null) totalAmount = parseFloat(tx.amount);
+    // Pending transactions have empty order_items — fall back to top-level total
+    if (totalAmount === 0 && tx.total_amount != null) totalAmount = parseFloat(tx.total_amount);
+    if (rebateAmount === 0 && tx.total_rebate != null) rebateAmount = parseFloat(tx.total_rebate);
 
-    // Odometer: could be in miles or km — store raw, flag unit
-    const odomRaw = meta.odometer_reading != null ? parseFloat(meta.odometer_reading) : null;
+    const merchantInfo = tx.merchant_info || {};
+    const odomRaw  = meta.odometer_reading != null ? parseFloat(meta.odometer_reading) : null;
+    const odomUnit = meta.odometer_unit || 'mi';   // 'mi' or 'km'
 
     return {
       id: tx.id,
       cardId: tx.card_id || null,
-      vehicleId: tx.vehicle_id || null,
+      vehicleId: tx.vehicle_id != null ? String(tx.vehicle_id) : null,
       driverId: tx.driver_id || null,
-      merchantName: tx.merchant_name || tx.merchant || '',
-      merchantCity: tx.merchant_city || '',
-      merchantState: tx.merchant_state || '',
-      transactedAt: tx.transacted_at || tx.created_at || null,
-      status: tx.status || null,
+      last4: tx.last_four_digits || '',
+      merchantName: merchantInfo.name || tx.merchant_name || '',
+      merchantCity: merchantInfo.city || tx.merchant_city || '',
+      merchantState: (merchantInfo.state || tx.merchant_state || '').trim(),
+      transactedAt: tx.transaction_time || tx.transacted_at || null,
+      status: tx.transaction_status || tx.status || null,
       totalAmount,
       totalGallons,
       fuelType,
       pricePerGallon,
       odometerRaw: odomRaw,
-      rebateAmount: parseFloat(tx.rebate_amount || 0),
-      declined: tx.status === 'declined' || tx.declined === true,
+      odometerUnit: odomUnit,
+      rebateAmount,
+      declined: (tx.transaction_status || tx.status) === 'declined' || !!tx.decline_reason,
     };
   });
 }

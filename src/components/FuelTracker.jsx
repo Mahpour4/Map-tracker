@@ -101,7 +101,7 @@ export default function FuelTracker() {
   const enriched = useMemo(() => transactions.map(tx => ({
     ...tx,
     route: resolveRoute(tx) || 'Unknown',
-    last4: cardInfoMap[tx.cardId]?.last4 || '',
+    last4: tx.last4 || cardInfoMap[tx.cardId]?.last4 || '',
     cardName: cardInfoMap[tx.cardId]?.entityName || '',
   })), [transactions, resolveRoute, cardInfoMap]);
 
@@ -191,7 +191,9 @@ export default function FuelTracker() {
       if (tx.vehicleId && tx.odometerRaw != null) {
         const vid = String(tx.vehicleId);
         if (!map[r].odometers[vid]) map[r].odometers[vid] = [];
-        map[r].odometers[vid].push(tx.odometerRaw);
+        // Normalise to miles using the API-provided unit
+        const miles = tx.odometerUnit === 'km' ? tx.odometerRaw * 0.621371 : tx.odometerRaw;
+        map[r].odometers[vid].push(miles);
       }
     });
 
@@ -200,10 +202,8 @@ export default function FuelTracker() {
       Object.values(r.odometers).forEach(readings => {
         if (readings.length >= 2) {
           const sorted = [...readings].sort((a, b) => a - b);
-          const delta = sorted[sorted.length - 1] - sorted[0];
-          // If readings look like km (very large numbers), convert to miles
-          const needsConvert = sorted[sorted.length - 1] > 100000;
-          miles += needsConvert ? delta * 0.621371 : delta;
+          // Values already normalised to miles at collection time
+          miles += sorted[sorted.length - 1] - sorted[0];
         }
       });
       const avgPpg = r.gallons > 0 ? r.spend / r.gallons : 0;

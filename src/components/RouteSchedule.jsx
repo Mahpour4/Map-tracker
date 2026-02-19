@@ -105,6 +105,7 @@ export default function RouteSchedule() {
   const [dragItem, setDragItem] = useState(null);
   const [noteEditing, setNoteEditing] = useState(null);
   const [showSchedulesDropdown, setShowSchedulesDropdown] = useState(false);
+  const [showPdfMenu, setShowPdfMenu] = useState(false);
   const [visitEditId, setVisitEditId] = useState(null);
   const [visitEditDate, setVisitEditDate] = useState('');
   const visitDateRef = useRef(null);
@@ -474,6 +475,96 @@ export default function RouteSchedule() {
     doc.save(`Route_${selectedRoute}_Schedule_${weekOf}.pdf`);
   }, [schedule, selectedRoute, weekOf, storeMap, complianceStats]);
 
+  // Generate clean schedule PDF — no status, no scores, no visit history
+  const generateCleanPDF = useCallback(() => {
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Route ${selectedRoute} — Weekly Schedule`, pageWidth / 2, 16, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const monday = new Date(weekOf + 'T00:00:00');
+    const friday = new Date(monday);
+    friday.setDate(friday.getDate() + 4);
+    const dateRange = `Week of ${monday.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} — ${friday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+    doc.text(dateRange, pageWidth / 2, 22, { align: 'center' });
+
+    const totalStops = DAYS.reduce((sum, d) => sum + (schedule[d] || []).length, 0);
+    doc.text(`${totalStops} stop${totalStops !== 1 ? 's' : ''} — ${DAYS.filter(d => (schedule[d] || []).length > 0).length} days`, pageWidth / 2, 27, { align: 'center' });
+
+    let yPos = 33;
+
+    DAYS.forEach(day => {
+      const stops = schedule[day] || [];
+      if (stops.length === 0) return;
+
+      if (yPos + 15 + stops.length * 8 > doc.internal.pageSize.getHeight() - 12) {
+        doc.addPage();
+        yPos = 15;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text(`${DAY_LABELS[day]}`, 14, yPos);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${stops.length} stop${stops.length !== 1 ? 's' : ''}`, 14 + doc.getTextWidth(`${DAY_LABELS[day]}`) + 4, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 2;
+
+      const tableData = stops.map(item => {
+        const store = storeMap[item.storeId];
+        if (!store) return [item.stopNumber, item.storeId, '—', '—', item.notes || ''];
+        const addr = `${store.address || ''}, ${store.city || ''} ${store.state || ''}`.trim().replace(/^,\s*/, '');
+        return [
+          item.stopNumber,
+          store.id,
+          store.name || '—',
+          addr,
+          item.notes || '',
+        ];
+      });
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['#', 'Store ID', 'Store Name', 'Address', 'Notes']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], fontSize: 8, fontStyle: 'bold', textColor: [255, 255, 255] },
+        bodyStyles: { fontSize: 9 },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 55 },
+          3: { cellWidth: 100 },
+          4: { cellWidth: 'auto' },
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      yPos = doc.lastAutoTable.finalY + 10;
+    });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(180, 180, 180);
+      doc.text(
+        `Route ${selectedRoute} — ${dateRange} — Page ${i}/${pageCount}`,
+        pageWidth / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' }
+      );
+    }
+
+    doc.save(`Route_${selectedRoute}_Clean_Schedule_${weekOf}.pdf`);
+  }, [schedule, selectedRoute, weekOf, storeMap]);
+
   return (
     <div className="schedule-page">
       <div className="schedule-header">
@@ -491,9 +582,36 @@ export default function RouteSchedule() {
             onChange={(e) => setWeekOf(getMonday(e.target.value))}
           />
           {selectedRoute && (
-            <button className="btn btn-primary schedule-pdf-btn" onClick={generatePDF}>
-              Export PDF
-            </button>
+            <div className="schedule-pdf-dropdown-wrap">
+              <div className="schedule-pdf-split-btn">
+                <button className="btn btn-primary schedule-pdf-main" onClick={generatePDF}>
+                  Export PDF
+                </button>
+                <button
+                  className="btn btn-primary schedule-pdf-caret"
+                  onClick={() => setShowPdfMenu(m => !m)}
+                  title="More export options"
+                >▾</button>
+              </div>
+              {showPdfMenu && (
+                <div className="schedule-pdf-menu">
+                  <button className="schedule-pdf-menu-item" onClick={() => { generatePDF(); setShowPdfMenu(false); }}>
+                    <span className="schedule-pdf-menu-icon">📊</span>
+                    <div>
+                      <div className="schedule-pdf-menu-label">Full Schedule</div>
+                      <div className="schedule-pdf-menu-desc">Includes visit history, days since, compliance status</div>
+                    </div>
+                  </button>
+                  <button className="schedule-pdf-menu-item" onClick={() => { generateCleanPDF(); setShowPdfMenu(false); }}>
+                    <span className="schedule-pdf-menu-icon">📋</span>
+                    <div>
+                      <div className="schedule-pdf-menu-label">Clean Schedule</div>
+                      <div className="schedule-pdf-menu-desc">Stop #, store, address only — no scores or status</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           <div className="schedules-dropdown-wrapper">
             <button
