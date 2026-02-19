@@ -585,6 +585,47 @@ export default function RouteSchedule() {
         </div>
       )}
 
+      {/* Store totals summary */}
+      {selectedRoute && (
+        <div className="schedule-store-totals">
+          <div className="store-total-stat">
+            <span className="store-total-val">{routeStores.length}</span>
+            <span className="store-total-label">Total Stores</span>
+          </div>
+          <div className="store-total-divider" />
+          <div className="store-total-stat">
+            <span className="store-total-val" style={{ color: '#16a34a' }}>{routeStores.length - unscheduledStores.length}</span>
+            <span className="store-total-label">Scheduled</span>
+          </div>
+          <div className="store-total-divider" />
+          <div className="store-total-stat">
+            <span className="store-total-val" style={{ color: '#6b7280' }}>{unscheduledStores.length}</span>
+            <span className="store-total-label">Unscheduled</span>
+          </div>
+          {unscheduledStores.length > 0 && (
+            <>
+              <div className="store-total-divider" />
+              <div className="store-total-stat">
+                <span className="store-total-val" style={{ color: '#1d4ed8' }}>{unscheduledChain.length}</span>
+                <span className="store-total-label">Chain</span>
+              </div>
+              <div className="store-total-stat">
+                <span className="store-total-val" style={{ color: '#92400e' }}>{unscheduledCash.length}</span>
+                <span className="store-total-label">Cash / Ind.</span>
+              </div>
+            </>
+          )}
+          {routeStores.length > 0 && (
+            <div className="store-total-progress">
+              <div
+                className="store-total-progress-fill"
+                style={{ width: `${Math.round(((routeStores.length - unscheduledStores.length) / routeStores.length) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {!selectedRoute ? (
         <div className="schedule-empty">Select a route to build a weekly schedule</div>
       ) : (

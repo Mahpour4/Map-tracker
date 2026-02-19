@@ -3770,6 +3770,60 @@ textarea {
   transition: flex 0.3s ease;
 }
 
+.schedule-store-totals {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.store-total-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+}
+
+.store-total-val {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.store-total-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+
+.store-total-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.store-total-progress {
+  flex: 1;
+  min-width: 80px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.store-total-progress-fill {
+  height: 100%;
+  background: #16a34a;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
 .compliance-badge {
   display: inline-block;
   font-size: 9px;
