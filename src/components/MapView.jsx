@@ -176,7 +176,7 @@ export default function MapView() {
   const [visitMode, setVisitMode] = useState(false);
   const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
   const [zonesOff, setZonesOff] = useState(true); // default: zones hidden
-  const [hideCash, setHideCash] = useState(false);
+  const [hideCash, setHideCash] = useState(true);
   const [hideChain, setHideChain] = useState(false);
   const zonesInitialized = useRef(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
