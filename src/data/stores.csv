@@ -58,7 +58,7 @@ SFW00080,SFW00080,Shoppers Capitol Heights,4801 Marlboro Pike,Capitol Heights,MD
 WAW05129,05129,Walmart 5129,6210 Annapolis Rd,Landover Hills,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9429674,-76.9079617,,,Yes
 SFW02618,02618,Shoppers Food Whse 2618,7790 RIVERDALE RD,Hyattsville,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9559,-76.9453,,2025-09-30,Yes
 FLW00656,00656,Food Lion 656,40955 MERCHANT LN,LEONARDTOWN,MD,20650,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2909,-76.6356,,2026-02-11,No
-FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.4999463,-76.7715778,,2026-02-18,No
+FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.4999463,-76.7715778,,2026-02-19,No
 FLW01316,01316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.631106,-77.0720882,,2026-02-12,No
 WMW00278,00278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.547702,-76.9827263,,2025-11-19,Yes
 FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6231162,-76.9084658,,2026-02-17,No
@@ -224,7 +224,7 @@ CASH0107,CASH0107,Edmondson Liquors & Food,2000 Edmondson Ave,Baltimore,MD,,203,
 CASH0137,CASH0137,Falls Deli And Grocery,4300 Falls Rd,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.341081,-76.6397795,,2025-12-23,No
 CASH0149,CASH0149,Five Brothers,801 North Glover St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3003199,-76.5801042,,2026-02-11,No
 CASH0154,CASH0154,Food City Mart,1733 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3042716,-76.6351937,,2026-02-04,No
-CASH0162,CASH0162,Frederick Store,4110 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2819023,-76.6836883,,2026-01-19,No
+CASH0162,CASH0162,Frederick Store,4110 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2819023,-76.6836883,,2026-02-19,No
 CASH0170,CASH0170,Garrison Deli And Grocery,2109 Garrison Blvd,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3114491,-76.6748017,,2026-02-12,No
 CASH0195,CASH0195,Harlem Grocery Store,901 Harlem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.296797,-76.633411,,2026-02-13,No
 CASH0196,CASH0196,Harlem Mini Mart,1133 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2994831,-76.6293123,,2026-02-17,No
@@ -373,7 +373,7 @@ FLW01238,FLW01238,FOOD LION 1238,11800 OLD NATIONAL PIKE,NEW MARKET,MD,21774,204
 FLW01413,FLW01413,FOOD LION 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3887957,-76.5074782,,2026-02-12,No
 FLW01423,FLW01423,FOOD LION 1423,2458 CHURCHVILLE RD,BEL AIR,MD,21015,214,Route 204 Driver,Harford County,Harford County,Harford County,39.5568664,-76.2718674,,2026-02-13,No
 FLW01465,FLW01465,FOOD LION 1465,1312 S MAIN ST STE 4,MOUNT AIRY,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,,2026-02-06,No
-FLW02193,FLW02193,FOOD LION 2193,3000 GAMBER RD,FINKSBURG,MD,21048,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4941814,-76.8942659,,2026-02-13,No
+FLW02193,FLW02193,FOOD LION 2193,3000 GAMBER RD,FINKSBURG,MD,21048,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4941814,-76.8942659,,2026-02-19,No
 FLW02559,FLW02559,FOOD LION 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1997303,-76.6399835,,2026-02-16,No
 FLW02560,FLW02560,FOOD LION 2560,7514 N POINT RD,EDGEMERE,MD,21219,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2364809,-76.4408967,,2026-02-18,No
 GTW06307,GTW06307,GIANT 6307,1320 LONDONTOWN BLVD,ELDERSBURG,MD,21784,204,Route 204 Driver,Unassigned,Unassigned,Unassigned,39.4111027,-76.9487664,,2026-02-17,No
