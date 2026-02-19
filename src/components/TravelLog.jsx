@@ -109,6 +109,7 @@ export default function TravelLog() {
   const [matchingEntry, setMatchingEntry] = useState(null);
   const [matchSearch, setMatchSearch] = useState('');
   const [matchTab, setMatchTab] = useState('stores'); // stores | custom | create
+  const [matchingField, setMatchingField] = useState('dest'); // 'origin' | 'dest'
   // Dismissed suggestion keys: Set of "${locationId}-origin" or "${locationId}-dest"
   const [dismissedSuggestions, setDismissedSuggestions] = useState(new Set());
   // Raw data popup
@@ -480,9 +481,12 @@ export default function TravelLog() {
     if (!matchingEntry) return [];
     const vehicle = vehicleList.find(v => v.vin === matchingEntry.vehicleVin);
     const routeNum = vehicle?.routeNumber;
-    let candidates = stores.filter(s =>
-      routeNum && String(s.routeNumber).trim() === String(routeNum).trim()
-    );
+    // Prefer route-matched stores, but fall back to ALL stores so newly imported
+    // stores (or those with no/different route numbers) are always searchable.
+    const routeFiltered = routeNum
+      ? stores.filter(s => String(s.routeNumber).trim() === String(routeNum).trim())
+      : [];
+    let candidates = routeFiltered.length > 0 ? routeFiltered : [...stores];
     if (matchSearch.trim()) {
       const q = matchSearch.toLowerCase();
       candidates = candidates.filter(s =>
@@ -607,82 +611,128 @@ export default function TravelLog() {
 
   const handleMatchStore = useCallback((store) => {
     if (!matchingEntry) return;
-    console.log(`[TravelLog] Manual match: "${matchingEntry.locationName}" → store "${store.name}" (${store.id})`);
-    manualMatchEntries([{
-      vehicleVin: matchingEntry.vehicleVin,
-      date: selectedDate,
-      oldLocationId: matchingEntry.locationId,
-      newEntry: {
+    console.log(`[TravelLog] Manual match (${matchingField}): "${matchingEntry.locationName}" → store "${store.name}" (${store.id})`);
+    if (matchingField === 'origin') {
+      // Origin match: log a new store visit at arrival time
+      logTravelEntries([{
+        vehicleVin: matchingEntry.vehicleVin,
+        vehicleId: matchingEntry.vehicleId,
         type: 'store',
         locationId: store.id,
         locationName: store.name,
         lat: store.lat,
         lng: store.lng,
-      },
-    }]);
-    bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
-    const dest = (matchingEntry.destination || '').trim();
-    if (dest) setAddressOverride(dest, store.id);
-    propagateMatchToSameDestination(matchingEntry, store, 'store');
+        time: matchingEntry.arrivalTime,
+        arrivalTime: matchingEntry.arrivalTime,
+        departureTime: matchingEntry.arrivalTime,
+        dwellMinutes: null,
+      }]);
+      bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
+      const originAddr = (matchingEntry.origin || cleanLocationName(matchingEntry.locationName || '').split(' \u2192 ')[0] || '').trim();
+      if (originAddr) setAddressOverride(originAddr, store.id);
+    } else {
+      // Dest match: replace the driving entry
+      manualMatchEntries([{
+        vehicleVin: matchingEntry.vehicleVin,
+        date: selectedDate,
+        oldLocationId: matchingEntry.locationId,
+        newEntry: {
+          type: 'store',
+          locationId: store.id,
+          locationName: store.name,
+          lat: store.lat,
+          lng: store.lng,
+        },
+      }]);
+      bulkRecordVisits([{ storeId: store.id, date: selectedDate }]);
+      const dest = (matchingEntry.destination || '').trim();
+      if (dest) setAddressOverride(dest, store.id);
+      propagateMatchToSameDestination(matchingEntry, store, 'store');
+    }
     setMatchingEntry(null);
     setMatchSearch('');
-  }, [matchingEntry, selectedDate, manualMatchEntries, bulkRecordVisits, setAddressOverride, propagateMatchToSameDestination]);
+  }, [matchingEntry, matchingField, selectedDate, manualMatchEntries, logTravelEntries, bulkRecordVisits, setAddressOverride, propagateMatchToSameDestination]);
 
   const handleMatchCustomLocation = useCallback((cl) => {
     if (!matchingEntry) return;
-    console.log(`[TravelLog] Manual match: "${matchingEntry.locationName}" → custom "${cl.name}" (${cl.type || 'custom'})`);
-    manualMatchEntries([{
-      vehicleVin: matchingEntry.vehicleVin,
-      date: selectedDate,
-      oldLocationId: matchingEntry.locationId,
-      newEntry: {
+    console.log(`[TravelLog] Manual match (${matchingField}): "${matchingEntry.locationName}" → custom "${cl.name}" (${cl.type || 'custom'})`);
+    if (matchingField === 'origin') {
+      logTravelEntries([{
+        vehicleVin: matchingEntry.vehicleVin,
+        vehicleId: matchingEntry.vehicleId,
         type: cl.type || 'custom',
         locationId: cl.id,
         locationName: cl.name,
         lat: cl.lat,
         lng: cl.lng,
-      },
-    }]);
-    const dest = (matchingEntry.destination || '').trim();
-    if (dest) setAddressOverride(dest, cl.id);
-    propagateMatchToSameDestination(matchingEntry, cl, cl.type || 'custom');
+        time: matchingEntry.arrivalTime,
+        arrivalTime: matchingEntry.arrivalTime,
+        departureTime: matchingEntry.arrivalTime,
+        dwellMinutes: null,
+      }]);
+      const originAddr = (matchingEntry.origin || cleanLocationName(matchingEntry.locationName || '').split(' \u2192 ')[0] || '').trim();
+      if (originAddr) setAddressOverride(originAddr, cl.id);
+    } else {
+      manualMatchEntries([{
+        vehicleVin: matchingEntry.vehicleVin,
+        date: selectedDate,
+        oldLocationId: matchingEntry.locationId,
+        newEntry: {
+          type: cl.type || 'custom',
+          locationId: cl.id,
+          locationName: cl.name,
+          lat: cl.lat,
+          lng: cl.lng,
+        },
+      }]);
+      const dest = (matchingEntry.destination || '').trim();
+      if (dest) setAddressOverride(dest, cl.id);
+      propagateMatchToSameDestination(matchingEntry, cl, cl.type || 'custom');
+    }
     setMatchingEntry(null);
     setMatchSearch('');
-  }, [matchingEntry, selectedDate, manualMatchEntries, setAddressOverride, propagateMatchToSameDestination]);
+  }, [matchingEntry, matchingField, selectedDate, manualMatchEntries, logTravelEntries, setAddressOverride, propagateMatchToSameDestination]);
 
   const handleCreateAndMatch = useCallback(() => {
     if (!matchingEntry || !newLocName.trim()) return;
-    const dest = (matchingEntry.destination || '').trim();
+    const isOrigin = matchingField === 'origin';
+    const addr = isOrigin
+      ? (matchingEntry.origin || cleanLocationName(matchingEntry.locationName || '').split(' \u2192 ')[0] || '').trim()
+      : (matchingEntry.destination || '').trim();
+    const lat = isOrigin ? matchingEntry.lat : (matchingEntry.destinationLat || matchingEntry.lat);
+    const lng = isOrigin ? matchingEntry.lng : (matchingEntry.destinationLng || matchingEntry.lng);
     const id = uuidv4();
-    const newLoc = {
-      id,
-      name: newLocName.trim(),
-      type: newLocType,
-      address: dest,
-      lat: matchingEntry.destinationLat || matchingEntry.lat,
-      lng: matchingEntry.destinationLng || matchingEntry.lng,
-    };
-    console.log(`[TravelLog] Create & match: "${matchingEntry.locationName}" → new "${newLoc.name}" (${newLocType})`);
+    const newLoc = { id, name: newLocName.trim(), type: newLocType, address: addr, lat, lng };
+    console.log(`[TravelLog] Create & match (${matchingField}): "${matchingEntry.locationName}" → new "${newLoc.name}" (${newLocType})`);
     addCustomLocation(newLoc);
-    manualMatchEntries([{
-      vehicleVin: matchingEntry.vehicleVin,
-      date: selectedDate,
-      oldLocationId: matchingEntry.locationId,
-      newEntry: {
+    if (isOrigin) {
+      logTravelEntries([{
+        vehicleVin: matchingEntry.vehicleVin,
+        vehicleId: matchingEntry.vehicleId,
         type: newLocType,
         locationId: id,
         locationName: newLocName.trim(),
-        lat: newLoc.lat,
-        lng: newLoc.lng,
-      },
-    }]);
-    if (dest) setAddressOverride(dest, id);
-    propagateMatchToSameDestination(matchingEntry, newLoc, newLocType);
+        lat, lng,
+        time: matchingEntry.arrivalTime,
+        arrivalTime: matchingEntry.arrivalTime,
+        departureTime: matchingEntry.arrivalTime,
+        dwellMinutes: null,
+      }]);
+    } else {
+      manualMatchEntries([{
+        vehicleVin: matchingEntry.vehicleVin,
+        date: selectedDate,
+        oldLocationId: matchingEntry.locationId,
+        newEntry: { type: newLocType, locationId: id, locationName: newLocName.trim(), lat, lng },
+      }]);
+      propagateMatchToSameDestination(matchingEntry, newLoc, newLocType);
+    }
+    if (addr) setAddressOverride(addr, id);
     setMatchingEntry(null);
     setMatchSearch('');
     setNewLocName('');
     setNewLocType('gas-station');
-  }, [matchingEntry, selectedDate, newLocName, newLocType, addCustomLocation, manualMatchEntries, setAddressOverride, propagateMatchToSameDestination]);
+  }, [matchingEntry, matchingField, selectedDate, newLocName, newLocType, addCustomLocation, manualMatchEntries, logTravelEntries, setAddressOverride, propagateMatchToSameDestination]);
 
   // Raw data total breadcrumb count
   const rawBreadcrumbCount = useMemo(() => {
@@ -916,14 +966,29 @@ export default function TravelLog() {
                         </>
                       );
                     })()}
-                    {(entry.type === 'driving' || effectivelyUnmatched) && (
-                      <button
-                        className="tl-match-btn"
-                        onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchSearch(''); setMatchTab('stores'); }}
-                      >
-                        Match Location
-                      </button>
-                    )}
+                    {(entry.type === 'driving' || effectivelyUnmatched) && (() => {
+                      // Derive origin text the same way the display does — fall back to locationName split
+                      const originText = entry.origin ||
+                        cleanLocationName(entry.locationName || '').split(' \u2192 ')[0] || '';
+                      return (
+                        <>
+                          {!isGarbageLocation(originText) && (
+                            <button
+                              className="tl-match-btn"
+                              onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}
+                            >
+                              Match Origin
+                            </button>
+                          )}
+                          <button
+                            className="tl-match-btn"
+                            onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}
+                          >
+                            Match Dest
+                          </button>
+                        </>
+                      );
+                    })()}
                     {entry.locationId && liveCl && (
                       <>
                         <button
@@ -1023,10 +1088,18 @@ export default function TravelLog() {
               <button className="tl-match-close" onClick={() => setMatchingEntry(null)}>&times;</button>
             </div>
             <div className="tl-match-dest">
-              <span className="tl-match-label">Motive Destination:</span>
-              <span className="tl-match-addr">{matchingEntry.destination || matchingEntry.locationName?.split('\u2192')[1]?.trim() || 'Unknown'}</span>
-              {addressOverrides[(matchingEntry.destination || '').trim()] && (() => {
-                const savedId = addressOverrides[(matchingEntry.destination || '').trim()];
+              <span className="tl-match-label">Motive {matchingField === 'origin' ? 'Origin' : 'Destination'}:</span>
+              <span className="tl-match-addr">
+                {matchingField === 'origin'
+                  ? (matchingEntry.origin || cleanLocationName(matchingEntry.locationName || '').split(' \u2192 ')[0] || 'Unknown')
+                  : (matchingEntry.destination || matchingEntry.locationName?.split('\u2192')[1]?.trim() || 'Unknown')}
+              </span>
+              {(() => {
+                const addr = matchingField === 'origin'
+                  ? (matchingEntry.origin || cleanLocationName(matchingEntry.locationName || '').split(' \u2192 ')[0] || '').trim()
+                  : (matchingEntry.destination || '').trim();
+                if (!addr || !addressOverrides[addr]) return null;
+                const savedId = addressOverrides[addr];
                 const savedStore = stores.find(s => s.id === savedId);
                 const savedWh = !savedStore ? warehouses.find(w => w.id === savedId) : null;
                 const savedCustom = !savedStore && !savedWh ? customLocations.find(cl => cl.id === savedId) : null;
@@ -1116,14 +1189,23 @@ export default function TravelLog() {
                     </select>
                   </div>
                   <div className="tl-create-field">
-                    <label>Address (from destination)</label>
-                    <input type="text" value={matchingEntry.destination || ''} readOnly className="tl-create-readonly" />
+                    <label>Address (from {matchingField === 'origin' ? 'origin' : 'destination'})</label>
+                    <input
+                      type="text"
+                      value={matchingField === 'origin'
+                        ? (matchingEntry.origin || cleanLocationName(matchingEntry.locationName || '').split(' \u2192 ')[0] || '')
+                        : (matchingEntry.destination || '')}
+                      readOnly
+                      className="tl-create-readonly"
+                    />
                   </div>
                   <div className="tl-create-field">
                     <label>Coordinates</label>
                     <input
                       type="text"
-                      value={`${matchingEntry.destinationLat || matchingEntry.lat || '?'}, ${matchingEntry.destinationLng || matchingEntry.lng || '?'}`}
+                      value={matchingField === 'origin'
+                        ? `${matchingEntry.lat || '?'}, ${matchingEntry.lng || '?'}`
+                        : `${matchingEntry.destinationLat || matchingEntry.lat || '?'}, ${matchingEntry.destinationLng || matchingEntry.lng || '?'}`}
                       readOnly
                       className="tl-create-readonly"
                     />
