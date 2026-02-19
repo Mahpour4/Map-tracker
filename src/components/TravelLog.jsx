@@ -124,6 +124,9 @@ export default function TravelLog() {
   // Create custom location form
   const [newLocName, setNewLocName] = useState('');
   const [newLocType, setNewLocType] = useState('gas-station');
+  // Panel visibility toggles
+  const [showBreadcrumbs, setShowBreadcrumbs] = useState(true);
+  const [showDrivingPeriods, setShowDrivingPeriods] = useState(true);
 
   // Get all dates that have log entries, sorted descending
   const availableDates = useMemo(() => {
@@ -166,6 +169,10 @@ export default function TravelLog() {
     return entries;
   }, [travelLog, selectedDate, selectedVehicle, vehicleList]);
 
+  // Split dayEntries into the two source datasets
+  const breadcrumbEntries = useMemo(() => dayEntries.filter(e => e.type !== 'driving'), [dayEntries]);
+  const drivingEntries = useMemo(() => dayEntries.filter(e => e.type === 'driving'), [dayEntries]);
+
   // Summary stats
   const stats = useMemo(() => {
     const dayLog = travelLog[selectedDate] || {};
@@ -187,8 +194,14 @@ export default function TravelLog() {
     return { vehicleCount, storeVisits, warehouseVisits, drivingSegments, customVisits, total: storeVisits + warehouseVisits + customVisits };
   }, [travelLog, selectedDate, selectedVehicle]);
 
-  // Map-eligible entries
-  const mapEntries = useMemo(() => dayEntries.filter(e => isValidCoord(e.lat, e.lng)), [dayEntries]);
+  // Map-eligible entries — respects panel visibility toggles
+  const mapEntries = useMemo(() => {
+    let visible = [];
+    if (showBreadcrumbs) visible = visible.concat(breadcrumbEntries);
+    if (showDrivingPeriods) visible = visible.concat(drivingEntries);
+    visible.sort((a, b) => (a.arrivalTime || a.time || '').localeCompare(b.arrivalTime || b.time || ''));
+    return visible.filter(e => isValidCoord(e.lat, e.lng));
+  }, [showBreadcrumbs, showDrivingPeriods, breadcrumbEntries, drivingEntries]);
   const mapPoints = useMemo(() => mapEntries.map(e => [e.lat, e.lng]), [mapEntries]);
 
   // Reactively compute address-match suggestions for all unmatched driving entries
@@ -740,6 +753,187 @@ export default function TravelLog() {
     return Object.values(rawData.breadcrumbs).reduce((sum, arr) => sum + arr.length, 0);
   }, [rawData]);
 
+  // Renders a single timeline entry card (shared by both panels)
+  const renderEntry = (entry, i) => {
+    const liveCl = entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
+    const liveStore = entry.type === 'store' && entry.locationId ? stores.find(s => s.id === entry.locationId) : null;
+    const liveWh = entry.type === 'warehouse' && entry.locationId ? warehouses.find(w => w.id === entry.locationId) : null;
+    const isResolved = !!(liveCl || liveStore || liveWh);
+    const effectivelyUnmatched = entry.type !== 'driving' && !isResolved;
+    const rawKey = entry.locationId || `${entry.vehicleVin}-${i}`;
+
+    return (
+      <div key={`${entry.vehicleVin}-${entry.locationId}-${i}`} className={`tl-entry tl-${effectivelyUnmatched ? 'driving' : entry.type}`}>
+        <div className="tl-entry-index">{i + 1}</div>
+        <div className="tl-entry-time">
+          {entry.arrivalTime
+            ? new Date(entry.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : entry.time
+              ? new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '--:--'}
+        </div>
+        <div className="tl-entry-dot" style={!['store','warehouse','driving'].includes(entry.type) || effectivelyUnmatched ? { background: effectivelyUnmatched ? undefined : getTypeColor(entry.type) } : undefined} />
+        <div className="tl-entry-content">
+          <div className="tl-entry-name">
+            {entry.type === 'driving' ? (() => {
+              const parts = cleanLocationName(entry.locationName).split(' \u2192 ');
+              const origin = isGarbageLocation(parts[0]) ? 'Unknown' : parts[0];
+              const dest = isGarbageLocation(parts[1]) ? 'Unknown' : parts[1];
+              const originQ = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(origin);
+              const destQ = (entry.destinationLat && entry.destinationLng) ? `${entry.destinationLat},${entry.destinationLng}` : encodeURIComponent(dest);
+              return (
+                <>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{origin}</a>
+                  {' \u2192 '}
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
+                </>
+              );
+            })() : (() => {
+              const displayName = isResolved
+                ? (liveCl?.name || liveWh?.name || liveStore?.name)
+                : (entry.destination || cleanLocationName(entry.locationName) || (entry.lat && entry.lng ? `${entry.lat}, ${entry.lng}` : 'Unknown'));
+              const storeAddr = liveStore ? [liveStore.address, liveStore.city, liveStore.state].filter(Boolean).join(', ') : '';
+              const addr = isResolved
+                ? ((entry.destination || '').trim() || liveCl?.address || storeAddr || liveWh?.address || '')
+                : '';
+              return (
+                <>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${(entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(displayName)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tl-map-link"
+                  >
+                    {displayName}{addr ? `: ${addr}` : ''}
+                  </a>
+                </>
+              );
+            })()}
+          </div>
+          <div className="tl-entry-meta">
+            <span
+              className={`tl-type-badge ${effectivelyUnmatched ? 'driving' : entry.type}`}
+              style={!effectivelyUnmatched && !['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type), color: '#fff' } : undefined}
+            >
+              {effectivelyUnmatched ? 'Unmatched' : getTypeLabel(entry.type)}
+            </span>
+            {selectedVehicle === 'all' && (
+              <span className="tl-entry-vehicle">{entry.vehicleId || entry.vehicleVin?.slice(-6)}</span>
+            )}
+            {entry.dwellMinutes != null && (
+              <span className="tl-entry-dwell">{entry.dwellMinutes} min</span>
+            )}
+            {entry.type === 'driving' && entry.distance > 0 && (
+              <span className="tl-entry-distance">{entry.distance} mi</span>
+            )}
+            {entry.type === 'driving' && entry.driverName && (
+              <span className="tl-entry-driver">{entry.driverName}</span>
+            )}
+            {entry.departureTime && entry.arrivalTime && (
+              <span className="tl-entry-timerange">
+                {new Date(entry.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {' - '}
+                {new Date(entry.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            {(entry.type === 'driving' || effectivelyUnmatched) && suggestions.has(entry.locationId) && (() => {
+              const { origin: originSug, dest: destSug } = suggestions.get(entry.locationId);
+              return (
+                <>
+                  {originSug && (
+                    <span className="tl-suggestion-badge">
+                      Origin: {originSug.name}
+                      <button className="tl-suggest-accept" title="Accept" onClick={(e) => { e.stopPropagation(); handleAcceptOriginSuggestion(entry, originSug); }}>✓</button>
+                      <button className="tl-suggest-dismiss" title="Dismiss" onClick={(e) => { e.stopPropagation(); handleDismissSuggestion(entry.locationId, 'origin'); }}>✗</button>
+                    </span>
+                  )}
+                  {destSug && (
+                    <span className="tl-suggestion-badge">
+                      Dest: {destSug.name}
+                      <button className="tl-suggest-accept" title="Accept" onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(entry, destSug); }}>✓</button>
+                      <button className="tl-suggest-dismiss" title="Dismiss" onClick={(e) => { e.stopPropagation(); handleDismissSuggestion(entry.locationId, 'dest'); }}>✗</button>
+                    </span>
+                  )}
+                </>
+              );
+            })()}
+            {(entry.type === 'driving' || effectivelyUnmatched) && (() => {
+              const originText = entry.origin ||
+                cleanLocationName(entry.locationName || '').split(' \u2192 ')[0] || '';
+              return (
+                <>
+                  {!isGarbageLocation(originText) && (
+                    <button
+                      className="tl-match-btn"
+                      onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}
+                    >
+                      Match Origin
+                    </button>
+                  )}
+                  <button
+                    className="tl-match-btn"
+                    onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}
+                  >
+                    Match Dest
+                  </button>
+                </>
+              );
+            })()}
+            {entry.locationId && liveCl && (
+              <>
+                <button
+                  className="tl-edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditForm({ name: liveCl.name, type: liveCl.type, address: liveCl.address || '' });
+                    setEditingLocationId(liveCl.id);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="tl-delete-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Delete custom location "${liveCl.name}"?`)) {
+                      deleteCustomLocation(liveCl.id);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+            {isResolved && entry.type !== 'driving' && (
+              <button
+                className="tl-delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const matchedName = liveCl?.name || liveStore?.name || liveWh?.name || entry.locationName;
+                  if (window.confirm(`Unmatch "${matchedName}" from this entry? It will revert to showing the raw address.`)) {
+                    unmatchEntry(entry.vehicleVin, selectedDate, entry.locationId);
+                  }
+                }}
+              >
+                Unmatch
+              </button>
+            )}
+            <button
+              className="tl-raw-toggle-btn"
+              onClick={(e) => { e.stopPropagation(); setExpandedRawIndex(expandedRawIndex === rawKey ? null : rawKey); }}
+              title="View raw entry data"
+            >
+              {'{'}...{'}'}
+            </button>
+          </div>
+          {expandedRawIndex === rawKey && (
+            <pre className="tl-entry-raw">{JSON.stringify(entry, null, 2)}</pre>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="tl-page">
       <div className="tl-header">
@@ -769,6 +963,23 @@ export default function TravelLog() {
               <option key={v.vin} value={v.vin}>{v.label}</option>
             ))}
           </select>
+        </div>
+        <div className="tl-filter">
+          <label>Show</label>
+          <div className="tl-toggle-group">
+            <button
+              className={`tl-toggle-btn${showBreadcrumbs ? ' active' : ''}`}
+              onClick={() => setShowBreadcrumbs(b => !b)}
+            >
+              Breadcrumbs <span className="tl-toggle-count">({breadcrumbEntries.length})</span>
+            </button>
+            <button
+              className={`tl-toggle-btn${showDrivingPeriods ? ' active' : ''}`}
+              onClick={() => setShowDrivingPeriods(b => !b)}
+            >
+              Driving Periods <span className="tl-toggle-count">({drivingEntries.length})</span>
+            </button>
+          </div>
         </div>
         <div className="tl-filter tl-filter-action">
           <label>&nbsp;</label>
@@ -852,199 +1063,41 @@ export default function TravelLog() {
         </div>
       )}
 
-      {/* Timeline */}
-      <div className="tl-timeline-scroll">
-        <div className="tl-timeline">
-          {dayEntries.length === 0 ? (
-            <div className="tl-empty">
-              {selectedDate === today
-                ? 'No stops logged yet today. Click "Process Today" to pull location history from Motive and detect visits.'
-                : `No travel log entries for ${selectedDate}. Click "Process ${selectedDate}" to analyze that day's data.`}
+      {/* Dual Timeline Panels */}
+      <div className="tl-dual-timeline">
+        {showBreadcrumbs && (
+          <div className="tl-panel tl-panel-breadcrumbs">
+            <div className="tl-panel-header">
+              <span>Breadcrumb Visits</span>
+              <span className="tl-panel-count">{breadcrumbEntries.length} stops</span>
             </div>
-          ) : (
-            dayEntries.map((entry, i) => {
-              // Resolve whether this entry's locationId points to a live location
-              const liveCl = entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
-              const liveStore = entry.type === 'store' && entry.locationId ? stores.find(s => s.id === entry.locationId) : null;
-              const liveWh = entry.type === 'warehouse' && entry.locationId ? warehouses.find(w => w.id === entry.locationId) : null;
-              const isResolved = !!(liveCl || liveStore || liveWh);
-              // Treat as unmatched if non-driving entry lost its association
-              const effectivelyUnmatched = entry.type !== 'driving' && !isResolved;
-
-              return (
-              <div key={`${entry.vehicleVin}-${entry.locationId}-${i}`} className={`tl-entry tl-${effectivelyUnmatched ? 'driving' : entry.type}`}>
-                <div className="tl-entry-index">{i + 1}</div>
-                <div className="tl-entry-time">
-                  {entry.arrivalTime
-                    ? new Date(entry.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : entry.time
-                      ? new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : '--:--'}
-                </div>
-                <div className="tl-entry-dot" style={!['store','warehouse','driving'].includes(entry.type) || effectivelyUnmatched ? { background: effectivelyUnmatched ? undefined : getTypeColor(entry.type) } : undefined} />
-                <div className="tl-entry-content">
-                  <div className="tl-entry-name">
-                    {entry.type === 'driving' ? (() => {
-                      const parts = cleanLocationName(entry.locationName).split(' \u2192 ');
-                      const origin = isGarbageLocation(parts[0]) ? 'Unknown' : parts[0];
-                      const dest = isGarbageLocation(parts[1]) ? 'Unknown' : parts[1];
-                      const originQ = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(origin);
-                      const destQ = (entry.destinationLat && entry.destinationLng) ? `${entry.destinationLat},${entry.destinationLng}` : encodeURIComponent(dest);
-                      return (
-                        <>
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{origin}</a>
-                          {' \u2192 '}
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-map-link">{dest}</a>
-                        </>
-                      );
-                    })() : (() => {
-                      const displayName = isResolved
-                        ? (liveCl?.name || liveWh?.name || liveStore?.name)
-                        : (entry.destination || cleanLocationName(entry.locationName) || (entry.lat && entry.lng ? `${entry.lat}, ${entry.lng}` : 'Unknown'));
-                      const storeAddr = liveStore ? [liveStore.address, liveStore.city, liveStore.state].filter(Boolean).join(', ') : '';
-                      const addr = isResolved
-                        ? ((entry.destination || '').trim() || liveCl?.address || storeAddr || liveWh?.address || '')
-                        : '';
-                      return (
-                        <>
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${(entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(displayName)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="tl-map-link"
-                          >
-                            {displayName}{addr ? `: ${addr}` : ''}
-                          </a>
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <div className="tl-entry-meta">
-                    <span
-                      className={`tl-type-badge ${effectivelyUnmatched ? 'driving' : entry.type}`}
-                      style={!effectivelyUnmatched && !['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type), color: '#fff' } : undefined}
-                    >
-                      {effectivelyUnmatched ? 'Unmatched' : getTypeLabel(entry.type)}
-                    </span>
-                    {selectedVehicle === 'all' && (
-                      <span className="tl-entry-vehicle">{entry.vehicleId || entry.vehicleVin?.slice(-6)}</span>
-                    )}
-                    {entry.dwellMinutes != null && (
-                      <span className="tl-entry-dwell">{entry.dwellMinutes} min</span>
-                    )}
-                    {entry.type === 'driving' && entry.distance > 0 && (
-                      <span className="tl-entry-distance">{entry.distance} mi</span>
-                    )}
-                    {entry.type === 'driving' && entry.driverName && (
-                      <span className="tl-entry-driver">{entry.driverName}</span>
-                    )}
-                    {entry.departureTime && entry.arrivalTime && (
-                      <span className="tl-entry-timerange">
-                        {new Date(entry.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        {' - '}
-                        {new Date(entry.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
-                    {(entry.type === 'driving' || effectivelyUnmatched) && suggestions.has(entry.locationId) && (() => {
-                      const { origin: originSug, dest: destSug } = suggestions.get(entry.locationId);
-                      return (
-                        <>
-                          {originSug && (
-                            <span className="tl-suggestion-badge">
-                              Origin: {originSug.name}
-                              <button className="tl-suggest-accept" title="Accept" onClick={(e) => { e.stopPropagation(); handleAcceptOriginSuggestion(entry, originSug); }}>✓</button>
-                              <button className="tl-suggest-dismiss" title="Dismiss" onClick={(e) => { e.stopPropagation(); handleDismissSuggestion(entry.locationId, 'origin'); }}>✗</button>
-                            </span>
-                          )}
-                          {destSug && (
-                            <span className="tl-suggestion-badge">
-                              Dest: {destSug.name}
-                              <button className="tl-suggest-accept" title="Accept" onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(entry, destSug); }}>✓</button>
-                              <button className="tl-suggest-dismiss" title="Dismiss" onClick={(e) => { e.stopPropagation(); handleDismissSuggestion(entry.locationId, 'dest'); }}>✗</button>
-                            </span>
-                          )}
-                        </>
-                      );
-                    })()}
-                    {(entry.type === 'driving' || effectivelyUnmatched) && (() => {
-                      // Derive origin text the same way the display does — fall back to locationName split
-                      const originText = entry.origin ||
-                        cleanLocationName(entry.locationName || '').split(' \u2192 ')[0] || '';
-                      return (
-                        <>
-                          {!isGarbageLocation(originText) && (
-                            <button
-                              className="tl-match-btn"
-                              onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}
-                            >
-                              Match Origin
-                            </button>
-                          )}
-                          <button
-                            className="tl-match-btn"
-                            onClick={(e) => { e.stopPropagation(); setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}
-                          >
-                            Match Dest
-                          </button>
-                        </>
-                      );
-                    })()}
-                    {entry.locationId && liveCl && (
-                      <>
-                        <button
-                          className="tl-edit-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditForm({ name: liveCl.name, type: liveCl.type, address: liveCl.address || '' });
-                            setEditingLocationId(liveCl.id);
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="tl-delete-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Delete custom location "${liveCl.name}"?`)) {
-                              deleteCustomLocation(liveCl.id);
-                            }
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                    {isResolved && entry.type !== 'driving' && (
-                      <button
-                        className="tl-delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const matchedName = liveCl?.name || liveStore?.name || liveWh?.name || entry.locationName;
-                          if (window.confirm(`Unmatch "${matchedName}" from this entry? It will revert to showing the raw address.`)) {
-                            unmatchEntry(entry.vehicleVin, selectedDate, entry.locationId);
-                          }
-                        }}
-                      >
-                        Unmatch
-                      </button>
-                    )}
-                    <button
-                      className="tl-raw-toggle-btn"
-                      onClick={(e) => { e.stopPropagation(); setExpandedRawIndex(expandedRawIndex === i ? null : i); }}
-                      title="View raw entry data"
-                    >
-                      {'{'}...{'}'}
-                    </button>
-                  </div>
-                  {expandedRawIndex === i && (
-                    <pre className="tl-entry-raw">{JSON.stringify(entry, null, 2)}</pre>
-                  )}
-                </div>
+            <div className="tl-panel-scroll">
+              <div className="tl-timeline">
+                {breadcrumbEntries.length === 0
+                  ? <div className="tl-empty">No breadcrumb visits for this day / vehicle.</div>
+                  : breadcrumbEntries.map((entry, i) => renderEntry(entry, i))}
               </div>
-              );
-            })
-          )}
-        </div>
+            </div>
+          </div>
+        )}
+        {showDrivingPeriods && (
+          <div className="tl-panel tl-panel-driving">
+            <div className="tl-panel-header">
+              <span>Driving Periods</span>
+              <span className="tl-panel-count">{drivingEntries.length} segments</span>
+            </div>
+            <div className="tl-panel-scroll">
+              <div className="tl-timeline">
+                {drivingEntries.length === 0
+                  ? <div className="tl-empty">No driving periods for this day / vehicle.</div>
+                  : drivingEntries.map((entry, i) => renderEntry(entry, i))}
+              </div>
+            </div>
+          </div>
+        )}
+        {!showBreadcrumbs && !showDrivingPeriods && (
+          <div className="tl-empty" style={{ flex: 1 }}>Both panels are hidden — use the toggles above to show data.</div>
+        )}
       </div>
 
       {/* ---- Raw Data Modal ---- */}
