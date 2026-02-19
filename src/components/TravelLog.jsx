@@ -481,12 +481,8 @@ export default function TravelLog() {
     if (!matchingEntry) return [];
     const vehicle = vehicleList.find(v => v.vin === matchingEntry.vehicleVin);
     const routeNum = vehicle?.routeNumber;
-    // Prefer route-matched stores, but fall back to ALL stores so newly imported
-    // stores (or those with no/different route numbers) are always searchable.
-    const routeFiltered = routeNum
-      ? stores.filter(s => String(s.routeNumber).trim() === String(routeNum).trim())
-      : [];
-    let candidates = routeFiltered.length > 0 ? routeFiltered : [...stores];
+    // Always search ALL stores (same source as sidebar) — route-matched float to top
+    let candidates = [...stores];
     if (matchSearch.trim()) {
       const q = matchSearch.toLowerCase();
       candidates = candidates.filter(s =>
@@ -497,17 +493,21 @@ export default function TravelLog() {
       );
     }
     const dest = (matchingEntry.destination || '').toLowerCase();
-    if (dest) {
-      candidates = candidates.slice().sort((a, b) => {
+    candidates = candidates.slice().sort((a, b) => {
+      const aRoute = routeNum && String(a.routeNumber).trim() === String(routeNum).trim();
+      const bRoute = routeNum && String(b.routeNumber).trim() === String(routeNum).trim();
+      if (aRoute && !bRoute) return -1;
+      if (!aRoute && bRoute) return 1;
+      if (dest) {
         const aAddr = (a.address || '').toLowerCase();
         const bAddr = (b.address || '').toLowerCase();
         const aMatch = dest.includes(aAddr.split(' ')[0]) || aAddr.includes(dest.split(',')[0].split(' ')[0]);
         const bMatch = dest.includes(bAddr.split(' ')[0]) || bAddr.includes(dest.split(',')[0].split(' ')[0]);
         if (aMatch && !bMatch) return -1;
         if (!aMatch && bMatch) return 1;
-        return (a.name || '').localeCompare(b.name || '');
-      });
-    }
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
     return candidates;
   }, [matchingEntry, matchSearch, stores, vehicleList]);
 
