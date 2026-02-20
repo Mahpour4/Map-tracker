@@ -8580,6 +8580,18 @@ textarea {
 }
 .fuel-th-sort:hover { color: #1d4ed8; background: #dbeafe; }
 
+.fuel-card-subname { font-size: 0.7rem; color: #6b7280; font-family: inherit; }
+.fuel-filtered-summary {
+  display: flex;
+  gap: 20px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.82rem;
+  color: #1e3a5f;
+}
+.fuel-filtered-stat strong { color: #1d4ed8; }
+
 .fuel-table-note {
   padding: 8px 14px;
   font-size: 0.72rem;

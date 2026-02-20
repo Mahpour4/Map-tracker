@@ -351,6 +351,15 @@ export default function FuelTracker() {
     });
   }, [enriched, filterRoute, filterStatus, sortCol, sortDir]);
 
+  // ---- Filtered summary totals ----
+  const filteredSummary = useMemo(() => {
+    let spend = 0, gallons = 0, count = 0;
+    filteredTx.forEach(tx => {
+      if (!tx.declined) { spend += tx.totalAmount; gallons += tx.totalGallons; count++; }
+    });
+    return { spend, gallons, count, avgPpg: gallons > 0 ? spend / gallons : 0 };
+  }, [filteredTx]);
+
   const toggleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir('desc'); }
@@ -643,6 +652,15 @@ export default function FuelTracker() {
             )}
           </div>
 
+          {(filterRoute !== 'all' || filterDate !== 'all' || filterStatus !== 'all') && filteredTx.length > 0 && (
+            <div className="fuel-filtered-summary">
+              <span className="fuel-filtered-stat"><strong>{filteredSummary.count}</strong> transactions</span>
+              <span className="fuel-filtered-stat"><strong>${filteredSummary.spend.toFixed(2)}</strong> spent</span>
+              <span className="fuel-filtered-stat"><strong>{filteredSummary.gallons.toFixed(1)}</strong> gal</span>
+              <span className="fuel-filtered-stat"><strong>${filteredSummary.avgPpg.toFixed(2)}</strong>/gal</span>
+            </div>
+          )}
+
           {filteredTx.length === 0 ? (
             <div className="fuel-empty">
               {transactions.length === 0
@@ -697,7 +715,8 @@ export default function FuelTracker() {
                           )}
                       </td>
                       <td className="fuel-td-mono" title={tx.cardId || ''}>
-                        {tx.cardName ? tx.cardName.split(' ')[0] : (tx.last4 ? `••••${tx.last4}` : (tx.cardId ? tx.cardId.slice(0, 8) + '…' : '—'))}
+                        {tx.last4 ? `••••${tx.last4}` : (tx.cardId ? tx.cardId.slice(0, 8) + '…' : '—')}
+                        {tx.cardName && <span className="fuel-card-subname"> / {tx.cardName}</span>}
                       </td>
                       <td>{tx.merchantName || '—'}</td>
                       <td>{[tx.merchantCity, tx.merchantState].filter(Boolean).join(', ') || '—'}</td>

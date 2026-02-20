@@ -368,9 +368,16 @@ export async function fetchCardTransactions(opts = {}) {
     pageNumber++;
   }
 
-  console.log(`[Motive] Total card transactions fetched: ${allItems.length}`);
+  // Deduplicate by transaction ID (API returns duplicates across pages)
+  const uniqueMap = new Map();
+  allItems.forEach(item => {
+    const tx = item.transaction || item;
+    if (tx.id && !uniqueMap.has(tx.id)) uniqueMap.set(tx.id, item);
+  });
+  const dedupedItems = [...uniqueMap.values()];
+  console.log(`[Motive] Total card transactions fetched: ${dedupedItems.length} unique (${allItems.length} raw, ${allItems.length - dedupedItems.length} duplicates removed)`);
 
-  return allItems.map(item => {
+  return dedupedItems.map(item => {
     const tx = item.transaction || item;
     const meta = tx.pre_transaction_metadata || {};
     const orderItems = tx.order_items || [];
