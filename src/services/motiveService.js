@@ -322,11 +322,9 @@ export async function fetchMotiveCards() {
   return raw.map(item => {
     const card = item.card || item;
     const assigned = card.assigned_to || {};
-    const last4 = card.last_four_digits || card.last_four || card.last4 || card.card_last_four || '';
-    console.log(`[Motive] Card ${card.id}: last4=${last4}, keys=${Object.keys(card).join(',')}`);
     return {
       cardId: card.id,
-      last4,
+      last4: card.last_four_digits || card.last_four || card.last4 || '',
       status: card.status || null,
       entityType: assigned.entity_type || null,   // 'driver' | 'vehicle'
       entityId: assigned.entity_id || null,
