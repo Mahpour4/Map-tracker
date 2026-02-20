@@ -737,9 +737,13 @@ export default function AlertLog() {
     e.stopPropagation();
     setReportGenerating(routeNumber);
     try {
-      // --- Data aggregation ---
+      // --- Data aggregation (last 7 days) ---
+      const reportDays = 7;
+      const cutoffDate = (() => { const d = new Date(); d.setDate(d.getDate() - reportDays); return localDateStr(d); })();
+      const reportEnd = localDateStr();
+      const reportStart = cutoffDate;
       const routeStores = stores.filter(s => s.routeNumber === routeNumber);
-      const routeAlerts = enrichedAlerts.filter(a => a.routeNumber === routeNumber);
+      const routeAlerts = enrichedAlerts.filter(a => a.routeNumber === routeNumber && a.dateReceived && a.dateReceived >= cutoffDate);
       const totalStores = routeStores.length;
 
       // Driver & vehicle
@@ -762,16 +766,15 @@ export default function AlertLog() {
       const gwCompleted = routeAlerts.filter(a => a.globalworxCompleted).length;
       const gwRate = routeAlerts.length > 0 ? Math.round(gwCompleted / routeAlerts.length * 100) : 100;
 
-      // Visit coverage (last 30 days)
-      const thirtyDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 30); return localDateStr(d); })();
-      let visitedLast30 = 0;
+      // Visit coverage (last 7 days)
+      let visitedInPeriod = 0;
       routeStores.forEach(s => {
         const latest = getLatestDate(s);
         if (!latest) return;
         const raw = latest.split('T')[0].split(' ')[0];
-        if (raw >= thirtyDaysAgo) visitedLast30++;
+        if (raw >= cutoffDate) visitedInPeriod++;
       });
-      const visitCoverage = totalStores > 0 ? Math.round(visitedLast30 / totalStores * 100) : 0;
+      const visitCoverage = totalStores > 0 ? Math.round(visitedInPeriod / totalStores * 100) : 0;
 
       // Alert score
       const alertsPerStore = totalStores > 0 ? routeAlerts.length / totalStores : 0;
@@ -862,9 +865,11 @@ export default function AlertLog() {
       doc.setTextColor(0);
       // Title (center)
       doc.setFontSize(13); doc.setFont('helvetica', 'bold');
-      doc.text(`Route ${routeNumber} — Report Card`, m + 22, y + 4);
+      const startFmt = new Date(reportStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endFmt = new Date(reportEnd + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      doc.text(`Route ${routeNumber} — Weekly Report Card`, m + 22, y + 4);
       doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100);
-      doc.text(`${todayStr}  |  ${driverName}  |  ${vehicleDesc} (${licensePlate})`, m + 22, y + 9);
+      doc.text(`${startFmt} – ${endFmt}  |  ${driverName}  |  ${vehicleDesc} (${licensePlate})`, m + 22, y + 9);
       doc.setTextColor(0);
       y += 16;
       doc.setDrawColor(200); doc.line(m, y, pageWidth - m, y); y += 3;
@@ -872,7 +877,7 @@ export default function AlertLog() {
       // Key metrics row
       autoTable(doc, {
         startY: y,
-        head: [['Alert Score', 'Avg Response', 'Resolution', 'GW Complete', 'Visit Coverage', 'Stores']],
+        head: [['Alert Score', 'Avg Response', 'Resolution', 'GW Complete', 'Visited (7d)', 'Stores']],
         body: [[`${alertScore}/100`, avgResponse !== null ? `${avgResponse}d` : 'N/A', `${resolutionRate}%`, `${gwRate}%`, `${visitCoverage}%`, `${totalStores}`]],
         theme: 'grid',
         headStyles: { fillColor: [37, 99, 235], fontSize: 6, fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
