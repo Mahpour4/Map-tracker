@@ -8344,8 +8344,9 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 20px 24px;
-  min-height: 100%;
+  padding: 32px 40px;
+  height: 100%;
+  overflow-y: auto;
   background: var(--bg-main, #f8fafc);
   font-family: inherit;
 }
@@ -8531,7 +8532,8 @@ textarea {
   border-top: none;
   border-radius: 0 0 10px 10px;
   min-height: 200px;
-  overflow: hidden;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
 }
 .fuel-empty {
   padding: 48px 24px;
@@ -8865,7 +8867,7 @@ textarea {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .fuel-tracker { padding: 12px; }
+  .fuel-tracker { padding: 16px; }
   .fuel-stat { min-width: 70px; padding: 0 10px; }
   .fuel-stat-val { font-size: 1rem; }
   .fuel-controls { flex-direction: column; align-items: stretch; }
