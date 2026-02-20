@@ -850,351 +850,186 @@ export default function AlertLog() {
       if (adherence && adherence.adherence < 70) recommendations.push(`Schedule adherence is ${adherence.adherence}% — ${adherence.missed} missed stops this week`);
       if (recommendations.length === 0) recommendations.push('Route is performing well — maintain current pace');
 
-      // --- Build PDF ---
+      // --- Build PDF (compact 2-page layout) ---
       const doc = new jsPDF('portrait', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 14;
-      const contentWidth = pageWidth - margin * 2;
+      const m = 10; // tight margins
+      const cw = pageWidth - m * 2;
       const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      let y = 14;
+      const tbl = { margin: { left: m, right: m }, headStyles: { fillColor: [51, 65, 85], fontSize: 6.5, fontStyle: 'bold', cellPadding: 1.5 }, bodyStyles: { fontSize: 6.5, cellPadding: 1.5 } };
+      let y = 10;
 
-      // ═══════ PAGE 1: Route Overview ═══════
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Route ${routeNumber} — Performance Report`, pageWidth / 2, y, { align: 'center' });
-      y += 7;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100);
-      doc.text(`${todayStr}  |  Driver: ${driverName}  |  Vehicle: ${vehicleDesc}`, pageWidth / 2, y, { align: 'center' });
-      doc.setTextColor(0);
-      y += 12;
+      // ═══ PAGE 1: Overview + Alerts + Schedule ═══
 
-      // Grade circle
+      // Header bar
       const gradeColors = { A: [16, 185, 129], B: [59, 130, 246], C: [234, 179, 8], D: [249, 115, 22], F: [239, 68, 68] };
       const gc = gradeColors[overallGrade.letter] || [156, 163, 175];
-      const circleX = pageWidth / 2;
-      const circleY = y + 12;
+      // Grade circle (left)
       doc.setFillColor(gc[0], gc[1], gc[2]);
-      doc.circle(circleX, circleY, 14, 'F');
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255);
-      doc.text(overallGrade.letter, circleX, circleY + 3, { align: 'center' });
-      doc.setFontSize(8);
-      doc.setTextColor(255);
-      doc.text(`${overallPct}%`, circleX, circleY + 9, { align: 'center' });
+      doc.circle(m + 8, y + 6, 7, 'F');
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(255);
+      doc.text(overallGrade.letter, m + 8, y + 8, { align: 'center' });
+      doc.setFontSize(5.5); doc.text(`${overallPct}%`, m + 8, y + 11.5, { align: 'center' });
       doc.setTextColor(0);
-      y = circleY + 20;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100);
-      doc.text('Composite Performance Score', pageWidth / 2, y, { align: 'center' });
+      // Title (center)
+      doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text(`Route ${routeNumber} — Report Card`, m + 22, y + 4);
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100);
+      doc.text(`${todayStr}  |  ${driverName}  |  ${vehicleDesc} (${licensePlate})  |  ${totalMiles > 0 ? totalMiles.toLocaleString() + ' mi' : 'No mileage data'}`, m + 22, y + 9);
       doc.setTextColor(0);
-      y += 10;
+      y += 16;
+      doc.setDrawColor(200); doc.line(m, y, pageWidth - m, y); y += 3;
 
-      // 6 metric cards
+      // Key metrics row
       autoTable(doc, {
         startY: y,
         head: [['Alert Score', 'Avg Response', 'Resolution', 'GW Complete', 'Visit Coverage', 'Stores']],
         body: [[`${alertScore}/100`, avgResponse !== null ? `${avgResponse}d` : 'N/A', `${resolutionRate}%`, `${gwRate}%`, `${visitCoverage}%`, `${totalStores}`]],
         theme: 'grid',
-        headStyles: { fillColor: [37, 99, 235], fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
-        bodyStyles: { fontSize: 12, fontStyle: 'bold', halign: 'center', cellPadding: 5 },
-        margin: { left: margin, right: margin },
-        tableWidth: contentWidth,
+        headStyles: { fillColor: [37, 99, 235], fontSize: 6, fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
+        bodyStyles: { fontSize: 9, fontStyle: 'bold', halign: 'center', cellPadding: 3 },
+        margin: { left: m, right: m }, tableWidth: cw,
       });
-      y = doc.lastAutoTable.finalY + 10;
+      y = doc.lastAutoTable.finalY + 3;
 
-      // Score breakdown
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Score Breakdown', margin, y);
-      y += 2;
-      const breakdownLabels = { scheduleAdherence: 'Schedule Adherence', storeCoverage: 'Store Coverage', alertResponse: 'Alert Response', efficiency: 'Efficiency' };
-      const breakdownRows = Object.entries(compositeScore.breakdown).map(([key, val]) => [
-        breakdownLabels[key] || key, `${val.weight}%`, val.score !== null ? `${val.score}/100` : 'N/A',
-      ]);
-      autoTable(doc, {
-        startY: y,
-        head: [['Category', 'Weight', 'Score']],
-        body: breakdownRows,
-        theme: 'striped',
-        headStyles: { fillColor: [51, 65, 85], fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 9 },
-        columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 30, halign: 'center' } },
-        margin: { left: margin, right: margin },
-      });
-      y = doc.lastAutoTable.finalY + 10;
-
-      // Store status counts
+      // Score breakdown + Store health side by side (two mini tables)
+      const breakdownLabels = { scheduleAdherence: 'Schedule', storeCoverage: 'Coverage', alertResponse: 'Alerts', efficiency: 'Efficiency' };
+      const breakdownRows = Object.entries(compositeScore.breakdown).map(([key, val]) => [breakdownLabels[key] || key, `${val.weight}%`, val.score !== null ? `${val.score}` : '—']);
       const statusCounts = getStatusCounts(routeStores);
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Store Health', margin, y);
-      y += 2;
+
+      // Left table: Score breakdown
       autoTable(doc, {
-        startY: y,
-        head: [['On Track (≤7d)', 'Overdue 1wk', 'Overdue 2wk', 'Critical (30d+)', 'Never Visited', 'Dormant']],
+        startY: y, head: [['Category', 'Wt', 'Score']], body: breakdownRows, theme: 'striped', ...tbl,
+        margin: { left: m, right: pageWidth / 2 + 2 },
+        columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' } },
+      });
+      const leftY = doc.lastAutoTable.finalY;
+      // Right table: Store health
+      autoTable(doc, {
+        startY: y, head: [['≤7d', '1wk', '2wk', '30d+', 'Never', 'Dorm']],
         body: [[statusCounts.onTrack, statusCounts.overdue1, statusCounts.overdue2, statusCounts.critical, statusCounts.never, statusCounts.dormant]],
-        theme: 'grid',
-        headStyles: { fillColor: [51, 65, 85], fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
-        bodyStyles: { fontSize: 11, fontStyle: 'bold', halign: 'center', cellPadding: 4 },
-        margin: { left: margin, right: margin },
-        tableWidth: contentWidth,
+        theme: 'grid', headStyles: { fillColor: [51, 65, 85], fontSize: 6, fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
+        bodyStyles: { fontSize: 8, fontStyle: 'bold', halign: 'center', cellPadding: 2.5 },
+        margin: { left: pageWidth / 2 + 2, right: m },
         didParseCell: function(data) {
           if (data.section === 'body') {
-            const colors = [[34, 197, 94], [249, 115, 22], [239, 68, 68], [127, 29, 29], [156, 163, 175], [156, 163, 175]];
-            if (colors[data.column.index]) data.cell.styles.textColor = colors[data.column.index];
+            const c = [[34,197,94],[249,115,22],[239,68,68],[127,29,29],[156,163,175],[156,163,175]];
+            if (c[data.column.index]) data.cell.styles.textColor = c[data.column.index];
           }
         },
       });
+      y = Math.max(leftY, doc.lastAutoTable.finalY) + 3;
 
-      // ═══════ PAGE 2: Alert Details ═══════
-      doc.addPage();
-      y = 14;
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Route ${routeNumber} — Alert Details`, pageWidth / 2, y, { align: 'center' });
-      y += 10;
-
-      // Alert summary
-      doc.setFontSize(10);
+      // Alert summary line
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.text('ALERTS', m, y + 1);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Total: ${routeAlerts.length}  |  Open: ${openAlerts.length}  |  Resolved: ${resolvedAlerts.length}  |  GW Completed: ${gwCompleted}`, margin, y);
-      y += 7;
+      let alertLine = `Total: ${routeAlerts.length}  |  Open: ${openAlerts.length}  |  Resolved: ${resolvedAlerts.length}  |  Completed: ${gwCompleted}`;
+      if (mostMissed && mostMissed.total > 0) alertLine += `  |  Most Missed: ${mostMissed.name} (${mostMissed.open} open)`;
+      alertLine += `  |  Response: Fast ${fastCount} / Med ${mediumCount} / Slow ${slowCount}`;
+      doc.text(alertLine, m + 16, y + 1);
+      y += 4;
 
-      // Most missed store
-      if (mostMissed && mostMissed.total > 0) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Most Missed Store: ', margin, y);
-        doc.setFont('helvetica', 'normal');
-        const mmText = `${mostMissed.name} (${mostMissed.open} open, ${mostMissed.total} total alerts)`;
-        doc.text(mmText, margin + 38, y);
-        y += 7;
-      }
-
-      // Response distribution
-      doc.setFont('helvetica', 'bold');
-      doc.text('Response Distribution: ', margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Fast (<3d): ${fastCount}  |  Medium (3-7d): ${mediumCount}  |  Slow (>7d): ${slowCount}`, margin + 40, y);
-      y += 10;
-
-      // Repeat offenders
+      // Repeat offenders (compact)
       if (repeatOffenders.length > 0) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Repeat Offenders (2+ Alerts)', margin, y);
-        y += 2;
         autoTable(doc, {
-          startY: y,
-          head: [['Store', 'City', 'Total', 'Open', 'Avg Response']],
-          body: repeatOffenders.slice(0, 15).map(s => [s.name, s.city, s.total, s.open, s.avgResponse !== null ? `${s.avgResponse}d` : 'N/A']),
-          theme: 'grid',
-          headStyles: { fillColor: [220, 38, 38], fontSize: 8, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 8 },
-          margin: { left: margin, right: margin },
-          didParseCell: function(data) {
-            if (data.section === 'body' && data.column.index === 3 && parseInt(data.cell.raw) > 0)
-              data.cell.styles.textColor = [239, 68, 68];
-          },
+          startY: y, head: [['Repeat Offenders (2+)', 'City', 'Tot', 'Open', 'Avg']],
+          body: repeatOffenders.slice(0, 10).map(s => [s.name, s.city, s.total, s.open, s.avgResponse !== null ? `${s.avgResponse}d` : '—']),
+          theme: 'grid', ...tbl, headStyles: { ...tbl.headStyles, fillColor: [220, 38, 38] },
+          columnStyles: { 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } },
+          didParseCell: function(data) { if (data.section === 'body' && data.column.index === 3 && parseInt(data.cell.raw) > 0) data.cell.styles.textColor = [239, 68, 68]; },
         });
-        y = doc.lastAutoTable.finalY + 10;
-      } else if (routeAlerts.length === 0) {
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        doc.text('No alerts for this route.', margin, y);
-        doc.setTextColor(0);
-        y += 10;
+        y = doc.lastAutoTable.finalY + 3;
       }
 
-      // Weekly trend
-      if (trend.some(t => t.adherence !== null)) {
-        if (y > pageHeight - 60) { doc.addPage(); y = 14; }
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0);
-        doc.text('Weekly Trend (Last 4 Weeks)', margin, y);
-        y += 2;
-        autoTable(doc, {
-          startY: y,
-          head: [['Week Of', 'Adherence %', 'Completed / Total']],
-          body: trend.map(t => [
-            t.weekOf,
-            t.adherence !== null ? `${t.adherence}%` : 'No schedule',
-            t.detail ? `${t.detail.completed} / ${t.detail.total}` : '—',
-          ]),
-          theme: 'striped',
-          headStyles: { fillColor: [59, 130, 246], fontSize: 8, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 9 },
-          margin: { left: margin, right: margin },
-          didParseCell: function(data) {
-            if (data.section === 'body' && data.column.index === 1) {
-              const val = parseInt(data.cell.raw);
-              if (!isNaN(val)) {
-                if (val >= 90) data.cell.styles.textColor = [34, 197, 94];
-                else if (val >= 70) data.cell.styles.textColor = [59, 130, 246];
-                else data.cell.styles.textColor = [239, 68, 68];
-              }
-            }
-          },
-        });
+      // Schedule compliance + Weekly trend side by side
+      if (adherence || trend.some(t => t.adherence !== null)) {
+        const hasAdh = !!adherence;
+        const hasTrend = trend.some(t => t.adherence !== null);
+        if (hasAdh) {
+          autoTable(doc, {
+            startY: y, head: [['Schedule', 'On Time', 'Same Wk', 'Missed', 'Future', '%']],
+            body: [[adherence.total, adherence.exact, adherence.sameWeek, adherence.missed, adherence.future, `${adherence.adherence}%`]],
+            theme: 'grid', headStyles: { fillColor: [59, 130, 246], fontSize: 6, fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
+            bodyStyles: { fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
+            margin: { left: m, right: hasTrend ? pageWidth / 2 + 2 : m },
+          });
+        }
+        if (hasTrend) {
+          autoTable(doc, {
+            startY: y, head: [['Week', 'Adherence', 'Done/Total']],
+            body: trend.map(t => [t.weekOf, t.adherence !== null ? `${t.adherence}%` : '—', t.detail ? `${t.detail.completed}/${t.detail.total}` : '—']),
+            theme: 'striped', ...tbl, headStyles: { ...tbl.headStyles, fillColor: [59, 130, 246] },
+            margin: { left: hasAdh ? pageWidth / 2 + 2 : m, right: m },
+            columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' } },
+          });
+        }
+        y = doc.lastAutoTable.finalY + 3;
       }
 
-      // ═══════ PAGE 3: Store Status & Schedule ═══════
-      doc.addPage();
-      y = 14;
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Route ${routeNumber} — Store Status & Schedule`, pageWidth / 2, y, { align: 'center' });
-      y += 10;
-
-      // Overdue stores
+      // Overdue stores (compact)
       if (overdueStores.length > 0) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Overdue Stores (14+ days) — ${overdueStores.length} stores`, margin, y);
-        y += 2;
         autoTable(doc, {
-          startY: y,
-          head: [['Store', 'City', 'Last Visit', 'Days Overdue']],
-          body: overdueStores.slice(0, 20).map(s => [
-            s.name, s.city, s.lastVisit ? formatDate(s.lastVisit) : 'Never', s.days !== null ? `${s.days}d` : 'Never',
-          ]),
-          theme: 'grid',
-          headStyles: { fillColor: [249, 115, 22], fontSize: 8, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 8 },
-          margin: { left: margin, right: margin },
+          startY: y, head: [[`Overdue Stores (14+ days) — ${overdueStores.length}`, 'City', 'Last Visit', 'Days']],
+          body: overdueStores.slice(0, 15).map(s => [s.name, s.city, s.lastVisit ? formatDate(s.lastVisit) : 'Never', s.days !== null ? `${s.days}d` : '—']),
+          theme: 'grid', ...tbl, headStyles: { ...tbl.headStyles, fillColor: [249, 115, 22] },
+          columnStyles: { 3: { halign: 'center' } },
           didParseCell: function(data) {
             if (data.section === 'body' && data.column.index === 3) {
-              const raw = data.cell.raw;
-              if (raw === 'Never') data.cell.styles.textColor = [156, 163, 175];
-              else { const d = parseInt(raw); data.cell.styles.textColor = d >= 30 ? [127, 29, 29] : [239, 68, 68]; }
+              const raw = data.cell.raw; if (raw === '—') data.cell.styles.textColor = [156,163,175];
+              else { const d = parseInt(raw); data.cell.styles.textColor = d >= 30 ? [127,29,29] : [239,68,68]; }
               data.cell.styles.fontStyle = 'bold';
             }
           },
         });
-        y = doc.lastAutoTable.finalY + 10;
+        y = doc.lastAutoTable.finalY + 3;
       }
 
-      // Schedule compliance
-      if (adherence) {
-        if (y > pageHeight - 60) { doc.addPage(); y = 14; }
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Schedule Compliance (This Week)', margin, y);
+      // Recommendations (inline)
+      if (y < pageHeight - 25) {
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.text('RECOMMENDATIONS', m, y + 1); y += 3;
+        doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
+        recommendations.forEach((rec, i) => { doc.text(`${i + 1}. ${rec}`, m + 1, y); y += 3.5; });
         y += 2;
-        autoTable(doc, {
-          startY: y,
-          head: [['Metric', 'Count']],
-          body: [
-            ['Total Scheduled', adherence.total],
-            ['On Time', adherence.exact],
-            ['Same Week', adherence.sameWeek],
-            ['Missed', adherence.missed],
-            ['Future (not yet due)', adherence.future],
-            ['Adherence %', `${adherence.adherence}%`],
-          ],
-          theme: 'striped',
-          headStyles: { fillColor: [59, 130, 246], fontSize: 8, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 9 },
-          columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 30, halign: 'center' } },
-          margin: { left: margin, right: margin },
-        });
-        y = doc.lastAutoTable.finalY + 10;
       }
 
-      // All stores on route
-      if (y > pageHeight - 40) { doc.addPage(); y = 14; }
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`All Stores on Route (${totalStores})`, margin, y);
-      y += 2;
+      // ═══ PAGE 2: All Stores + Chains ═══
+      doc.addPage(); y = 10;
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text(`Route ${routeNumber} — All Stores (${totalStores})`, m, y); y += 2;
+
       autoTable(doc, {
-        startY: y,
-        head: [['Store', 'City', 'Last Visit', 'Last Sale', 'Days Since']],
-        body: storeVisitSummary.map(s => [
-          s.name, s.city, s.lastVisit ? formatDate(s.lastVisit) : 'Never', s.lastSale ? formatDate(s.lastSale) : 'Never', s.daysSince !== null ? `${s.daysSince}d` : 'Never',
-        ]),
-        theme: 'grid',
-        headStyles: { fillColor: [51, 65, 85], fontSize: 7, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 7 },
-        margin: { left: margin, right: margin },
+        startY: y, head: [['Store', 'City', 'Last Visit', 'Last Sale', 'Days']],
+        body: storeVisitSummary.map(s => [s.name, s.city, s.lastVisit ? formatDate(s.lastVisit) : 'Never', s.lastSale ? formatDate(s.lastSale) : 'Never', s.daysSince !== null ? `${s.daysSince}d` : '—']),
+        theme: 'grid', ...tbl,
         didParseCell: function(data) {
           if (data.section === 'body' && data.column.index === 4) {
-            const raw = data.cell.raw;
-            if (raw === 'Never') data.cell.styles.textColor = [156, 163, 175];
-            else { const d = parseInt(raw); data.cell.styles.textColor = d <= 7 ? [34, 197, 94] : d <= 14 ? [249, 115, 22] : [239, 68, 68]; }
+            const raw = data.cell.raw; if (raw === '—') data.cell.styles.textColor = [156,163,175];
+            else { const d = parseInt(raw); data.cell.styles.textColor = d <= 7 ? [34,197,94] : d <= 14 ? [249,115,22] : [239,68,68]; }
             data.cell.styles.fontStyle = 'bold';
           }
         },
       });
+      y = doc.lastAutoTable.finalY + 4;
 
-      // ═══════ PAGE 4: Operations & Recommendations ═══════
-      doc.addPage();
-      y = 14;
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Route ${routeNumber} — Operations & Recommendations`, pageWidth / 2, y, { align: 'center' });
-      y += 12;
-
-      // Operations
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Operations (Last 30 Days)', margin, y);
-      y += 7;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Total Miles Driven: ${totalMiles > 0 ? totalMiles.toLocaleString() + ' mi' : 'No data available'}`, margin, y);
-      y += 5;
-      doc.text(`Vehicle: ${vehicleDesc} (${licensePlate})`, margin, y);
-      y += 5;
-      doc.text(`Driver: ${driverName}`, margin, y);
-      y += 12;
-
-      // Top chains
-      if (topChains.length > 0) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Alert Distribution by Chain', margin, y);
-        y += 2;
+      // Chains table (if space)
+      if (topChains.length > 0 && y < pageHeight - 30) {
+        doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+        doc.text('Alerts by Chain', m, y); y += 2;
         autoTable(doc, {
-          startY: y,
-          head: [['Chain / Vendor', 'Alert Count']],
-          body: topChains.map(([name, count]) => [name, count]),
-          theme: 'grid',
-          headStyles: { fillColor: [6, 182, 212], fontSize: 8, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 9 },
-          columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 30, halign: 'center' } },
-          margin: { left: margin, right: margin },
+          startY: y, head: [['Chain', 'Count']], body: topChains.map(([n, c]) => [n, c]),
+          theme: 'grid', ...tbl, headStyles: { ...tbl.headStyles, fillColor: [6, 182, 212] },
+          columnStyles: { 1: { halign: 'center' } },
         });
-        y = doc.lastAutoTable.finalY + 12;
       }
-
-      // Recommendations
-      if (y > pageHeight - 60) { doc.addPage(); y = 14; }
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Recommendations', margin, y);
-      y += 8;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      recommendations.forEach((rec, i) => {
-        if (y > pageHeight - 15) { doc.addPage(); y = 14; }
-        doc.text(`${i + 1}. ${rec}`, margin + 2, y);
-        y += 6;
-      });
 
       // Footer on all pages
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(150);
-        doc.text(`Route ${routeNumber} Report Card — Generated ${todayStr} — Map Tracker — Page ${i}/${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+        doc.setFontSize(6); doc.setFont('helvetica', 'italic'); doc.setTextColor(150);
+        doc.text(`Route ${routeNumber} Report — ${todayStr} — Map Tracker — ${i}/${pageCount}`, pageWidth / 2, pageHeight - 4, { align: 'center' });
       }
       doc.setTextColor(0);
 
