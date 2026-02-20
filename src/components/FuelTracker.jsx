@@ -105,12 +105,38 @@ export default function FuelTracker() {
     return m;
   }, [cards]);
 
+  // ---- Build last4 → route fallback from card assignments ----
+  const last4RouteMap = useMemo(() => {
+    const m = {};
+    Object.entries(cardRouteMap).forEach(([cid, route]) => {
+      // Try to find last4 from cards list
+      const card = cardInfoMap[cid];
+      if (card && card.last4) m[card.last4] = route;
+    });
+    return m;
+  }, [cardRouteMap, cardInfoMap]);
+
   // ---- Resolve route for a transaction ----
   const resolveRoute = useCallback((tx) => {
-    if (tx.cardId && cardRouteMap[tx.cardId]) return cardRouteMap[tx.cardId];
+    // Direct cardId match (string-normalized)
+    if (tx.cardId) {
+      const cid = String(tx.cardId);
+      if (cardRouteMap[cid]) return cardRouteMap[cid];
+      // Try all keys with string comparison
+      for (const [k, v] of Object.entries(cardRouteMap)) {
+        if (String(k) === cid) return v;
+      }
+    }
+    // VehicleId match
     if (tx.vehicleId && vehicleRouteMap[tx.vehicleId]) return vehicleRouteMap[tx.vehicleId];
+    // Fallback: match by last4 digits (from card management or inline linking)
+    const txLast4 = tx.last4 || '';
+    if (txLast4) {
+      if (last4RouteMap[txLast4]) return last4RouteMap[txLast4];
+      if (cardRouteMap[`last4_${txLast4}`]) return cardRouteMap[`last4_${txLast4}`];
+    }
     return null;
-  }, [cardRouteMap, vehicleRouteMap]);
+  }, [cardRouteMap, vehicleRouteMap, last4RouteMap]);
 
   // ---- Enriched transactions (route + card info + receipt override) ----
   const enriched = useMemo(() => transactions.map(tx => {
@@ -606,7 +632,13 @@ export default function FuelTracker() {
                               className="fuel-link-select"
                               autoFocus
                               value=""
-                              onChange={e => { if (e.target.value && tx.cardId) { setCardRoute(tx.cardId, e.target.value); } setLinkingTxId(null); }}
+                              onChange={e => {
+                                if (e.target.value) {
+                                  const key = tx.cardId || (tx.last4 ? `last4_${tx.last4}` : null);
+                                  if (key) setCardRoute(key, e.target.value);
+                                }
+                                setLinkingTxId(null);
+                              }}
                               onBlur={() => setLinkingTxId(null)}
                             >
                               <option value="">Select route…</option>
