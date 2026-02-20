@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { version } from '../package.json';
 import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
 import RouteLeaderboard from './components/RouteLeaderboard';
@@ -104,7 +105,7 @@ function AppContent() {
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
         {page === 'customLocations' && <CustomLocations />}
-        <div className="app-version">v2.3.0</div>
+        <div className="app-version">v{version}</div>
       </main>
     </div>
   );
