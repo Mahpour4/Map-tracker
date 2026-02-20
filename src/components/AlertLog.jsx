@@ -822,18 +822,6 @@ export default function AlertLog() {
         return { name: s.name || s.storeName, city: s.city, lastVisit: latest ? latest.split('T')[0].split(' ')[0] : null, lastSale: s.lastSaleDate ? s.lastSaleDate.split('T')[0].split(' ')[0] : null, daysSince: days };
       }).sort((a, b) => (b.daysSince || 9999) - (a.daysSince || 9999));
 
-      // Miles driven (last 30 days from travelLog)
-      let totalMiles = 0;
-      if (vehicle?.vin && travelLog) {
-        for (let i = 0; i < 30; i++) {
-          const d = new Date(); d.setDate(d.getDate() - i);
-          const dateKey = localDateStr(d);
-          const entries = (travelLog[dateKey] || {})[vehicle.vin] || [];
-          entries.forEach(en => { if (en.distance && typeof en.distance === 'number') totalMiles += en.distance; });
-        }
-        totalMiles = Math.round(totalMiles * 10) / 10;
-      }
-
       // Top chains
       const chainCounts = {};
       routeAlerts.forEach(a => { const chain = (a.storeName || '').replace(/\s*#?\d+\s*$/, '').trim() || 'Unknown'; chainCounts[chain] = (chainCounts[chain] || 0) + 1; });
@@ -876,7 +864,7 @@ export default function AlertLog() {
       doc.setFontSize(13); doc.setFont('helvetica', 'bold');
       doc.text(`Route ${routeNumber} — Report Card`, m + 22, y + 4);
       doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100);
-      doc.text(`${todayStr}  |  ${driverName}  |  ${vehicleDesc} (${licensePlate})  |  ${totalMiles > 0 ? totalMiles.toLocaleString() + ' mi' : 'No mileage data'}`, m + 22, y + 9);
+      doc.text(`${todayStr}  |  ${driverName}  |  ${vehicleDesc} (${licensePlate})`, m + 22, y + 9);
       doc.setTextColor(0);
       y += 16;
       doc.setDrawColor(200); doc.line(m, y, pageWidth - m, y); y += 3;
