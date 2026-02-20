@@ -77,12 +77,24 @@ export function getStatusCounts(stores) {
   return counts;
 }
 
+// ── Find the saved schedule for a route (schedules are permanent, not per-week) ──
+
+function findRouteSchedule(schedules, route) {
+  // Try exact current week first, then fall back to any saved schedule for this route
+  const weekOf = getMonday(new Date());
+  const exactKey = `${route}_${weekOf}`;
+  if (schedules[exactKey]) return schedules[exactKey];
+  // Find any key that starts with this route number
+  const prefix = `${route}_`;
+  const fallbackKey = Object.keys(schedules).find(k => k.startsWith(prefix));
+  return fallbackKey ? schedules[fallbackKey] : null;
+}
+
 // ── Schedule adherence (for a specific week, defaults to current) ─────────────
 
 export function getScheduleAdherence(schedules, route, visitHistoryMap, weekOf) {
   const targetWeek = weekOf || getMonday(new Date());
-  const key = `${route}_${targetWeek}`;
-  const schedule = schedules[key];
+  const schedule = findRouteSchedule(schedules, route);
   if (!schedule) return null;
 
   let total = 0, exact = 0, sameWeek = 0, missed = 0, future = 0;
@@ -147,8 +159,7 @@ export function getTodaySchedule(schedules, routeNumber) {
   if (dayIndex < 1 || dayIndex > 5) return null; // weekend
   const weekOf = getMonday(today);
   const dayLabel = DAY_NAMES[dayIndex];
-  const key = `${routeNumber}_${weekOf}`;
-  const schedule = schedules[key];
+  const schedule = findRouteSchedule(schedules, routeNumber);
   if (!schedule || !schedule[dayLabel]) return null;
   return {
     storeIds: schedule[dayLabel].map(s => s.storeId),
