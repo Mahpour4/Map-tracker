@@ -365,11 +365,26 @@ export default function FuelTracker() {
   const cardSortIcon = (col) => cardSortCol === col ? (cardSortDir === 'asc' ? ' ▲' : ' ▼') : '';
 
   const sortedCards = useMemo(() => {
+    // Helper: extract base name (strip trailing numbers/route suffixes for grouping)
+    const baseName = (name) => (name || '').replace(/\s*\d+\s*$/, '').trim().toLowerCase();
+
     return [...cards].sort((a, b) => {
       let av, bv;
       if (cardSortCol === 'last4')      { av = a.last4 || ''; bv = b.last4 || ''; }
       else if (cardSortCol === 'status') { av = a.status || ''; bv = b.status || ''; }
-      else if (cardSortCol === 'entity') { av = a.entityName || ''; bv = b.entityName || ''; }
+      else if (cardSortCol === 'entity') {
+        // Primary: active/assigned first, unassigned last
+        const aActive = (a.status === 'active' && a.entityName) ? 0 : 1;
+        const bActive = (b.status === 'active' && b.entityName) ? 0 : 1;
+        if (aActive !== bActive) return cardSortDir === 'asc' ? aActive - bActive : bActive - aActive;
+        // Secondary: group by base name (e.g. "Draco" and "Draco 208" together)
+        const aBase = baseName(a.entityName);
+        const bBase = baseName(b.entityName);
+        if (aBase !== bBase) return cardSortDir === 'asc' ? aBase.localeCompare(bBase) : bBase.localeCompare(aBase);
+        // Tertiary: full name for ordering within group
+        av = (a.entityName || '').toLowerCase();
+        bv = (b.entityName || '').toLowerCase();
+      }
       else if (cardSortCol === 'type')   { av = a.entityType || ''; bv = b.entityType || ''; }
       else if (cardSortCol === 'route')  {
         av = cardRouteMap[a.cardId] || 'zzz'; bv = cardRouteMap[b.cardId] || 'zzz';
