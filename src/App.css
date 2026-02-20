@@ -8572,8 +8572,13 @@ textarea {
 }
 .fuel-table tbody tr:last-child td { border-bottom: none; }
 .fuel-table tbody tr:hover { background: #f8fafc; }
-.fuel-th-sort { cursor: pointer; user-select: none; }
-.fuel-th-sort:hover { color: #1d4ed8; background: #eff6ff; }
+.fuel-th-sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.fuel-th-sort:hover { color: #1d4ed8; background: #dbeafe; }
 
 .fuel-table-note {
   padding: 8px 14px;
