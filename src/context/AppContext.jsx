@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, getToken } from '../services/githubService';
-import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages } from '../services/gmailAlertService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone } from '../services/gmailAlertService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
 import localWarehouses from '../data/warehouses.json';
@@ -598,11 +598,18 @@ export function AppProvider({ children }) {
       .then(({ content }) => {
         const { stores, zones } = processStoresFromCsv(content);
         dispatch({ type: 'LOAD_FROM_GITHUB', payload: { stores, zones } });
+        // Re-match alerts against fresh store data (fixes wrong matches)
+        if (state.alerts.length > 0) {
+          reMatchAlerts(state.alerts, stores);
+          dispatch({ type: 'SET_ALERTS', payload: [...state.alerts] });
+        }
+        // After store data refreshes, mark resolved alerts as Done in Gmail
+        markResolvedAlertsDone(state.alerts, stores);
       })
       .catch((err) => {
         dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
       });
-  }, []);
+  }, [state.alerts]);
 
   const saveToGithub = useCallback(() => {
     if (!getToken()) return;
@@ -666,6 +673,54 @@ export function AppProvider({ children }) {
     return () => { if (alertSaveTimerRef.current) clearTimeout(alertSaveTimerRef.current); };
   }, [state.alerts]);
 
+  // Re-match alerts against stores to fix stale/wrong matches (e.g. "Food Lion 2560" matched to "Walmart 2560")
+  function reMatchAlerts(alerts, stores) {
+    let fixed = 0;
+    alerts.forEach(alert => {
+      const store = matchAlertToStore(alert, stores);
+      if (store && store.id !== alert.storeId) {
+        alert.storeId = store.id;
+        alert.routeNumber = store.routeNumber || '';
+        fixed++;
+      } else if (store && !alert.storeId) {
+        alert.storeId = store.id;
+        alert.routeNumber = store.routeNumber || '';
+        fixed++;
+      }
+    });
+    if (fixed > 0) console.log(`[Alerts] Re-matched ${fixed} alert(s) to correct stores.`);
+  }
+
+  // Label resolved alert emails as "GLOBAL WORKS/Done" in Gmail
+  function markResolvedAlertsDone(alerts, stores, vh) {
+    if (!isGmailConnected()) return;
+    const sMap = {};
+    stores.forEach(s => { sMap[s.id] = s; });
+    const vhData = vh || state.visitHistory || {};
+
+    const toMark = alerts.filter(a => {
+      if (!a.emailId || a.globalworxDone) return false;
+      const store = sMap[a.storeId];
+      if (!store || !a.dateReceived) return false;
+      // Also check visitHistory for the most up-to-date visit date
+      const vhDates = (vhData[a.storeId] || []).filter(Boolean).map(d => d.split('T')[0]);
+      const newestVH = vhDates.length > 0 ? vhDates.sort().pop() : null;
+      const storeLastVisited = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;
+      const bestLastVisited = [storeLastVisited, newestVH].filter(Boolean).sort().pop() || null;
+      const lastVisited = [store.lastSaleDate, bestLastVisited]
+        .filter(Boolean).sort().pop() || null;
+      if (!lastVisited) return false;
+      const visitDate = lastVisited.split('T')[0].split(' ')[0];
+      return visitDate >= a.dateReceived;
+    });
+
+    if (toMark.length > 0) {
+      labelAlertsDone(toMark.map(a => a.emailId));
+      toMark.forEach(a => { a.globalworxDone = true; });
+      console.log(`[Alerts] ${toMark.length} resolved alert(s) queued for "Done" label.`);
+    }
+  }
+
   // Fetch new alerts from Gmail — merges with existing, dedupes by refNumber, prunes >30 days
   // @param {string} [date] - YYYY-MM-DD date to fetch alerts for (defaults to today)
   // Returns { newCount, rawMessages } for debug display
@@ -675,7 +730,18 @@ export function AppProvider({ children }) {
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
 
     try {
-      const afterDate = date || localDateStr();
+      // Gmail 'after:' is exclusive (emails AFTER that date, not including it)
+      // So always subtract 1 day from the target date
+      let afterDate;
+      if (date) {
+        const d = new Date(date + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        afterDate = localDateStr(d);
+      } else {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        afterDate = localDateStr(weekAgo);
+      }
 
       const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(afterDate);
 
@@ -701,6 +767,9 @@ export function AppProvider({ children }) {
         !a.dateReceived || a.dateReceived >= cutoffStr
       );
 
+      // Re-match ALL alerts against current stores (fixes stale/wrong matches)
+      reMatchAlerts(merged, state.stores);
+
       dispatch({ type: 'SET_ALERTS', payload: merged });
 
       // Label fetched messages in Gmail (non-blocking)
@@ -708,6 +777,9 @@ export function AppProvider({ children }) {
       if (messageIds.length > 0) {
         labelAlertMessages(messageIds);
       }
+
+      // Mark resolved alerts as "GLOBAL WORKS/Done" in Gmail (non-blocking)
+      markResolvedAlertsDone(merged, state.stores);
 
       return { newCount: newAlerts.length, rawMessages };
     } catch (err) {

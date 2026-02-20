@@ -5,6 +5,50 @@ const GMAIL_API = 'https://www.googleapis.com/gmail/v1';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.modify';
 const ALERT_SENDER = 'MailAgent@synergies4u.com';
 
+// GlobalWorx acceptance URL patterns (same as automation script)
+const GW_URL_PATTERN = /https?:\/\/[^\s"'<>]+go\.mbl\?[^\s"'<>]+action=schedule\.RemoteAccept[^\s"'<>]*/gi;
+const GW_FALLBACK_PATTERN = /https?:\/\/[^\s"'<>]*adusa\.goglobalworx\.com[^\s"'<>]*/gi;
+
+/** Decode base64url-encoded Gmail body */
+function decodeBody(encoded) {
+  try {
+    return atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
+  } catch { return ''; }
+}
+
+/** Extract the full text/html or text/plain body from a Gmail message payload */
+function extractBody(payload) {
+  if (!payload) return '';
+  // Simple body (no parts)
+  if (payload.body?.data) return decodeBody(payload.body.data);
+  // Multipart — walk parts
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/html' && part.body?.data) return decodeBody(part.body.data);
+      if (part.parts) {
+        const nested = extractBody(part);
+        if (nested) return nested;
+      }
+    }
+    // Fallback to text/plain
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/plain' && part.body?.data) return decodeBody(part.body.data);
+    }
+  }
+  return '';
+}
+
+/** Extract first GlobalWorx acceptance URL from email body HTML */
+function extractAcceptanceUrl(bodyHtml) {
+  if (!bodyHtml) return null;
+  const cleaned = bodyHtml.replace(/&amp;/gi, '&').replace(/&#38;/gi, '&');
+  const m = cleaned.match(GW_URL_PATTERN);
+  if (m) return m[0].replace(/[)>\]"'.,;]+$/, '');
+  const fb = cleaned.match(GW_FALLBACK_PATTERN);
+  if (fb) return fb[0].replace(/[)>\]"'.,;]+$/, '');
+  return null;
+}
+
 const CLIENT_ID_KEY = 'google_client_id';
 const GMAIL_TOKEN_KEY = 'gmail_access_token';
 const GMAIL_TOKEN_EXPIRY_KEY = 'gmail_token_expiry';
@@ -158,6 +202,15 @@ async function gmailPost(path, body = {}) {
 const ALERT_LABEL_NAME = 'Map Tracker/Logged';
 const LABEL_ID_KEY = 'gmail_alert_label_id';
 
+const PROCESSED_LABEL_NAME = 'Processed';
+const PROCESSED_LABEL_ID_KEY = 'gmail_processed_label_id';
+
+const DONE_LABEL_NAME = 'GLOBAL WORKS/Done';
+const DONE_LABEL_ID_KEY = 'gmail_done_label_id';
+
+const COMPLETED_LABEL_NAME = 'GLOBAL WORKS/Completed';
+const COMPLETED_LABEL_ID_KEY = 'gmail_completed_label_id';
+
 async function getOrCreateAlertLabel() {
   // Check cached label ID first
   const cached = localStorage.getItem(LABEL_ID_KEY);
@@ -180,6 +233,62 @@ async function getOrCreateAlertLabel() {
   localStorage.setItem(LABEL_ID_KEY, created.id);
   console.log('[Gmail] Created label:', ALERT_LABEL_NAME, created.id);
   return created.id;
+}
+
+/** Look up the "Processed" label ID set by the globalworx automation script. Returns null if not found. */
+async function getProcessedLabelId() {
+  const cached = localStorage.getItem(PROCESSED_LABEL_ID_KEY);
+  if (cached) return cached;
+
+  const labelsResult = await gmailFetch('/users/me/labels');
+  const existing = labelsResult.labels?.find(l => l.name === PROCESSED_LABEL_NAME);
+  if (existing) {
+    localStorage.setItem(PROCESSED_LABEL_ID_KEY, existing.id);
+    return existing.id;
+  }
+  return null; // globalworx script hasn't run yet
+}
+
+/** Look up the "GLOBAL WORKS/Done" label ID. Returns null if not found. */
+async function getDoneLabelId() {
+  const cached = localStorage.getItem(DONE_LABEL_ID_KEY);
+  if (cached) return cached;
+  const labelsResult = await gmailFetch('/users/me/labels');
+  const existing = labelsResult.labels?.find(l => l.name === DONE_LABEL_NAME);
+  if (existing) {
+    localStorage.setItem(DONE_LABEL_ID_KEY, existing.id);
+    return existing.id;
+  }
+  return null;
+}
+
+/** Look up the "GLOBAL WORKS/Completed" label ID. Returns null if not found. */
+async function getCompletedLabelId() {
+  const cached = localStorage.getItem(COMPLETED_LABEL_ID_KEY);
+  if (cached) return cached;
+  const labelsResult = await gmailFetch('/users/me/labels');
+  const existing = labelsResult.labels?.find(l => l.name === COMPLETED_LABEL_NAME);
+  if (existing) {
+    localStorage.setItem(COMPLETED_LABEL_ID_KEY, existing.id);
+    return existing.id;
+  }
+  return null;
+}
+
+/** Label resolved alert emails as "GLOBAL WORKS/Done" in Gmail */
+export async function labelAlertsDone(messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  try {
+    const labelId = await getDoneLabelId();
+    if (!labelId) { console.warn('[Gmail] "GLOBAL WORKS/Done" label not found — skipping'); return; }
+    await gmailPost('/users/me/messages/batchModify', {
+      ids: messageIds,
+      addLabelIds: [labelId],
+    });
+    console.log(`[Gmail] Labeled ${messageIds.length} resolved alert(s) as "${DONE_LABEL_NAME}"`);
+  } catch (err) {
+    console.error('[Gmail] Failed to label messages as Done:', err);
+  }
 }
 
 export async function labelAlertMessages(messageIds) {
@@ -221,8 +330,16 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
   console.log('[Gmail] Messages found:', listResult.messages?.length || 0);
 
   if (!listResult.messages || listResult.messages.length === 0) {
-    return [];
+    return { alerts: [], rawMessages: [] };
   }
+
+  // Get label IDs for status tracking
+  let processedLabelId = null;
+  let doneLabelId = null;
+  let completedLabelId = null;
+  try { processedLabelId = await getProcessedLabelId(); } catch (_) {}
+  try { doneLabelId = await getDoneLabelId(); } catch (_) {}
+  try { completedLabelId = await getCompletedLabelId(); } catch (_) {}
 
   // Fetch messages in parallel batches for speed
   const BATCH_SIZE = 10;
@@ -235,8 +352,7 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
     const results = await Promise.allSettled(
       batch.map(msg =>
         gmailFetch(`/users/me/messages/${msg.id}`, {
-          format: 'metadata',
-          metadataHeaders: ['Subject', 'Date'],
+          format: 'full',
         }).then(detail => ({ id: msg.id, detail }))
       )
     );
@@ -250,13 +366,21 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
       const subjectHeader = detail.payload?.headers?.find(h => h.name === 'Subject');
       const dateHeader = detail.payload?.headers?.find(h => h.name === 'Date');
       const subject = subjectHeader?.value || '';
-      const date = dateHeader ? parseDateHeader(dateHeader.value) : '';
+      const { date, time } = dateHeader ? parseDateHeader(dateHeader.value) : { date: '', time: '' };
 
       if (subjectHeader) {
         const parsed = parseAlertSubject(subject);
         if (parsed) {
           parsed.emailId = id;
           parsed.dateReceived = date;
+          parsed.timeReceived = time;
+          const labels = detail.labelIds || [];
+          parsed.globalworxAccepted = processedLabelId ? labels.includes(processedLabelId) : false;
+          parsed.globalworxDone = doneLabelId ? labels.includes(doneLabelId) : false;
+          parsed.globalworxCompleted = completedLabelId ? labels.includes(completedLabelId) : false;
+          // Extract acceptance URL from email body
+          const body = extractBody(detail.payload);
+          parsed.acceptanceUrl = extractAcceptanceUrl(body);
           alerts.push(parsed);
           rawMessages.push({ id, subject, date, parsed: true });
         } else {
@@ -331,11 +455,12 @@ export function parseAlertSubject(subject) {
 function parseDateHeader(dateStr) {
   try {
     const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    // Use local time, not UTC, so dates match Eastern US timezone
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (isNaN(d.getTime())) return { date: '', time: '' };
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return { date, time };
   } catch {
-    return '';
+    return { date: '', time: '' };
   }
 }
 
@@ -465,10 +590,17 @@ export async function fetchAlertImage(emailId) {
  * Match a parsed alert to a store in the stores array.
  * Matches by store number (padded to 5 digits) or by name+city.
  */
+// Extract chain name (e.g. "Food Lion 2560" → "food lion", "WALMART 2560" → "walmart")
+function extractChain(name) {
+  if (!name) return '';
+  return name.toLowerCase().replace(/\s*#?\d+\s*$/g, '').trim();
+}
+
 export function matchAlertToStore(alert, stores) {
   const num = alert.storeNumber;
   const paddedNum = num.padStart(5, '0');
-  const alertNameLower = (alert.storeName || '').toLowerCase();
+  const alertChain = extractChain(alert.storeName);
+  const alertCityLower = (alert.city || '').toLowerCase();
 
   // Find ALL candidate stores whose number matches
   const candidates = stores.filter(s =>
@@ -481,27 +613,40 @@ export function matchAlertToStore(alert, stores) {
   if (candidates.length === 1) return candidates[0];
 
   if (candidates.length > 1) {
-    // Prefer the candidate whose name matches the alert's store name
-    const nameMatch = candidates.find(s =>
-      s.name && alertNameLower && s.name.toLowerCase().includes(alertNameLower)
-    );
-    if (nameMatch) return nameMatch;
+    // 1. Best: chain name AND city both match
+    if (alertChain && alertCityLower) {
+      const bestMatch = candidates.find(s => {
+        const sc = extractChain(s.name);
+        const cityMatch = s.city && s.city.toLowerCase() === alertCityLower;
+        return cityMatch && (sc.includes(alertChain) || alertChain.includes(sc));
+      });
+      if (bestMatch) return bestMatch;
+    }
 
-    // Also try matching by city
-    const cityLower = (alert.city || '').toLowerCase();
-    const cityMatch = candidates.find(s =>
-      s.city && cityLower && s.city.toLowerCase() === cityLower
-    );
-    if (cityMatch) return cityMatch;
+    // 2. Chain name matches
+    if (alertChain) {
+      const nameMatch = candidates.find(s => {
+        const sc = extractChain(s.name);
+        return sc.includes(alertChain) || alertChain.includes(sc);
+      });
+      if (nameMatch) return nameMatch;
+    }
+
+    // 3. City matches
+    if (alertCityLower) {
+      const cityMatch = candidates.find(s =>
+        s.city && s.city.toLowerCase() === alertCityLower
+      );
+      if (cityMatch) return cityMatch;
+    }
 
     // Fall back to first candidate
     return candidates[0];
   }
 
   // Fallback: match by city and name containing the number
-  const cityLower = (alert.city || '').toLowerCase();
   const match = stores.find(s =>
-    s.city.toLowerCase() === cityLower &&
+    s.city && alertCityLower && s.city.toLowerCase() === alertCityLower &&
     (s.name.includes(num) || s.name.includes(paddedNum))
   );
 

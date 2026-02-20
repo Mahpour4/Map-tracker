@@ -1,0 +1,15 @@
+{
+  "name": "globalworx-auto",
+  "version": "1.0.0",
+  "description": "Automatically acknowledges GlobalWorx alert emails via Gmail API + Puppeteer",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "auth": "node auth.js"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0",
+    "puppeteer": "^23.0.0"
+  }
+}

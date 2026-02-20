@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import StorePanel from './StorePanel';
 import ZonePanel from './ZonePanel';
@@ -153,6 +153,22 @@ export default function Sidebar() {
   const { state, setSidebarTab } = useApp();
   const { sidebarTab } = state;
 
+  // Count unresolved alerts (considering visitHistory for accurate dates)
+  const unresolvedCount = useMemo(() => {
+    const vh = state.visitHistory || {};
+    return state.alerts.filter(a => {
+      const store = state.stores.find(s => s.id === a.storeId);
+      if (!store || !a.dateReceived) return true;
+      // Check visitHistory for the most up-to-date visit date
+      const vhDates = (vh[a.storeId] || []).filter(Boolean).map(d => d.split('T')[0]);
+      const newestVH = vhDates.length > 0 ? vhDates.sort().pop() : null;
+      const storeLastVisited = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;
+      const bestVisited = [storeLastVisited, newestVH].filter(Boolean).sort().pop() || null;
+      const lv = ([store.lastSaleDate, bestVisited].filter(Boolean).sort().pop() || '').split('T')[0].split(' ')[0];
+      return !lv || lv < a.dateReceived;
+    }).length;
+  }, [state.alerts, state.stores, state.visitHistory]);
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -177,20 +193,8 @@ export default function Sidebar() {
           onClick={() => setSidebarTab('alerts')}
         >
           Alerts
-          {state.alerts.filter(a => {
-            const store = state.stores.find(s => s.id === a.storeId);
-            if (!store || !a.dateReceived) return true;
-            const lv = ([store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || '').split('T')[0].split(' ')[0];
-            return !lv || lv < a.dateReceived;
-          }).length > 0 && (
-            <span className="alert-badge-count">
-              {state.alerts.filter(a => {
-                const store = state.stores.find(s => s.id === a.storeId);
-                if (!store || !a.dateReceived) return true;
-                const lv = ([store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || '').split('T')[0].split(' ')[0];
-                return !lv || lv < a.dateReceived;
-              }).length}
-            </span>
+          {unresolvedCount > 0 && (
+            <span className="alert-badge-count">{unresolvedCount}</span>
           )}
         </button>
       </div>

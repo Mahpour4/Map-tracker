@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
+import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -35,12 +36,12 @@ function formatDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr + 'T00:00:00');
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function AlertLog() {
-  const { state, selectStore, setMapView, setPage, setFilterRoute, loadAlertImage, fetchGmailAlerts, syncFromGithub } = useApp();
-  const { alerts, stores, alertImages, syncStatus, schedules } = state;
+  const { state, selectStore, setSidebarTab, setMapView, setPage, setFilterRoute, setFilterRegion, setFilterType, setSearch, loadAlertImage, fetchGmailAlerts, syncFromGithub } = useApp();
+  const { alerts, stores, alertImages, syncStatus, schedules, visitHistory, travelLog, fleetVehicles } = state;
 
   const today = localDateStr();
   const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return localDateStr(d); })();
@@ -56,9 +57,11 @@ export default function AlertLog() {
   const [fetching, setFetching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(null); // route string or null
+  const [reportGenerating, setReportGenerating] = useState(null); // route string or null
   const [showStats, setShowStats] = useState(false);
   const [statsTab, setStatsTab] = useState('time'); // 'time' | 'route' | 'zone' | 'chain' | 'top'
   const [statsView, setStatsView] = useState('day'); // 'day' | 'week' | 'month'
+  const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
 
   // --- PDF sent tracking (persisted in localStorage) ---
   const PDF_SENT_KEY = 'pdf_sent_log';
@@ -104,14 +107,32 @@ export default function AlertLog() {
     const now = localDateStr();
     return alerts.map(a => {
       const store = storeMap[a.storeId];
-      const statusInfo = getAlertStatus(a, store);
+
+      // Get the most recent visit date from visitHistory (more up-to-date than store.lastVisited)
+      const storeId = a.storeId || store?.id;
+      const vhDates = (visitHistory && storeId ? (visitHistory[storeId] || []) : [])
+        .filter(Boolean)
+        .map(d => d.split('T')[0]);
+      const newestVisitFromHistory = vhDates.length > 0 ? vhDates.sort().pop() : null;
+
+      // Use the best available lastVisited: whichever is most recent between store field and visit history
+      const storeLastVisited = store?.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;
+      const bestLastVisited = [storeLastVisited, newestVisitFromHistory].filter(Boolean).sort().pop() || null;
+
+      const lastSaleDate = store?.lastSaleDate ? store.lastSaleDate.split('T')[0].split(' ')[0] : null;
+      const lastVisitDate = bestLastVisited;
+
+      // Build an enriched store object with the best visit date for status calculation
+      const enrichedStore = store ? { ...store, lastVisited: bestLastVisited || store.lastVisited } : store;
+      const statusInfo = getAlertStatus(a, enrichedStore);
+
       let daysSinceService = null;
-      const storeLatest = store ? [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() : null;
+      const storeLatest = [lastSaleDate, bestLastVisited].filter(Boolean).sort().pop() || null;
       if (storeLatest) {
-        const visited = storeLatest.split('T')[0].split(' ')[0];
-        daysSinceService = getDaysBetween(visited, now);
+        daysSinceService = getDaysBetween(storeLatest, now);
       }
-      return { ...a, store, ...statusInfo, daysSinceService };
+
+      return { ...a, store, ...statusInfo, daysSinceService, lastSaleDate, lastVisitDate };
     }).sort((a, b) => {
       if (a.status !== b.status) {
         if (a.status === 'unresolved') return -1;
@@ -119,7 +140,7 @@ export default function AlertLog() {
       }
       return (b.dateReceived || '').localeCompare(a.dateReceived || '');
     });
-  }, [alerts, storeMap]);
+  }, [alerts, storeMap, visitHistory]);
 
   // Unique routes and vendors for filter dropdowns
   const alertRoutes = useMemo(() => {
@@ -186,11 +207,14 @@ export default function AlertLog() {
     const open = enrichedAlerts.filter(a => a.status === 'unresolved').length;
     const resolved = enrichedAlerts.filter(a => a.status === 'resolved').length;
     const unknown = enrichedAlerts.filter(a => a.status === 'unknown').length;
+    const accepted = enrichedAlerts.filter(a => a.globalworxAccepted).length;
+    const done = enrichedAlerts.filter(a => a.globalworxDone).length;
+    const completed = enrichedAlerts.filter(a => a.globalworxCompleted).length;
     const resolvedWithDays = enrichedAlerts.filter(a => a.status === 'resolved' && a.days !== null);
     const avgResponse = resolvedWithDays.length > 0
       ? Math.round(resolvedWithDays.reduce((sum, a) => sum + a.days, 0) / resolvedWithDays.length)
       : null;
-    return { total, open, resolved, unknown, avgResponse };
+    return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
   }, [enrichedAlerts]);
 
   // Comprehensive statistics across all dimensions
@@ -211,13 +235,16 @@ export default function AlertLog() {
 
     function inc(map, key, a) {
       if (!key) return;
-      if (!map[key]) map[key] = { key, total: 0, open: 0, resolved: 0, avgDays: 0, _days: [] };
+      if (!map[key]) map[key] = { key, total: 0, open: 0, resolved: 0, completed: 0, accepted: 0, done: 0, avgDays: 0, _days: [] };
       map[key].total++;
       if (a.status === 'unresolved') map[key].open++;
       if (a.status === 'resolved') {
         map[key].resolved++;
         if (a.days !== null) map[key]._days.push(a.days);
       }
+      if (a.globalworxAccepted) map[key].accepted++;
+      if (a.globalworxDone) map[key].done++;
+      if (a.globalworxCompleted) map[key].completed++;
     }
 
     // Extract chain name from store name (e.g. "Food Lion 1414" → "Food Lion")
@@ -244,19 +271,25 @@ export default function AlertLog() {
       // Chain
       inc(chainMap, getChain(a.storeName), a);
 
-      // Store (for top offenders)
-      const storeKey = a.storeId || a.storeName;
-      if (!storeCountMap[storeKey]) storeCountMap[storeKey] = { key: storeKey, name: a.storeName, number: a.storeNumber, city: a.city, route: a.routeNumber, total: 0, open: 0, resolved: 0, _days: [] };
-      storeCountMap[storeKey].total++;
-      if (a.status === 'unresolved') storeCountMap[storeKey].open++;
-      if (a.status === 'resolved') {
-        storeCountMap[storeKey].resolved++;
-        if (a.days !== null) storeCountMap[storeKey]._days.push(a.days);
-      }
+      // Store & Driver — exclude stores not visited in over 30 days
+      const staleStore = a.daysSinceService !== null && a.daysSinceService > 30;
+      if (!staleStore) {
+        const storeKey = a.storeId || a.storeName;
+        if (!storeCountMap[storeKey]) storeCountMap[storeKey] = { key: storeKey, name: a.storeName, number: a.storeNumber, city: a.city, route: a.routeNumber, driver: a.store?.driver || null, total: 0, open: 0, resolved: 0, accepted: 0, done: 0, completed: 0, _days: [] };
+        storeCountMap[storeKey].total++;
+        if (a.status === 'unresolved') storeCountMap[storeKey].open++;
+        if (a.status === 'resolved') {
+          storeCountMap[storeKey].resolved++;
+          if (a.days !== null) storeCountMap[storeKey]._days.push(a.days);
+        }
+        if (a.globalworxAccepted) storeCountMap[storeKey].accepted++;
+        if (a.globalworxDone) storeCountMap[storeKey].done++;
+        if (a.globalworxCompleted) storeCountMap[storeKey].completed++;
 
-      // Driver (from store data)
-      const driver = a.store?.driver || `Route ${a.routeNumber || '?'} Driver`;
-      inc(driverMap, driver, a);
+        // Driver (from store data)
+        const driver = a.store?.driver || `Route ${a.routeNumber || '?'} Driver`;
+        inc(driverMap, driver, a);
+      }
     });
 
     // Compute average response days for each bucket
@@ -318,6 +351,11 @@ export default function AlertLog() {
     setMapView([s.lat, s.lng], 15);
     if (s.routeNumber) setFilterRoute(s.routeNumber);
     setPage('map');
+  }
+
+  function handleAlertRowClick(a) {
+    setSelectedAlertRef(ref => ref === a.refNumber ? null : a.refNumber);
+    setExpandedImage(null);
   }
 
   function handleSendToDriver(e, alert) {
@@ -694,6 +732,480 @@ export default function AlertLog() {
     }
   }
 
+  // ── Route Report Card PDF ─────────────────────────────────────────────────
+  function generateRouteReportCard(e, routeNumber) {
+    e.stopPropagation();
+    setReportGenerating(routeNumber);
+    try {
+      // --- Data aggregation ---
+      const routeStores = stores.filter(s => s.routeNumber === routeNumber);
+      const routeAlerts = enrichedAlerts.filter(a => a.routeNumber === routeNumber);
+      const totalStores = routeStores.length;
+
+      // Driver & vehicle
+      const vehicle = (fleetVehicles || []).find(v => v.routeNumber === routeNumber);
+      const driverName = routeStores.find(s => s.driver)?.driver || `Route ${routeNumber} Driver`;
+      const vehicleDesc = vehicle?.yearMakeModel || 'N/A';
+      const licensePlate = vehicle?.licensePlate ? vehicle.licensePlate.split(' ')[0] : 'N/A';
+
+      // Alert stats
+      const openAlerts = routeAlerts.filter(a => a.status === 'unresolved');
+      const resolvedAlerts = routeAlerts.filter(a => a.status === 'resolved');
+      const resolvedWithDays = resolvedAlerts.filter(a => a.days !== null);
+      const avgResponse = resolvedWithDays.length > 0
+        ? Math.round(resolvedWithDays.reduce((s, a) => s + a.days, 0) / resolvedWithDays.length * 10) / 10
+        : null;
+      const resolutionRate = routeAlerts.length > 0
+        ? Math.round(resolvedAlerts.length / routeAlerts.length * 100) : 100;
+
+      // GW pipeline
+      const gwCompleted = routeAlerts.filter(a => a.globalworxCompleted).length;
+      const gwRate = routeAlerts.length > 0 ? Math.round(gwCompleted / routeAlerts.length * 100) : 100;
+
+      // Visit coverage (last 30 days)
+      const thirtyDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 30); return localDateStr(d); })();
+      let visitedLast30 = 0;
+      routeStores.forEach(s => {
+        const latest = getLatestDate(s);
+        if (!latest) return;
+        const raw = latest.split('T')[0].split(' ')[0];
+        if (raw >= thirtyDaysAgo) visitedLast30++;
+      });
+      const visitCoverage = totalStores > 0 ? Math.round(visitedLast30 / totalStores * 100) : 0;
+
+      // Alert score
+      const alertsPerStore = totalStores > 0 ? routeAlerts.length / totalStores : 0;
+      const alertScore = Math.max(0, Math.round(100 - alertsPerStore * 25));
+
+      // Composite grade
+      const compositeScore = computeDriverScore(routeNumber, { stores, travelLog: travelLog || {}, visitHistory: visitHistory || {}, schedules: schedules || {}, alerts, fleetVehicles: fleetVehicles || [] });
+      const overallGrade = compositeScore.grade;
+      const overallPct = compositeScore.overall;
+
+      // Response distribution
+      let fastCount = 0, mediumCount = 0, slowCount = 0;
+      resolvedWithDays.forEach(a => { if (a.days <= 3) fastCount++; else if (a.days <= 7) mediumCount++; else slowCount++; });
+
+      // Repeat offenders
+      const storeAlertCounts = {};
+      routeAlerts.forEach(a => {
+        const sid = a.storeId || a.storeName;
+        if (!storeAlertCounts[sid]) storeAlertCounts[sid] = { name: a.storeName, city: a.city, id: a.storeId, total: 0, open: 0, daysList: [] };
+        storeAlertCounts[sid].total++;
+        if (a.status === 'unresolved') storeAlertCounts[sid].open++;
+        if (a.days !== null) storeAlertCounts[sid].daysList.push(a.days);
+      });
+      const repeatOffenders = Object.values(storeAlertCounts)
+        .filter(s => s.total >= 2)
+        .sort((a, b) => b.total - a.total)
+        .map(s => ({ ...s, avgResponse: s.daysList.length > 0 ? Math.round(s.daysList.reduce((sum, d) => sum + d, 0) / s.daysList.length * 10) / 10 : null }));
+
+      // Most missed store
+      const mostMissed = Object.values(storeAlertCounts).sort((a, b) => b.open - a.open || b.total - a.total)[0] || null;
+
+      // Overdue stores
+      const overdueStores = routeStores
+        .map(s => { const latest = getLatestDate(s); const days = getDaysSinceVisit(latest); return { name: s.name || s.storeName, city: s.city, lastVisit: latest, days }; })
+        .filter(s => s.days === null || s.days >= 14)
+        .sort((a, b) => (b.days || 9999) - (a.days || 9999));
+
+      // Schedule compliance
+      const adherence = getScheduleAdherence(schedules || {}, routeNumber, visitHistory || {});
+
+      // Weekly trend
+      const trend = getWeeklyTrend(routeNumber, { schedules: schedules || {}, visitHistory: visitHistory || {} });
+
+      // Store visit summary
+      const storeVisitSummary = routeStores.map(s => {
+        const latest = getLatestDate(s);
+        const days = getDaysSinceVisit(latest);
+        return { name: s.name || s.storeName, city: s.city, lastVisit: latest ? latest.split('T')[0].split(' ')[0] : null, lastSale: s.lastSaleDate ? s.lastSaleDate.split('T')[0].split(' ')[0] : null, daysSince: days };
+      }).sort((a, b) => (b.daysSince || 9999) - (a.daysSince || 9999));
+
+      // Miles driven (last 30 days from travelLog)
+      let totalMiles = 0;
+      if (vehicle?.vin && travelLog) {
+        for (let i = 0; i < 30; i++) {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const dateKey = localDateStr(d);
+          const entries = (travelLog[dateKey] || {})[vehicle.vin] || [];
+          entries.forEach(en => { if (en.distance && typeof en.distance === 'number') totalMiles += en.distance; });
+        }
+        totalMiles = Math.round(totalMiles * 10) / 10;
+      }
+
+      // Top chains
+      const chainCounts = {};
+      routeAlerts.forEach(a => { const chain = (a.storeName || '').replace(/\s*#?\d+\s*$/, '').trim() || 'Unknown'; chainCounts[chain] = (chainCounts[chain] || 0) + 1; });
+      const topChains = Object.entries(chainCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+      // Recommendations
+      const recommendations = [];
+      overdueStores.filter(s => { const sAlerts = routeAlerts.filter(a => a.storeId === s.id && a.status === 'unresolved'); return sAlerts.length > 0; })
+        .slice(0, 3).forEach(s => { recommendations.push(`Visit ${s.name} ASAP — ${s.days || '?'} days overdue with open alert`); });
+      const unvisited30 = routeStores.filter(s => { const days = getDaysSinceVisit(getLatestDate(s)); return days === null || days >= 30; }).length;
+      if (unvisited30 > 0) recommendations.push(`${unvisited30} store${unvisited30 > 1 ? 's' : ''} haven't been visited in 30+ days`);
+      if (gwRate < 50 && routeAlerts.length > 0) recommendations.push(`GW completion rate at ${gwRate}% — ${routeAlerts.length - gwCompleted} pending completions`);
+      if (repeatOffenders.length > 0) recommendations.push(`${repeatOffenders.length} repeat offender store${repeatOffenders.length > 1 ? 's' : ''} need attention`);
+      if (adherence && adherence.adherence < 70) recommendations.push(`Schedule adherence is ${adherence.adherence}% — ${adherence.missed} missed stops this week`);
+      if (recommendations.length === 0) recommendations.push('Route is performing well — maintain current pace');
+
+      // --- Build PDF ---
+      const doc = new jsPDF('portrait', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 14;
+      const contentWidth = pageWidth - margin * 2;
+      const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      let y = 14;
+
+      // ═══════ PAGE 1: Route Overview ═══════
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Route ${routeNumber} — Performance Report`, pageWidth / 2, y, { align: 'center' });
+      y += 7;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`${todayStr}  |  Driver: ${driverName}  |  Vehicle: ${vehicleDesc}`, pageWidth / 2, y, { align: 'center' });
+      doc.setTextColor(0);
+      y += 12;
+
+      // Grade circle
+      const gradeColors = { A: [16, 185, 129], B: [59, 130, 246], C: [234, 179, 8], D: [249, 115, 22], F: [239, 68, 68] };
+      const gc = gradeColors[overallGrade.letter] || [156, 163, 175];
+      const circleX = pageWidth / 2;
+      const circleY = y + 12;
+      doc.setFillColor(gc[0], gc[1], gc[2]);
+      doc.circle(circleX, circleY, 14, 'F');
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255);
+      doc.text(overallGrade.letter, circleX, circleY + 3, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setTextColor(255);
+      doc.text(`${overallPct}%`, circleX, circleY + 9, { align: 'center' });
+      doc.setTextColor(0);
+      y = circleY + 20;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text('Composite Performance Score', pageWidth / 2, y, { align: 'center' });
+      doc.setTextColor(0);
+      y += 10;
+
+      // 6 metric cards
+      autoTable(doc, {
+        startY: y,
+        head: [['Alert Score', 'Avg Response', 'Resolution', 'GW Complete', 'Visit Coverage', 'Stores']],
+        body: [[`${alertScore}/100`, avgResponse !== null ? `${avgResponse}d` : 'N/A', `${resolutionRate}%`, `${gwRate}%`, `${visitCoverage}%`, `${totalStores}`]],
+        theme: 'grid',
+        headStyles: { fillColor: [37, 99, 235], fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
+        bodyStyles: { fontSize: 12, fontStyle: 'bold', halign: 'center', cellPadding: 5 },
+        margin: { left: margin, right: margin },
+        tableWidth: contentWidth,
+      });
+      y = doc.lastAutoTable.finalY + 10;
+
+      // Score breakdown
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Score Breakdown', margin, y);
+      y += 2;
+      const breakdownLabels = { scheduleAdherence: 'Schedule Adherence', storeCoverage: 'Store Coverage', alertResponse: 'Alert Response', efficiency: 'Efficiency' };
+      const breakdownRows = Object.entries(compositeScore.breakdown).map(([key, val]) => [
+        breakdownLabels[key] || key, `${val.weight}%`, val.score !== null ? `${val.score}/100` : 'N/A',
+      ]);
+      autoTable(doc, {
+        startY: y,
+        head: [['Category', 'Weight', 'Score']],
+        body: breakdownRows,
+        theme: 'striped',
+        headStyles: { fillColor: [51, 65, 85], fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 9 },
+        columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 30, halign: 'center' } },
+        margin: { left: margin, right: margin },
+      });
+      y = doc.lastAutoTable.finalY + 10;
+
+      // Store status counts
+      const statusCounts = getStatusCounts(routeStores);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Store Health', margin, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [['On Track (≤7d)', 'Overdue 1wk', 'Overdue 2wk', 'Critical (30d+)', 'Never Visited', 'Dormant']],
+        body: [[statusCounts.onTrack, statusCounts.overdue1, statusCounts.overdue2, statusCounts.critical, statusCounts.never, statusCounts.dormant]],
+        theme: 'grid',
+        headStyles: { fillColor: [51, 65, 85], fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
+        bodyStyles: { fontSize: 11, fontStyle: 'bold', halign: 'center', cellPadding: 4 },
+        margin: { left: margin, right: margin },
+        tableWidth: contentWidth,
+        didParseCell: function(data) {
+          if (data.section === 'body') {
+            const colors = [[34, 197, 94], [249, 115, 22], [239, 68, 68], [127, 29, 29], [156, 163, 175], [156, 163, 175]];
+            if (colors[data.column.index]) data.cell.styles.textColor = colors[data.column.index];
+          }
+        },
+      });
+
+      // ═══════ PAGE 2: Alert Details ═══════
+      doc.addPage();
+      y = 14;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Route ${routeNumber} — Alert Details`, pageWidth / 2, y, { align: 'center' });
+      y += 10;
+
+      // Alert summary
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total: ${routeAlerts.length}  |  Open: ${openAlerts.length}  |  Resolved: ${resolvedAlerts.length}  |  GW Completed: ${gwCompleted}`, margin, y);
+      y += 7;
+
+      // Most missed store
+      if (mostMissed && mostMissed.total > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Most Missed Store: ', margin, y);
+        doc.setFont('helvetica', 'normal');
+        const mmText = `${mostMissed.name} (${mostMissed.open} open, ${mostMissed.total} total alerts)`;
+        doc.text(mmText, margin + 38, y);
+        y += 7;
+      }
+
+      // Response distribution
+      doc.setFont('helvetica', 'bold');
+      doc.text('Response Distribution: ', margin, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Fast (<3d): ${fastCount}  |  Medium (3-7d): ${mediumCount}  |  Slow (>7d): ${slowCount}`, margin + 40, y);
+      y += 10;
+
+      // Repeat offenders
+      if (repeatOffenders.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Repeat Offenders (2+ Alerts)', margin, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [['Store', 'City', 'Total', 'Open', 'Avg Response']],
+          body: repeatOffenders.slice(0, 15).map(s => [s.name, s.city, s.total, s.open, s.avgResponse !== null ? `${s.avgResponse}d` : 'N/A']),
+          theme: 'grid',
+          headStyles: { fillColor: [220, 38, 38], fontSize: 8, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: margin, right: margin },
+          didParseCell: function(data) {
+            if (data.section === 'body' && data.column.index === 3 && parseInt(data.cell.raw) > 0)
+              data.cell.styles.textColor = [239, 68, 68];
+          },
+        });
+        y = doc.lastAutoTable.finalY + 10;
+      } else if (routeAlerts.length === 0) {
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text('No alerts for this route.', margin, y);
+        doc.setTextColor(0);
+        y += 10;
+      }
+
+      // Weekly trend
+      if (trend.some(t => t.adherence !== null)) {
+        if (y > pageHeight - 60) { doc.addPage(); y = 14; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0);
+        doc.text('Weekly Trend (Last 4 Weeks)', margin, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [['Week Of', 'Adherence %', 'Completed / Total']],
+          body: trend.map(t => [
+            t.weekOf,
+            t.adherence !== null ? `${t.adherence}%` : 'No schedule',
+            t.detail ? `${t.detail.completed} / ${t.detail.total}` : '—',
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: [59, 130, 246], fontSize: 8, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 9 },
+          margin: { left: margin, right: margin },
+          didParseCell: function(data) {
+            if (data.section === 'body' && data.column.index === 1) {
+              const val = parseInt(data.cell.raw);
+              if (!isNaN(val)) {
+                if (val >= 90) data.cell.styles.textColor = [34, 197, 94];
+                else if (val >= 70) data.cell.styles.textColor = [59, 130, 246];
+                else data.cell.styles.textColor = [239, 68, 68];
+              }
+            }
+          },
+        });
+      }
+
+      // ═══════ PAGE 3: Store Status & Schedule ═══════
+      doc.addPage();
+      y = 14;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Route ${routeNumber} — Store Status & Schedule`, pageWidth / 2, y, { align: 'center' });
+      y += 10;
+
+      // Overdue stores
+      if (overdueStores.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Overdue Stores (14+ days) — ${overdueStores.length} stores`, margin, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [['Store', 'City', 'Last Visit', 'Days Overdue']],
+          body: overdueStores.slice(0, 20).map(s => [
+            s.name, s.city, s.lastVisit ? formatDate(s.lastVisit) : 'Never', s.days !== null ? `${s.days}d` : 'Never',
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [249, 115, 22], fontSize: 8, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: margin, right: margin },
+          didParseCell: function(data) {
+            if (data.section === 'body' && data.column.index === 3) {
+              const raw = data.cell.raw;
+              if (raw === 'Never') data.cell.styles.textColor = [156, 163, 175];
+              else { const d = parseInt(raw); data.cell.styles.textColor = d >= 30 ? [127, 29, 29] : [239, 68, 68]; }
+              data.cell.styles.fontStyle = 'bold';
+            }
+          },
+        });
+        y = doc.lastAutoTable.finalY + 10;
+      }
+
+      // Schedule compliance
+      if (adherence) {
+        if (y > pageHeight - 60) { doc.addPage(); y = 14; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Schedule Compliance (This Week)', margin, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [['Metric', 'Count']],
+          body: [
+            ['Total Scheduled', adherence.total],
+            ['On Time', adherence.exact],
+            ['Same Week', adherence.sameWeek],
+            ['Missed', adherence.missed],
+            ['Future (not yet due)', adherence.future],
+            ['Adherence %', `${adherence.adherence}%`],
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [59, 130, 246], fontSize: 8, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 9 },
+          columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 30, halign: 'center' } },
+          margin: { left: margin, right: margin },
+        });
+        y = doc.lastAutoTable.finalY + 10;
+      }
+
+      // All stores on route
+      if (y > pageHeight - 40) { doc.addPage(); y = 14; }
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`All Stores on Route (${totalStores})`, margin, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [['Store', 'City', 'Last Visit', 'Last Sale', 'Days Since']],
+        body: storeVisitSummary.map(s => [
+          s.name, s.city, s.lastVisit ? formatDate(s.lastVisit) : 'Never', s.lastSale ? formatDate(s.lastSale) : 'Never', s.daysSince !== null ? `${s.daysSince}d` : 'Never',
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [51, 65, 85], fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7 },
+        margin: { left: margin, right: margin },
+        didParseCell: function(data) {
+          if (data.section === 'body' && data.column.index === 4) {
+            const raw = data.cell.raw;
+            if (raw === 'Never') data.cell.styles.textColor = [156, 163, 175];
+            else { const d = parseInt(raw); data.cell.styles.textColor = d <= 7 ? [34, 197, 94] : d <= 14 ? [249, 115, 22] : [239, 68, 68]; }
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+      });
+
+      // ═══════ PAGE 4: Operations & Recommendations ═══════
+      doc.addPage();
+      y = 14;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Route ${routeNumber} — Operations & Recommendations`, pageWidth / 2, y, { align: 'center' });
+      y += 12;
+
+      // Operations
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Operations (Last 30 Days)', margin, y);
+      y += 7;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Miles Driven: ${totalMiles > 0 ? totalMiles.toLocaleString() + ' mi' : 'No data available'}`, margin, y);
+      y += 5;
+      doc.text(`Vehicle: ${vehicleDesc} (${licensePlate})`, margin, y);
+      y += 5;
+      doc.text(`Driver: ${driverName}`, margin, y);
+      y += 12;
+
+      // Top chains
+      if (topChains.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Alert Distribution by Chain', margin, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [['Chain / Vendor', 'Alert Count']],
+          body: topChains.map(([name, count]) => [name, count]),
+          theme: 'grid',
+          headStyles: { fillColor: [6, 182, 212], fontSize: 8, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 9 },
+          columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 30, halign: 'center' } },
+          margin: { left: margin, right: margin },
+        });
+        y = doc.lastAutoTable.finalY + 12;
+      }
+
+      // Recommendations
+      if (y > pageHeight - 60) { doc.addPage(); y = 14; }
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Recommendations', margin, y);
+      y += 8;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      recommendations.forEach((rec, i) => {
+        if (y > pageHeight - 15) { doc.addPage(); y = 14; }
+        doc.text(`${i + 1}. ${rec}`, margin + 2, y);
+        y += 6;
+      });
+
+      // Footer on all pages
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(150);
+        doc.text(`Route ${routeNumber} Report Card — Generated ${todayStr} — Map Tracker — Page ${i}/${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+      }
+      doc.setTextColor(0);
+
+      doc.save(`Route_${routeNumber}_Report_${localDateStr()}.pdf`);
+    } catch (err) {
+      console.error('Report card generation failed:', err);
+    } finally {
+      setReportGenerating(null);
+    }
+  }
+
   return (
     <div className="al-page">
       {/* Header */}
@@ -754,11 +1266,15 @@ export default function AlertLog() {
             </button>
           </div>
           <div className="al-stats">
-            <span className="al-stat red">{stats.open} <span>Open</span></span>
-            <span className="al-stat green">{stats.resolved} <span>Resolved</span></span>
-            {stats.unknown > 0 && <span className="al-stat gray">{stats.unknown} <span>No Match</span></span>}
+            <span className="al-stat red" title="Store not yet visited">{stats.open} <span>Open</span></span>
+            <span className="al-stat green" title="Store visited after alert">{stats.resolved} <span>Resolved</span></span>
+            {stats.unknown > 0 && <span className="al-stat gray" title="Store not found in data">{stats.unknown} <span>No Match</span></span>}
             <span className="al-stat gray">{stats.total} <span>Total</span></span>
-            {stats.avgResponse !== null && <span className="al-stat gray">{stats.avgResponse}d <span>Avg Response</span></span>}
+            {stats.avgResponse !== null && <span className="al-stat gray" title="Average days between alert and store visit">{stats.avgResponse}d <span>Avg Response</span></span>}
+            <span className="al-stat-divider" />
+            <span className="al-stat blue" title="Accepted on GlobalWorx">{stats.accepted} <span>Accepted</span></span>
+            <span className="al-stat teal" title="Store visited — awaiting GW completion">{stats.done} <span>Done</span></span>
+            <span className="al-stat emerald" title="Completed on GlobalWorx">{stats.completed} <span>Completed</span></span>
           </div>
         </div>
 
@@ -822,32 +1338,51 @@ export default function AlertLog() {
 
           {/* Summary cards */}
           <div className="al-stats-summary">
-            <div className="al-stats-card">
+            <div className="al-stats-card" title="Total number of service alert emails received">
               <span className="al-stats-card-value">{stats.total}</span>
               <span className="al-stats-card-label">Total</span>
             </div>
-            <div className="al-stats-card red">
+            <div className="al-stats-card red" title="Alerts where the store has not been visited since the alert date">
               <span className="al-stats-card-value">{stats.open}</span>
               <span className="al-stats-card-label">Open</span>
             </div>
-            <div className="al-stats-card green">
+            <div className="al-stats-card green" title="Alerts where the store was visited after the alert date (based on sales or visit data)">
               <span className="al-stats-card-value">{stats.resolved}</span>
               <span className="al-stats-card-label">Resolved</span>
             </div>
-            <div className="al-stats-card">
+            <div className="al-stats-card" title="Percentage of alerts that have been resolved by a store visit">
               <span className="al-stats-card-value">{allStats.summary.resolutionRate}%</span>
               <span className="al-stats-card-label">Resolution Rate</span>
             </div>
-            <div className="al-stats-card">
+            <div className="al-stats-card" title="Average number of alerts received per day">
               <span className="al-stats-card-value">{allStats.summary.avgPerDay}</span>
               <span className="al-stats-card-label">Avg / Day</span>
             </div>
             {allStats.summary.busiest && (
-              <div className="al-stats-card">
+              <div className="al-stats-card" title="The day with the highest number of service alerts">
                 <span className="al-stats-card-value">{allStats.summary.busiest.total}</span>
                 <span className="al-stats-card-label">Peak: {formatDate(allStats.summary.busiest.key)}</span>
               </div>
             )}
+          </div>
+          {/* GlobalWorx pipeline cards */}
+          <div className="al-stats-summary al-stats-gw">
+            <div className="al-stats-card blue" title="Alert was accepted on GlobalWorx — issue acknowledged and 48-hour resolution window set">
+              <span className="al-stats-card-value">{stats.accepted}</span>
+              <span className="al-stats-card-label">GW Accepted</span>
+            </div>
+            <div className="al-stats-card teal" title="Store was visited after the alert — labeled 'Done' in Gmail, waiting for completion form to be submitted on GlobalWorx">
+              <span className="al-stats-card-value">{stats.done}</span>
+              <span className="al-stats-card-label">GW Done</span>
+            </div>
+            <div className="al-stats-card emerald" title="'Complete Here' button was clicked on GlobalWorx — the service issue is fully closed out">
+              <span className="al-stats-card-value">{stats.completed}</span>
+              <span className="al-stats-card-label">GW Completed</span>
+            </div>
+            <div className="al-stats-card" title="Percentage of all alerts that have been fully completed on GlobalWorx">
+              <span className="al-stats-card-value">{stats.total > 0 ? Math.round(stats.completed / stats.total * 100) : 0}%</span>
+              <span className="al-stats-card-label">Completion Rate</span>
+            </div>
           </div>
 
           {/* === TIME TAB === */}
@@ -879,7 +1414,8 @@ export default function AlertLog() {
                         <div className="al-stats-row-bar-wrap">
                           <div className="al-stats-row-bar" style={{ width: `${(d.total / maxTotal) * 100}%` }}>
                             {d.open > 0 && <div className="al-stats-bar-segment" style={{ flex: d.open, background: '#ef4444' }} />}
-                            {d.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: d.resolved, background: '#22c55e' }} />}
+                            {(d.resolved - (d.completed || 0)) > 0 && <div className="al-stats-bar-segment" style={{ flex: d.resolved - (d.completed || 0), background: '#22c55e' }} />}
+                            {(d.completed || 0) > 0 && <div className="al-stats-bar-segment" style={{ flex: d.completed, background: '#06b6d4' }} />}
                             {(d.total - d.open - d.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: d.total - d.open - d.resolved, background: '#9ca3af' }} />}
                           </div>
                         </div>
@@ -911,6 +1447,7 @@ export default function AlertLog() {
                     <th>Resolved</th>
                     <th>Avg Response</th>
                     <th className="al-stats-bar-col">Distribution</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -927,10 +1464,21 @@ export default function AlertLog() {
                           <div className="al-stats-row-bar-wrap">
                             <div className="al-stats-row-bar" style={{ width: `${(r.total / maxTotal) * 100}%` }}>
                               {r.open > 0 && <div className="al-stats-bar-segment" style={{ flex: r.open, background: '#ef4444' }} />}
-                              {r.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: r.resolved, background: '#22c55e' }} />}
+                              {(r.resolved - (r.completed || 0)) > 0 && <div className="al-stats-bar-segment" style={{ flex: r.resolved - (r.completed || 0), background: '#22c55e' }} />}
+                              {(r.completed || 0) > 0 && <div className="al-stats-bar-segment" style={{ flex: r.completed, background: '#06b6d4' }} />}
                               {(r.total - r.open - r.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: r.total - r.open - r.resolved, background: '#9ca3af' }} />}
                             </div>
                           </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            className="al-btn-report"
+                            onClick={(e) => generateRouteReportCard(e, r.key)}
+                            disabled={reportGenerating !== null}
+                            title={`Generate Report Card for Route ${r.key}`}
+                          >
+                            {reportGenerating === r.key ? '...' : 'Report'}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -969,7 +1517,8 @@ export default function AlertLog() {
                           <div className="al-stats-row-bar-wrap">
                             <div className="al-stats-row-bar" style={{ width: `${(z.total / maxTotal) * 100}%` }}>
                               {z.open > 0 && <div className="al-stats-bar-segment" style={{ flex: z.open, background: '#ef4444' }} />}
-                              {z.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: z.resolved, background: '#22c55e' }} />}
+                              {(z.resolved - (z.completed || 0)) > 0 && <div className="al-stats-bar-segment" style={{ flex: z.resolved - (z.completed || 0), background: '#22c55e' }} />}
+                              {(z.completed || 0) > 0 && <div className="al-stats-bar-segment" style={{ flex: z.completed, background: '#06b6d4' }} />}
                               {(z.total - z.open - z.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: z.total - z.open - z.resolved, background: '#9ca3af' }} />}
                             </div>
                           </div>
@@ -1011,7 +1560,8 @@ export default function AlertLog() {
                           <div className="al-stats-row-bar-wrap">
                             <div className="al-stats-row-bar" style={{ width: `${(c.total / maxTotal) * 100}%` }}>
                               {c.open > 0 && <div className="al-stats-bar-segment" style={{ flex: c.open, background: '#ef4444' }} />}
-                              {c.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: c.resolved, background: '#22c55e' }} />}
+                              {(c.resolved - (c.completed || 0)) > 0 && <div className="al-stats-bar-segment" style={{ flex: c.resolved - (c.completed || 0), background: '#22c55e' }} />}
+                              {(c.completed || 0) > 0 && <div className="al-stats-bar-segment" style={{ flex: c.completed, background: '#06b6d4' }} />}
                               {(c.total - c.open - c.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: c.total - c.open - c.resolved, background: '#9ca3af' }} />}
                             </div>
                           </div>
@@ -1027,66 +1577,106 @@ export default function AlertLog() {
           {/* === TOP STORES / DRIVERS TAB === */}
           {statsTab === 'top' && (
             <div className="al-stats-section">
-              <h4>Top Stores (Most Alerts)</h4>
-              <table className="al-stats-table">
+              <div className="al-lb-heading">&#9888; Store Leaderboard</div>
+              <table className="al-stats-table al-leaderboard">
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>Store</th>
                     <th>City</th>
-                    <th>Route</th>
-                    <th>Alerts</th>
-                    <th>Open</th>
-                    <th>Resolved</th>
-                    <th>Avg Response</th>
+                    <th>Rt</th>
+                    <th title="Total service alerts">Alerts</th>
+                    <th title="Unresolved — store not yet visited" style={{ color: '#dc2626' }}>Open</th>
+                    <th title="Store visited after alert" style={{ color: '#16a34a' }}>Res</th>
+                    <th title="Average days from alert to store visit">Avg</th>
+                    <th title="Accepted on GlobalWorx" style={{ color: '#2563eb' }}>Acc</th>
+                    <th title="Completion form submitted on GlobalWorx" style={{ color: '#059669' }}>Comp</th>
+                    <th title="GW pipeline progress: Accepted → Done → Completed">Pipeline</th>
+                    <th title="Performance grade based on resolution rate">Grade</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allStats.topStores.map((s, i) => (
-                    <tr key={s.key} className={s.total >= 3 ? 'critical' : s.total >= 2 ? 'warning' : ''}>
-                      <td className="al-stats-td-num">{i + 1}</td>
-                      <td className="al-stats-td-label">{s.name} #{s.number}</td>
-                      <td>{s.city}</td>
-                      <td className="al-stats-td-num">{s.route || '—'}</td>
-                      <td className="al-stats-td-num" style={{ fontWeight: 700 }}>{s.total}</td>
-                      <td className="al-stats-td-num" style={{ color: s.open > 0 ? '#dc2626' : undefined }}>{s.open}</td>
-                      <td className="al-stats-td-num" style={{ color: s.resolved > 0 ? '#16a34a' : undefined }}>{s.resolved}</td>
-                      <td className="al-stats-td-num">{s.avgDays !== null ? `${s.avgDays}d` : '—'}</td>
-                    </tr>
-                  ))}
+                  {allStats.topStores.map((s, i) => {
+                    const pipelinePct = s.total > 0 ? Math.round(s.completed / s.total * 100) : 0;
+                    const resPct = s.total > 0 ? Math.round(s.resolved / s.total * 100) : 0;
+                    const grade = resPct >= 90 ? 'A' : resPct >= 70 ? 'B' : resPct >= 50 ? 'B' : 'C';
+                    const gradeClass = grade === 'A' ? 'al-grade-a' : grade === 'B' ? 'al-grade-b' : 'al-grade-c';
+                    return (
+                      <tr key={s.key} className={s.open >= 3 ? 'al-lb-critical' : s.open >= 2 ? 'al-lb-warning' : s.completed === s.total && s.total > 0 ? 'al-lb-done' : ''}>
+                        <td className="al-stats-td-num">{i + 1}</td>
+                        <td className="al-stats-td-label">{s.name} #{s.number}</td>
+                        <td>{s.city || '—'}</td>
+                        <td className="al-stats-td-num">{s.route || '—'}</td>
+                        <td className="al-stats-td-num" style={{ fontWeight: 700 }}>{s.total}</td>
+                        <td className="al-stats-td-num" style={{ color: s.open > 0 ? '#dc2626' : '#9ca3af', fontWeight: s.open > 0 ? 700 : 400 }}>{s.open}</td>
+                        <td className="al-stats-td-num" style={{ color: s.resolved > 0 ? '#16a34a' : '#9ca3af' }}>{s.resolved}</td>
+                        <td className="al-stats-td-num">{s.avgDays !== null ? `${s.avgDays}d` : '—'}</td>
+                        <td className="al-stats-td-num" style={{ color: s.accepted > 0 ? '#2563eb' : '#9ca3af' }}>{s.accepted}</td>
+                        <td className="al-stats-td-num" style={{ color: s.completed > 0 ? '#059669' : '#9ca3af' }}>{s.completed}</td>
+                        <td>
+                          <div className="al-lb-pipeline" title={`${s.accepted} accepted → ${s.done} done → ${s.completed} completed (${pipelinePct}%)`}>
+                            <div className="al-lb-pipeline-track">
+                              <div className="al-lb-pipeline-fill" style={{ width: `${pipelinePct}%`, background: pipelinePct === 100 ? '#059669' : '#06b6d4' }} />
+                            </div>
+                            <span className="al-lb-pipeline-pct">{pipelinePct}%</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`al-grade ${gradeClass}`} title={`${resPct}% resolved`}>{grade}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
-              <h4 style={{ marginTop: 20 }}>Drivers by Alert Volume</h4>
-              <table className="al-stats-table">
+              <div className="al-lb-heading" style={{ marginTop: 24 }}>&#128663; Driver Scorecard</div>
+              <table className="al-stats-table al-leaderboard">
                 <thead>
                   <tr>
                     <th>Driver</th>
-                    <th>Total</th>
-                    <th>Open</th>
-                    <th>Resolved</th>
-                    <th>Avg Response</th>
-                    <th className="al-stats-bar-col">Distribution</th>
+                    <th title="Total service alerts">Alerts</th>
+                    <th title="Unresolved alerts" style={{ color: '#dc2626' }}>Open</th>
+                    <th title="Resolved by visit" style={{ color: '#16a34a' }}>Res</th>
+                    <th title="Average response days">Avg</th>
+                    <th title="GW Accepted" style={{ color: '#2563eb' }}>Acc</th>
+                    <th title="GW Completed" style={{ color: '#059669' }}>Comp</th>
+                    <th title="Resolution rate: resolved / total">Res%</th>
+                    <th title="Completion rate: GW completed / total">Comp%</th>
+                    <th title="Overall pipeline progress">Progress</th>
+                    <th title="Performance grade">Grade</th>
                   </tr>
                 </thead>
                 <tbody>
                   {allStats.topDrivers.map(d => {
+                    const resPct = d.total > 0 ? Math.round(d.resolved / d.total * 100) : 0;
+                    const compPct = d.total > 0 ? Math.round((d.completed || 0) / d.total * 100) : 0;
                     const maxTotal = allStats.topDrivers[0]?.total || 1;
+                    const grade = resPct >= 90 ? 'A' : resPct >= 70 ? 'B' : resPct >= 50 ? 'B' : 'C';
+                    const gradeClass = grade === 'A' ? 'al-grade-a' : grade === 'B' ? 'al-grade-b' : 'al-grade-c';
                     return (
-                      <tr key={d.key} className={d.open > 0 ? 'has-open' : ''}>
+                      <tr key={d.key} className={d.open > 0 ? 'al-lb-warning' : compPct === 100 ? 'al-lb-done' : ''}>
                         <td className="al-stats-td-label">{d.key}</td>
-                        <td className="al-stats-td-num">{d.total}</td>
-                        <td className="al-stats-td-num" style={{ color: d.open > 0 ? '#dc2626' : undefined }}>{d.open}</td>
-                        <td className="al-stats-td-num" style={{ color: d.resolved > 0 ? '#16a34a' : undefined }}>{d.resolved}</td>
+                        <td className="al-stats-td-num" style={{ fontWeight: 700 }}>{d.total}</td>
+                        <td className="al-stats-td-num" style={{ color: d.open > 0 ? '#dc2626' : '#9ca3af', fontWeight: d.open > 0 ? 700 : 400 }}>{d.open}</td>
+                        <td className="al-stats-td-num" style={{ color: d.resolved > 0 ? '#16a34a' : '#9ca3af' }}>{d.resolved}</td>
                         <td className="al-stats-td-num">{d.avgDays !== null ? `${d.avgDays}d` : '—'}</td>
+                        <td className="al-stats-td-num" style={{ color: (d.accepted || 0) > 0 ? '#2563eb' : '#9ca3af' }}>{d.accepted || 0}</td>
+                        <td className="al-stats-td-num" style={{ color: (d.completed || 0) > 0 ? '#059669' : '#9ca3af' }}>{d.completed || 0}</td>
+                        <td className="al-stats-td-num" style={{ color: resPct >= 90 ? '#16a34a' : resPct >= 50 ? '#d97706' : '#dc2626' }}>{resPct}%</td>
+                        <td className="al-stats-td-num" style={{ color: compPct >= 90 ? '#059669' : compPct >= 50 ? '#0d9488' : '#9ca3af' }}>{compPct}%</td>
                         <td>
-                          <div className="al-stats-row-bar-wrap">
-                            <div className="al-stats-row-bar" style={{ width: `${(d.total / maxTotal) * 100}%` }}>
-                              {d.open > 0 && <div className="al-stats-bar-segment" style={{ flex: d.open, background: '#ef4444' }} />}
-                              {d.resolved > 0 && <div className="al-stats-bar-segment" style={{ flex: d.resolved, background: '#22c55e' }} />}
-                              {(d.total - d.open - d.resolved) > 0 && <div className="al-stats-bar-segment" style={{ flex: d.total - d.open - d.resolved, background: '#9ca3af' }} />}
+                          <div className="al-lb-pipeline">
+                            <div className="al-lb-pipeline-track">
+                              {d.open > 0 && <div className="al-lb-pipeline-seg" style={{ flex: d.open, background: '#ef4444' }} />}
+                              {(d.resolved - (d.completed || 0)) > 0 && <div className="al-lb-pipeline-seg" style={{ flex: d.resolved - (d.completed || 0), background: '#22c55e' }} />}
+                              {(d.completed || 0) > 0 && <div className="al-lb-pipeline-seg" style={{ flex: d.completed, background: '#06b6d4' }} />}
+                              {(d.total - d.open - d.resolved) > 0 && <div className="al-lb-pipeline-seg" style={{ flex: d.total - d.open - d.resolved, background: '#e5e7eb' }} />}
                             </div>
                           </div>
+                        </td>
+                        <td>
+                          <span className={`al-grade ${gradeClass}`} title={`${resPct}% resolved`}>{grade}</span>
                         </td>
                       </tr>
                     );
@@ -1099,6 +1689,7 @@ export default function AlertLog() {
           <div className="al-stats-legend">
             <span><span className="al-stats-legend-dot" style={{ background: '#ef4444' }} /> Open</span>
             <span><span className="al-stats-legend-dot" style={{ background: '#22c55e' }} /> Resolved</span>
+            <span><span className="al-stats-legend-dot" style={{ background: '#06b6d4' }} /> Completed</span>
             <span><span className="al-stats-legend-dot" style={{ background: '#9ca3af' }} /> Unknown</span>
           </div>
         </div>
@@ -1152,6 +1743,16 @@ export default function AlertLog() {
                           >
                             {pdfGenerating === route ? 'Generating...' : sentInfo ? 'PDF' : 'PDF'}
                           </button>
+                          {route !== 'Unmatched' && (
+                            <button
+                              className="al-btn-report"
+                              onClick={(e) => generateRouteReportCard(e, route)}
+                              disabled={reportGenerating !== null}
+                              title={`Generate Report Card for Route ${route}`}
+                            >
+                              {reportGenerating === route ? '...' : 'Report'}
+                            </button>
+                          )}
                           {sentInfo && (
                             <span className="al-pdf-sent-tag">Sent {sentDate}</span>
                           )}
@@ -1168,10 +1769,14 @@ export default function AlertLog() {
                         <th style={{ width: 36 }}></th>
                         <th>Store</th>
                         <th>City</th>
-                        <th>Last Service</th>
+                        <th>Last Sale</th>
+                        <th>Last Visit</th>
+                        <th>Since Service</th>
                         <th>Ref #</th>
-                        <th>Date</th>
-                        <th>Response</th>
+                        <th>Alert Date</th>
+                        <th>Time</th>
+                        <th>Days to Serve</th>
+                        <th>GW</th>
                         <th>Email</th>
                         <th>Actions</th>
                       </tr>
@@ -1181,30 +1786,88 @@ export default function AlertLog() {
                         const hasStore = !!a.store;
                         const imgData = alertImages[a.emailId];
                         const isImgOpen = expandedImage === a.emailId;
+                        const isDetailOpen = selectedAlertRef === a.refNumber;
+
+                        // Visit/sale context from CSV + visitHistory
+                        const storeVisits = (visitHistory && a.store?.id ? (visitHistory[a.store.id] || []) : [])
+                          .filter(Boolean)
+                          .map(d => d.split('T')[0])
+                          .sort((x, y) => y.localeCompare(x)); // newest first
+                        const postAlertVisits = a.dateReceived
+                          ? storeVisits.filter(d => d >= a.dateReceived)
+                          : storeVisits;
+                        const lastVisitedDate = a.store?.lastVisited
+                          ? a.store.lastVisited.split('T')[0]
+                          : null;
+                        const lastSaleDate = a.store?.lastSaleDate
+                          ? a.store.lastSaleDate.split('T')[0]
+                          : null;
+                        const visitedSinceAlert = a.dateReceived && lastVisitedDate && lastVisitedDate >= a.dateReceived;
+                        const soldSinceAlert = a.dateReceived && lastSaleDate && lastSaleDate >= a.dateReceived;
+
                         return (
                           <React.Fragment key={a.refNumber}>
                             <tr
-                              className={`${a.status} ${hasStore ? 'clickable' : ''}`}
-                              onClick={hasStore ? () => handleGoToStore(a) : undefined}
+                              className={`${a.status} clickable${isDetailOpen ? ' al-row-selected' : ''}`}
+                              onClick={() => handleAlertRowClick(a)}
                             >
                               <td>
                                 <span className="al-status-dot" style={{ background: a.color }}></span>
                               </td>
-                              <td className="al-cell-store">{a.storeName} #{a.storeNumber}</td>
+                              <td className="al-cell-store">
+                                {a.store
+                                  ? <span
+                                      className="al-store-link"
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        // Clear sidebar filters so the store is visible
+                                        setSearch('');
+                                        setFilterRegion('all');
+                                        setFilterType('all');
+                                        setFilterRoute(a.store.routeNumber || 'all');
+                                        selectStore(a.store.id);
+                                        setSidebarTab('stores');
+                                      }}
+                                    >{a.storeName} #{a.storeNumber}</span>
+                                  : <span>{a.storeName} #{a.storeNumber}</span>
+                                }
+                              </td>
                               <td>{a.city}</td>
+                              <td className="al-cell-date">{a.lastSaleDate ? formatDate(a.lastSaleDate) : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                              <td className="al-cell-date">{a.lastVisitDate ? formatDate(a.lastVisitDate) : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                               <td className="al-cell-service">
                                 {a.daysSinceService !== null
-                                  ? <span style={{ color: a.daysSinceService > 14 ? '#ef4444' : a.daysSinceService > 7 ? '#f97316' : '#16a34a', fontWeight: 600 }}>{a.daysSinceService}d ago</span>
-                                  : <span style={{ color: '#9ca3af' }}>Never</span>}
+                                  ? <span style={{ color: a.daysSinceService > 14 ? '#ef4444' : a.daysSinceService > 7 ? '#f97316' : '#16a34a', fontWeight: 600 }}>{a.daysSinceService}d</span>
+                                  : <span style={{ color: '#9ca3af' }}>—</span>}
                               </td>
                               <td className="al-cell-ref">{a.refNumber}</td>
                               <td>{formatDate(a.dateReceived)}</td>
-                              <td style={{ color: a.color, fontWeight: 600 }}>
+                              <td className="al-cell-time">{a.timeReceived || '—'}</td>
+                              <td style={{ color: a.color, fontWeight: 600 }} title={a.status === 'resolved' ? 'Days between alert and next store visit' : 'Days since alert with no visit'}>
                                 {a.status === 'resolved'
-                                  ? `Resolved ${a.days}d`
+                                  ? `${a.days}d`
                                   : a.status === 'unresolved'
-                                  ? a.days !== null ? `${a.days}d waiting` : 'Waiting'
-                                  : 'No match'}
+                                  ? a.days !== null ? `${a.days}d` : '—'
+                                  : '—'}
+                              </td>
+                              <td className="al-cell-gw">
+                                {a.globalworxCompleted
+                                  ? <span className="al-gw-col-completed" title="Completion form submitted">Completed</span>
+                                  : a.globalworxDone
+                                    ? <span className="al-gw-col-done" title="Store visited — marked Done">Done</span>
+                                    : a.globalworxAccepted
+                                      ? <span className="al-gw-col-yes" title="Accepted">✓</span>
+                                      : a.acceptanceUrl
+                                        ? <a
+                                            href={a.acceptanceUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="al-gw-btn"
+                                            title="Open GlobalWorx acceptance form"
+                                            onClick={e => e.stopPropagation()}
+                                          >Accept</a>
+                                        : <span className="al-gw-col-no" title="No acceptance link">—</span>
+                                }
                               </td>
                               <td>
                                 {a.emailId && (
@@ -1246,9 +1909,158 @@ export default function AlertLog() {
                                 </div>
                               </td>
                             </tr>
+
+                            {/* ── Inline detail panel ── */}
+                            {isDetailOpen && (
+                              <tr className="al-detail-row">
+                                <td colSpan={13}>
+                                  <div className="al-detail-panel">
+
+                                    {/* Store profile */}
+                                    <div className="al-detail-store">
+                                      <div className="al-detail-store-name">{a.storeName} #{a.storeNumber}</div>
+                                      {hasStore ? (
+                                        <>
+                                          {a.store.address && <div className="al-detail-store-address">{a.store.address}{a.city ? `, ${a.city}` : ''}</div>}
+                                          <div className="al-detail-store-meta">
+                                            {a.store.routeNumber && <span>Route {a.store.routeNumber}</span>}
+                                            {a.store.driver && <span>Driver: {a.store.driver}</span>}
+                                            {a.store.zone && <span>Zone: {a.store.zone}</span>}
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="al-detail-no-match">No matching store found in CSV — route and visit data unavailable</div>
+                                      )}
+                                      <div className="al-detail-alert-meta">
+                                        <span>Ref: <strong>{a.refNumber}</strong></span>
+                                        <span>Vendor: {a.vendor}</span>
+                                        {a.company && <span>{a.company}</span>}
+                                        <span>Alert date: {formatDate(a.dateReceived)}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Visit / sale status since the alert */}
+                                    <div className="al-detail-status">
+                                      <div className="al-detail-status-title">Store Activity Since Alert</div>
+
+                                      {/* Visited */}
+                                      <div className={`al-detail-check ${visitedSinceAlert ? 'yes' : 'no'}`}>
+                                        <span className="al-detail-check-icon">{visitedSinceAlert ? '✓' : '✗'}</span>
+                                        <div>
+                                          <div className="al-detail-check-label">
+                                            {visitedSinceAlert
+                                              ? `Visited after alert (${formatDate(lastVisitedDate)})`
+                                              : lastVisitedDate
+                                                ? `Last visit was before alert (${formatDate(lastVisitedDate)})`
+                                                : 'No visit recorded'}
+                                          </div>
+                                          {postAlertVisits.length > 0 && (
+                                            <div className="al-detail-visit-chips">
+                                              {postAlertVisits.slice(0, 8).map(d => (
+                                                <span key={d} className="al-detail-chip">{formatDate(d)}</span>
+                                              ))}
+                                              {postAlertVisits.length > 8 && <span className="al-detail-chip-more">+{postAlertVisits.length - 8} more</span>}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Sold */}
+                                      <div className={`al-detail-check ${soldSinceAlert ? 'yes' : 'no'}`}>
+                                        <span className="al-detail-check-icon">{soldSinceAlert ? '✓' : '✗'}</span>
+                                        <div className="al-detail-check-label">
+                                          {soldSinceAlert
+                                            ? `Sale recorded after alert (${formatDate(lastSaleDate)})`
+                                            : lastSaleDate
+                                              ? `Last sale was before alert (${formatDate(lastSaleDate)})`
+                                              : 'No sale data in CSV'}
+                                        </div>
+                                      </div>
+
+                                      {/* GlobalWorx acceptance status */}
+                                      <div className={`al-detail-check ${a.globalworxCompleted ? 'yes' : a.globalworxDone ? 'yes' : a.globalworxAccepted ? 'yes' : 'no'}`}>
+                                        <span className="al-detail-check-icon">{a.globalworxCompleted ? '✓' : a.globalworxDone ? '✓' : a.globalworxAccepted ? '✓' : '✗'}</span>
+                                        <div className="al-detail-check-label">
+                                          {a.globalworxCompleted
+                                            ? 'GlobalWorx completion form submitted'
+                                            : a.globalworxDone
+                                              ? 'Store visited — marked Done in Gmail'
+                                              : a.globalworxAccepted
+                                                ? 'GlobalWorx acceptance form submitted'
+                                                : 'GlobalWorx acceptance not yet submitted'}
+                                        </div>
+                                        {a.acceptanceUrl && !a.globalworxAccepted && !a.globalworxDone && !a.globalworxCompleted && (
+                                          <a
+                                            href={a.acceptanceUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="al-gw-detail-btn"
+                                          >Open Acceptance Form</a>
+                                        )}
+                                      </div>
+
+                                      {/* All recent visits from visitHistory (last 3 before alert) */}
+                                      {storeVisits.filter(d => !a.dateReceived || d < a.dateReceived).slice(0, 3).length > 0 && (
+                                        <div className="al-detail-prev-visits">
+                                          <span className="al-detail-prev-label">Prior visits:</span>
+                                          {storeVisits.filter(d => !a.dateReceived || d < a.dateReceived).slice(0, 3).map(d => (
+                                            <span key={d} className="al-detail-chip al-detail-chip-prior">{formatDate(d)}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="al-detail-actions">
+                                      {hasStore && (
+                                        <button
+                                          className="al-detail-btn al-detail-btn-map"
+                                          onClick={(e) => { e.stopPropagation(); handleGoToStore(a); }}
+                                        >
+                                          View on Map
+                                        </button>
+                                      )}
+                                      <button
+                                        className="al-detail-btn"
+                                        onClick={(e) => handleSendToDriver(e, a)}
+                                      >
+                                        Send to Driver
+                                      </button>
+                                      {a.emailId && (
+                                        <>
+                                          <a
+                                            className="al-detail-btn"
+                                            href={`https://mail.google.com/mail/u/0/#inbox/${a.emailId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Open Email
+                                          </a>
+                                          <button
+                                            className={`al-detail-btn${isImgOpen ? ' active' : ''}`}
+                                            onClick={(e) => handleToggleImage(e, a)}
+                                          >
+                                            {imgData?.loading ? 'Loading...' : 'View Image'}
+                                          </button>
+                                        </>
+                                      )}
+                                      <button
+                                        className="al-detail-btn al-detail-btn-close"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedAlertRef(null); }}
+                                      >
+                                        Close
+                                      </button>
+                                    </div>
+
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+
                             {isImgOpen && (
                               <tr className="al-image-row">
-                                <td colSpan={9}>
+                                <td colSpan={13}>
                                   <div className="al-image-container">
                                     {imgData?.loading && <span className="al-image-loading">Loading image...</span>}
                                     {imgData?.error && <span className="al-image-error">{imgData.error}</span>}

@@ -33,7 +33,7 @@ function getAlertStatus(alert, store) {
 
 export default function AlertPanel() {
   const { state, fetchGmailAlerts, selectStore, setMapView, setPage, setFilterRoute } = useApp();
-  const { alerts, stores } = state;
+  const { alerts, stores, visitHistory } = state;
 
   const [showSetup, setShowSetup] = useState(false);
   const [clientIdInput, setClientIdInput] = useState('');
@@ -41,7 +41,6 @@ export default function AlertPanel() {
   const [fetchResult, setFetchResult] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
   const [debugData, setDebugData] = useState(null);
-  const [alertDate, setAlertDate] = useState(new Date().toISOString().split('T')[0]);
 
   const connected = isGmailConnected();
   const hasClientId = !!getGoogleClientId();
@@ -57,7 +56,15 @@ export default function AlertPanel() {
   const { stats, topUnresolved } = useMemo(() => {
     const enriched = alerts.map(a => {
       const store = storeMap[a.storeId];
-      const statusInfo = getAlertStatus(a, store);
+      // Include visitHistory for most up-to-date last visit date
+      const storeId = a.storeId || store?.id;
+      const vhDates = (visitHistory && storeId ? (visitHistory[storeId] || []) : [])
+        .filter(Boolean).map(d => d.split('T')[0]);
+      const newestVH = vhDates.length > 0 ? vhDates.sort().pop() : null;
+      const storeLastVisited = store?.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;
+      const bestLastVisited = [storeLastVisited, newestVH].filter(Boolean).sort().pop() || null;
+      const enrichedStore = store ? { ...store, lastVisited: bestLastVisited || store.lastVisited } : store;
+      const statusInfo = getAlertStatus(a, enrichedStore);
       return { ...a, store, ...statusInfo };
     });
 
@@ -74,7 +81,7 @@ export default function AlertPanel() {
       stats: { total, unresolved: unresolved.length, resolved: resolved.length },
       topUnresolved: top,
     };
-  }, [alerts, storeMap]);
+  }, [alerts, storeMap, visitHistory]);
 
   function handleGoToStore(alert) {
     if (!alert.store) return;
@@ -99,8 +106,9 @@ export default function AlertPanel() {
     setFetchResult(null);
     setDebugData(null);
     try {
-      const { newCount, rawMessages } = await fetchGmailAlerts(alertDate);
-      setFetchResult({ success: `Fetched ${newCount} alert${newCount !== 1 ? 's' : ''} for ${alertDate}` });
+      // Pass no date = default 7-day lookback (same as AlertLog page)
+      const { newCount, rawMessages } = await fetchGmailAlerts();
+      setFetchResult({ success: `Fetched ${newCount} alert${newCount !== 1 ? 's' : ''}` });
       setDebugData(rawMessages);
     } catch (err) {
       setFetchResult({ error: err.message });
@@ -129,22 +137,13 @@ export default function AlertPanel() {
         </div>
         <div className="alert-gmail-actions">
           {connected && (
-            <>
-              <input
-                type="date"
-                className="alert-date-input"
-                value={alertDate}
-                max={new Date().toISOString().split('T')[0]}
-                onChange={(e) => setAlertDate(e.target.value)}
-              />
-              <button
-                className="btn btn-xs btn-primary"
-                onClick={handleFetchAlerts}
-                disabled={fetching}
-              >
-                {fetching ? 'Fetching...' : 'Fetch'}
-              </button>
-            </>
+            <button
+              className="btn btn-xs btn-primary"
+              onClick={handleFetchAlerts}
+              disabled={fetching}
+            >
+              {fetching ? 'Fetching...' : 'Fetch'}
+            </button>
           )}
           <button
             className="btn btn-xs"

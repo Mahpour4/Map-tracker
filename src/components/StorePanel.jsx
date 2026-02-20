@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
 const STORE_TYPES = [
@@ -46,7 +46,7 @@ function formatDate(dateStr) {
   });
 }
 
-function StoreCard({ store, index, routes }) {
+function StoreCard({ store, index, routes, scrollRef }) {
   const { selectStore, deleteStore, updateStore, setMapView, state, recordVisit } = useApp();
   const isSelected = state.selectedStore === store.id;
   const tc = typeColors[store.type] || typeColors.other;
@@ -55,6 +55,14 @@ function StoreCard({ store, index, routes }) {
   const [visitDate, setVisitDate] = useState('');
   const [copied, setCopied] = useState(false);
   const visitDateRef = useRef(null);
+  const cardRef = useRef(null);
+
+  // Auto-scroll into view when selected externally
+  useEffect(() => {
+    if (isSelected && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isSelected]);
 
   const zone = state.zones.find((z) => z.id === store.zoneId);
 
@@ -97,6 +105,7 @@ function StoreCard({ store, index, routes }) {
 
   return (
     <div
+      ref={cardRef}
       className={`store-card ${isSelected ? 'selected' : ''}`}
       onClick={() => {
         selectStore(store.id);
