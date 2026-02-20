@@ -333,10 +333,17 @@ export default function FuelTracker() {
 
     return [...list].sort((a, b) => {
       let av, bv;
-      if (sortCol === 'date')    { av = a.transactedAt || ''; bv = b.transactedAt || ''; }
-      else if (sortCol === 'amount')  { av = a.totalAmount;  bv = b.totalAmount; }
-      else if (sortCol === 'gallons') { av = a.totalGallons; bv = b.totalGallons; }
+      if (sortCol === 'date')         { av = a.transactedAt || ''; bv = b.transactedAt || ''; }
       else if (sortCol === 'route')   { av = a.route; bv = b.route; }
+      else if (sortCol === 'card')    { av = a.last4 || ''; bv = b.last4 || ''; }
+      else if (sortCol === 'merchant'){ av = a.merchantName || ''; bv = b.merchantName || ''; }
+      else if (sortCol === 'location'){ av = (a.merchantCity || '') + (a.merchantState || ''); bv = (b.merchantCity || '') + (b.merchantState || ''); }
+      else if (sortCol === 'fuel')    { av = a.fuelType || ''; bv = b.fuelType || ''; }
+      else if (sortCol === 'gallons') { av = a.totalGallons; bv = b.totalGallons; }
+      else if (sortCol === 'ppg')     { av = a.pricePerGallon || 0; bv = b.pricePerGallon || 0; }
+      else if (sortCol === 'amount')  { av = a.totalAmount; bv = b.totalAmount; }
+      else if (sortCol === 'odometer'){ av = a.odometerRaw || 0; bv = b.odometerRaw || 0; }
+      else if (sortCol === 'status')  { av = a.status || ''; bv = b.status || ''; }
       else { av = ''; bv = ''; }
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ?  1 : -1;
@@ -634,15 +641,15 @@ export default function FuelTracker() {
                   <tr>
                     <th className="fuel-th-sort" onClick={() => toggleSort('date')}>Date/Time{sortIcon('date')}</th>
                     <th className="fuel-th-sort" onClick={() => toggleSort('route')}>Route{sortIcon('route')}</th>
-                    <th>Card</th>
-                    <th>Merchant</th>
-                    <th>Location</th>
-                    <th>Fuel Type</th>
+                    <th className="fuel-th-sort" onClick={() => toggleSort('card')}>Card{sortIcon('card')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleSort('merchant')}>Merchant{sortIcon('merchant')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleSort('location')}>Location{sortIcon('location')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleSort('fuel')}>Fuel Type{sortIcon('fuel')}</th>
                     <th className="fuel-th-sort" onClick={() => toggleSort('gallons')}>Gallons{sortIcon('gallons')}</th>
-                    <th>$/Gal</th>
+                    <th className="fuel-th-sort" onClick={() => toggleSort('ppg')}>$/Gal{sortIcon('ppg')}</th>
                     <th className="fuel-th-sort" onClick={() => toggleSort('amount')}>Amount{sortIcon('amount')}</th>
-                    <th>Odometer</th>
-                    <th>Status</th>
+                    <th className="fuel-th-sort" onClick={() => toggleSort('odometer')}>Odometer{sortIcon('odometer')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleSort('status')}>Status{sortIcon('status')}</th>
                     <th>Receipt</th>
                   </tr>
                 </thead>
