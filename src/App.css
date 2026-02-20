@@ -8602,11 +8602,27 @@ textarea {
 .fuel-route-unknown {
   display: inline-block;
   padding: 2px 8px;
-  background: #f3f4f6;
-  color: #9ca3af;
-  border: 1px solid #e5e7eb;
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fbbf24;
   border-radius: 10px;
   font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fuel-route-unknown:hover {
+  background: #fbbf24;
+  color: #92400e;
+}
+.fuel-link-select {
+  padding: 2px 4px;
+  font-size: 0.7rem;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #1e40af;
+  max-width: 120px;
+  cursor: pointer;
 }
 .fuel-row-declined  { opacity: 0.6; background: #fef9f9; }
 .fuel-row-unknown td { color: #9ca3af; }

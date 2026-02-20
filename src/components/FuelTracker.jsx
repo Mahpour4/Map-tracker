@@ -96,6 +96,7 @@ export default function FuelTracker() {
   const [filterDate, setFilterDate]     = useState('all');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
+  const [linkingTxId, setLinkingTxId] = useState(null); // tx row being linked
 
   // ---- Card info index (for last4 lookup in tx table) ----
   const cardInfoMap = useMemo(() => {
@@ -600,7 +601,20 @@ export default function FuelTracker() {
                       <td>
                         {tx.route !== 'Unknown'
                           ? <span className="fuel-route-badge">Rt {tx.route}</span>
-                          : <span className="fuel-route-unknown">?</span>}
+                          : linkingTxId === tx.id ? (
+                            <select
+                              className="fuel-link-select"
+                              autoFocus
+                              value=""
+                              onChange={e => { if (e.target.value && tx.cardId) { setCardRoute(tx.cardId, e.target.value); } setLinkingTxId(null); }}
+                              onBlur={() => setLinkingTxId(null)}
+                            >
+                              <option value="">Select route…</option>
+                              {routeOptions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                            </select>
+                          ) : (
+                            <span className="fuel-route-unknown" onClick={() => setLinkingTxId(tx.id)} title="Click to assign route">?</span>
+                          )}
                       </td>
                       <td className="fuel-td-mono" title={tx.cardId || ''}>
                         {tx.cardName ? tx.cardName.split(' ')[0] : (tx.last4 ? `••••${tx.last4}` : (tx.cardId ? tx.cardId.slice(0, 8) + '…' : '—'))}
