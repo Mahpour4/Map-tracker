@@ -97,6 +97,8 @@ export default function FuelTracker() {
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
   const [linkingTxId, setLinkingTxId] = useState(null); // tx row being linked
+  const [cardSortCol, setCardSortCol] = useState('last4');
+  const [cardSortDir, setCardSortDir] = useState('asc');
 
   // ---- Card info index (for last4 lookup in tx table) ----
   const cardInfoMap = useMemo(() => {
@@ -347,6 +349,30 @@ export default function FuelTracker() {
     else { setSortCol(col); setSortDir('desc'); }
   };
   const sortIcon = (col) => sortCol === col ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+
+  // ---- Sorted cards for Card Management table ----
+  const toggleCardSort = (col) => {
+    if (cardSortCol === col) setCardSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setCardSortCol(col); setCardSortDir('asc'); }
+  };
+  const cardSortIcon = (col) => cardSortCol === col ? (cardSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+
+  const sortedCards = useMemo(() => {
+    return [...cards].sort((a, b) => {
+      let av, bv;
+      if (cardSortCol === 'last4')      { av = a.last4 || ''; bv = b.last4 || ''; }
+      else if (cardSortCol === 'status') { av = a.status || ''; bv = b.status || ''; }
+      else if (cardSortCol === 'entity') { av = a.entityName || ''; bv = b.entityName || ''; }
+      else if (cardSortCol === 'type')   { av = a.entityType || ''; bv = b.entityType || ''; }
+      else if (cardSortCol === 'route')  {
+        av = cardRouteMap[a.cardId] || 'zzz'; bv = cardRouteMap[b.cardId] || 'zzz';
+      }
+      else { av = a.cardId; bv = b.cardId; }
+      if (av < bv) return cardSortDir === 'asc' ? -1 : 1;
+      if (av > bv) return cardSortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+  }, [cards, cardSortCol, cardSortDir, cardRouteMap]);
 
   // ---- Render ----
   return (
@@ -757,16 +783,16 @@ export default function FuelTracker() {
               <table className="fuel-table fuel-table-cards">
                 <thead>
                   <tr>
-                    <th>Card ID</th>
-                    <th>Last 4</th>
-                    <th>Status</th>
-                    <th>API Assignment</th>
-                    <th>Type</th>
-                    <th>Route Override</th>
+                    <th className="fuel-th-sort" onClick={() => toggleCardSort('cardId')}>Card ID{cardSortIcon('cardId')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleCardSort('last4')}>Last 4{cardSortIcon('last4')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleCardSort('status')}>Status{cardSortIcon('status')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleCardSort('entity')}>API Assignment{cardSortIcon('entity')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleCardSort('type')}>Type{cardSortIcon('type')}</th>
+                    <th className="fuel-th-sort" onClick={() => toggleCardSort('route')}>Route Override{cardSortIcon('route')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cards.map(card => {
+                  {sortedCards.map(card => {
                     const assigned = cardRouteMap[card.cardId] || '';
                     return (
                       <tr key={card.cardId} className={assigned ? 'fuel-row-assigned' : ''}>
