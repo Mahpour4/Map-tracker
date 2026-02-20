@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
+import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
 
 function localDateStr(d = new Date()) {
@@ -733,7 +734,7 @@ export default function AlertLog() {
   }
 
   // ── Route Report Card PDF ─────────────────────────────────────────────────
-  function generateRouteReportCard(e, routeNumber) {
+  async function generateRouteReportCard(e, routeNumber) {
     e.stopPropagation();
     setReportGenerating(routeNumber);
     try {
@@ -751,6 +752,57 @@ export default function AlertLog() {
       const driverName = routeStores.find(s => s.driver)?.driver || `Route ${routeNumber} Driver`;
       const vehicleDesc = vehicle?.yearMakeModel || 'N/A';
       const licensePlate = vehicle?.licensePlate ? vehicle.licensePlate.split(' ')[0] : 'N/A';
+
+      // --- Mileage from travelLog (driving segments only) ---
+      let totalMiles = 0, storeStops = 0, warehouseStops = 0, drivingSegments = 0;
+      if (vehicle) {
+        const vin = vehicle.vin;
+        for (let i = 0; i < reportDays; i++) {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const dateKey = localDateStr(d);
+          const entries = ((travelLog || {})[dateKey] || {})[vin] || [];
+          entries.forEach(entry => {
+            if (entry.type === 'driving') { totalMiles += (entry.distance || 0); drivingSegments++; }
+            else if (entry.type === 'store') storeStops++;
+            else if (entry.type === 'warehouse') warehouseStops++;
+          });
+        }
+      }
+
+      // --- Fuel data from Motive API ---
+      let fuelSpend = 0, fuelGallons = 0, fuelTxCount = 0;
+      try {
+        const [txs, motiveVehicles] = await Promise.all([
+          fetchCardTransactions({ startDate: reportStart, endDate: reportEnd }),
+          fetchVehicles(),
+        ]);
+        // Build motiveVehicleId → routeNumber map via VIN
+        const vinRouteMap = {};
+        (fleetVehicles || []).forEach(v => { vinRouteMap[v.vin] = v.routeNumber; });
+        const motiveIdRouteMap = {};
+        motiveVehicles.forEach(v => {
+          const route = vinRouteMap[v.vin];
+          if (route && v.id) motiveIdRouteMap[String(v.id)] = route;
+        });
+        // Also load manual card-route assignments from localStorage
+        let cardRouteMap = {};
+        try { cardRouteMap = JSON.parse(localStorage.getItem('fuel_card_route_map') || '{}'); } catch {}
+        // Filter transactions for this route
+        txs.forEach(tx => {
+          let txRoute = null;
+          if (tx.cardId && cardRouteMap[tx.cardId]) txRoute = cardRouteMap[tx.cardId];
+          else if (tx.vehicleId && motiveIdRouteMap[String(tx.vehicleId)]) txRoute = motiveIdRouteMap[String(tx.vehicleId)];
+          if (txRoute === routeNumber && !tx.declined) {
+            fuelSpend += tx.totalAmount;
+            fuelGallons += tx.totalGallons;
+            fuelTxCount++;
+          }
+        });
+      } catch (fuelErr) {
+        console.warn('Could not fetch fuel data for report:', fuelErr.message);
+      }
+      const mpg = totalMiles > 0 && fuelGallons > 0 ? (totalMiles / fuelGallons) : null;
+      const costPerMile = totalMiles > 0 && fuelSpend > 0 ? (fuelSpend / totalMiles) : null;
 
       // Alert stats
       const openAlerts = routeAlerts.filter(a => a.status === 'unresolved');
@@ -806,10 +858,16 @@ export default function AlertLog() {
       // Most missed store
       const mostMissed = Object.values(storeAlertCounts).sort((a, b) => b.open - a.open || b.total - a.total)[0] || null;
 
-      // Overdue stores
+      // Overdue / out-of-date stores (not visited within report period)
       const overdueStores = routeStores
-        .map(s => { const latest = getLatestDate(s); const days = getDaysSinceVisit(latest); return { name: s.name || s.storeName, city: s.city, lastVisit: latest, days }; })
-        .filter(s => s.days === null || s.days >= 14)
+        .map(s => {
+          const latest = getLatestDate(s);
+          const days = getDaysSinceVisit(latest);
+          const hasOpenAlert = routeAlerts.some(a => a.storeId === (s.id || s.storeId) && a.status === 'unresolved');
+          const severity = days === null ? 'never' : days >= 30 ? 'critical' : days >= 14 ? 'overdue' : days > 7 ? 'due' : null;
+          return { name: s.name || s.storeName, city: s.city, lastVisit: latest, days, severity, hasOpenAlert, id: s.id || s.storeId };
+        })
+        .filter(s => s.severity !== null)
         .sort((a, b) => (b.days || 9999) - (a.days || 9999));
 
       // Schedule compliance
@@ -832,13 +890,17 @@ export default function AlertLog() {
 
       // Recommendations
       const recommendations = [];
-      overdueStores.filter(s => { const sAlerts = routeAlerts.filter(a => a.storeId === s.id && a.status === 'unresolved'); return sAlerts.length > 0; })
-        .slice(0, 3).forEach(s => { recommendations.push(`Visit ${s.name} ASAP — ${s.days || '?'} days overdue with open alert`); });
+      const criticalStores = overdueStores.filter(s => s.severity === 'critical' || s.severity === 'never');
+      criticalStores.filter(s => s.hasOpenAlert).slice(0, 3)
+        .forEach(s => { recommendations.push(`Visit ${s.name} ASAP — ${s.days || '?'} days overdue with open alert`); });
+      if (criticalStores.length > 0) recommendations.push(`${criticalStores.length} store${criticalStores.length > 1 ? 's' : ''} are critical (30+ days or never visited)`);
       const unvisited30 = routeStores.filter(s => { const days = getDaysSinceVisit(getLatestDate(s)); return days === null || days >= 30; }).length;
-      if (unvisited30 > 0) recommendations.push(`${unvisited30} store${unvisited30 > 1 ? 's' : ''} haven't been visited in 30+ days`);
+      if (unvisited30 > 0 && unvisited30 !== criticalStores.length) recommendations.push(`${unvisited30} store${unvisited30 > 1 ? 's' : ''} haven't been visited in 30+ days`);
       if (gwRate < 50 && routeAlerts.length > 0) recommendations.push(`GW completion rate at ${gwRate}% — ${routeAlerts.length - gwCompleted} pending completions`);
       if (repeatOffenders.length > 0) recommendations.push(`${repeatOffenders.length} repeat offender store${repeatOffenders.length > 1 ? 's' : ''} need attention`);
       if (adherence && adherence.adherence < 70) recommendations.push(`Schedule adherence is ${adherence.adherence}% — ${adherence.missed} missed stops this week`);
+      if (costPerMile !== null && costPerMile > 0.50) recommendations.push(`Fuel cost is $${costPerMile.toFixed(2)}/mile — review route efficiency`);
+      if (mpg !== null && mpg < 8) recommendations.push(`Low MPG (${mpg.toFixed(1)}) — check vehicle maintenance or driving habits`);
       if (recommendations.length === 0) recommendations.push('Route is performing well — maintain current pace');
 
       // --- Build PDF (compact 2-page layout) ---
@@ -882,6 +944,26 @@ export default function AlertLog() {
         theme: 'grid',
         headStyles: { fillColor: [37, 99, 235], fontSize: 6, fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
         bodyStyles: { fontSize: 9, fontStyle: 'bold', halign: 'center', cellPadding: 3 },
+        margin: { left: m, right: m }, tableWidth: cw,
+      });
+      y = doc.lastAutoTable.finalY + 2;
+
+      // Truck & operations row
+      autoTable(doc, {
+        startY: y,
+        head: [['Miles Driven', 'Fuel Cost', 'Gallons', 'MPG', '$/Mile', 'Store Stops', 'WH Stops']],
+        body: [[
+          totalMiles > 0 ? `${Math.round(totalMiles)} mi` : 'No data',
+          fuelSpend > 0 ? `$${fuelSpend.toFixed(2)}` : 'No data',
+          fuelGallons > 0 ? `${fuelGallons.toFixed(1)} gal` : '—',
+          mpg !== null ? mpg.toFixed(1) : '—',
+          costPerMile !== null ? `$${costPerMile.toFixed(2)}` : '—',
+          `${storeStops}`,
+          `${warehouseStops}`,
+        ]],
+        theme: 'grid',
+        headStyles: { fillColor: [15, 118, 110], fontSize: 6, fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
+        bodyStyles: { fontSize: 8, fontStyle: 'bold', halign: 'center', cellPadding: 2.5 },
         margin: { left: m, right: m }, tableWidth: cw,
       });
       y = doc.lastAutoTable.finalY + 3;
@@ -961,18 +1043,43 @@ export default function AlertLog() {
         y = doc.lastAutoTable.finalY + 3;
       }
 
-      // Overdue stores (compact)
+      // Out-of-date stores (with severity and alert status)
       if (overdueStores.length > 0) {
+        const critCount = overdueStores.filter(s => s.severity === 'critical' || s.severity === 'never').length;
+        const overdueCount = overdueStores.filter(s => s.severity === 'overdue').length;
+        const dueCount = overdueStores.filter(s => s.severity === 'due').length;
+        const headerLabel = `Out-of-Date Stores (${overdueStores.length}) — ${critCount} critical, ${overdueCount} overdue, ${dueCount} due`;
         autoTable(doc, {
-          startY: y, head: [[`Overdue Stores (14+ days) — ${overdueStores.length}`, 'City', 'Last Visit', 'Days']],
-          body: overdueStores.slice(0, 15).map(s => [s.name, s.city, s.lastVisit ? formatDate(s.lastVisit) : 'Never', s.days !== null ? `${s.days}d` : '—']),
-          theme: 'grid', ...tbl, headStyles: { ...tbl.headStyles, fillColor: [249, 115, 22] },
-          columnStyles: { 3: { halign: 'center' } },
+          startY: y, head: [['Store', 'City', 'Status', 'Last Visit', 'Days', 'Alert']],
+          body: overdueStores.slice(0, 20).map(s => [
+            s.name, s.city,
+            s.severity === 'never' ? 'NEVER' : s.severity === 'critical' ? 'CRITICAL' : s.severity === 'overdue' ? 'OVERDUE' : 'DUE',
+            s.lastVisit ? formatDate(s.lastVisit) : 'Never',
+            s.days !== null ? `${s.days}d` : '—',
+            s.hasOpenAlert ? 'OPEN' : '—',
+          ]),
+          theme: 'grid', ...tbl, headStyles: { ...tbl.headStyles, fillColor: [220, 38, 38] },
+          columnStyles: { 2: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } },
           didParseCell: function(data) {
-            if (data.section === 'body' && data.column.index === 3) {
-              const raw = data.cell.raw; if (raw === '—') data.cell.styles.textColor = [156,163,175];
-              else { const d = parseInt(raw); data.cell.styles.textColor = d >= 30 ? [127,29,29] : [239,68,68]; }
-              data.cell.styles.fontStyle = 'bold';
+            if (data.section === 'body') {
+              // Status column color
+              if (data.column.index === 2) {
+                const val = data.cell.raw;
+                data.cell.styles.fontStyle = 'bold';
+                if (val === 'NEVER' || val === 'CRITICAL') data.cell.styles.textColor = [127, 29, 29];
+                else if (val === 'OVERDUE') data.cell.styles.textColor = [239, 68, 68];
+                else data.cell.styles.textColor = [249, 115, 22];
+              }
+              // Days column
+              if (data.column.index === 4) {
+                const raw = data.cell.raw; if (raw === '—') data.cell.styles.textColor = [156,163,175];
+                else { const d = parseInt(raw); data.cell.styles.textColor = d >= 30 ? [127,29,29] : d >= 14 ? [239,68,68] : [249,115,22]; }
+                data.cell.styles.fontStyle = 'bold';
+              }
+              // Alert column
+              if (data.column.index === 5 && data.cell.raw === 'OPEN') {
+                data.cell.styles.textColor = [239, 68, 68]; data.cell.styles.fontStyle = 'bold';
+              }
             }
           },
         });
