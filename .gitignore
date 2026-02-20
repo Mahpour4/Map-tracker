@@ -20,6 +20,10 @@ scripts/globalworx-auto/client_secret.json
 scripts/globalworx-auto/credentials.json
 scripts/globalworx-auto/debug-*.png
 
+# WhatsApp service session data
+scripts/whatsapp-service/.wwebjs_auth/
+scripts/whatsapp-service/.wwebjs_cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

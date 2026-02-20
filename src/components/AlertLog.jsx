@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
+import { getWhatsAppStatus, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
 
 function localDateStr(d = new Date()) {
@@ -63,6 +64,20 @@ export default function AlertLog() {
   const [statsTab, setStatsTab] = useState('time'); // 'time' | 'route' | 'zone' | 'chain' | 'top'
   const [statsView, setStatsView] = useState('day'); // 'day' | 'week' | 'month'
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
+  const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
+  const [waSending, setWaSending] = useState(null); // identifier of what's being sent
+
+  // Check WhatsApp service status on mount and periodically
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      const s = await getWhatsAppStatus();
+      if (mounted) setWaStatus(s.status);
+    };
+    check();
+    const interval = setInterval(check, 30000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
 
   // --- PDF sent tracking (persisted in localStorage) ---
   const PDF_SENT_KEY = 'pdf_sent_log';
@@ -359,8 +374,33 @@ export default function AlertLog() {
     setExpandedImage(null);
   }
 
-  function handleSendToDriver(e, alert) {
+  async function handleSendToDriver(e, alert) {
     e.stopPropagation();
+    const alertData = {
+      route: alert.routeNumber || 'N/A',
+      type: alert.vendor || 'Alert',
+      store: `${alert.storeName} #${alert.storeNumber}`,
+      message: `${alert.city} — Ref: ${alert.refNumber}`,
+      timestamp: formatDate(alert.dateReceived),
+    };
+
+    // If WhatsApp service is connected, try to get driver phone and send via API
+    if (waStatus === 'connected') {
+      const driverPhone = getDriverPhone(alert.routeNumber);
+      if (driverPhone) {
+        setWaSending(`alert-${alert.refNumber}`);
+        try {
+          await sendWhatsAppAlert(driverPhone, alertData);
+          setWaSending(null);
+          return;
+        } catch (err) {
+          console.warn('WhatsApp API send failed, falling back to wa.me:', err.message);
+          setWaSending(null);
+        }
+      }
+    }
+
+    // Fallback: open wa.me with pre-filled text
     const lines = [
       `Service Alert - Route ${alert.routeNumber || 'N/A'}`,
       `Store: ${alert.storeName} #${alert.storeNumber}`,
@@ -371,6 +411,41 @@ export default function AlertLog() {
     ];
     const text = encodeURIComponent(lines.join('\n'));
     window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+
+  // Get driver phone number from fleetData or localStorage contacts
+  function getDriverPhone(routeNumber) {
+    if (!routeNumber) return null;
+    try {
+      const contacts = JSON.parse(localStorage.getItem('whatsapp_contacts') || '{}');
+      return contacts[routeNumber] || null;
+    } catch { return null; }
+  }
+
+  // Send route report via WhatsApp
+  async function handleSendReportWhatsApp(e, routeNumber, stats) {
+    e.stopPropagation();
+    const driverPhone = getDriverPhone(routeNumber);
+    if (!driverPhone) {
+      // Prompt user to set phone number
+      const phone = prompt(`Enter phone number for Route ${routeNumber} driver (e.g. 2125551234):`);
+      if (!phone) return;
+      // Save to localStorage
+      try {
+        const contacts = JSON.parse(localStorage.getItem('whatsapp_contacts') || '{}');
+        contacts[routeNumber] = phone.replace(/[\s\-\(\)\+]/g, '');
+        localStorage.setItem('whatsapp_contacts', JSON.stringify(contacts));
+      } catch {}
+      return handleSendReportWhatsApp(e, routeNumber, stats);
+    }
+    setWaSending(`report-${routeNumber}`);
+    try {
+      await sendWhatsAppReport(driverPhone, routeNumber, stats);
+    } catch (err) {
+      console.error('Failed to send report via WhatsApp:', err.message);
+      alert('Failed to send report: ' + err.message);
+    }
+    setWaSending(null);
   }
 
   function handleToggleImage(e, alert) {
@@ -1147,6 +1222,12 @@ export default function AlertLog() {
       <div className="al-header">
         <div className="al-title-row">
           <h2>Alert Log</h2>
+          <span
+            className={`al-wa-status al-wa-status--${waStatus}`}
+            title={`WhatsApp: ${waStatus}`}
+          >
+            WA {waStatus === 'connected' ? 'ON' : waStatus === 'qr-pending' ? 'QR' : 'OFF'}
+          </span>
           <div className="al-quick-dates">
             <button
               className={`al-quick-btn ${filterDate === null ? 'active' : ''}`}
@@ -1686,6 +1767,20 @@ export default function AlertLog() {
                               title={`Generate Report Card for Route ${route}`}
                             >
                               {reportGenerating === route ? '...' : 'Report'}
+                            </button>
+                          )}
+                          {route !== 'Unmatched' && waStatus === 'connected' && (
+                            <button
+                              className="al-btn-wa"
+                              onClick={(e) => handleSendReportWhatsApp(e, route, {
+                                period: `${new Date(new Date().setDate(new Date().getDate() - 7)).toLocaleDateString()} - ${new Date().toLocaleDateString()}`,
+                                storesVisited: routeAlerts.filter(a => a.status === 'resolved').length,
+                                totalStops: routeAlerts.length,
+                              })}
+                              disabled={waSending === `report-${route}`}
+                              title={`Send report summary to Route ${route} driver via WhatsApp`}
+                            >
+                              {waSending === `report-${route}` ? '...' : 'WA'}
                             </button>
                           )}
                           {sentInfo && (

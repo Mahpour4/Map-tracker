@@ -24,6 +24,10 @@ export default defineConfig({
           });
         },
       },
+      '/api/whatsapp': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 })
