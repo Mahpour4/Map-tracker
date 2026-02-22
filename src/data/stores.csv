@@ -184,13 +184,13 @@ FLW01261,01261,Food Lion 1261,13414 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,
 FLW01322,01322,Food Lion 1322,3059 CENTERVILLE RD,Herndon,VA,20171,209,Route 209 Driver,Northern Virginia,Herndon,Herndon,38.9696,-77.3861,2026-02-20,2026-02-16,No
 FLW01337,01337,Food Lion 1337,20789 GREAT FALLS PLZ,Sterling,VA,20165,209,Route 209 Driver,Northern Virginia,Sterling,Sterling,39.040721,-77.3580689,2026-02-20,2026-02-20,No
 FLW01383,01383,Food Lion 1383,9121 CENTERVILLE RD,Manassas,VA,20110,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.75116146722824,-77.47828858409427,2026-02-19,2026-02-19,No
-FLW01471,01471,Food Lion 1471,17120 JEFFERSON DAVIS HWY,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.56876146722824,-77.33108858409427,,2026-02-18,No
+FLW01471,01471,Food Lion 1471,17120 JEFFERSON DAVIS HWY,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.56876146722824,-77.33108858409427,2026-02-05,2026-02-18,No
 FLW01572,01572,Food Lion 1572,14630 MINNEVILLE RD,Dale City,VA,22193,209,Route 209 Driver,Northern Virginia,Dale City,Dale City,38.637,-77.3109,2026-02-19,2026-02-11,No
 FLW01588,01588,Food Lion 1588,4195 WINCHESTER RD,Marshall,VA,20115,209,Route 209 Driver,Northern Virginia,Marshall,Marshall,38.8640017,-77.8474504,2026-02-19,2026-02-19,No
-FLW02518,02518,Food Lion 2518,12420 DILLINGHAM SQ,Lake Ridge,VA,22192,209,Route 209 Driver,Northern Virginia,Lake Ridge,Lake Ridge,38.682,-77.2996,,2026-02-13,No
-FLW02597,02597,Food Lion 2597,6306 HOADLEY RD,Manassas,VA,20112,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.754552568574056,-77.47053987995825,,2026-02-19,No
-WGW00049,00049,Wegmans 049,7505 HILLTOP VILLAGE CTR DR,Alexandria,VA,22315,209,Route 209 Driver,Northern Virginia,Alexandria,Alexandria,38.8048,-77.0469,,2025-12-05,No
-WGW00055,00055,Wegmans 055,14801 DINING WAY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.631162,-77.288755,,2025-11-13,Yes
+FLW02518,02518,Food Lion 2518,12420 DILLINGHAM SQ,Lake Ridge,VA,22192,209,Route 209 Driver,Northern Virginia,Lake Ridge,Lake Ridge,38.682,-77.2996,2026-02-13,2026-02-13,No
+FLW02597,02597,Food Lion 2597,6306 HOADLEY RD,Manassas,VA,20112,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.754552568574056,-77.47053987995825,2026-02-17,2026-02-19,No
+WGW00049,00049,Wegmans 049,7505 HILLTOP VILLAGE CTR DR,Alexandria,VA,22315,209,Route 209 Driver,Northern Virginia,Alexandria,Alexandria,38.8048,-77.0469,2025-12-05,2025-12-05,No
+WGW00055,00055,Wegmans 055,14801 DINING WAY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.631162,-77.288755,2025-11-13,2025-11-13,Yes
 CASH0543,CASH0543,Marlton Spirits,9518 Crain Hwy,Upper Marlboro,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,,2025-11-12,Yes
 CMW05119,CMW05119,Comm Andrew AFB 5119,1684 STARKEY AVE,JB Andrews,MD,20762,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8108,-76.866,,2026-02-17,No
 CMW05222,CMW05222,Comm Ft Meade 5222,2786 MACARTHUR RD,Fort Meade,MD,20755,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1168421,-76.7390851,,2026-02-13,No
@@ -705,3 +705,5 @@ WAW02419,WAW02419,WALMART 2419,18922 Rehoboth Mall Blvd Rehoboth,Beach,DE,19971,
 CASH0041,CASH0041,Big Brother King Grocery,2400 Jefferson,St,,,204,Route 204 Driver,Unassigned,Unassigned,Unassigned,38.2574083,-85.7912216,2026-02-18,,No
 CASH0139,CASH0139,Family Food Deli,1543,Poplar,,,204,Route 204 Driver,Unassigned,Unassigned,Unassigned,39.3058602,-76.6653086,2026-02-18,,No
 CASH2222,CASH2222,Badan Grocery,1001 N Broadway,Baltimore,MD,21205,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.301991,-76.5941612,2026-02-18,,No
+FLW02527,FLW02527,FOOD LION 2527,15201 WASHINGTON ST,HAYMARKET,VA,20169,209,Route 209 Driver,Unassigned,Unassigned,Unassigned,38.813361,-77.6389767,2025-08-12,,Yes
+MISC0209,MISC0209,Misc Cash 209,,,,,209,Route 209 Driver,Unassigned,Unassigned,Unassigned,,,,,Yes
