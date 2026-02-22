@@ -22,6 +22,19 @@ function getDaysSinceVisit(lastVisited) {
   return Math.floor((now - visited) / (1000 * 60 * 60 * 24));
 }
 
+/** Difference in days between two YYYY-MM-DD strings (a - b) */
+function daysDiff(a, b) {
+  return Math.round((new Date(a + 'T00:00:00') - new Date(b + 'T00:00:00')) / 86400000);
+}
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Format a YYYY-MM-DD string as "Monday 2/16" */
+function fmtDateDay(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${WEEKDAY_NAMES[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 function formatVisitDate(lastVisited) {
   const d = toLocalDate(lastVisited);
   if (!d) return 'Never';
@@ -47,56 +60,87 @@ function getDayDate(weekOf, day) {
   return d.toISOString().split('T')[0];
 }
 
-/** Check compliance: was store visited on the scheduled day or same week? */
+/**
+ * Check compliance by finding the closest visit to the expected date.
+ *
+ * For the viewed week's expected day, scan all visits and pick the one
+ * closest by absolute distance. This naturally handles multiple visits:
+ *
+ * Example (scheduled Monday):
+ *   Viewing this week: Tue (1d) and Thu (3d) → picks Tue → "1d late"
+ *   Viewing next week: Tue (6d) and Thu (4d) → picks Thu → "4d early"
+ */
 function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited, visitHistoryMap) {
-  const scheduledDate = getDayDate(weekOf, scheduledDay);
-  const weekEnd = getDayDate(weekOf, 'friday');
-  const weekStart = weekOf;
+  const expectedDate = getDayDate(weekOf, scheduledDay);
+  const dayLabel = DAY_LABELS[scheduledDay];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
 
-  // Use context visit history, merge with store.lastVisited as safety net
+  // Gather all visits
   const visits = [...(visitHistoryMap[storeId] || [])];
   if (lastVisited) {
     const normalised = lastVisited.split('T')[0];
     if (!visits.includes(normalised)) visits.push(normalised);
   }
 
-  // Check if visited on exact day
-  const exactMatch = visits.includes(scheduledDate);
-  if (exactMatch) return { status: 'exact', label: 'On time', color: '#22c55e', visitDate: scheduledDate };
-
-  // Check if visited same week (any day Mon-Fri)
-  const sameWeekVisit = visits.find(v => v >= weekStart && v <= weekEnd);
-  if (sameWeekVisit) return { status: 'sameWeek', label: 'Same week', color: '#3b82f6', visitDate: sameWeekVisit };
-
-  // Check if the scheduled date is in the future
-  const today = new Date().toISOString().split('T')[0];
-  if (scheduledDate > today) return { status: 'future', label: 'Upcoming', color: '#9ca3af', visitDate: null };
-
-  // Check if visited AFTER the scheduled week (late visit — still counts as resolved)
-  const lateVisit = visits.filter(v => v > weekEnd).sort().shift(); // earliest visit after the week
-  if (lateVisit) {
-    const daysLate = Math.floor((new Date(lateVisit) - new Date(scheduledDate)) / 86400000);
-    return {
-      status: 'late',
-      label: `Visited late (${daysLate}d)`,
-      color: '#f59e0b', // amber
-      visitDate: lateVisit,
-      tooltip: `Scheduled ${scheduledDate}, visited ${lateVisit} (${daysLate} days late)`,
-    };
+  if (visits.length === 0) {
+    if (expectedDate > todayStr) {
+      return { status: 'future', label: 'Upcoming', color: '#9ca3af', visitDate: null, tooltip: `Due: ${fmtDateDay(expectedDate)}` };
+    }
+    return { status: 'missed', label: 'Never visited', color: '#991b1b', visitDate: null, tooltip: `Due: ${fmtDateDay(expectedDate)} | Never visited` };
   }
 
-  // Missed: no visit found at all
-  const daysOverdue = Math.floor((new Date(today) - new Date(scheduledDate)) / 86400000);
-  const lastVisitAny = visits.length > 0 ? [...visits].sort().pop() : null;
+  // Adjacent expected dates (previous / next week's same day)
+  const prevExpected = (() => { const d = new Date(expectedDate + 'T00:00:00'); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]; })();
+  const nextExpected = (() => { const d = new Date(expectedDate + 'T00:00:00'); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]; })();
+
+  // Only keep visits closer to THIS week's expected date than to prev/next week
+  const myVisits = visits.filter(v => {
+    const distThis = Math.abs(daysDiff(v, expectedDate));
+    const distPrev = Math.abs(daysDiff(v, prevExpected));
+    const distNext = Math.abs(daysDiff(v, nextExpected));
+    return distThis <= distPrev && distThis <= distNext;
+  });
+
+  // Find the closest visit among those assigned to this week
+  let bestVisit = null;
+  let bestDist = Infinity;
+  for (const v of myVisits) {
+    const dist = Math.abs(daysDiff(v, expectedDate));
+    if (dist < bestDist) { bestDist = dist; bestVisit = v; }
+  }
+
+  if (bestVisit) {
+    const diff = daysDiff(bestVisit, expectedDate); // positive = late, negative = early
+    const dueLine = `Due: ${fmtDateDay(expectedDate)}`;
+    const visitLine = `Visited: ${fmtDateDay(bestVisit)}`;
+    if (diff === 0) {
+      return { status: 'exact', label: 'On time', color: '#22c55e', visitDate: bestVisit, tooltip: `${dueLine} | ${visitLine} | On time` };
+    } else if (diff > 0) {
+      return { status: 'sameWeek', label: `${diff}d late`, color: diff === 1 ? '#f59e0b' : '#f97316', visitDate: bestVisit, tooltip: `${dueLine} | ${visitLine} | ${diff} day${diff > 1 ? 's' : ''} late` };
+    } else {
+      const early = Math.abs(diff);
+      return { status: 'sameWeek', label: `${early}d early`, color: '#3b82f6', visitDate: bestVisit, tooltip: `${dueLine} | ${visitLine} | ${early} day${early > 1 ? 's' : ''} early` };
+    }
+  }
+
+  // No visits at all (shouldn't reach here since visits.length > 0, but safety)
+  if (expectedDate > todayStr) {
+    return { status: 'future', label: 'Upcoming', color: '#9ca3af', visitDate: null, tooltip: `Due: ${fmtDateDay(expectedDate)}` };
+  }
+
+  const daysOverdue = daysDiff(todayStr, expectedDate);
+  const lastVisitAny = [...visits].sort().pop();
   let label, color;
-  if (daysOverdue <= 7) { label = `Late (${daysOverdue}d)`; color = '#eab308'; }        // yellow
-  else if (daysOverdue <= 14) { label = `Overdue (${daysOverdue}d)`; color = '#f97316'; } // orange
-  else if (daysOverdue <= 30) { label = `Critical (${daysOverdue}d)`; color = '#ef4444'; } // red
-  else { label = lastVisitAny ? `Abandoned (${daysOverdue}d)` : 'Never visited'; color = '#991b1b'; } // dark red
+  if (daysOverdue <= 7) { label = `Late (${daysOverdue}d)`; color = '#eab308'; }
+  else if (daysOverdue <= 14) { label = `Overdue (${daysOverdue}d)`; color = '#f97316'; }
+  else if (daysOverdue <= 30) { label = `Critical (${daysOverdue}d)`; color = '#ef4444'; }
+  else { label = lastVisitAny ? `Abandoned (${daysOverdue}d)` : 'Never visited'; color = '#991b1b'; }
 
   const tooltip = lastVisitAny
-    ? `Scheduled ${scheduledDate}, last visited ${lastVisitAny}`
-    : `Scheduled ${scheduledDate}, never visited`;
+    ? `Due: ${fmtDateDay(expectedDate)} | Last visited: ${fmtDateDay(lastVisitAny)}`
+    : `Due: ${fmtDateDay(expectedDate)} | Never visited`;
 
   return { status: 'missed', label, color, visitDate: null, daysOverdue, lastVisit: lastVisitAny, tooltip };
 }
@@ -477,8 +521,8 @@ export default function RouteSchedule() {
           if (data.section === 'body' && data.column.index === 6) {
             const val = data.cell.raw;
             if (val === 'On time') data.cell.styles.textColor = [34, 197, 94];
-            else if (val === 'Same week') data.cell.styles.textColor = [59, 130, 246];
-            else if (val.startsWith('Visited late')) data.cell.styles.textColor = [245, 158, 11];
+            else if (val.includes('early')) data.cell.styles.textColor = [59, 130, 246];
+            else if (val.includes('d late') && !val.startsWith('Late')) data.cell.styles.textColor = [245, 158, 11];
             else if (val.startsWith('Late')) data.cell.styles.textColor = [234, 179, 8];
             else if (val.startsWith('Overdue')) data.cell.styles.textColor = [249, 115, 22];
             else if (val.startsWith('Critical') || val.startsWith('Abandoned') || val === 'Never visited') data.cell.styles.textColor = [239, 68, 68];
@@ -715,7 +759,7 @@ export default function RouteSchedule() {
           </div>
           <div className="compliance-stat">
             <span className="compliance-val" style={{ color: '#3b82f6' }}>{complianceStats.sameWeek}</span>
-            <span className="compliance-label">Same week</span>
+            <span className="compliance-label">Off-day</span>
           </div>
           {complianceStats.late > 0 && (
             <div className="compliance-stat">
@@ -814,13 +858,13 @@ export default function RouteSchedule() {
                       <span className="schedule-chip-days" style={{
                         color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
                       }}>
-                        {days === null ? 'Never' : `${days}d`}
+                        {latest ? `${new Date(latest + 'T00:00:00').getMonth() + 1}/${new Date(latest + 'T00:00:00').getDate()} (${days}d)` : 'Never'}
                       </span>
                     </div>
                     <div
                       className="schedule-chip-lastvisit schedule-stop-days-clickable"
                       onClick={(e) => { e.stopPropagation(); openVisitEdit(s.id); }}
-                      title="Click to edit visit date"
+                      title={days !== null ? `${days} days since last visit — click to edit` : 'Click to edit visit date'}
                     >
                       {s.lastSaleDate ? `S: ${formatVisitDate(s.lastSaleDate)}` : ''}{s.lastSaleDate && s.lastVisited ? ' / ' : ''}{s.lastVisited ? `V: ${formatVisitDate(s.lastVisited)}` : ''}{!s.lastSaleDate && !s.lastVisited ? 'No date' : ''}
                     </div>
@@ -875,13 +919,13 @@ export default function RouteSchedule() {
                       <span className="schedule-chip-days" style={{
                         color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
                       }}>
-                        {days === null ? 'Never' : `${days}d`}
+                        {latest ? `${new Date(latest + 'T00:00:00').getMonth() + 1}/${new Date(latest + 'T00:00:00').getDate()} (${days}d)` : 'Never'}
                       </span>
                     </div>
                     <div
                       className="schedule-chip-lastvisit schedule-stop-days-clickable"
                       onClick={(e) => { e.stopPropagation(); openVisitEdit(s.id); }}
-                      title="Click to edit visit date"
+                      title={days !== null ? `${days} days since last visit — click to edit` : 'Click to edit visit date'}
                     >
                       {s.lastSaleDate ? `S: ${formatVisitDate(s.lastSaleDate)}` : ''}{s.lastSaleDate && s.lastVisited ? ' / ' : ''}{s.lastVisited ? `V: ${formatVisitDate(s.lastVisited)}` : ''}{!s.lastSaleDate && !s.lastVisited ? 'No date' : ''}
                     </div>
@@ -969,9 +1013,9 @@ export default function RouteSchedule() {
                                     color: days === null ? '#9ca3af' : days <= 7 ? '#22c55e' : days <= 14 ? '#f97316' : '#ef4444'
                                   }}
                                   onClick={(e) => { e.stopPropagation(); openVisitEdit(store.id); }}
-                                  title="Click to edit visit date"
+                                  title={days !== null ? `${days} days since last visit — click to edit` : 'Click to edit visit date'}
                                 >
-                                  {days === null ? 'Never' : `${days}d`}
+                                  {latest ? `${new Date(latest + 'T00:00:00').getMonth() + 1}/${new Date(latest + 'T00:00:00').getDate()} (${days}d)` : 'Never'}
                                 </span>
                               </div>
                               <div className="schedule-stop-detail">{store.name}</div>

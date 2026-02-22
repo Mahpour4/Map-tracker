@@ -80,6 +80,7 @@ export default function AlertLog() {
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
   const [gwServiceStatus, setGwServiceStatus] = useState('offline'); // offline | ready
   const [gwCompleting, setGwCompleting] = useState(null); // route string being completed, or null
+  const [autoClearing, setAutoClearing] = useState(false);
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
   const [waGroups, setWaGroups] = useState([]); // available WhatsApp groups
@@ -286,6 +287,19 @@ export default function AlertLog() {
       : null;
     return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
   }, [enrichedAlerts, filterDate, weekDates, filterRoute, filterVendor, searchTerm]);
+
+  // Count alerts eligible for auto-clear (resolved + 48h+ old + not yet completed)
+  const autoClearCount = useMemo(() => {
+    const now = new Date();
+    return enrichedAlerts.filter(a => {
+      if (a.globalworxCompleted) return false;
+      if (a.status !== 'resolved') return false;
+      if (!a.dateReceived) return false;
+      const alertDate = new Date(a.dateReceived + 'T00:00:00');
+      const hoursSince = (now - alertDate) / (1000 * 60 * 60);
+      return hoursSince >= 48;
+    }).length;
+  }, [enrichedAlerts]);
 
   // Comprehensive statistics across all dimensions
   const allStats = useMemo(() => {
@@ -550,6 +564,37 @@ export default function AlertLog() {
       alert(`Failed to complete route: ${err.message}`);
     } finally {
       setGwCompleting(null);
+    }
+  }
+
+  // Auto-clear resolved alerts where 48h have passed (GW button is gone anyway)
+  async function handleAutoClear() {
+    const now = new Date();
+    const eligible = enrichedAlerts.filter(a => {
+      if (a.globalworxCompleted) return false;
+      if (a.status !== 'resolved') return false;
+      if (!a.dateReceived) return false;
+      const alertDate = new Date(a.dateReceived + 'T00:00:00');
+      const hoursSince = (now - alertDate) / (1000 * 60 * 60);
+      return hoursSince >= 48;
+    });
+    if (eligible.length === 0) {
+      alert('No alerts to auto-clear.\n\nAlerts must be resolved (visited + sale) and older than 48 hours.');
+      return;
+    }
+    if (!confirm(`Auto-clear ${eligible.length} resolved alert(s)?\n\nThese alerts have been visited/sold and are 48+ hours old, so the GlobalWorx button has expired. They will be labeled as completed in Gmail.`)) return;
+    setAutoClearing(true);
+    try {
+      const ids = eligible.map(a => a.emailId).filter(Boolean);
+      if (ids.length > 0) {
+        await labelAlertsCompleted(ids);
+        alert(`${ids.length} alert(s) cleared successfully!`);
+        fetchGmailAlerts();
+      }
+    } catch (err) {
+      alert(`Failed to auto-clear: ${err.message}`);
+    } finally {
+      setAutoClearing(false);
     }
   }
 
@@ -1429,6 +1474,16 @@ export default function AlertLog() {
             <span className="al-stat blue" title="Accepted on GlobalWorx">{stats.accepted} <span>Accepted</span></span>
             <span className="al-stat teal" title="Store visited — awaiting GW completion">{stats.done} <span>Done</span></span>
             <span className="al-stat emerald" title="Completed on GlobalWorx">{stats.completed} <span>Completed</span></span>
+            {autoClearCount > 0 && (
+              <button
+                className="al-btn-autoclear"
+                onClick={handleAutoClear}
+                disabled={autoClearing}
+                title={`${autoClearCount} resolved alert(s) are 48+ hours old — clear them without needing GlobalWorx`}
+              >
+                {autoClearing ? 'Clearing...' : `Auto-Clear ${autoClearCount}`}
+              </button>
+            )}
           </div>
         </div>
 
