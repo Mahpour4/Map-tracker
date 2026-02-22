@@ -72,7 +72,20 @@ function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited, visitHist
   const today = new Date().toISOString().split('T')[0];
   if (scheduledDate > today) return { status: 'future', label: 'Upcoming', color: '#9ca3af', visitDate: null };
 
-  return { status: 'missed', label: 'Missed', color: '#ef4444', visitDate: null };
+  // Missed: compute days overdue and severity tier
+  const daysOverdue = Math.floor((new Date(today) - new Date(scheduledDate)) / 86400000);
+  const lastVisitAny = visits.length > 0 ? visits.sort().pop() : null;
+  let label, color;
+  if (daysOverdue <= 7) { label = `Late (${daysOverdue}d)`; color = '#eab308'; }        // yellow
+  else if (daysOverdue <= 14) { label = `Overdue (${daysOverdue}d)`; color = '#f97316'; } // orange
+  else if (daysOverdue <= 30) { label = `Critical (${daysOverdue}d)`; color = '#ef4444'; } // red
+  else { label = lastVisitAny ? `Abandoned (${daysOverdue}d)` : 'Never visited'; color = '#991b1b'; } // dark red
+
+  const tooltip = lastVisitAny
+    ? `Scheduled ${scheduledDate}, last visited ${lastVisitAny}`
+    : `Scheduled ${scheduledDate}, never visited`;
+
+  return { status: 'missed', label, color, visitDate: null, daysOverdue, lastVisit: lastVisitAny, tooltip };
 }
 
 /** Parse schedule key into route and week components */
@@ -451,7 +464,10 @@ export default function RouteSchedule() {
             const val = data.cell.raw;
             if (val === 'On time') data.cell.styles.textColor = [34, 197, 94];
             else if (val === 'Same week') data.cell.styles.textColor = [59, 130, 246];
-            else if (val === 'Missed') data.cell.styles.textColor = [239, 68, 68];
+            else if (val.startsWith('Late')) data.cell.styles.textColor = [234, 179, 8];
+            else if (val.startsWith('Overdue')) data.cell.styles.textColor = [249, 115, 22];
+            else if (val.startsWith('Critical') || val.startsWith('Abandoned') || val === 'Never visited') data.cell.styles.textColor = [239, 68, 68];
+            else if (val === 'Upcoming') data.cell.styles.textColor = [156, 163, 175];
             else data.cell.styles.textColor = [156, 163, 175];
           }
         },
@@ -940,7 +956,7 @@ export default function RouteSchedule() {
                               <div className="schedule-stop-addr">{store.address}, {store.city}</div>
                             </div>
                             <div className="schedule-stop-compliance">
-                              <span className="compliance-badge" style={{ color: compliance.color, borderColor: compliance.color }}>
+                              <span className="compliance-badge" style={{ color: compliance.color, borderColor: compliance.color }} title={compliance.tooltip || ''}>
                                 {compliance.label}
                               </span>
                               {compliance.visitDate && (
