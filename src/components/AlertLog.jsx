@@ -2,7 +2,8 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
-import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
+import { fetchAlertImage, isGmailConnected, labelAlertsCompleted } from '../services/gmailAlertService';
+import { getGlobalWorxStatus, completeRouteAlerts } from '../services/globalworxService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
@@ -77,6 +78,8 @@ export default function AlertLog() {
   const [statsView, setStatsView] = useState('day'); // 'day' | 'week' | 'month'
   const [statsRouteTime, setStatsRouteTime] = useState('all'); // 'all' | 'this-week' | '30d' | '90d'
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
+  const [gwServiceStatus, setGwServiceStatus] = useState('offline'); // offline | ready
+  const [gwCompleting, setGwCompleting] = useState(null); // route string being completed, or null
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
   const [waGroups, setWaGroups] = useState([]); // available WhatsApp groups
@@ -104,6 +107,18 @@ export default function AlertLog() {
     };
     check();
     const interval = setInterval(check, 30000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
+
+  // Check GlobalWorx completion service status
+  useEffect(() => {
+    let mounted = true;
+    const checkGw = async () => {
+      const s = await getGlobalWorxStatus();
+      if (mounted) setGwServiceStatus(s.status);
+    };
+    checkGw();
+    const interval = setInterval(checkGw, 30000);
     return () => { mounted = false; clearInterval(interval); };
   }, []);
 
@@ -503,6 +518,41 @@ export default function AlertLog() {
   }
 
   // Send route report via WhatsApp group
+  async function handleCompleteRoute(e, route, routeAlerts) {
+    e.stopPropagation();
+    const eligible = routeAlerts.filter(a =>
+      a.acceptanceUrl &&
+      !a.globalworxCompleted &&
+      (a.globalworxDone || a.status === 'resolved')
+    );
+    if (eligible.length === 0) {
+      alert('No eligible alerts to complete for this route.\nAlerts must be resolved (visited) and not yet completed on GlobalWorx.');
+      return;
+    }
+    if (!confirm(`Complete ${eligible.length} alert(s) for Route ${route} on GlobalWorx?\n\nThis will submit the "Complete Here" form for each alert.`)) return;
+    setGwCompleting(route);
+    try {
+      const result = await completeRouteAlerts(
+        eligible.map(a => ({ emailId: a.emailId, acceptanceUrl: a.acceptanceUrl, refNumber: a.refNumber }))
+      );
+      const succeededIds = result.results.filter(r => r.success && r.emailId).map(r => r.emailId);
+      if (succeededIds.length > 0) {
+        await labelAlertsCompleted(succeededIds);
+      }
+      const failed = result.results.filter(r => !r.success);
+      if (failed.length === 0) {
+        alert(`All ${result.succeeded} alert(s) completed successfully!`);
+      } else {
+        alert(`${result.succeeded}/${result.total} completed.\n\nFailed:\n${failed.map(f => `${f.refNumber}: ${f.error}`).join('\n')}`);
+      }
+      if (result.succeeded > 0) fetchGmailAlerts();
+    } catch (err) {
+      alert(`Failed to complete route: ${err.message}`);
+    } finally {
+      setGwCompleting(null);
+    }
+  }
+
   async function handleSendReportWhatsApp(e, routeNumber, stats) {
     e.stopPropagation();
     const groupId = getRouteGroupId(routeNumber);
@@ -1924,6 +1974,16 @@ export default function AlertLog() {
                               title={`Send report summary to Route ${route} driver via WhatsApp`}
                             >
                               {waSending === `report-${route}` ? '...' : 'WA'}
+                            </button>
+                          )}
+                          {route !== 'Unmatched' && gwServiceStatus === 'ready' && (
+                            <button
+                              className="al-btn-complete"
+                              onClick={(e) => handleCompleteRoute(e, route, routeAlerts)}
+                              disabled={gwCompleting !== null}
+                              title={`Submit GlobalWorx completion form for all resolved alerts on Route ${route}`}
+                            >
+                              {gwCompleting === route ? 'Completing...' : 'Complete'}
                             </button>
                           )}
                           {sentInfo && (

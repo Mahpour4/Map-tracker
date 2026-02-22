@@ -12,7 +12,6 @@
 'use strict';
 
 const { google }   = require('googleapis');
-const puppeteer    = require('puppeteer');
 const fs           = require('fs');
 const path         = require('path');
 
@@ -178,10 +177,13 @@ async function markProcessed(gmail, messageId, labelId) {
   });
 }
 
-// ─── Puppeteer automation ────────────────────────────────────────────────────
+// ─── Puppeteer automation (shared module) ───────────────────────────────────
+const { submitAcceptanceForm, submitCompletionForm } = require('./puppeteer-automation');
 
-/** Submit the GlobalWorx acceptance form at `url` */
-async function submitAcceptanceForm(url) {
+// NOTE: submitAcceptanceForm and submitCompletionForm were previously defined inline here.
+// They have been extracted to puppeteer-automation.js for reuse by the Express server.
+
+async function __REMOVED__submitAcceptanceForm(url) {
   const browser = await puppeteer.launch({
     headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
@@ -315,8 +317,8 @@ async function submitAcceptanceForm(url) {
   }
 }
 
-/** Click "Complete Here" on a GlobalWorx service issue page (for resolved alerts) */
-async function submitCompletionForm(url) {
+/** Click "Complete Here" — DEPRECATED: now in puppeteer-automation.js */
+async function __REMOVED__submitCompletionForm(url) {
   // Use visible browser — the GW site does not render action buttons in headless mode
   const browser = await puppeteer.launch({
     headless: 'new',

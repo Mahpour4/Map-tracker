@@ -291,6 +291,22 @@ export async function labelAlertsDone(messageIds) {
   }
 }
 
+/** Label completed alert emails as "GLOBAL WORKS/Completed" in Gmail */
+export async function labelAlertsCompleted(messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  try {
+    const labelId = await getCompletedLabelId();
+    if (!labelId) { console.warn(`[Gmail] "${COMPLETED_LABEL_NAME}" label not found — skipping`); return; }
+    await gmailPost('/users/me/messages/batchModify', {
+      ids: messageIds,
+      addLabelIds: [labelId],
+    });
+    console.log(`[Gmail] Labeled ${messageIds.length} alert(s) as "${COMPLETED_LABEL_NAME}"`);
+  } catch (err) {
+    console.error('[Gmail] Failed to label messages as Completed:', err);
+  }
+}
+
 export async function labelAlertMessages(messageIds) {
   if (!messageIds || messageIds.length === 0) return;
   try {
