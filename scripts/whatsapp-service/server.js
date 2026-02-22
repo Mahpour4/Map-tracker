@@ -13,14 +13,25 @@ app.get('/api/whatsapp/status', (req, res) => {
   res.json(whatsapp.getStatus());
 });
 
-// Send text message
+// List all WhatsApp groups
+app.get('/api/whatsapp/groups', async (req, res) => {
+  try {
+    const groups = await whatsapp.getGroups();
+    res.json({ groups });
+  } catch (err) {
+    console.error('Get groups error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send text message to a group
 app.post('/api/whatsapp/send', async (req, res) => {
   try {
-    const { phone, message } = req.body;
-    if (!phone || !message) {
-      return res.status(400).json({ error: 'phone and message are required' });
+    const { groupId, message } = req.body;
+    if (!groupId || !message) {
+      return res.status(400).json({ error: 'groupId and message are required' });
     }
-    const result = await whatsapp.sendMessage(phone, message);
+    const result = await whatsapp.sendToGroup(groupId, message);
     res.json(result);
   } catch (err) {
     console.error('Send error:', err.message);
@@ -28,14 +39,14 @@ app.post('/api/whatsapp/send', async (req, res) => {
   }
 });
 
-// Send formatted alert
+// Send formatted alert to a group
 app.post('/api/whatsapp/send-alert', async (req, res) => {
   try {
-    const { phone, alert } = req.body;
-    if (!phone || !alert) {
-      return res.status(400).json({ error: 'phone and alert are required' });
+    const { groupId, alert } = req.body;
+    if (!groupId || !alert) {
+      return res.status(400).json({ error: 'groupId and alert are required' });
     }
-    const result = await whatsapp.sendAlert(phone, alert);
+    const result = await whatsapp.sendAlertToGroup(groupId, alert);
     res.json(result);
   } catch (err) {
     console.error('Send alert error:', err.message);
@@ -43,14 +54,14 @@ app.post('/api/whatsapp/send-alert', async (req, res) => {
   }
 });
 
-// Send route report summary
+// Send route report summary to a group
 app.post('/api/whatsapp/send-report', async (req, res) => {
   try {
-    const { phone, routeNumber, stats } = req.body;
-    if (!phone || !routeNumber) {
-      return res.status(400).json({ error: 'phone and routeNumber are required' });
+    const { groupId, routeNumber, stats } = req.body;
+    if (!groupId || !routeNumber) {
+      return res.status(400).json({ error: 'groupId and routeNumber are required' });
     }
-    const result = await whatsapp.sendReport(phone, routeNumber, stats || {});
+    const result = await whatsapp.sendReportToGroup(groupId, routeNumber, stats || {});
     res.json(result);
   } catch (err) {
     console.error('Send report error:', err.message);
@@ -63,5 +74,6 @@ whatsapp.initialize();
 
 app.listen(PORT, () => {
   console.log(`\n🌐 WhatsApp service running on http://localhost:${PORT}`);
-  console.log(`   Status: http://localhost:${PORT}/api/whatsapp/status\n`);
+  console.log(`   Status: http://localhost:${PORT}/api/whatsapp/status`);
+  console.log(`   Groups: http://localhost:${PORT}/api/whatsapp/groups\n`);
 });

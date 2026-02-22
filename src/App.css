@@ -5020,6 +5020,83 @@ textarea {
   border: 1px solid #fde047;
 }
 
+.al-wa-settings {
+  background: var(--bg-card);
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+.al-wa-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #15803d;
+}
+.al-wa-settings-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.al-wa-settings-close:hover {
+  background: var(--bg-hover);
+}
+.al-wa-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.al-wa-route-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.al-wa-route-label {
+  min-width: 70px;
+  font-weight: 600;
+  color: var(--text);
+}
+.al-wa-group-select {
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  max-width: 300px;
+}
+.al-wa-mapped-check {
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 11px;
+}
+.al-wa-refresh-btn {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #25d366;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.al-wa-refresh-btn:hover {
+  background: #25d366;
+  color: white;
+}
+
 .al-count-open {
   color: #dc2626;
   font-weight: 600;
@@ -7191,6 +7268,31 @@ textarea {
   width: 100%;
 }
 
+.tl-span-btns {
+  display: flex;
+  gap: 3px;
+}
+.tl-span-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tl-span-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.tl-span-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
 .tl-filter-action {
   align-self: flex-end;
 }
@@ -7260,6 +7362,14 @@ textarea {
 
 .tl-stat.green {
   color: #22c55e;
+}
+
+.tl-stat.red {
+  color: #ef4444;
+}
+
+.tl-stat.purple {
+  color: #a855f7;
 }
 
 .tl-map-container {

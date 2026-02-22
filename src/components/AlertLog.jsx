@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
-import { getWhatsAppStatus, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
+import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
 
 function localDateStr(d = new Date()) {
@@ -66,13 +66,28 @@ export default function AlertLog() {
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
+  const [waGroups, setWaGroups] = useState([]); // available WhatsApp groups
+  const [showWaSettings, setShowWaSettings] = useState(false);
+  const WA_GROUP_MAP_KEY = 'wa_route_group_map';
+  const [waGroupMap, setWaGroupMap] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(WA_GROUP_MAP_KEY)) || {}; }
+    catch { return {}; }
+  });
 
-  // Check WhatsApp service status on mount and periodically
+  // Check WhatsApp service status on mount and periodically; fetch groups when connected
   useEffect(() => {
     let mounted = true;
     const check = async () => {
       const s = await getWhatsAppStatus();
-      if (mounted) setWaStatus(s.status);
+      if (mounted) {
+        setWaStatus(s.status);
+        if (s.status === 'connected' && waGroups.length === 0) {
+          try {
+            const groups = await getWhatsAppGroups();
+            if (mounted) setWaGroups(groups);
+          } catch { /* service may not be ready yet */ }
+        }
+      }
     };
     check();
     const interval = setInterval(check, 30000);
@@ -217,21 +232,29 @@ export default function AlertLog() {
     });
   }, [filteredAlerts]);
 
-  // Summary stats (from all enriched, not filtered)
+  // Summary stats (reflect active date/route/vendor filters so counts match visible results)
   const stats = useMemo(() => {
-    const total = enrichedAlerts.length;
-    const open = enrichedAlerts.filter(a => a.status === 'unresolved').length;
-    const resolved = enrichedAlerts.filter(a => a.status === 'resolved').length;
-    const unknown = enrichedAlerts.filter(a => a.status === 'unknown').length;
-    const accepted = enrichedAlerts.filter(a => a.globalworxAccepted).length;
-    const done = enrichedAlerts.filter(a => a.globalworxDone).length;
-    const completed = enrichedAlerts.filter(a => a.globalworxCompleted).length;
-    const resolvedWithDays = enrichedAlerts.filter(a => a.status === 'resolved' && a.days !== null);
+    let base = enrichedAlerts;
+    if (filterDate) base = base.filter(a => a.dateReceived === filterDate);
+    if (filterRoute !== 'all') base = base.filter(a => a.routeNumber === filterRoute);
+    if (filterVendor !== 'all') base = base.filter(a => a.vendor === filterVendor);
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      base = base.filter(a => a.storeName.toLowerCase().includes(term) || a.storeNumber.includes(term) || a.city.toLowerCase().includes(term) || a.refNumber.toLowerCase().includes(term));
+    }
+    const total = base.length;
+    const open = base.filter(a => a.status === 'unresolved').length;
+    const resolved = base.filter(a => a.status === 'resolved').length;
+    const unknown = base.filter(a => a.status === 'unknown').length;
+    const accepted = base.filter(a => a.globalworxAccepted).length;
+    const done = base.filter(a => a.globalworxDone).length;
+    const completed = base.filter(a => a.globalworxCompleted).length;
+    const resolvedWithDays = base.filter(a => a.status === 'resolved' && a.days !== null);
     const avgResponse = resolvedWithDays.length > 0
       ? Math.round(resolvedWithDays.reduce((sum, a) => sum + a.days, 0) / resolvedWithDays.length)
       : null;
     return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
-  }, [enrichedAlerts]);
+  }, [enrichedAlerts, filterDate, filterRoute, filterVendor, searchTerm]);
 
   // Comprehensive statistics across all dimensions
   const allStats = useMemo(() => {
@@ -374,30 +397,46 @@ export default function AlertLog() {
     setExpandedImage(null);
   }
 
+  // Get group ID mapped to a route
+  function getRouteGroupId(routeNumber) {
+    return waGroupMap[routeNumber] || null;
+  }
+
+  // Save route→group mapping
+  function setRouteGroup(routeNumber, groupId) {
+    const updated = { ...waGroupMap, [routeNumber]: groupId };
+    setWaGroupMap(updated);
+    localStorage.setItem(WA_GROUP_MAP_KEY, JSON.stringify(updated));
+  }
+
   async function handleSendToDriver(e, alert) {
     e.stopPropagation();
-    const alertData = {
-      route: alert.routeNumber || 'N/A',
-      type: alert.vendor || 'Alert',
-      store: `${alert.storeName} #${alert.storeNumber}`,
-      message: `${alert.city} — Ref: ${alert.refNumber}`,
-      timestamp: formatDate(alert.dateReceived),
-    };
+    const groupId = getRouteGroupId(alert.routeNumber);
 
-    // If WhatsApp service is connected, try to get driver phone and send via API
-    if (waStatus === 'connected') {
-      const driverPhone = getDriverPhone(alert.routeNumber);
-      if (driverPhone) {
-        setWaSending(`alert-${alert.refNumber}`);
-        try {
-          await sendWhatsAppAlert(driverPhone, alertData);
-          setWaSending(null);
-          return;
-        } catch (err) {
-          console.warn('WhatsApp API send failed, falling back to wa.me:', err.message);
-          setWaSending(null);
-        }
+    // If WhatsApp service is connected and route has a mapped group, send via API
+    if (waStatus === 'connected' && groupId) {
+      const alertData = {
+        route: alert.routeNumber || 'N/A',
+        type: alert.vendor || 'Alert',
+        store: `${alert.storeName} #${alert.storeNumber}`,
+        message: `${alert.city} — Ref: ${alert.refNumber}`,
+        timestamp: formatDate(alert.dateReceived),
+      };
+      setWaSending(`alert-${alert.refNumber}`);
+      try {
+        await sendWhatsAppAlert(groupId, alertData);
+        setWaSending(null);
+        return;
+      } catch (err) {
+        console.warn('WhatsApp API send failed, falling back to wa.me:', err.message);
+        setWaSending(null);
       }
+    }
+
+    // If connected but no group mapped, prompt to configure
+    if (waStatus === 'connected' && !groupId) {
+      setShowWaSettings(true);
+      return;
     }
 
     // Fallback: open wa.me with pre-filled text
@@ -413,39 +452,32 @@ export default function AlertLog() {
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
 
-  // Get driver phone number from fleetData or localStorage contacts
-  function getDriverPhone(routeNumber) {
-    if (!routeNumber) return null;
-    try {
-      const contacts = JSON.parse(localStorage.getItem('whatsapp_contacts') || '{}');
-      return contacts[routeNumber] || null;
-    } catch { return null; }
-  }
-
-  // Send route report via WhatsApp
+  // Send route report via WhatsApp group
   async function handleSendReportWhatsApp(e, routeNumber, stats) {
     e.stopPropagation();
-    const driverPhone = getDriverPhone(routeNumber);
-    if (!driverPhone) {
-      // Prompt user to set phone number
-      const phone = prompt(`Enter phone number for Route ${routeNumber} driver (e.g. 2125551234):`);
-      if (!phone) return;
-      // Save to localStorage
-      try {
-        const contacts = JSON.parse(localStorage.getItem('whatsapp_contacts') || '{}');
-        contacts[routeNumber] = phone.replace(/[\s\-\(\)\+]/g, '');
-        localStorage.setItem('whatsapp_contacts', JSON.stringify(contacts));
-      } catch {}
-      return handleSendReportWhatsApp(e, routeNumber, stats);
+    const groupId = getRouteGroupId(routeNumber);
+    if (!groupId) {
+      setShowWaSettings(true);
+      return;
     }
     setWaSending(`report-${routeNumber}`);
     try {
-      await sendWhatsAppReport(driverPhone, routeNumber, stats);
+      await sendWhatsAppReport(groupId, routeNumber, stats);
     } catch (err) {
       console.error('Failed to send report via WhatsApp:', err.message);
       alert('Failed to send report: ' + err.message);
     }
     setWaSending(null);
+  }
+
+  // Refresh groups list
+  async function handleRefreshGroups() {
+    try {
+      const groups = await getWhatsAppGroups();
+      setWaGroups(groups);
+    } catch (err) {
+      console.error('Failed to fetch groups:', err.message);
+    }
   }
 
   function handleToggleImage(e, alert) {
@@ -1224,7 +1256,9 @@ export default function AlertLog() {
           <h2>Alert Log</h2>
           <span
             className={`al-wa-status al-wa-status--${waStatus}`}
-            title={`WhatsApp: ${waStatus}`}
+            title={`WhatsApp: ${waStatus} — Click to configure groups`}
+            onClick={() => { if (waStatus === 'connected') { handleRefreshGroups(); setShowWaSettings(!showWaSettings); } }}
+            style={{ cursor: waStatus === 'connected' ? 'pointer' : 'default' }}
           >
             WA {waStatus === 'connected' ? 'ON' : waStatus === 'qr-pending' ? 'QR' : 'OFF'}
           </span>
@@ -1293,6 +1327,43 @@ export default function AlertLog() {
             <span className="al-stat emerald" title="Completed on GlobalWorx">{stats.completed} <span>Completed</span></span>
           </div>
         </div>
+
+        {/* WhatsApp Group Mapping Settings */}
+        {showWaSettings && waStatus === 'connected' && (
+          <div className="al-wa-settings">
+            <div className="al-wa-settings-header">
+              <strong>WhatsApp Group Mapping</strong>
+              <button className="al-wa-settings-close" onClick={() => setShowWaSettings(false)}>X</button>
+            </div>
+            <div className="al-wa-settings-body">
+              {alertRoutes.length === 0 && <div style={{ color: '#9ca3af', fontSize: 12 }}>No routes found</div>}
+              {alertRoutes.map(route => (
+                <div key={route} className="al-wa-route-row">
+                  <span className="al-wa-route-label">Route {route}</span>
+                  <select
+                    className="al-wa-group-select"
+                    value={waGroupMap[route] || ''}
+                    onChange={(e) => setRouteGroup(route, e.target.value || null)}
+                  >
+                    <option value="">— Select Group —</option>
+                    {waGroups.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                  {waGroupMap[route] && <span className="al-wa-mapped-check">OK</span>}
+                </div>
+              ))}
+              {waGroups.length === 0 && (
+                <div style={{ color: '#9ca3af', fontSize: 12, marginTop: 6 }}>
+                  No groups found. Make sure WhatsApp is connected and you belong to groups.
+                </div>
+              )}
+              <button className="al-wa-refresh-btn" onClick={handleRefreshGroups}>
+                Refresh Groups
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="al-filters">

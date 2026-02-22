@@ -10,11 +10,23 @@ function getStatus() {
 }
 
 function initialize() {
+  // Find Chrome on Windows
+  const fs = require('fs');
+  const chromePaths = [
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+    process.env.LOCALAPPDATA + '/Google/Chrome/Application/chrome.exe',
+  ];
+  const executablePath = chromePaths.find(p => { try { return fs.existsSync(p); } catch { return false; } });
+  if (executablePath) console.log('Using Chrome at:', executablePath);
+  else console.log('No Chrome found, using bundled Chromium');
+
   client = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+      ...(executablePath ? { executablePath } : {}),
     },
   });
 
@@ -45,31 +57,36 @@ function initialize() {
     console.log('🔌 WhatsApp disconnected:', reason);
   });
 
-  client.initialize();
-  console.log('⏳ Initializing WhatsApp client...');
+  client.initialize().catch(err => {
+    console.error('❌ Failed to initialize WhatsApp client:', err.message);
+    status = 'disconnected';
+  });
+  console.log('⏳ Initializing WhatsApp client (this may take a moment)...');
 }
 
-// Format phone number to WhatsApp ID
-// Accepts: "1234567890", "+11234567890", "11234567890"
-function formatPhone(phone) {
-  let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
-  // If it doesn't start with country code, assume US (+1)
-  if (cleaned.length === 10) {
-    cleaned = '1' + cleaned;
-  }
-  return cleaned + '@c.us';
-}
-
-async function sendMessage(phone, message) {
+// Get all WhatsApp groups the user is a member of
+async function getGroups() {
   if (status !== 'connected') {
     throw new Error('WhatsApp is not connected');
   }
-  const chatId = formatPhone(phone);
-  const result = await client.sendMessage(chatId, message);
+  const chats = await client.getChats();
+  return chats
+    .filter(c => c.isGroup)
+    .map(c => ({ id: c.id._serialized, name: c.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Send a message to a group by its group ID (e.g. "120363xxxxx@g.us")
+async function sendToGroup(groupId, message) {
+  if (status !== 'connected') {
+    throw new Error('WhatsApp is not connected');
+  }
+  const result = await client.sendMessage(groupId, message);
   return { success: true, messageId: result.id._serialized };
 }
 
-async function sendAlert(phone, alert) {
+// Send formatted alert to a group
+async function sendAlertToGroup(groupId, alert) {
   const lines = [
     '🚨 *Map Tracker Alert*',
     '',
@@ -79,10 +96,11 @@ async function sendAlert(phone, alert) {
     `*Message:* ${alert.message || ''}`,
     `*Time:* ${alert.timestamp || new Date().toLocaleString()}`,
   ];
-  return sendMessage(phone, lines.join('\n'));
+  return sendToGroup(groupId, lines.join('\n'));
 }
 
-async function sendReport(phone, routeNumber, stats) {
+// Send route report summary to a group
+async function sendReportToGroup(groupId, routeNumber, stats) {
   const lines = [
     `📊 *Route ${routeNumber} — Weekly Report*`,
     '',
@@ -106,14 +124,14 @@ async function sendReport(phone, routeNumber, stats) {
     lines.push('', `🔔 *Open Alerts:* ${stats.alerts}`);
   }
 
-  return sendMessage(phone, lines.join('\n'));
+  return sendToGroup(groupId, lines.join('\n'));
 }
 
 module.exports = {
   initialize,
   getStatus,
-  sendMessage,
-  sendAlert,
-  sendReport,
-  formatPhone,
+  getGroups,
+  sendToGroup,
+  sendAlertToGroup,
+  sendReportToGroup,
 };

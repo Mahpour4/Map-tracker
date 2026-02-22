@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
-import { fetchVehicleLocationHistory, fetchDrivingPeriods, isMotiveConnected } from '../services/motiveService';
+import { fetchVehicleLocationHistory, fetchDrivingPeriods, fetchCardTransactions, fetchVehicles, isMotiveConnected } from '../services/motiveService';
 import { analyzeLocationHistory, findAddressMatch } from '../services/proximityService';
 import { haversineDistance } from '../utils/geoUtils';
 
@@ -103,6 +103,7 @@ export default function TravelLog() {
 
   const today = localDateStr();
   const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedSpan, setSelectedSpan] = useState('day'); // 'day' | 'week' | '2week' | 'month'
   const [selectedVehicle, setSelectedVehicle] = useState('all');
   const [processing, setProcessing] = useState(false);
   const [processStatus, setProcessStatus] = useState(null);
@@ -130,6 +131,9 @@ export default function TravelLog() {
   // Per-panel map point toggles
   const [breadcrumbsOnMap, setBreadcrumbsOnMap] = useState(true);
   const [drivingOnMap, setDrivingOnMap] = useState(true);
+  // Fuel data for selected date
+  // Fuel trip data: per-route, last fill-up details with miles since previous fill
+  const [fuelData, setFuelData] = useState({}); // { [routeNumber]: { lastCost, lastGallons, milesBetween, mpg, ... } }
 
   // Get all dates that have log entries, sorted descending
   const availableDates = useMemo(() => {
@@ -137,6 +141,70 @@ export default function TravelLog() {
     if (!dates.includes(today)) dates.unshift(today);
     return dates;
   }, [travelLog, today]);
+
+  // Compute the list of dates in the current span (ending on selectedDate)
+  const spanDates = useMemo(() => {
+    if (selectedSpan === 'day') return [selectedDate];
+    const spanDays = selectedSpan === 'week' ? 7 : selectedSpan === '2week' ? 14 : 30;
+    const dates = [];
+    const end = new Date(selectedDate + 'T00:00:00');
+    for (let i = 0; i < spanDays; i++) {
+      const d = new Date(end);
+      d.setDate(end.getDate() - i);
+      dates.push(localDateStr(d));
+    }
+    return dates;
+  }, [selectedDate, selectedSpan]);
+
+  // Fetch all fuel transactions (30 days) grouped by route
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const d30ago = new Date(); d30ago.setDate(d30ago.getDate() - 30);
+        const [txs, motiveVehicles] = await Promise.all([
+          fetchCardTransactions({ startDate: localDateStr(d30ago), endDate: today }),
+          fetchVehicles(),
+        ]);
+        if (cancelled) return;
+
+        // Build route mapping
+        const vinRouteMap = {};
+        (fleetVehicles || []).forEach(v => { if (v.vin && v.routeNumber) vinRouteMap[v.vin] = String(v.routeNumber); });
+        const motiveIdRouteMap = {};
+        motiveVehicles.forEach(v => {
+          const route = vinRouteMap[v.vin];
+          if (route && v.id) motiveIdRouteMap[String(v.id)] = route;
+        });
+        let cardRouteMap = {};
+        try { cardRouteMap = JSON.parse(localStorage.getItem('fuel_card_route_map') || '{}'); } catch {}
+
+        // Group transactions by route with date, sorted newest first
+        const byRoute = {};
+        txs.forEach(tx => {
+          if (tx.declined) return;
+          let route = null;
+          if (tx.cardId && cardRouteMap[tx.cardId]) route = String(cardRouteMap[tx.cardId]);
+          else if (tx.vehicleId && motiveIdRouteMap[tx.vehicleId]) route = motiveIdRouteMap[tx.vehicleId];
+          if (!route) return;
+          if (!byRoute[route]) byRoute[route] = [];
+          byRoute[route].push({
+            date: tx.transactedAt ? tx.transactedAt.split('T')[0] : null,
+            cost: tx.totalAmount,
+            gallons: tx.totalGallons,
+            merchant: tx.merchantName,
+          });
+        });
+        // Sort each route's transactions newest first
+        Object.values(byRoute).forEach(arr => arr.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
+
+        if (!cancelled) setFuelData(byRoute);
+      } catch (err) {
+        console.warn('Fuel data fetch failed:', err.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [fleetVehicles, today]);
 
   // Get vehicle list for filter
   const vehicleList = useMemo(() => {
@@ -152,50 +220,122 @@ export default function TravelLog() {
 
   // Get entries for selected date, filtered by vehicle
   const dayEntries = useMemo(() => {
-    const dayLog = travelLog[selectedDate] || {};
     const entries = [];
 
-    Object.entries(dayLog).forEach(([vin, stops]) => {
-      if (selectedVehicle !== 'all' && vin !== selectedVehicle) return;
-      const vehicle = vehicleList.find(v => v.vin === vin);
-      stops.forEach(stop => {
-        entries.push({
-          ...stop,
-          vehicleVin: vin,
-          vehicleLabel: vehicle?.label || vin,
-          vehicleId: vehicle?.vehicleId || '',
+    spanDates.forEach(dateKey => {
+      const dayLog = travelLog[dateKey] || {};
+      Object.entries(dayLog).forEach(([vin, stops]) => {
+        if (selectedVehicle !== 'all' && vin !== selectedVehicle) return;
+        const vehicle = vehicleList.find(v => v.vin === vin);
+        stops.forEach(stop => {
+          entries.push({
+            ...stop,
+            dateKey,
+            vehicleVin: vin,
+            vehicleLabel: vehicle?.label || vin,
+            vehicleId: vehicle?.vehicleId || '',
+          });
         });
       });
     });
 
-    entries.sort((a, b) => (a.arrivalTime || a.time || '').localeCompare(b.arrivalTime || b.time || ''));
+    entries.sort((a, b) => {
+      const da = a.dateKey || '', db = b.dateKey || '';
+      if (da !== db) return db.localeCompare(da); // newest date first
+      return (a.arrivalTime || a.time || '').localeCompare(b.arrivalTime || b.time || '');
+    });
     return entries;
-  }, [travelLog, selectedDate, selectedVehicle, vehicleList]);
+  }, [travelLog, spanDates, selectedVehicle, vehicleList]);
 
   // Split dayEntries into the two source datasets
   const breadcrumbEntries = useMemo(() => dayEntries.filter(e => e.type !== 'driving'), [dayEntries]);
   const drivingEntries = useMemo(() => dayEntries.filter(e => e.type === 'driving'), [dayEntries]);
 
-  // Summary stats
+  // Summary stats (across entire span)
   const stats = useMemo(() => {
-    const dayLog = travelLog[selectedDate] || {};
-    let vehicleCount = 0;
     let storeVisits = 0;
     let warehouseVisits = 0;
     let drivingSegments = 0;
     let customVisits = 0;
-    Object.entries(dayLog).forEach(([vin, stops]) => {
-      if (selectedVehicle !== 'all' && vin !== selectedVehicle) return;
-      vehicleCount++;
-      stops.forEach(s => {
-        if (s.type === 'store') storeVisits++;
-        else if (s.type === 'warehouse') warehouseVisits++;
-        else if (s.type === 'driving') drivingSegments++;
-        else customVisits++;
+    let totalMiles = 0;
+    const vinSet = new Set();
+
+    spanDates.forEach(dateKey => {
+      const dayLog = travelLog[dateKey] || {};
+      Object.entries(dayLog).forEach(([vin, stops]) => {
+        if (selectedVehicle !== 'all' && vin !== selectedVehicle) return;
+        vinSet.add(vin);
+        stops.forEach(s => {
+          if (s.type === 'store') storeVisits++;
+          else if (s.type === 'warehouse') warehouseVisits++;
+          else if (s.type === 'driving') { drivingSegments++; totalMiles += (s.distance || 0); }
+          else customVisits++;
+        });
       });
     });
-    return { vehicleCount, storeVisits, warehouseVisits, drivingSegments, customVisits, total: storeVisits + warehouseVisits + customVisits };
-  }, [travelLog, selectedDate, selectedVehicle]);
+
+    // Fuel data — aggregate based on span
+    let fuel = null;
+    const spanDateSet = new Set(spanDates);
+    vinSet.forEach(vin => {
+      const vehicle = vehicleList.find(v => v.vin === vin);
+      const route = vehicle?.routeNumber ? String(vehicle.routeNumber) : null;
+      if (!route || !fuelData[route]) return;
+      const routeTxs = fuelData[route]; // sorted newest first
+
+      if (selectedSpan === 'day') {
+        // Single day: show last fill-up details with miles between fills
+        const lastFill = routeTxs[0];
+        const prevFill = routeTxs.length > 1 ? routeTxs[1] : null;
+        // Compute miles between last 2 fills from travelLog
+        let milesBetween = 0;
+        if (vin && prevFill?.date && lastFill?.date) {
+          const startD = new Date(prevFill.date + 'T00:00:00');
+          const endD = new Date(lastFill.date + 'T00:00:00');
+          for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+            const dk = localDateStr(d);
+            const entries = ((travelLog || {})[dk] || {})[vin] || [];
+            entries.forEach(e => { if (e.type === 'driving') milesBetween += (e.distance || 0); });
+          }
+        }
+        fuel = {
+          mode: 'trip',
+          lastCost: lastFill.cost,
+          lastGallons: lastFill.gallons,
+          lastDate: lastFill.date,
+          lastMerchant: lastFill.merchant,
+          prevDate: prevFill?.date || null,
+          milesBetween,
+          mpg: milesBetween > 0 && lastFill.gallons > 0 ? milesBetween / lastFill.gallons : null,
+          costPerMile: milesBetween > 0 && lastFill.cost > 0 ? lastFill.cost / milesBetween : null,
+        };
+      } else {
+        // Multi-day span: sum all transactions within the span dates
+        let totalCost = 0, totalGallons = 0, fillCount = 0;
+        routeTxs.forEach(tx => {
+          if (tx.date && spanDateSet.has(tx.date)) {
+            totalCost += tx.cost;
+            totalGallons += tx.gallons;
+            fillCount++;
+          }
+        });
+        if (fillCount > 0) {
+          const mpg = totalMiles > 0 && totalGallons > 0 ? totalMiles / totalGallons : null;
+          const costPerMile = totalMiles > 0 && totalCost > 0 ? totalCost / totalMiles : null;
+          fuel = {
+            mode: 'span',
+            totalCost,
+            totalGallons,
+            fillCount,
+            mpg,
+            costPerMile,
+          };
+        }
+      }
+    });
+
+    return { vehicleCount: vinSet.size, storeVisits, warehouseVisits, drivingSegments, customVisits, total: storeVisits + warehouseVisits + customVisits, totalMiles, fuel, daysInSpan: spanDates.length };
+  }, [travelLog, spanDates, selectedSpan, selectedVehicle, fuelData, vehicleList]);
 
   // Map-eligible entries — respects both panel visibility and per-panel map toggles
   const mapEntries = useMemo(() => {
@@ -978,6 +1118,12 @@ export default function TravelLog() {
             onChange={e => setSelectedDate(e.target.value)}
             max={today}
           />
+          <div className="tl-span-btns">
+            <button className={`tl-span-btn${selectedSpan === 'day' ? ' active' : ''}`} onClick={() => setSelectedSpan('day')}>Day</button>
+            <button className={`tl-span-btn${selectedSpan === 'week' ? ' active' : ''}`} onClick={() => setSelectedSpan('week')}>7d</button>
+            <button className={`tl-span-btn${selectedSpan === '2week' ? ' active' : ''}`} onClick={() => setSelectedSpan('2week')}>14d</button>
+            <button className={`tl-span-btn${selectedSpan === 'month' ? ' active' : ''}`} onClick={() => setSelectedSpan('month')}>30d</button>
+          </div>
         </div>
         <div className="tl-filter">
           <label>Vehicle</label>
@@ -1037,14 +1183,76 @@ export default function TravelLog() {
 
       {/* Stats */}
       <div className="tl-stats">
-        <span className="tl-stat">{stats.vehicleCount} <span>Vehicles</span></span>
-        <span className="tl-stat blue">{stats.storeVisits} <span>Store Visits</span></span>
-        <span className="tl-stat orange">{stats.warehouseVisits} <span>Warehouse</span></span>
+        <span className="tl-stat" title={`${stats.vehicleCount} unique vehicle${stats.vehicleCount !== 1 ? 's' : ''} with activity in this ${selectedSpan === 'day' ? 'day' : 'period'}`}>
+          {stats.vehicleCount} <span>Vehicles</span>
+        </span>
+        <span className="tl-stat blue" title={`${stats.storeVisits} detected store visits (15+ min dwell time at a route-matched store location)`}>
+          {stats.storeVisits} <span>Store Visits</span>
+        </span>
+        <span className="tl-stat orange" title={`${stats.warehouseVisits} warehouse stop${stats.warehouseVisits !== 1 ? 's' : ''} (loading/unloading at distribution center)`}>
+          {stats.warehouseVisits} <span>Warehouse</span>
+        </span>
         {stats.customVisits > 0 && (
-          <span className="tl-stat purple">{stats.customVisits} <span>Custom</span></span>
+          <span className="tl-stat purple" title={`${stats.customVisits} stop${stats.customVisits !== 1 ? 's' : ''} at custom-defined locations (gas stations, offices, etc.)`}>
+            {stats.customVisits} <span>Custom</span>
+          </span>
         )}
-        <span className="tl-stat green">{stats.drivingSegments} <span>Driving</span></span>
-        <span className="tl-stat">{stats.total} <span>Total Stops</span></span>
+        <span className="tl-stat green" title={`${stats.drivingSegments} driving segments recorded by Motive ELD between stops`}>
+          {stats.drivingSegments} <span>Driving</span>
+        </span>
+        <span className="tl-stat" title={`${stats.total} total non-driving stops (stores + warehouse + custom)`}>
+          {stats.total} <span>Total Stops</span>
+        </span>
+        {stats.totalMiles > 0 && (
+          <span className="tl-stat" title={`${stats.totalMiles.toFixed(1)} miles driven total from Motive driving period data`}>
+            {stats.totalMiles.toFixed(1)} <span>Miles</span>
+          </span>
+        )}
+        {stats.fuel && stats.fuel.mode === 'trip' && (
+          <>
+            <span className="tl-stat red" title={`$${stats.fuel.lastCost?.toFixed(2) || '0'} spent on fuel at ${stats.fuel.lastMerchant || 'unknown station'} on ${stats.fuel.lastDate || '?'}`}>
+              ${stats.fuel.lastCost?.toFixed(2) || '0'} <span>Last Fill</span>
+            </span>
+            <span className="tl-stat" title={`${stats.fuel.lastGallons?.toFixed(1) || '0'} gallons pumped at last fill-up on ${stats.fuel.lastDate || '?'}`}>
+              {stats.fuel.lastGallons?.toFixed(1) || '0'} <span>Gallons</span>
+            </span>
+            {stats.fuel.milesBetween > 0 && (
+              <span className="tl-stat" title={`${stats.fuel.milesBetween.toFixed(0)} miles driven between previous fill (${stats.fuel.prevDate || '?'}) and last fill (${stats.fuel.lastDate || '?'})`}>
+                {stats.fuel.milesBetween.toFixed(0)} <span>Mi/Fill</span>
+              </span>
+            )}
+            {stats.fuel.mpg && (
+              <span className="tl-stat green" title={`${stats.fuel.mpg.toFixed(1)} miles per gallon for last tank — ${stats.fuel.milesBetween?.toFixed(0) || '?'} miles on ${stats.fuel.lastGallons?.toFixed(1) || '?'} gallons`}>
+                {stats.fuel.mpg.toFixed(1)} <span>MPG</span>
+              </span>
+            )}
+            {stats.fuel.costPerMile && (
+              <span className="tl-stat" title={`$${stats.fuel.costPerMile.toFixed(2)} fuel cost per mile for last tank`}>
+                ${stats.fuel.costPerMile.toFixed(2)} <span>$/Mile</span>
+              </span>
+            )}
+          </>
+        )}
+        {stats.fuel && stats.fuel.mode === 'span' && (
+          <>
+            <span className="tl-stat red" title={`$${stats.fuel.totalCost.toFixed(2)} total fuel spend across ${stats.fuel.fillCount} fill-up${stats.fuel.fillCount !== 1 ? 's' : ''} in this ${stats.daysInSpan}-day period`}>
+              ${stats.fuel.totalCost.toFixed(2)} <span>Fuel ({stats.daysInSpan}d)</span>
+            </span>
+            <span className="tl-stat" title={`${stats.fuel.totalGallons.toFixed(1)} total gallons pumped across ${stats.fuel.fillCount} fill-up${stats.fuel.fillCount !== 1 ? 's' : ''}`}>
+              {stats.fuel.totalGallons.toFixed(1)} <span>Gal ({stats.fuel.fillCount} fills)</span>
+            </span>
+            {stats.fuel.mpg && (
+              <span className="tl-stat green" title={`${stats.fuel.mpg.toFixed(1)} average MPG — ${stats.totalMiles.toFixed(0)} miles driven on ${stats.fuel.totalGallons.toFixed(1)} gallons over ${stats.daysInSpan} days`}>
+                {stats.fuel.mpg.toFixed(1)} <span>MPG</span>
+              </span>
+            )}
+            {stats.fuel.costPerMile && (
+              <span className="tl-stat" title={`$${stats.fuel.costPerMile.toFixed(2)} average fuel cost per mile over ${stats.daysInSpan} days`}>
+                ${stats.fuel.costPerMile.toFixed(2)} <span>$/Mile</span>
+              </span>
+            )}
+          </>
+        )}
       </div>
 
       {/* Map */}

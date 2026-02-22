@@ -10,11 +10,21 @@ export async function getWhatsAppStatus() {
   }
 }
 
-export async function sendWhatsAppMessage(phone, message) {
+export async function getWhatsAppGroups() {
+  const res = await fetch(`${BASE}/groups`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch groups');
+  }
+  const data = await res.json();
+  return data.groups || [];
+}
+
+export async function sendWhatsAppMessage(groupId, message) {
   const res = await fetch(`${BASE}/send`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, message }),
+    body: JSON.stringify({ groupId, message }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -23,11 +33,11 @@ export async function sendWhatsAppMessage(phone, message) {
   return res.json();
 }
 
-export async function sendWhatsAppAlert(phone, alert) {
+export async function sendWhatsAppAlert(groupId, alert) {
   const res = await fetch(`${BASE}/send-alert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, alert }),
+    body: JSON.stringify({ groupId, alert }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -36,11 +46,11 @@ export async function sendWhatsAppAlert(phone, alert) {
   return res.json();
 }
 
-export async function sendWhatsAppReport(phone, routeNumber, stats) {
+export async function sendWhatsAppReport(groupId, routeNumber, stats) {
   const res = await fetch(`${BASE}/send-report`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, routeNumber, stats }),
+    body: JSON.stringify({ groupId, routeNumber, stats }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
