@@ -48,6 +48,18 @@ export default function AlertLog() {
   const today = localDateStr();
   const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return localDateStr(d); })();
   const dayBefore = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return localDateStr(d); })();
+  // This week: Monday through today
+  const weekDates = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun,1=Mon,...
+    const mondayOffset = day === 0 ? 6 : day - 1;
+    const dates = new Set();
+    for (let i = mondayOffset; i >= 0; i--) {
+      const d = new Date(); d.setDate(now.getDate() - i);
+      dates.add(localDateStr(d));
+    }
+    return dates;
+  }, []);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterVendor, setLocalFilterVendor] = useState('all');
@@ -63,6 +75,7 @@ export default function AlertLog() {
   const [showStats, setShowStats] = useState(false);
   const [statsTab, setStatsTab] = useState('time'); // 'time' | 'route' | 'zone' | 'chain' | 'top'
   const [statsView, setStatsView] = useState('day'); // 'day' | 'week' | 'month'
+  const [statsRouteTime, setStatsRouteTime] = useState('all'); // 'all' | 'this-week' | '30d' | '90d'
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
@@ -191,7 +204,9 @@ export default function AlertLog() {
   // Apply filters
   const filteredAlerts = useMemo(() => {
     let result = enrichedAlerts;
-    if (filterDate) {
+    if (filterDate === 'this-week') {
+      result = result.filter(a => weekDates.has(a.dateReceived));
+    } else if (filterDate) {
       result = result.filter(a => a.dateReceived === filterDate);
     }
     if (filterStatus !== 'all') {
@@ -213,7 +228,7 @@ export default function AlertLog() {
       );
     }
     return result;
-  }, [enrichedAlerts, filterDate, filterStatus, filterRoute, filterVendor, searchTerm]);
+  }, [enrichedAlerts, filterDate, weekDates, filterStatus, filterRoute, filterVendor, searchTerm]);
 
   // Group by route
   const alertsByRoute = useMemo(() => {
@@ -235,7 +250,8 @@ export default function AlertLog() {
   // Summary stats (reflect active date/route/vendor filters so counts match visible results)
   const stats = useMemo(() => {
     let base = enrichedAlerts;
-    if (filterDate) base = base.filter(a => a.dateReceived === filterDate);
+    if (filterDate === 'this-week') base = base.filter(a => weekDates.has(a.dateReceived));
+    else if (filterDate) base = base.filter(a => a.dateReceived === filterDate);
     if (filterRoute !== 'all') base = base.filter(a => a.routeNumber === filterRoute);
     if (filterVendor !== 'all') base = base.filter(a => a.vendor === filterVendor);
     if (searchTerm) {
@@ -254,7 +270,7 @@ export default function AlertLog() {
       ? Math.round(resolvedWithDays.reduce((sum, a) => sum + a.days, 0) / resolvedWithDays.length)
       : null;
     return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
-  }, [enrichedAlerts, filterDate, filterRoute, filterVendor, searchTerm]);
+  }, [enrichedAlerts, filterDate, weekDates, filterRoute, filterVendor, searchTerm]);
 
   // Comprehensive statistics across all dimensions
   const allStats = useMemo(() => {
@@ -364,6 +380,40 @@ export default function AlertLog() {
       summary: { busiest, avgPerDay, resolutionRate },
     };
   }, [enrichedAlerts, showStats]);
+
+  // Route stats with optional time filter
+  const routeStats = useMemo(() => {
+    if (!showStats || statsTab !== 'route') return [];
+    let source = enrichedAlerts;
+    if (statsRouteTime !== 'all') {
+      const now = new Date();
+      let cutoff;
+      if (statsRouteTime === 'this-week') {
+        const day = now.getDay();
+        const mondayOffset = day === 0 ? 6 : day - 1;
+        cutoff = new Date(now); cutoff.setDate(now.getDate() - mondayOffset);
+        cutoff.setHours(0, 0, 0, 0);
+      } else {
+        const days = statsRouteTime === '30d' ? 30 : 90;
+        cutoff = new Date(now); cutoff.setDate(now.getDate() - days);
+      }
+      const cutoffStr = localDateStr(cutoff);
+      source = source.filter(a => a.dateReceived >= cutoffStr);
+    }
+    const routeMap = {};
+    source.forEach(a => {
+      const key = a.routeNumber || 'Unassigned';
+      if (!routeMap[key]) routeMap[key] = { key, total: 0, open: 0, resolved: 0, completed: 0, accepted: 0, done: 0, _days: [] };
+      routeMap[key].total++;
+      if (a.status === 'unresolved') routeMap[key].open++;
+      if (a.status === 'resolved') { routeMap[key].resolved++; if (a.days !== null) routeMap[key]._days.push(a.days); }
+      if (a.globalworxCompleted) routeMap[key].completed++;
+    });
+    const arr = Object.values(routeMap);
+    arr.forEach(b => { b.avgDays = b._days.length > 0 ? Math.round(b._days.reduce((s, d) => s + d, 0) / b._days.length * 10) / 10 : null; delete b._days; });
+    arr.sort((a, b) => b.total - a.total);
+    return arr;
+  }, [enrichedAlerts, showStats, statsTab, statsRouteTime]);
 
   // Determine which routes are expanded
   const isRouteExpanded = (route) => {
@@ -1279,6 +1329,10 @@ export default function AlertLog() {
               className={`al-quick-btn ${filterDate === dayBefore ? 'active' : ''}`}
               onClick={() => setFilterDate(dayBefore)}
             >Day Before</button>
+            <button
+              className={`al-quick-btn ${filterDate === 'this-week' ? 'active' : ''}`}
+              onClick={() => setFilterDate('this-week')}
+            >This Week</button>
           </div>
           <div className="al-date-picker">
             <input
@@ -1485,6 +1539,12 @@ export default function AlertLog() {
                   ))}
                 </div>
               </div>
+              <div className="al-stats-legend">
+                <span><span className="al-stats-legend-dot" style={{ background: '#ef4444' }} /> Open</span>
+                <span><span className="al-stats-legend-dot" style={{ background: '#22c55e' }} /> Resolved</span>
+                <span><span className="al-stats-legend-dot" style={{ background: '#06b6d4' }} /> Completed</span>
+                <span><span className="al-stats-legend-dot" style={{ background: '#9ca3af' }} /> Unknown</span>
+              </div>
               <div className="al-stats-chart">
                 {(allStats.time[statsView] || []).length === 0 ? (
                   <div className="al-stats-empty">No data</div>
@@ -1511,6 +1571,7 @@ export default function AlertLog() {
                           <span className="al-stats-row-breakdown">
                             {d.open > 0 && <span style={{ color: '#ef4444' }}>{d.open}o</span>}
                             {d.resolved > 0 && <span style={{ color: '#22c55e' }}>{d.resolved}r</span>}
+                            {(d.completed || 0) > 0 && <span style={{ color: '#06b6d4' }}>{d.completed}c</span>}
                           </span>
                         </span>
                       </div>
@@ -1524,7 +1585,16 @@ export default function AlertLog() {
           {/* === ROUTE TAB === */}
           {statsTab === 'route' && (
             <div className="al-stats-section">
-              <h4>Alerts by Route</h4>
+              <div className="al-stats-section-header">
+                <h4>Alerts by Route</h4>
+                <div className="al-stats-view-toggle">
+                  {[['all', 'All Time'], ['this-week', 'This Week'], ['30d', '30 Days'], ['90d', '90 Days']].map(([v, label]) => (
+                    <button key={v} className={`al-quick-btn ${statsRouteTime === v ? 'active' : ''}`} onClick={() => setStatsRouteTime(v)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <table className="al-stats-table">
                 <thead>
                   <tr>
@@ -1532,20 +1602,22 @@ export default function AlertLog() {
                     <th>Total</th>
                     <th>Open</th>
                     <th>Resolved</th>
+                    <th>Completed</th>
                     <th>Avg Response</th>
                     <th className="al-stats-bar-col">Distribution</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allStats.routes.map(r => {
-                    const maxTotal = allStats.routes[0]?.total || 1;
+                  {routeStats.map(r => {
+                    const maxTotal = routeStats[0]?.total || 1;
                     return (
                       <tr key={r.key} className={r.open > 0 ? 'has-open' : ''}>
                         <td className="al-stats-td-label">Route {r.key}</td>
                         <td className="al-stats-td-num">{r.total}</td>
                         <td className="al-stats-td-num" style={{ color: r.open > 0 ? '#dc2626' : undefined }}>{r.open}</td>
                         <td className="al-stats-td-num" style={{ color: r.resolved > 0 ? '#16a34a' : undefined }}>{r.resolved}</td>
+                        <td className="al-stats-td-num" style={{ color: r.completed > 0 ? '#0891b2' : undefined }}>{r.completed}</td>
                         <td className="al-stats-td-num">{r.avgDays !== null ? `${r.avgDays}d` : '—'}</td>
                         <td>
                           <div className="al-stats-row-bar-wrap">

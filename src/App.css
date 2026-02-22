@@ -7323,25 +7323,26 @@ textarea {
 }
 
 .tl-stats {
-  /* Responsive grid of stat cards — no fixed widths, fills available width */
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .tl-stat {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
-  font-size: 1.5rem;
+  padding: 8px 12px;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--text);
   box-shadow: var(--shadow);
+  min-width: 70px;
+  white-space: nowrap;
 }
 
 .tl-stat span {

@@ -193,6 +193,8 @@ export default function TravelLog() {
             cost: tx.totalAmount,
             gallons: tx.totalGallons,
             merchant: tx.merchantName,
+            last4: tx.last4 || '',
+            cardId: tx.cardId || null,
           });
         });
         // Sort each route's transactions newest first
@@ -277,19 +279,19 @@ export default function TravelLog() {
     // Fuel data — aggregate based on span
     let fuel = null;
     const spanDateSet = new Set(spanDates);
-    vinSet.forEach(vin => {
+    const processedRoutes = new Set();
+
+    if (selectedSpan === 'day' && vinSet.size === 1) {
+      // Single vehicle on single day: show per-fill-up detail
+      const vin = [...vinSet][0];
       const vehicle = vehicleList.find(v => v.vin === vin);
       const route = vehicle?.routeNumber ? String(vehicle.routeNumber) : null;
-      if (!route || !fuelData[route]) return;
-      const routeTxs = fuelData[route]; // sorted newest first
-
-      if (selectedSpan === 'day') {
-        // Single day: show last fill-up details with miles between fills
+      if (route && fuelData[route]) {
+        const routeTxs = fuelData[route];
         const lastFill = routeTxs[0];
         const prevFill = routeTxs.length > 1 ? routeTxs[1] : null;
-        // Compute miles between last 2 fills from travelLog
         let milesBetween = 0;
-        if (vin && prevFill?.date && lastFill?.date) {
+        if (prevFill?.date && lastFill?.date) {
           const startD = new Date(prevFill.date + 'T00:00:00');
           const endD = new Date(lastFill.date + 'T00:00:00');
           for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
@@ -309,30 +311,34 @@ export default function TravelLog() {
           mpg: milesBetween > 0 && lastFill.gallons > 0 ? milesBetween / lastFill.gallons : null,
           costPerMile: milesBetween > 0 && lastFill.cost > 0 ? lastFill.cost / milesBetween : null,
         };
-      } else {
-        // Multi-day span: sum all transactions within the span dates
-        let totalCost = 0, totalGallons = 0, fillCount = 0;
-        routeTxs.forEach(tx => {
+      }
+    } else {
+      // Multiple vehicles or multi-day span: sum ALL routes' transactions
+      let totalCost = 0, totalGallons = 0, fillCount = 0;
+      vinSet.forEach(vin => {
+        const vehicle = vehicleList.find(v => v.vin === vin);
+        const route = vehicle?.routeNumber ? String(vehicle.routeNumber) : null;
+        if (!route || !fuelData[route] || processedRoutes.has(route)) return;
+        processedRoutes.add(route);
+        fuelData[route].forEach(tx => {
           if (tx.date && spanDateSet.has(tx.date)) {
             totalCost += tx.cost;
             totalGallons += tx.gallons;
             fillCount++;
           }
         });
-        if (fillCount > 0) {
-          const mpg = totalMiles > 0 && totalGallons > 0 ? totalMiles / totalGallons : null;
-          const costPerMile = totalMiles > 0 && totalCost > 0 ? totalCost / totalMiles : null;
-          fuel = {
-            mode: 'span',
-            totalCost,
-            totalGallons,
-            fillCount,
-            mpg,
-            costPerMile,
-          };
-        }
+      });
+      if (fillCount > 0) {
+        fuel = {
+          mode: 'span',
+          totalCost,
+          totalGallons,
+          fillCount,
+          mpg: totalMiles > 0 && totalGallons > 0 ? totalMiles / totalGallons : null,
+          costPerMile: totalMiles > 0 && totalCost > 0 ? totalCost / totalMiles : null,
+        };
       }
-    });
+    }
 
     return { vehicleCount: vinSet.size, storeVisits, warehouseVisits, drivingSegments, customVisits, total: storeVisits + warehouseVisits + customVisits, totalMiles, fuel, daysInSpan: spanDates.length };
   }, [travelLog, spanDates, selectedSpan, selectedVehicle, fuelData, vehicleList]);
