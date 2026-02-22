@@ -3988,6 +3988,9 @@ textarea {
 .schedule-stop.compliance-sameWeek {
   border-left: 3px solid #3b82f6;
 }
+.schedule-stop.compliance-late {
+  border-left: 3px solid #f59e0b;
+}
 .schedule-stop.compliance-missed {
   border-left: 3px solid #ef4444;
 }

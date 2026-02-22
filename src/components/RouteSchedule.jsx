@@ -72,9 +72,22 @@ function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited, visitHist
   const today = new Date().toISOString().split('T')[0];
   if (scheduledDate > today) return { status: 'future', label: 'Upcoming', color: '#9ca3af', visitDate: null };
 
-  // Missed: compute days overdue and severity tier
+  // Check if visited AFTER the scheduled week (late visit — still counts as resolved)
+  const lateVisit = visits.filter(v => v > weekEnd).sort().shift(); // earliest visit after the week
+  if (lateVisit) {
+    const daysLate = Math.floor((new Date(lateVisit) - new Date(scheduledDate)) / 86400000);
+    return {
+      status: 'late',
+      label: `Visited late (${daysLate}d)`,
+      color: '#f59e0b', // amber
+      visitDate: lateVisit,
+      tooltip: `Scheduled ${scheduledDate}, visited ${lateVisit} (${daysLate} days late)`,
+    };
+  }
+
+  // Missed: no visit found at all
   const daysOverdue = Math.floor((new Date(today) - new Date(scheduledDate)) / 86400000);
-  const lastVisitAny = visits.length > 0 ? visits.sort().pop() : null;
+  const lastVisitAny = visits.length > 0 ? [...visits].sort().pop() : null;
   let label, color;
   if (daysOverdue <= 7) { label = `Late (${daysOverdue}d)`; color = '#eab308'; }        // yellow
   else if (daysOverdue <= 14) { label = `Overdue (${daysOverdue}d)`; color = '#f97316'; } // orange
@@ -191,7 +204,7 @@ export default function RouteSchedule() {
 
   // Compliance stats
   const complianceStats = useMemo(() => {
-    let total = 0, exact = 0, sameWeek = 0, missed = 0, future = 0;
+    let total = 0, exact = 0, sameWeek = 0, late = 0, missed = 0, future = 0;
     DAYS.forEach(day => {
       (schedule[day] || []).forEach(item => {
         total++;
@@ -200,13 +213,14 @@ export default function RouteSchedule() {
         const c = getStopCompliance(item.storeId, day, weekOf, stLatest, visitHistoryMap);
         if (c.status === 'exact') exact++;
         else if (c.status === 'sameWeek') sameWeek++;
+        else if (c.status === 'late') late++;
         else if (c.status === 'missed') missed++;
         else future++;
       });
     });
-    const completed = exact + sameWeek;
+    const completed = exact + sameWeek + late;
     const adherence = total > 0 ? Math.round((completed / (total - future)) * 100) || 0 : 0;
-    return { total, exact, sameWeek, missed, future, completed, adherence };
+    return { total, exact, sameWeek, late, missed, future, completed, adherence };
   }, [schedule, weekOf, storeMap]);
 
   // Process saved schedules list
@@ -464,6 +478,7 @@ export default function RouteSchedule() {
             const val = data.cell.raw;
             if (val === 'On time') data.cell.styles.textColor = [34, 197, 94];
             else if (val === 'Same week') data.cell.styles.textColor = [59, 130, 246];
+            else if (val.startsWith('Visited late')) data.cell.styles.textColor = [245, 158, 11];
             else if (val.startsWith('Late')) data.cell.styles.textColor = [234, 179, 8];
             else if (val.startsWith('Overdue')) data.cell.styles.textColor = [249, 115, 22];
             else if (val.startsWith('Critical') || val.startsWith('Abandoned') || val === 'Never visited') data.cell.styles.textColor = [239, 68, 68];
@@ -702,6 +717,12 @@ export default function RouteSchedule() {
             <span className="compliance-val" style={{ color: '#3b82f6' }}>{complianceStats.sameWeek}</span>
             <span className="compliance-label">Same week</span>
           </div>
+          {complianceStats.late > 0 && (
+            <div className="compliance-stat">
+              <span className="compliance-val" style={{ color: '#f59e0b' }}>{complianceStats.late}</span>
+              <span className="compliance-label">Visited late</span>
+            </div>
+          )}
           <div className="compliance-stat">
             <span className="compliance-val" style={{ color: '#ef4444' }}>{complianceStats.missed}</span>
             <span className="compliance-label">Missed</span>
@@ -713,6 +734,7 @@ export default function RouteSchedule() {
           <div className="compliance-bar-track">
             {complianceStats.exact > 0 && <div className="compliance-bar-seg" style={{ background: '#22c55e', flex: complianceStats.exact }}></div>}
             {complianceStats.sameWeek > 0 && <div className="compliance-bar-seg" style={{ background: '#3b82f6', flex: complianceStats.sameWeek }}></div>}
+            {complianceStats.late > 0 && <div className="compliance-bar-seg" style={{ background: '#f59e0b', flex: complianceStats.late }}></div>}
             {complianceStats.missed > 0 && <div className="compliance-bar-seg" style={{ background: '#ef4444', flex: complianceStats.missed }}></div>}
             {complianceStats.future > 0 && <div className="compliance-bar-seg" style={{ background: '#e5e7eb', flex: complianceStats.future }}></div>}
           </div>
