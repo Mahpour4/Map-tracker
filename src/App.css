@@ -7373,6 +7373,78 @@ textarea {
   color: #a855f7;
 }
 
+/* Card-to-Route Mapping Panel */
+.tl-card-mapping {
+  background: var(--bg-card);
+  border: 2px solid #ef4444;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.tl-card-mapping-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.tl-card-mapping-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ef4444;
+}
+.tl-card-mapping-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.tl-card-mapping-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.tl-card-mapping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tl-card-mapping-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-main);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.tl-card-mapping-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+.tl-card-mapping-num {
+  font-weight: 700;
+  font-size: 14px;
+  font-family: monospace;
+}
+.tl-card-mapping-stats {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.tl-card-mapping-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--bg-card);
+  min-width: 160px;
+}
+
 .tl-map-container {
   flex-shrink: 0;
   border: 1px solid var(--border);

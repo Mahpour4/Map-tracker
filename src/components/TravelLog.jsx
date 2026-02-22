@@ -133,7 +133,10 @@ export default function TravelLog() {
   const [drivingOnMap, setDrivingOnMap] = useState(true);
   // Fuel data for selected date
   // Fuel trip data: per-route, last fill-up details with miles since previous fill
-  const [fuelData, setFuelData] = useState({}); // { [routeNumber]: { lastCost, lastGallons, milesBetween, mpg, ... } }
+  const [fuelData, setFuelData] = useState({}); // { [routeNumber]: [{ date, cost, gallons, merchant, last4, cardId }] }
+  const [unmappedCards, setUnmappedCards] = useState([]); // [{ last4, cardId, txCount, totalAmount }]
+  const [showCardMapping, setShowCardMapping] = useState(false);
+  const [cardMapVersion, setCardMapVersion] = useState(0); // bump to re-fetch fuel data after mapping changes
 
   // Get all dates that have log entries, sorted descending
   const availableDates = useMemo(() => {
@@ -181,12 +184,21 @@ export default function TravelLog() {
 
         // Group transactions by route with date, sorted newest first
         const byRoute = {};
+        const unmapped = {}; // keyed by last4
         txs.forEach(tx => {
           if (tx.declined) return;
           let route = null;
           if (tx.cardId && cardRouteMap[tx.cardId]) route = String(cardRouteMap[tx.cardId]);
           else if (tx.vehicleId && motiveIdRouteMap[tx.vehicleId]) route = motiveIdRouteMap[tx.vehicleId];
-          if (!route) return;
+          if (!route) {
+            // Track unmapped card
+            const key = tx.last4 || tx.cardId || 'unknown';
+            if (!unmapped[key]) unmapped[key] = { last4: tx.last4 || '', cardId: tx.cardId || null, txCount: 0, totalAmount: 0, totalGallons: 0 };
+            unmapped[key].txCount++;
+            unmapped[key].totalAmount += tx.totalAmount || 0;
+            unmapped[key].totalGallons += tx.totalGallons || 0;
+            return;
+          }
           if (!byRoute[route]) byRoute[route] = [];
           byRoute[route].push({
             date: tx.transactedAt ? tx.transactedAt.split('T')[0] : null,
@@ -200,13 +212,16 @@ export default function TravelLog() {
         // Sort each route's transactions newest first
         Object.values(byRoute).forEach(arr => arr.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
 
-        if (!cancelled) setFuelData(byRoute);
+        if (!cancelled) {
+          setFuelData(byRoute);
+          setUnmappedCards(Object.values(unmapped).sort((a, b) => b.totalAmount - a.totalAmount));
+        }
       } catch (err) {
         console.warn('Fuel data fetch failed:', err.message);
       }
     })();
     return () => { cancelled = true; };
-  }, [fleetVehicles, today]);
+  }, [fleetVehicles, today, cardMapVersion]);
 
   // Get vehicle list for filter
   const vehicleList = useMemo(() => {
@@ -1259,7 +1274,58 @@ export default function TravelLog() {
             )}
           </>
         )}
+        {unmappedCards.length > 0 && (
+          <span
+            className="tl-stat red"
+            style={{ cursor: 'pointer', textDecoration: 'underline' }}
+            title={`${unmappedCards.length} fuel card(s) not mapped to any route — $${unmappedCards.reduce((s, c) => s + c.totalAmount, 0).toFixed(2)} in untracked spend. Click to map.`}
+            onClick={() => setShowCardMapping(!showCardMapping)}
+          >
+            {unmappedCards.length} <span>Unmapped Cards</span>
+          </span>
+        )}
       </div>
+
+      {/* Card-to-Route Mapping Panel */}
+      {showCardMapping && unmappedCards.length > 0 && (
+        <div className="tl-card-mapping">
+          <div className="tl-card-mapping-header">
+            <h4>Map Fuel Cards to Routes</h4>
+            <span className="tl-card-mapping-subtitle">
+              {unmappedCards.length} card{unmappedCards.length !== 1 ? 's' : ''} with ${unmappedCards.reduce((s, c) => s + c.totalAmount, 0).toFixed(2)} in untracked fuel spend
+            </span>
+            <button className="tl-card-mapping-close" onClick={() => setShowCardMapping(false)}>&times;</button>
+          </div>
+          <div className="tl-card-mapping-list">
+            {unmappedCards.map(card => (
+              <div key={card.last4 || card.cardId} className="tl-card-mapping-row">
+                <div className="tl-card-mapping-info">
+                  <span className="tl-card-mapping-num">****{card.last4 || '????'}</span>
+                  <span className="tl-card-mapping-stats">
+                    {card.txCount} txn{card.txCount !== 1 ? 's' : ''} &middot; ${card.totalAmount.toFixed(2)} &middot; {card.totalGallons.toFixed(1)} gal
+                  </span>
+                </div>
+                <select
+                  className="tl-card-mapping-select"
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (!e.target.value || !card.cardId) return;
+                    const map = JSON.parse(localStorage.getItem('fuel_card_route_map') || '{}');
+                    map[card.cardId] = e.target.value;
+                    localStorage.setItem('fuel_card_route_map', JSON.stringify(map));
+                    setCardMapVersion(v => v + 1); // triggers re-fetch
+                  }}
+                >
+                  <option value="">Assign to route...</option>
+                  {[...new Set(vehicleList.map(v => v.routeNumber).filter(Boolean))].sort((a, b) => Number(a) - Number(b)).map(r => (
+                    <option key={r} value={r}>Route {r}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Map */}
       {mapPoints.length > 0 && (
