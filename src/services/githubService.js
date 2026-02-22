@@ -9,6 +9,7 @@ const WAREHOUSES_FILE_PATH = 'src/data/warehouses.json';
 const TRAVELLOG_FILE_PATH = 'src/data/travelLog.json';
 const ADDRESS_OVERRIDES_FILE_PATH = 'src/data/addressOverrides.json';
 const CUSTOM_LOCATIONS_FILE_PATH = 'src/data/customLocations.json';
+const TRANSACTIONS_FILE_PATH = 'src/data/transactions.json';
 const API_BASE = 'https://api.github.com';
 
 const TOKEN_KEY = 'github_pat';
@@ -21,6 +22,7 @@ const WAREHOUSES_SHA_KEY = 'github_warehouses_sha';
 const TRAVELLOG_SHA_KEY = 'github_travellog_sha';
 const ADDRESS_OVERRIDES_SHA_KEY = 'github_addressoverrides_sha';
 const CUSTOM_LOCATIONS_SHA_KEY = 'github_customlocations_sha';
+const TRANSACTIONS_SHA_KEY = 'github_transactions_sha';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -507,6 +509,53 @@ export async function saveCustomLocationsJson(jsonContent, message) {
     sha,
     fetchFn: fetchCustomLocationsJson,
     saveShaFn: saveCustomLocationsSha,
+  });
+}
+
+// ---- Transactions JSON (GitHub sync) ----
+
+function getTransactionsSha() {
+  return localStorage.getItem(TRANSACTIONS_SHA_KEY) || '';
+}
+
+function saveTransactionsSha(sha) {
+  localStorage.setItem(TRANSACTIONS_SHA_KEY, sha);
+}
+
+export async function fetchTransactionsJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRANSACTIONS_FILE_PATH}`,
+    { headers: headers(), cache: 'no-store' }
+  );
+
+  if (res.status === 404) {
+    return { content: '[]', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveTransactionsSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveTransactionsJson(jsonContent, message) {
+  let sha = getTransactionsSha();
+  if (!sha) {
+    try { sha = (await fetchTransactionsJson()).sha; } catch { /* file may not exist */ }
+  }
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TRANSACTIONS_FILE_PATH}`,
+    encoded,
+    message: message || 'Update transactions.json from Map Tracker app',
+    sha,
+    fetchFn: fetchTransactionsJson,
+    saveShaFn: saveTransactionsSha,
   });
 }
 

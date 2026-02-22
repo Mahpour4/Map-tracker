@@ -3,7 +3,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { fetchAlertImage, isGmailConnected, labelAlertsCompleted } from '../services/gmailAlertService';
-import { getGlobalWorxStatus, completeRouteAlerts } from '../services/globalworxService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
@@ -78,9 +77,8 @@ export default function AlertLog() {
   const [statsView, setStatsView] = useState('day'); // 'day' | 'week' | 'month'
   const [statsRouteTime, setStatsRouteTime] = useState('all'); // 'all' | 'this-week' | '30d' | '90d'
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
-  const [gwServiceStatus, setGwServiceStatus] = useState('offline'); // offline | ready
-  const [gwCompleting, setGwCompleting] = useState(null); // route string being completed, or null
   const [autoClearing, setAutoClearing] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
   const [waGroups, setWaGroups] = useState([]); // available WhatsApp groups
@@ -108,18 +106,6 @@ export default function AlertLog() {
     };
     check();
     const interval = setInterval(check, 30000);
-    return () => { mounted = false; clearInterval(interval); };
-  }, []);
-
-  // Check GlobalWorx completion service status
-  useEffect(() => {
-    let mounted = true;
-    const checkGw = async () => {
-      const s = await getGlobalWorxStatus();
-      if (mounted) setGwServiceStatus(s.status);
-    };
-    checkGw();
-    const interval = setInterval(checkGw, 30000);
     return () => { mounted = false; clearInterval(interval); };
   }, []);
 
@@ -220,6 +206,18 @@ export default function AlertLog() {
   // Apply filters
   const filteredAlerts = useMemo(() => {
     let result = enrichedAlerts;
+    if (!showCompleted) {
+      const now = new Date();
+      result = result.filter(a => {
+        if (a.globalworxCompleted) return false;
+        // Also hide Done alerts older than 48h — GW button has expired
+        if (a.globalworxDone && a.dateReceived) {
+          const alertDate = new Date(a.dateReceived + 'T00:00:00');
+          if ((now - alertDate) / (1000 * 60 * 60) >= 48) return false;
+        }
+        return true;
+      });
+    }
     if (filterDate === 'this-week') {
       result = result.filter(a => weekDates.has(a.dateReceived));
     } else if (filterDate) {
@@ -244,7 +242,7 @@ export default function AlertLog() {
       );
     }
     return result;
-  }, [enrichedAlerts, filterDate, weekDates, filterStatus, filterRoute, filterVendor, searchTerm]);
+  }, [enrichedAlerts, showCompleted, filterDate, weekDates, filterStatus, filterRoute, filterVendor, searchTerm]);
 
   // Group by route
   const alertsByRoute = useMemo(() => {
@@ -293,11 +291,11 @@ export default function AlertLog() {
     const now = new Date();
     return enrichedAlerts.filter(a => {
       if (a.globalworxCompleted) return false;
-      if (a.status !== 'resolved') return false;
       if (!a.dateReceived) return false;
       const alertDate = new Date(a.dateReceived + 'T00:00:00');
       const hoursSince = (now - alertDate) / (1000 * 60 * 60);
-      return hoursSince >= 48;
+      if (hoursSince < 48) return false;
+      return a.status === 'resolved' || a.globalworxDone;
     }).length;
   }, [enrichedAlerts]);
 
@@ -531,64 +529,27 @@ export default function AlertLog() {
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
 
-  // Send route report via WhatsApp group
-  async function handleCompleteRoute(e, route, routeAlerts) {
-    e.stopPropagation();
-    const eligible = routeAlerts.filter(a =>
-      a.acceptanceUrl &&
-      !a.globalworxCompleted &&
-      (a.globalworxDone || a.status === 'resolved')
-    );
-    if (eligible.length === 0) {
-      alert('No eligible alerts to complete for this route.\nAlerts must be resolved (visited) and not yet completed on GlobalWorx.');
-      return;
-    }
-    if (!confirm(`Complete ${eligible.length} alert(s) for Route ${route} on GlobalWorx?\n\nThis will submit the "Complete Here" form for each alert.`)) return;
-    setGwCompleting(route);
-    try {
-      const result = await completeRouteAlerts(
-        eligible.map(a => ({ emailId: a.emailId, acceptanceUrl: a.acceptanceUrl, refNumber: a.refNumber }))
-      );
-      const succeededIds = result.results.filter(r => r.success && r.emailId).map(r => r.emailId);
-      if (succeededIds.length > 0) {
-        await labelAlertsCompleted(succeededIds);
-      }
-      const failed = result.results.filter(r => !r.success);
-      if (failed.length === 0) {
-        alert(`All ${result.succeeded} alert(s) completed successfully!`);
-      } else {
-        alert(`${result.succeeded}/${result.total} completed.\n\nFailed:\n${failed.map(f => `${f.refNumber}: ${f.error}`).join('\n')}`);
-      }
-      if (result.succeeded > 0) fetchGmailAlerts();
-    } catch (err) {
-      alert(`Failed to complete route: ${err.message}`);
-    } finally {
-      setGwCompleting(null);
-    }
-  }
-
-  // Auto-clear resolved alerts where 48h have passed (GW button is gone anyway)
+  // Auto-clear: label all clearable alerts as completed in one step
+  // Eligible: resolved 48h+ OR globalworxDone 48h+ (not yet labeled completed)
   async function handleAutoClear() {
     const now = new Date();
     const eligible = enrichedAlerts.filter(a => {
       if (a.globalworxCompleted) return false;
-      if (a.status !== 'resolved') return false;
       if (!a.dateReceived) return false;
       const alertDate = new Date(a.dateReceived + 'T00:00:00');
       const hoursSince = (now - alertDate) / (1000 * 60 * 60);
-      return hoursSince >= 48;
+      if (hoursSince < 48) return false;
+      return a.status === 'resolved' || a.globalworxDone;
     });
     if (eligible.length === 0) {
-      alert('No alerts to auto-clear.\n\nAlerts must be resolved (visited + sale) and older than 48 hours.');
+      alert('No alerts to auto-clear. Alerts must be resolved or Done, and older than 48 hours.');
       return;
     }
-    if (!confirm(`Auto-clear ${eligible.length} resolved alert(s)?\n\nThese alerts have been visited/sold and are 48+ hours old, so the GlobalWorx button has expired. They will be labeled as completed in Gmail.`)) return;
     setAutoClearing(true);
     try {
       const ids = eligible.map(a => a.emailId).filter(Boolean);
       if (ids.length > 0) {
         await labelAlertsCompleted(ids);
-        alert(`${ids.length} alert(s) cleared successfully!`);
         fetchGmailAlerts();
       }
     } catch (err) {
@@ -1536,6 +1497,11 @@ export default function AlertLog() {
             <button className={`al-filter-btn green ${filterStatus === 'resolved' ? 'active' : ''}`} onClick={() => setFilterStatus('resolved')}>
               Resolved ({stats.resolved})
             </button>
+            {stats.completed > 0 && (
+              <button className={`al-filter-btn ${showCompleted ? 'active' : ''}`} onClick={() => setShowCompleted(prev => !prev)} title="Toggle visibility of completed alerts">
+                {showCompleted ? 'Hide' : 'Show'} Completed ({stats.completed})
+              </button>
+            )}
           </div>
           <div className="al-filter-group">
             <select className="al-select" value={filterRoute} onChange={e => setLocalFilterRoute(e.target.value)}>
@@ -2029,16 +1995,6 @@ export default function AlertLog() {
                               title={`Send report summary to Route ${route} driver via WhatsApp`}
                             >
                               {waSending === `report-${route}` ? '...' : 'WA'}
-                            </button>
-                          )}
-                          {route !== 'Unmatched' && gwServiceStatus === 'ready' && (
-                            <button
-                              className="al-btn-complete"
-                              onClick={(e) => handleCompleteRoute(e, route, routeAlerts)}
-                              disabled={gwCompleting !== null}
-                              title={`Submit GlobalWorx completion form for all resolved alerts on Route ${route}`}
-                            >
-                              {gwCompleting === route ? 'Completing...' : 'Complete'}
                             </button>
                           )}
                           {sentInfo && (

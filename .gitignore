@@ -15,11 +15,6 @@ dist-ssr
 # Local launcher script (machine-specific paths)
 start.bat
 
-# GlobalWorx automation secrets & debug files
-scripts/globalworx-auto/client_secret.json
-scripts/globalworx-auto/credentials.json
-scripts/globalworx-auto/debug-*.png
-
 # WhatsApp service session data
 scripts/whatsapp-service/.wwebjs_auth/
 scripts/whatsapp-service/.wwebjs_cache/

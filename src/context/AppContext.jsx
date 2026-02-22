@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone } from '../services/gmailAlertService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
@@ -10,6 +10,7 @@ import localWarehouses from '../data/warehouses.json';
 import localTravelLog from '../data/travelLog.json';
 import localAddressOverrides from '../data/addressOverrides.json';
 import localCustomLocations from '../data/customLocations.json';
+import localTransactions from '../data/transactions.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -51,6 +52,7 @@ const initialState = {
   travelLog: localTravelLog,  // { "YYYY-MM-DD": { "vehicleVin": [{ time, type, locationId, locationName }] } }
   addressOverrides: localAddressOverrides, // { "destination address": "storeId" }
   customLocations: localCustomLocations, // [{ id, name, type, address, lat, lng }]
+  transactions: localTransactions, // Raw DAO dashboard transaction data
   autoVisitEnabled: true,
 };
 
@@ -448,6 +450,11 @@ function reducer(state, action) {
       delete next[destination];
       return { ...state, addressOverrides: next };
     }
+    // Transactions (DAO dashboard)
+    case 'LOAD_TRANSACTIONS':
+      return { ...state, transactions: action.payload };
+    case 'SET_TRANSACTIONS':
+      return { ...state, transactions: action.payload };
     // Custom locations (gas stations, storage, meeting points, driver homes, etc.)
     case 'LOAD_CUSTOM_LOCATIONS':
       return { ...state, customLocations: action.payload };
@@ -1072,6 +1079,40 @@ export function AppProvider({ children }) {
     return () => { if (customLocationsSaveTimer.current) clearTimeout(customLocationsSaveTimer.current); };
   }, [state.customLocations]);
 
+  // Load transactions from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchTransactionsJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (Array.isArray(data)) {
+            dispatch({ type: 'LOAD_TRANSACTIONS', payload: data });
+          }
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load transactions:', err);
+      });
+  }, []);
+
+  // Auto-save transactions to GitHub when they change
+  const prevTransactionsRef = useRef(state.transactions);
+  const transactionsSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevTransactionsRef.current === state.transactions) return;
+    prevTransactionsRef.current = state.transactions;
+
+    if (transactionsSaveTimer.current) clearTimeout(transactionsSaveTimer.current);
+    transactionsSaveTimer.current = setTimeout(() => {
+      saveTransactionsJson(JSON.stringify(state.transactions))
+        .catch((err) => console.error('Failed to save transactions:', err));
+    }, 2000);
+
+    return () => { if (transactionsSaveTimer.current) clearTimeout(transactionsSaveTimer.current); };
+  }, [state.transactions]);
+
   const actions = {
     addStore: useCallback(
       (store) => dispatch({ type: 'ADD_STORE', payload: store }),
@@ -1231,6 +1272,11 @@ export function AppProvider({ children }) {
     ),
     deleteCustomLocation: useCallback(
       (id) => dispatch({ type: 'DELETE_CUSTOM_LOCATION', payload: id }),
+      []
+    ),
+    // Transactions
+    setTransactions: useCallback(
+      (transactions) => dispatch({ type: 'SET_TRANSACTIONS', payload: transactions }),
       []
     ),
   };

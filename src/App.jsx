@@ -15,6 +15,7 @@ import DriverDashboard from './components/DriverDashboard';
 import TravelLog from './components/TravelLog';
 import WarehouseSettings from './components/WarehouseSettings';
 import CustomLocations from './components/CustomLocations';
+import Transactions from './components/Transactions';
 import './App.css';
 
 function AppContent() {
@@ -49,6 +50,7 @@ function AppContent() {
             <button className={`page-nav-btn ${page === 'alerts' || page === 'alertAnalytics' ? 'active' : ''}`} onClick={() => nav('alerts')}>Alert Log</button>
             <button className={`page-nav-btn ${page === 'fleet' ? 'active' : ''}`} onClick={() => nav('fleet')}>Fleet Tracker</button>
             <button className={`page-nav-btn ${page === 'fuel' ? 'active' : ''}`} onClick={() => nav('fuel')}>Fuel Tracker</button>
+            <button className={`page-nav-btn ${page === 'transactions' ? 'active' : ''}`} onClick={() => nav('transactions')}>Transactions</button>
             <button className={`page-nav-btn ${page === 'travelLog' ? 'active' : ''}`} onClick={() => nav('travelLog')}>Travel Log</button>
             <button className={`page-nav-btn ${page === 'warehouses' ? 'active' : ''}`} onClick={() => nav('warehouses')}>Warehouses</button>
             <button className={`page-nav-btn ${page === 'customLocations' ? 'active' : ''}`} onClick={() => nav('customLocations')}>Custom Locations</button>
@@ -102,6 +104,7 @@ function AppContent() {
         {page === 'alertAnalytics' && <AlertAnalytics />}
         {page === 'fleet' && <FleetTracker />}
         {page === 'fuel' && <FuelTracker />}
+        {page === 'transactions' && <Transactions />}
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
         {page === 'customLocations' && <CustomLocations />}

@@ -4,6 +4,7 @@ import {
   getLatestDate, getDaysSinceVisit, getGrade, getStatusCounts,
   getDaysBetween, getScheduleAdherence, getAlertStats,
 } from '../utils/driverMetrics';
+import { parseTransactions, analyzeByRoute as analyzeTxByRoute } from '../services/daoTransactionParser';
 
 function isCashStop(store) {
   return store.id.toLowerCase().startsWith('cash');
@@ -14,11 +15,56 @@ function isDormant(lastVisited) {
   return days === null || days >= 90;
 }
 
+function fmt(n) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+}
+function pct(n) { return n.toFixed(1) + '%'; }
+function fmtDate(d) {
+  if (!d) return '';
+  const p = d.split('-');
+  return p.length === 3 ? `${parseInt(p[1])}/${parseInt(p[2])}` : d;
+}
+
 export default function RouteLeaderboard() {
   const { state } = useApp();
   const { stores, alerts, schedules, visitHistory: visitHistoryMap } = state;
+  const transactions = state.transactions || [];
   const [sortAsc, setSortAsc] = useState(false);
   const [expanded, setExpanded] = useState(null);
+
+  // Transaction analysis — exclude route 99 (warehouse)
+  const parsed = useMemo(() => parseTransactions(transactions), [transactions]);
+  const txByRoute = useMemo(() => {
+    const all = analyzeTxByRoute(parsed);
+    const map = {};
+    for (const r of all) {
+      if (r.route === '99') continue;
+      map[r.route] = r;
+    }
+    return map;
+  }, [parsed]);
+
+  const txOverall = useMemo(() => {
+    const routes = Object.values(txByRoute);
+    if (routes.length === 0) return null;
+    const loadTotal = routes.reduce((s, r) => s + r.loadTotal, 0);
+    const grossSales = routes.reduce((s, r) => s + r.grossSales, 0);
+    const credits = routes.reduce((s, r) => s + r.credits, 0);
+    const netSales = grossSales + credits;
+    const dates = routes.flatMap(r => r.dates);
+    const uniqueDates = [...new Set(dates)].sort();
+    return {
+      routes: routes.length,
+      loadTotal,
+      grossSales,
+      credits,
+      netSales,
+      sellThrough: loadTotal > 0 ? (netSales / loadTotal) * 100 : 0,
+      dateRange: uniqueDates.length > 0
+        ? `${fmtDate(uniqueDates[0])} - ${fmtDate(uniqueDates[uniqueDates.length - 1])}`
+        : '',
+    };
+  }, [txByRoute]);
 
   // Group alerts by route
   const alertsByRoute = useMemo(() => {
@@ -174,6 +220,32 @@ export default function RouteLeaderboard() {
           </div>
         )}
 
+        {/* Transaction Sales Summary */}
+        {txOverall && (
+          <div className="lb-tx-summary" title="Sales performance from DAO transaction data — excludes warehouse route 99">
+            <span className="lb-tx-title">Sales Performance ({txOverall.dateRange})</span>
+            <div className="lb-tx-stats">
+              <span className="lb-tx-stat" title="Total dollar value loaded onto trucks across all routes — the inventory sent out for delivery">
+                <span className="lb-tx-val">{fmt(txOverall.loadTotal)}</span> loaded
+              </span>
+              <span className="lb-tx-stat" title="Sum of all positive invoices across all routes — total revenue before credits/returns">
+                <span className="lb-tx-val">{fmt(txOverall.grossSales)}</span> gross sales
+              </span>
+              <span className="lb-tx-stat" title="Sum of all negative invoices — returns, adjustments, and credit memos">
+                <span className="lb-tx-val" style={{ color: '#ef4444' }}>{fmt(txOverall.credits)}</span> credits
+              </span>
+              <span className="lb-tx-stat" title="Gross Sales minus Credits — the actual revenue collected across all routes">
+                <span className="lb-tx-val" style={{ color: '#3b82f6' }}>{fmt(txOverall.netSales)}</span> net sales
+              </span>
+              <span className="lb-tx-stat" title="Overall sell-through rate: (Net Sales / Total Load) x 100. Green = 80%+, Orange = 50-79%, Red = below 50%">
+                <span className="lb-tx-val" style={{ color: txOverall.sellThrough >= 80 ? '#22c55e' : txOverall.sellThrough >= 50 ? '#f97316' : '#ef4444' }}>
+                  {pct(txOverall.sellThrough)}
+                </span> sell-through
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="leaderboard-controls">
           <button
             className={`sort-btn ${!sortAsc ? 'active' : ''}`}
@@ -288,6 +360,49 @@ export default function RouteLeaderboard() {
                   </div>
                 </div>
               )}
+
+              {/* Transaction sales per route */}
+              {txByRoute[r.route] && (() => {
+                const tx = txByRoute[r.route];
+                const stColor = tx.sellThrough >= 80 ? '#22c55e' : tx.sellThrough >= 50 ? '#f97316' : '#ef4444';
+                return (
+                  <div className="route-tx-row" title="DAO transaction sales data for this route — imported from the Transactions tab">
+                    <div className="route-tx-metrics">
+                      <span className="route-tx-metric" title="Total dollar value loaded onto the truck for this route — the inventory sent out for delivery">
+                        <span className="route-tx-label">Load</span>
+                        <span className="route-tx-value">{fmt(tx.loadTotal)}</span>
+                      </span>
+                      <span className="route-tx-metric" title="Gross Sales minus Credits — actual revenue collected for this route">
+                        <span className="route-tx-label">Net Sales</span>
+                        <span className="route-tx-value" style={{ color: '#3b82f6' }}>{fmt(tx.netSales)}</span>
+                      </span>
+                      <span className="route-tx-metric" title="Sum of negative invoices — returns and adjustments for this route">
+                        <span className="route-tx-label">Credits</span>
+                        <span className="route-tx-value" style={{ color: '#ef4444' }}>{fmt(tx.credits)}</span>
+                      </span>
+                      <span className="route-tx-metric" title={`Sell-through rate: ${pct(tx.sellThrough)} of loaded inventory was sold. (Net Sales / Load) x 100`}>
+                        <span className="route-tx-label">Sell-Through</span>
+                        <span className="route-tx-value" style={{ color: stColor }}>{pct(tx.sellThrough)}</span>
+                      </span>
+                      {(tx.dsdOk + tx.dsdMissing) > 0 && (
+                        <span className="route-tx-metric" title={`DSD compliance: ${tx.dsdOk} OK, ${tx.dsdMissing} Missing. Measures whether the driver scanned deliveries at the store`}>
+                          <span className="route-tx-label">DSD</span>
+                          <span className="route-tx-value" style={{ color: tx.dsdCompliance >= 80 ? '#22c55e' : '#ef4444' }}>
+                            {pct(tx.dsdCompliance)}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="route-tx-bar" title="Visual breakdown: Blue = net sales, Red = credits/returns, Gray = unsold inventory">
+                      {tx.netSales > 0 && <div className="bar-seg" style={{ background: '#3b82f6', flex: tx.netSales }} title={`Net sales: ${fmt(tx.netSales)}`}></div>}
+                      {tx.credits < 0 && <div className="bar-seg" style={{ background: '#ef4444', flex: Math.abs(tx.credits) }} title={`Credits/returns: ${fmt(tx.credits)}`}></div>}
+                      {tx.loadTotal > tx.netSales + Math.abs(tx.credits) && (
+                        <div className="bar-seg" style={{ background: '#e5e7eb', flex: tx.loadTotal - tx.netSales - Math.abs(tx.credits) }} title={`Unsold inventory: ${fmt(tx.loadTotal - tx.netSales - Math.abs(tx.credits))}`}></div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {isExpanded && (
                 <div className="route-store-list">
