@@ -5,189 +5,263 @@
  */
 
 const puppeteer = require('puppeteer');
-const path = require('path');
 
 const RESOLUTION_HOURS = '48';
-const SCREENSHOT_DIR = path.join(__dirname, '..', 'gw-screenshots');
 
-let browserInstance = null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /**
- * Accept a single alert by navigating to its GlobalWorx URL.
- * @param {import('puppeteer').Page} page - Puppeteer page
- * @param {string} url - GlobalWorx acceptance URL
- * @param {string} refNumber - Alert reference number (for logging)
- * @returns {{ success: boolean, error?: string }}
+ * Find a clickable element by its visible text using JS innerText search.
+ * Much more reliable than XPath for JS-rendered apps (Sencha/ExtJS etc).
+ * Returns an ElementHandle or null.
  */
+async function findByText(page, texts) {
+  const handle = await page.evaluateHandle((searchTexts) => {
+    const skip = ['SCRIPT', 'STYLE', 'NOSCRIPT', 'HEAD', 'META', 'LINK', 'TITLE'];
+    const all = Array.from(document.querySelectorAll('*')).filter(el => !skip.includes(el.tagName));
+    for (const text of searchTexts) {
+      const lower = text.toLowerCase();
+      // Prefer leaf nodes (no children), then any node
+      const leaf = all.find(el =>
+        el.children.length === 0 &&
+        (el.innerText || el.textContent || '').trim().toLowerCase() === lower &&
+        window.getComputedStyle(el).display !== 'none' &&
+        window.getComputedStyle(el).visibility !== 'hidden'
+      );
+      if (leaf) return leaf;
+      const any = all.find(el =>
+        (el.innerText || el.textContent || '').trim().toLowerCase() === lower &&
+        window.getComputedStyle(el).display !== 'none' &&
+        window.getComputedStyle(el).visibility !== 'hidden'
+      );
+      if (any) return any;
+    }
+    return null;
+  }, texts);
+
+  // evaluateHandle returns a JSHandle — check if it resolved to a real element
+  const el = handle.asElement();
+  return el || null;
+}
+
+/**
+ * Search for an XPath element across the main page and all iframes.
+ * Returns { frame, element } or null if not found.
+ */
+async function findInFrames(page, xpath) {
+  const frames = [page.mainFrame(), ...page.frames().filter(f => f !== page.mainFrame())];
+  for (const frame of frames) {
+    try {
+      const [el] = await frame.$x(xpath);
+      if (el) {
+        const visible = await el.evaluate(e => {
+          const s = window.getComputedStyle(e);
+          return s.display !== 'none' && s.visibility !== 'hidden';
+        });
+        if (visible) return { frame, element: el };
+      }
+    } catch (_) { continue; }
+  }
+  return null;
+}
+
+/**
+ * Search for a CSS selector across the main page and all iframes.
+ * Returns { frame, elements[] } for the first frame that has matches, or null.
+ */
+async function findAllInFrames(page, cssSelector) {
+  const frames = [page.mainFrame(), ...page.frames().filter(f => f !== page.mainFrame())];
+  for (const frame of frames) {
+    try {
+      const els = await frame.$$(cssSelector);
+      if (els.length > 0) return { frame, elements: els };
+    } catch (_) { continue; }
+  }
+  return null;
+}
+
 async function acceptAlert(page, url, refNumber) {
   console.log(`[GW] Accepting ${refNumber}: ${url.substring(0, 100)}...`);
 
   try {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 20000 });
-    await page.waitForTimeout(3000);
+    // Brief wait for JS app to finish rendering after network settles
+    await sleep(2000);
 
-    // Strategy 1: Click "Accept" button
+    // Strategy 1: Click "Accept Here" button
     let acceptClicked = false;
-    const acceptSelectors = [
-      "//button[contains(text(), 'Accept')]",
-      "//input[@value='Accept']",
-      "//a[contains(text(), 'Accept')]",
-      "//*[contains(@class, 'accept')]",
-      "//button[contains(text(), 'Accept Issue')]",
-      "//input[contains(@value, 'Accept')]",
+
+    // 1a: CSS selector on input[value] — the button is <input type="button" value="Accept Here" class="accept-btn">
+    const acceptCssSelectors = [
+      'input.accept-btn',
+      'input[value="Accept Here"]',
+      'input[value*="Accept"]',
     ];
-
-    for (const xpath of acceptSelectors) {
-      try {
-        const [btn] = await page.$x(xpath);
-        if (btn) {
-          const visible = await btn.evaluate(el => {
-            const style = window.getComputedStyle(el);
-            return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
-          });
-          if (visible) {
-            console.log(`[GW]   Found Accept button: ${xpath.substring(0, 50)}`);
-            await btn.click();
-            acceptClicked = true;
-            break;
-          }
-        }
-      } catch (_) { continue; }
-    }
-
-    if (!acceptClicked) {
-      console.log('[GW]   No Accept button found, checking if form is already shown...');
-    }
-
-    await page.waitForTimeout(2000);
-
-    // Strategy 2: Set resolution time to 48 hours
-    let timeSet = false;
-
-    // Try dropdown/select elements
-    const selectSelectors = [
-      "select[name*='hour'], select[name*='time'], select[name*='resolution']",
-      "select[id*='hour'], select[id*='time'], select[id*='resolution']",
-      "select",
-    ];
-
-    for (const sel of selectSelectors) {
-      try {
-        const selects = await page.$$(sel);
-        for (const selectEl of selects) {
-          const visible = await selectEl.evaluate(el => {
-            const style = window.getComputedStyle(el);
-            return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
-          });
-          if (!visible) continue;
-
-          // Look for option containing "48"
-          const set = await selectEl.evaluate((el, hours) => {
-            for (const opt of el.options) {
-              if (opt.text.includes(hours)) {
-                el.value = opt.value;
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                return opt.text;
-              }
-            }
-            return null;
-          }, RESOLUTION_HOURS);
-
-          if (set) {
-            console.log(`[GW]   Set resolution to: ${set}`);
-            timeSet = true;
-            break;
-          }
-        }
-        if (timeSet) break;
-      } catch (_) { continue; }
-    }
-
-    if (!timeSet) {
-      // Try input field
-      const inputSelectors = [
-        "input[name*='hour'], input[name*='time']",
-        "input[type='number']",
-      ];
-      for (const sel of inputSelectors) {
+    for (const sel of acceptCssSelectors) {
+      const found = await findAllInFrames(page, sel);
+      if (found && found.elements.length > 0) {
+        const tag = await found.elements[0].evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
+        console.log(`[GW]   Found Accept button via CSS "${sel}": ${tag}`);
+        await found.elements[0].click();
+        acceptClicked = true;
+        // Wait for the resolution form/modal to appear
         try {
-          const inp = await page.$(sel);
-          if (inp) {
-            const visible = await inp.evaluate(el => {
-              const style = window.getComputedStyle(el);
-              return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
-            });
-            if (visible) {
-              await inp.click({ clickCount: 3 }); // select all
-              await inp.type(RESOLUTION_HOURS);
-              console.log(`[GW]   Entered resolution: ${RESOLUTION_HOURS} hours`);
-              timeSet = true;
-              break;
-            }
-          }
-        } catch (_) { continue; }
+          await page.waitForSelector('input.si-accept-confirm, input[value="Accept Issue"], select[name*="restime"]', { timeout: 8000 });
+          console.log(`[GW]   Resolution form appeared`);
+        } catch (_) {
+          console.log(`[GW]   Timed out waiting for resolution form — sleeping 4s`);
+          await sleep(4000);
+        }
+        break;
       }
     }
 
-    await page.waitForTimeout(1000);
+    // 1b: XPath fallback
+    if (!acceptClicked) {
+      const acceptSelectors = [
+        "//input[contains(@value, 'Accept Here')]",
+        "//input[contains(@value, 'Accept')]",
+        "//input[@class='accept-btn']",
+        "//button[contains(., 'Accept')]",
+        "//button[contains(text(), 'Accept')]",
+        "//*[contains(@class, 'accept')]",
+      ];
+      for (const xpath of acceptSelectors) {
+        const found = await findInFrames(page, xpath);
+        if (found) {
+          console.log(`[GW]   Found Accept button via XPath: ${xpath.substring(0, 60)}`);
+          await found.element.click();
+          acceptClicked = true;
+          await sleep(1500);
+          break;
+        }
+      }
+    }
 
-    // Strategy 3: Submit / Confirm
+    if (!acceptClicked) {
+      console.log(`[GW]   No Accept button found for ${refNumber}`);
+    }
+
+    // Strategy 2: Set resolution time to 48 hours
+    // The dropdown shows "within X hour(s)" — use indexOf (not includes) for older JS environments
+    let timeSet = false;
+
+    try {
+      timeSet = await page.evaluate((hours) => {
+        // Find the resolution select
+        var sel = document.querySelector('select[name*="restime"]')
+               || document.querySelector('select[id*="restime"]')
+               || document.querySelector('select[name*="time"]')
+               || document.querySelector('select[name*="hour"]')
+               || document.querySelector('select[name*="resolution"]')
+               || document.querySelector('select');
+        if (!sel || !sel.options || sel.options.length === 0) return false;
+
+        // Find the option with value or text containing the target hours (e.g. "48")
+        var match = null;
+        for (var i = 0; i < sel.options.length; i++) {
+          var o = sel.options[i];
+          var val = (o.value || '') + '';
+          var txt = (o.text || '') + '';
+          if (val === hours || val.indexOf(hours) !== -1 || txt.indexOf(hours) !== -1) {
+            match = o;
+            break;
+          }
+        }
+        if (!match) return false;
+
+        sel.value = match.value;
+        // Trigger native change event
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        // Also trigger jQuery change if available (for Select2 widgets)
+        try {
+          if (window.$ && window.$(sel).val) {
+            window.$(sel).val(match.value).trigger('change');
+          }
+        } catch (_) {}
+        return (match.text || match.value || '') + '';
+      }, RESOLUTION_HOURS);
+
+      if (timeSet) {
+        console.log('[GW]   Set resolution to: ' + timeSet);
+      } else {
+        console.log('[GW]   Could not find 48hr option in resolution select — proceeding anyway');
+      }
+    } catch (err2) {
+      console.error('[GW]   Strategy 2 error:', err2.message);
+    }
+
+    await sleep(1000);
+
+    // Strategy 3: Click "Accept Issue" / Submit — CSS first, then XPath
     let submitted = false;
-    const submitSelectors = [
-      "//button[contains(text(), 'Submit')]",
-      "//button[contains(text(), 'Confirm')]",
-      "//button[contains(text(), 'Accept Issue')]",
-      "//input[@type='submit']",
-      "//input[contains(@value, 'Submit')]",
-      "//input[contains(@value, 'Confirm')]",
-      "//input[contains(@value, 'Accept')]",
-      "//button[contains(@class, 'submit')]",
-      "//a[contains(text(), 'Submit')]",
-    ];
 
-    for (const xpath of submitSelectors) {
-      try {
-        const [btn] = await page.$x(xpath);
-        if (btn) {
-          const visible = await btn.evaluate(el => {
-            const style = window.getComputedStyle(el);
-            return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
-          });
-          if (visible) {
-            console.log(`[GW]   Clicking submit: ${xpath.substring(0, 50)}`);
-            await btn.click();
+    try {
+      // 3a: CSS selector — button is <input class="si-accept-confirm mobilebutton" value="Accept Issue">
+      const submitCssSelectors = [
+        'input.si-accept-confirm',
+        'input[value="Accept Issue"]',
+        'input[value*="Accept Issue"]',
+        'input[value="Submit"]',
+        'input[value="Confirm"]',
+        'input[type="submit"]',
+      ];
+      for (const sel of submitCssSelectors) {
+        const found = await findAllInFrames(page, sel);
+        if (found && found.elements.length > 0) {
+          const tag = await found.elements[0].evaluate(el => `${el.tagName} value="${el.value}"`);
+          console.log(`[GW]   Found Submit button via CSS "${sel}": ${tag}`);
+          await found.elements[0].evaluate(el => el.scrollIntoView({ block: 'center' }));
+          await sleep(500);
+          await found.elements[0].click();
+          submitted = true;
+          break;
+        }
+      }
+
+      // 3b: XPath fallback (only if CSS didn't work)
+      if (!submitted) {
+        const submitXpathSelectors = [
+          "//input[contains(@class, 'si-accept-confirm')]",
+          "//input[contains(@value, 'Accept Issue')]",
+          "//input[contains(@value, 'Submit')]",
+          "//input[contains(@value, 'Confirm')]",
+          "//button[contains(text(), 'Accept Issue')]",
+          "//button[contains(text(), 'Submit')]",
+          "//button[contains(text(), 'Confirm')]",
+          "//input[@type='submit']",
+        ];
+        for (const xpath of submitXpathSelectors) {
+          const found = await findInFrames(page, xpath);
+          if (found) {
+            console.log(`[GW]   Found Submit button via XPath: ${xpath.substring(0, 50)}`);
+            await found.element.click();
             submitted = true;
             break;
           }
         }
-      } catch (_) { continue; }
+      }
+
+      if (submitted) {
+        console.log(`[GW]   Submit clicked — waiting for result...`);
+      }
+    } catch (err3) {
+      console.error('[GW]   Strategy 3 error:', err3.message);
     }
 
-    await page.waitForTimeout(2000);
+    // Wait for post-submit navigation
+    await sleep(1500);
 
     if (submitted) {
       console.log(`[GW]   ACCEPTED ${refNumber}`);
       return { success: true };
     } else {
-      // Save screenshot for debugging
-      try {
-        const fs = require('fs');
-        if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
-        const ssPath = path.join(SCREENSHOT_DIR, `gw-debug-${refNumber}.png`);
-        await page.screenshot({ path: ssPath });
-        console.log(`[GW]   Could not find submit button. Screenshot: ${ssPath}`);
-      } catch (_) {}
+      console.log(`[GW]   FAILED ${refNumber} — Submit button not found`);
       return { success: false, error: 'Submit button not found' };
     }
 
   } catch (err) {
     console.error(`[GW]   ERROR accepting ${refNumber}:`, err.message);
-    try {
-      const fs = require('fs');
-      if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
-      const ssPath = path.join(SCREENSHOT_DIR, `gw-error-${refNumber}.png`);
-      await page.screenshot({ path: ssPath });
-    } catch (_) {}
     return { success: false, error: err.message };
   }
 }
@@ -231,7 +305,7 @@ async function acceptBatch(alerts) {
 
       // Small delay between alerts
       if (i < alerts.length - 1) {
-        await page.waitForTimeout(2000);
+        await sleep(1000);
       }
     }
   } finally {

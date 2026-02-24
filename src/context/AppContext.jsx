@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, getToken } from '../services/githubService';
-import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone } from '../services/gmailAlertService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
@@ -613,6 +613,7 @@ export function AppProvider({ children }) {
         }
         // After store data refreshes, mark resolved alerts as Done in Gmail
         markResolvedAlertsDone(state.alerts, stores);
+        markDoneAlertsCompleted(state.alerts);
       })
       .catch((err) => {
         dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
@@ -700,32 +701,69 @@ export function AppProvider({ children }) {
   }
 
   // Label resolved alert emails as "GLOBAL WORKS/Done" in Gmail
+  // An alert is "Done" if:
+  //   1. Store was visited/had a sale AFTER the alert date, OR
+  //   2. Alert was accepted and the 48hr resolution window has expired
   function markResolvedAlertsDone(alerts, stores, vh) {
     if (!isGmailConnected()) return;
+    const now = new Date();
     const sMap = {};
     stores.forEach(s => { sMap[s.id] = s; });
     const vhData = vh || state.visitHistory || {};
 
     const toMark = alerts.filter(a => {
       if (!a.emailId || a.globalworxDone) return false;
+      if (!a.dateReceived) return false;
+
+      // Condition 1: Store visited after alert date
       const store = sMap[a.storeId];
-      if (!store || !a.dateReceived) return false;
-      // Also check visitHistory for the most up-to-date visit date
-      const vhDates = (vhData[a.storeId] || []).filter(Boolean).map(d => d.split('T')[0]);
-      const newestVH = vhDates.length > 0 ? vhDates.sort().pop() : null;
-      const storeLastVisited = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;
-      const bestLastVisited = [storeLastVisited, newestVH].filter(Boolean).sort().pop() || null;
-      const lastVisited = [store.lastSaleDate, bestLastVisited]
-        .filter(Boolean).sort().pop() || null;
-      if (!lastVisited) return false;
-      const visitDate = lastVisited.split('T')[0].split(' ')[0];
-      return visitDate >= a.dateReceived;
+      if (store) {
+        const vhDates = (vhData[a.storeId] || []).filter(Boolean).map(d => d.split('T')[0]);
+        const newestVH = vhDates.length > 0 ? vhDates.sort().pop() : null;
+        const storeLastVisited = store.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;
+        const bestLastVisited = [storeLastVisited, newestVH].filter(Boolean).sort().pop() || null;
+        const lastVisited = [store.lastSaleDate, bestLastVisited]
+          .filter(Boolean).sort().pop() || null;
+        if (lastVisited) {
+          const visitDate = lastVisited.split('T')[0].split(' ')[0];
+          if (visitDate >= a.dateReceived) return true;
+        }
+      }
+
+      // Condition 2: Accepted and 48hr resolution window expired
+      if (a.globalworxAccepted) {
+        const alertDate = new Date(a.dateReceived + 'T00:00:00');
+        const hoursSince = (now - alertDate) / (1000 * 60 * 60);
+        if (hoursSince >= 48) return true;
+      }
+
+      return false;
     });
 
     if (toMark.length > 0) {
       labelAlertsDone(toMark.map(a => a.emailId));
       toMark.forEach(a => { a.globalworxDone = true; });
       console.log(`[Alerts] ${toMark.length} resolved alert(s) queued for "Done" label.`);
+    }
+  }
+
+  // Auto-label Done alerts as "GLOBAL WORKS/Completed" after 48 hours
+  function markDoneAlertsCompleted(alerts) {
+    if (!isGmailConnected()) return;
+    const now = new Date();
+    const toMark = alerts.filter(a => {
+      if (!a.emailId || a.globalworxCompleted) return false;
+      if (!a.globalworxDone) return false;
+      if (!a.dateReceived) return false;
+      const alertDate = new Date(a.dateReceived + 'T00:00:00');
+      const hoursSince = (now - alertDate) / (1000 * 60 * 60);
+      return hoursSince >= 48;
+    });
+
+    if (toMark.length > 0) {
+      labelAlertsCompleted(toMark.map(a => a.emailId));
+      toMark.forEach(a => { a.globalworxCompleted = true; });
+      console.log(`[Alerts] ${toMark.length} done alert(s) (48h+) queued for "Completed" label.`);
     }
   }
 
@@ -789,6 +827,9 @@ export function AppProvider({ children }) {
       // Mark resolved alerts as "GLOBAL WORKS/Done" in Gmail (non-blocking)
       markResolvedAlertsDone(merged, state.stores);
 
+      // Mark Done alerts 48h+ as "GLOBAL WORKS/Completed" in Gmail (non-blocking)
+      markDoneAlertsCompleted(merged);
+
       return { newCount: newAlerts.length, rawMessages };
     } catch (err) {
       dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'error', error: err.message } });
@@ -826,12 +867,16 @@ export function AppProvider({ children }) {
 
     const { results } = await gwAcceptAlerts(payload);
 
-    // Label successfully accepted emails as "Processed" in Gmail
+    // Label successfully accepted emails as "Processed" in Gmail (marks globalworxAccepted = true on next fetch)
     const acceptedIds = results.filter(r => r.success && r.emailId).map(r => r.emailId);
-    if (acceptedIds.length > 0 && isGmailConnected()) {
-      try {
-        await labelAlertMessages(acceptedIds);
-      } catch (_) {}
+    const gmailOk = isGmailConnected();
+    console.log(`[AutoAccept] ${results.filter(r => r.success).length} accepted, ${acceptedIds.length} have emailId, gmailConnected=${gmailOk}`);
+    if (acceptedIds.length > 0 && gmailOk) {
+      await labelAlertsProcessed(acceptedIds);
+    } else if (acceptedIds.length === 0) {
+      console.warn('[AutoAccept] No emailIds found on accepted alerts — label skipped. Try re-fetching Gmail alerts first.');
+    } else if (!gmailOk) {
+      console.warn('[AutoAccept] Gmail token expired — label skipped. Reconnect Gmail and re-run.');
     }
 
     const accepted = results.filter(r => r.success).length;

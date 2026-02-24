@@ -9331,6 +9331,15 @@ textarea {
 }
 .tx-btn-secondary:hover { background: #e2e8f0; }
 
+.tx-sync-result {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #15803d;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
 .tx-error {
   background: #fef2f2;
   border: 1px solid #fecaca;

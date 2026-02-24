@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Read(//c/Users/S.Mahpour/Documents/GitHub//**)",
+      "Read(//c/Users/S.Mahpour/**)"
+    ]
+  }
+}

@@ -235,8 +235,8 @@ async function getOrCreateAlertLabel() {
   return created.id;
 }
 
-/** Look up the "Processed" label ID set by the globalworx automation script. Returns null if not found. */
-async function getProcessedLabelId() {
+/** Get or create the "Processed" label ID. */
+async function getOrCreateProcessedLabel() {
   const cached = localStorage.getItem(PROCESSED_LABEL_ID_KEY);
   if (cached) return cached;
 
@@ -246,7 +246,21 @@ async function getProcessedLabelId() {
     localStorage.setItem(PROCESSED_LABEL_ID_KEY, existing.id);
     return existing.id;
   }
-  return null; // globalworx script hasn't run yet
+
+  // Create it if it doesn't exist
+  const created = await gmailPost('/users/me/labels', {
+    name: PROCESSED_LABEL_NAME,
+    labelListVisibility: 'labelShow',
+    messageListVisibility: 'show',
+  });
+  localStorage.setItem(PROCESSED_LABEL_ID_KEY, created.id);
+  console.log('[Gmail] Created label:', PROCESSED_LABEL_NAME, created.id);
+  return created.id;
+}
+
+/** @deprecated use getOrCreateProcessedLabel */
+async function getProcessedLabelId() {
+  return getOrCreateProcessedLabel();
 }
 
 /** Look up the "GLOBAL WORKS/Done" label ID. Returns null if not found. */
@@ -288,6 +302,21 @@ export async function labelAlertsDone(messageIds) {
     console.log(`[Gmail] Labeled ${messageIds.length} resolved alert(s) as "${DONE_LABEL_NAME}"`);
   } catch (err) {
     console.error('[Gmail] Failed to label messages as Done:', err);
+  }
+}
+
+/** Label accepted alert emails as "Processed" in Gmail (marks globalworxAccepted = true on next fetch) */
+export async function labelAlertsProcessed(messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  try {
+    const labelId = await getOrCreateProcessedLabel();
+    await gmailPost('/users/me/messages/batchModify', {
+      ids: messageIds,
+      addLabelIds: [labelId],
+    });
+    console.log(`[Gmail] Labeled ${messageIds.length} alert(s) as "${PROCESSED_LABEL_NAME}"`);
+  } catch (err) {
+    console.error('[Gmail] Failed to label messages as Processed:', err);
   }
 }
 

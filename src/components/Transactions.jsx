@@ -2,12 +2,13 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
-import { parseTransactions, analyzeByRoute, analyzeByDay, analyzeByStore, analyzeWarehouseMatchup, dedup, STORAGE_ROUTES } from '../services/daoTransactionParser';
+import { parseTransactions, analyzeByRoute, analyzeByDay, analyzeByStore, analyzeWarehouseMatchup, dedup, STORAGE_ROUTES, matchCustomerToStore } from '../services/daoTransactionParser';
 
 export default function Transactions() {
-  const { state, setTransactions } = useApp();
+  const { state, setTransactions, bulkImportStores } = useApp();
   const transactions = state.transactions || [];
   const [importing, setImporting] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
   const [importError, setImportError] = useState('');
   const [expandedRoute, setExpandedRoute] = useState(null);
   const [expandedDay, setExpandedDay] = useState(null);
@@ -93,7 +94,42 @@ export default function Transactions() {
       setTransactions([]);
       setExpandedRoute(null);
       setExpandedDay(null);
+      setSyncResult(null);
     }
+  }
+
+  function syncLastSaleFromTransactions() {
+    const stores = state.stores || [];
+    if (stores.length === 0 || parsed.length === 0) return;
+
+    // Only use non-void Invoice lines with a valid amount
+    const invoices = parsed.filter(t =>
+      t.docType === 'Invoice' && !t.isVoid && (t.amount || 0) > 0
+    );
+
+    // Build map: storeId → latest invoice date
+    const latestByStore = {};
+    for (const tx of invoices) {
+      const store = matchCustomerToStore(tx.custName, tx.custNum, stores);
+      if (!store) continue;
+      const date = tx.settlementDate || tx.docDate?.date;
+      if (!date) continue;
+      if (!latestByStore[store.id] || date > latestByStore[store.id]) {
+        latestByStore[store.id] = date;
+      }
+    }
+
+    // Build a single batch of updates — only where transaction date is newer
+    const updates = [];
+    for (const [storeId, date] of Object.entries(latestByStore)) {
+      const store = stores.find(s => s.id === storeId);
+      if (!store) continue;
+      if (!store.lastSaleDate || date > store.lastSaleDate) {
+        updates.push({ id: storeId, lastSaleDate: date });
+      }
+    }
+    if (updates.length > 0) bulkImportStores(updates, []);
+    setSyncResult({ updated: updates.length, total: Object.keys(latestByStore).length });
   }
 
   function fmt(n) {
@@ -724,6 +760,12 @@ export default function Transactions() {
             <button className="tx-btn tx-btn-secondary" onClick={handleClear}
               title="Remove all imported transaction data">Clear</button>
           )}
+          {parsed.length > 0 && (
+            <button className="tx-btn tx-btn-primary" onClick={syncLastSaleFromTransactions}
+              title="Update each store's Last Sale date from the most recent Invoice in this transaction data">
+              Sync Last Sale
+            </button>
+          )}
           {reportPeriods.length > 0 && (
             <div className="tx-report-dropdown-wrap" ref={reportMenuRef}>
               <button className="tx-btn tx-btn-report" onClick={() => setShowReportMenu(m => !m)}
@@ -771,6 +813,14 @@ export default function Transactions() {
       </div>
 
       {importError && <div className="tx-error">{importError}</div>}
+      {syncResult && (
+        <div className="tx-sync-result" onClick={() => setSyncResult(null)} style={{ cursor: 'pointer' }}>
+          {syncResult.updated > 0
+            ? `Last Sale updated on ${syncResult.updated} store${syncResult.updated !== 1 ? 's' : ''} (${syncResult.total} matched from transactions)`
+            : `No updates needed — all ${syncResult.total} matched stores already have current dates`}
+          {' '}✕
+        </div>
+      )}
 
       {showSetup && (
         <div className="tx-setup">
