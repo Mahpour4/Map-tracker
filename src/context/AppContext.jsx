@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, getToken } from '../services/githubService';
-import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, labelAlertsError, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
@@ -748,8 +748,12 @@ export function AppProvider({ children }) {
   }
 
   // Auto-complete Done alerts: click "Complete Here" on GlobalWorx, then label Gmail
-  // Eligible: globalworxDone + has acceptanceUrl + not yet globalworxCompleted
+  // Eligible: globalworxDone + has acceptanceUrl + not yet globalworxCompleted + not yet globalworxError
   let _completingInProgress = false;
+  // Track click failures per refNumber — after 2 failed cycles, apply Error label
+  const _completeRetryCount = {};
+  const MAX_COMPLETE_RETRIES = 2;
+
   async function autoCompleteAlerts(alerts) {
     if (!isGmailConnected()) return;
     if (_completingInProgress) {
@@ -763,6 +767,7 @@ export function AppProvider({ children }) {
 
     const toComplete = alerts.filter(a => {
       if (!a.emailId || a.globalworxCompleted) return false;
+      if (a.globalworxError) return false;
       if (!a.globalworxDone) return false;
       if (!a.acceptanceUrl) return false;
       return true;
@@ -786,19 +791,49 @@ export function AppProvider({ children }) {
       // (backend returns notAccepted=true when "Accept Here" button is still showing).
       const successIds = [];
       const notAccepted = [];
+      const clickFailed = [];
       results.forEach(r => {
         if (r.notAccepted) {
           notAccepted.push(r.refNumber);
         } else if (r.success) {
-          // Only label as Completed if the Complete button was actually clicked
+          // Only label as Completed if the Complete button was actually clicked (verified)
           successIds.push(r.emailId);
+          // Clear retry count on success
+          delete _completeRetryCount[r.refNumber];
+        } else if (r.clickFailed) {
+          // Button was found but click didn't register after all attempts
+          clickFailed.push(r.refNumber);
         }
-        // success=false without notAccepted = Complete button not found, don't label
+        // success=false without notAccepted/clickFailed = other error, don't label
       });
       const emailIds = successIds.filter(Boolean);
       if (emailIds.length > 0) {
         await labelAlertsCompleted(emailIds);
         toComplete.filter(a => emailIds.includes(a.emailId)).forEach(a => { a.globalworxCompleted = true; });
+      }
+
+      // Handle click failures — retry up to MAX_COMPLETE_RETRIES, then apply Error label
+      if (clickFailed.length > 0) {
+        const errorRefNumbers = [];
+        clickFailed.forEach(ref => {
+          _completeRetryCount[ref] = (_completeRetryCount[ref] || 0) + 1;
+          console.warn(`[Alerts] Click failed for ${ref} — attempt ${_completeRetryCount[ref]}/${MAX_COMPLETE_RETRIES}`);
+          if (_completeRetryCount[ref] >= MAX_COMPLETE_RETRIES) {
+            errorRefNumbers.push(ref);
+            delete _completeRetryCount[ref];
+          }
+        });
+
+        // Apply Error label to alerts that exhausted retries
+        if (errorRefNumbers.length > 0) {
+          const errorAlerts = toComplete.filter(a => errorRefNumbers.includes(a.refNumber));
+          const errorEmailIds = errorAlerts.map(a => a.emailId).filter(Boolean);
+          if (errorEmailIds.length > 0) {
+            console.error(`[Alerts] Applying Error label to ${errorRefNumbers.length} alert(s) after ${MAX_COMPLETE_RETRIES} failed attempts: ${errorRefNumbers.join(', ')}`);
+            await labelAlertsError(errorEmailIds);
+            errorAlerts.forEach(a => { a.globalworxError = true; });
+          }
+        }
       }
 
       // Strip false Done/Completed labels from alerts that were never accepted on GlobalWorx
@@ -815,8 +850,9 @@ export function AppProvider({ children }) {
         }
       }
       const completed = results.filter(r => r.success).length;
-      const alreadyClosed = results.filter(r => !r.success && !r.notAccepted).length;
-      console.log(`[Alerts] GlobalWorx completion: ${completed} completed, ${alreadyClosed} already closed, ${notAccepted.length} not accepted. ${emailIds.length} labeled in Gmail.`);
+      const clickFailedCount = clickFailed.length;
+      const alreadyClosed = results.filter(r => !r.success && !r.notAccepted && !r.clickFailed).length;
+      console.log(`[Alerts] GlobalWorx completion: ${completed} completed, ${clickFailedCount} click failed (will retry), ${alreadyClosed} already closed, ${notAccepted.length} not accepted. ${emailIds.length} labeled in Gmail.`);
     } catch (err) {
       console.warn('[Alerts] GlobalWorx completion service unavailable — not labeling (will retry next cycle):', err.message);
     }

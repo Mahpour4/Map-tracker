@@ -211,6 +211,9 @@ const DONE_LABEL_ID_KEY = 'gmail_done_label_id';
 const COMPLETED_LABEL_NAME = 'GLOBAL WORKS/Completed';
 const COMPLETED_LABEL_ID_KEY = 'gmail_completed_label_id';
 
+const ERROR_LABEL_NAME = 'GLOBAL WORKS/Error';
+const ERROR_LABEL_ID_KEY = 'gmail_error_label_id';
+
 async function getOrCreateAlertLabel() {
   // Check cached label ID first
   const cached = localStorage.getItem(LABEL_ID_KEY);
@@ -289,6 +292,26 @@ async function getCompletedLabelId() {
   return null;
 }
 
+/** Get or create the "GLOBAL WORKS/Error" label. */
+async function getOrCreateErrorLabel() {
+  const cached = localStorage.getItem(ERROR_LABEL_ID_KEY);
+  if (cached) return cached;
+  const labelsResult = await gmailFetch('/users/me/labels');
+  const existing = labelsResult.labels?.find(l => l.name === ERROR_LABEL_NAME);
+  if (existing) {
+    localStorage.setItem(ERROR_LABEL_ID_KEY, existing.id);
+    return existing.id;
+  }
+  const created = await gmailPost('/users/me/labels', {
+    name: ERROR_LABEL_NAME,
+    labelListVisibility: 'labelShow',
+    messageListVisibility: 'show',
+  });
+  localStorage.setItem(ERROR_LABEL_ID_KEY, created.id);
+  console.log('[Gmail] Created label:', ERROR_LABEL_NAME, created.id);
+  return created.id;
+}
+
 /** Label resolved alert emails as "GLOBAL WORKS/Done" in Gmail */
 export async function labelAlertsDone(messageIds) {
   if (!messageIds || messageIds.length === 0) return;
@@ -333,6 +356,21 @@ export async function labelAlertsCompleted(messageIds) {
     console.log(`[Gmail] Labeled ${messageIds.length} alert(s) as "${COMPLETED_LABEL_NAME}"`);
   } catch (err) {
     console.error('[Gmail] Failed to label messages as Completed:', err);
+  }
+}
+
+/** Label alert emails as "GLOBAL WORKS/Error" in Gmail (click failed after retries) */
+export async function labelAlertsError(messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  try {
+    const labelId = await getOrCreateErrorLabel();
+    await gmailPost('/users/me/messages/batchModify', {
+      ids: messageIds,
+      addLabelIds: [labelId],
+    });
+    console.log(`[Gmail] Labeled ${messageIds.length} alert(s) as "${ERROR_LABEL_NAME}"`);
+  } catch (err) {
+    console.error('[Gmail] Failed to label messages as Error:', err);
   }
 }
 
@@ -402,9 +440,11 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
   let processedLabelId = null;
   let doneLabelId = null;
   let completedLabelId = null;
+  let errorLabelId = null;
   try { processedLabelId = await getProcessedLabelId(); } catch (_) {}
   try { doneLabelId = await getDoneLabelId(); } catch (_) {}
   try { completedLabelId = await getCompletedLabelId(); } catch (_) {}
+  try { errorLabelId = await getOrCreateErrorLabel(); } catch (_) {}
 
   // Fetch messages in parallel batches for speed
   const BATCH_SIZE = 10;
@@ -443,6 +483,7 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
           parsed.globalworxAccepted = processedLabelId ? labels.includes(processedLabelId) : false;
           parsed.globalworxDone = doneLabelId ? labels.includes(doneLabelId) : false;
           parsed.globalworxCompleted = completedLabelId ? labels.includes(completedLabelId) : false;
+          parsed.globalworxError = errorLabelId ? labels.includes(errorLabelId) : false;
           // Extract acceptance URL from email body
           const body = extractBody(detail.payload);
           parsed.acceptanceUrl = extractAcceptanceUrl(body);

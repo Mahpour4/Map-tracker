@@ -434,7 +434,7 @@ async function completeAlert(page, url, refNumber) {
     });
 
     // Look for "Complete Here" button: <input class="timelog-btn" value="Complete Here">
-    let completed = false;
+    let buttonFound = false;
 
     // ONLY match the exact "Complete Here" button — class="timelog-btn" or exact value
     // Do NOT use broad wildcards like input[value*="Complete"] — they match dashboard filters
@@ -442,23 +442,16 @@ async function completeAlert(page, url, refNumber) {
       'input.timelog-btn',
       'input[value="Complete Here"]',
     ];
-    for (const sel of completeCssSelectors) {
-      const found = await findAllInFrames(page, sel);
-      if (found && found.elements.length > 0) {
-        const tag = await found.elements[0].evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
-        console.log(`[GW]   Found Complete button via CSS "${sel}": ${tag}`);
-        await found.elements[0].evaluate(el => el.scrollIntoView({ block: 'center' }));
-        await sleep(500);
-        await found.elements[0].evaluate(el => el.click());
-        completed = true;
-        await sleep(2000);
-        await saveDebug(page, refNumber, 'after-complete-click');
-        break;
-      }
-    }
 
-    // XPath fallback — specific selectors only
-    if (!completed) {
+    // Helper: find the Complete button in any frame
+    async function findCompleteButton() {
+      for (const sel of completeCssSelectors) {
+        const found = await findAllInFrames(page, sel);
+        if (found && found.elements.length > 0) {
+          return { element: found.elements[0], selector: sel, frame: found.frame };
+        }
+      }
+      // XPath fallback
       const completeXpaths = [
         "//input[@value='Complete Here']",
         "//input[contains(@class, 'timelog-btn')]",
@@ -466,30 +459,81 @@ async function completeAlert(page, url, refNumber) {
       for (const xpath of completeXpaths) {
         const found = await findInFrames(page, xpath);
         if (found) {
-          console.log(`[GW]   Found Complete button via XPath: ${xpath.substring(0, 50)}`);
-          await found.element.evaluate(el => el.click());
-          completed = true;
-          await sleep(2000);
-          await saveDebug(page, refNumber, 'after-complete-click-xpath');
-          break;
+          return { element: found.element, selector: xpath, frame: found.frame };
         }
       }
-    }
-
-    // Text-based fallback
-    if (!completed) {
+      // Text fallback
       const textEl = await findByText(page, ['Complete Here']);
       if (textEl) {
-        console.log(`[GW]   Found Complete button via text search "Complete Here"`);
-        await textEl.evaluate(el => el.click());
-        completed = true;
-        await sleep(2000);
-        await saveDebug(page, refNumber, 'after-complete-click-text');
+        return { element: textEl, selector: 'text:Complete Here', frame: null };
       }
+      return null;
     }
 
-    if (completed) {
-      console.log(`[GW]   COMPLETED ${refNumber}`);
+    const btn = await findCompleteButton();
+    if (btn) {
+      buttonFound = true;
+      const tag = await btn.element.evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
+      console.log(`[GW]   Found Complete button via "${btn.selector}": ${tag}`);
+
+      // Attempt 1: Puppeteer native .click() — fires real mousedown/mouseup/click events
+      console.log(`[GW]   Attempt 1: Puppeteer native .click()`);
+      await btn.element.evaluate(el => el.scrollIntoView({ block: 'center' }));
+      await sleep(500);
+      try {
+        await btn.element.click();
+      } catch (clickErr) {
+        console.log(`[GW]   Puppeteer .click() threw: ${clickErr.message} — trying evaluate fallbacks`);
+      }
+      await sleep(3000);
+
+      // Verify: is the button still there?
+      let stillThere = await findCompleteButton();
+      if (stillThere) {
+        console.log(`[GW]   Button still present after Attempt 1 — click did not register`);
+        await saveDebug(page, refNumber, 'after-complete-attempt1-failed');
+
+        // Attempt 2: Directly invoke the onclick handler via evaluate
+        console.log(`[GW]   Attempt 2: Direct onclick invocation via evaluate`);
+        await stillThere.element.evaluate(el => {
+          // Try invoking onclick attribute directly
+          if (el.onclick) {
+            el.onclick.call(el, new MouseEvent('click', { bubbles: true, cancelable: true }));
+          } else {
+            // Fallback: dispatch a full MouseEvent
+            el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          }
+        });
+        await sleep(3000);
+
+        stillThere = await findCompleteButton();
+        if (stillThere) {
+          console.log(`[GW]   Button still present after Attempt 2 — trying schedList.checkout`);
+          await saveDebug(page, refNumber, 'after-complete-attempt2-failed');
+
+          // Attempt 3: Call schedList.checkout directly (the actual onclick handler)
+          console.log(`[GW]   Attempt 3: Calling schedList.checkout() directly`);
+          const targetFrame = btn.frame || page;
+          await targetFrame.evaluate(() => {
+            var btn = document.querySelector('input.timelog-btn') || document.querySelector('input[value="Complete Here"]');
+            if (btn && typeof schedList !== 'undefined' && typeof schedList.checkout === 'function') {
+              schedList.checkout(btn.form, btn);
+            }
+          });
+          await sleep(3000);
+
+          stillThere = await findCompleteButton();
+          if (stillThere) {
+            console.log(`[GW]   Button STILL present after all 3 attempts — click FAILED`);
+            await saveDebug(page, refNumber, 'after-complete-all-attempts-failed');
+            return { success: false, clickFailed: true, error: 'Complete button found but click did not register after 3 attempts' };
+          }
+        }
+      }
+
+      // Button is gone — click was successful
+      await saveDebug(page, refNumber, 'after-complete-verified');
+      console.log(`[GW]   COMPLETED ${refNumber} (verified — button no longer present)`);
       return { success: true };
     }
 
