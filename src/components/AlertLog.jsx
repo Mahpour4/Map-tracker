@@ -42,7 +42,7 @@ function formatDate(dateStr) {
 }
 
 export default function AlertLog() {
-  const { state, selectStore, setSidebarTab, setMapView, setPage, setFilterRoute, setFilterRegion, setFilterType, setSearch, loadAlertImage, fetchGmailAlerts, syncFromGithub } = useApp();
+  const { state, selectStore, setSidebarTab, setMapView, setPage, setFilterRoute, setFilterRegion, setFilterType, setSearch, loadAlertImage, fetchGmailAlerts, autoAcceptAlerts, syncFromGithub } = useApp();
   const { alerts, stores, alertImages, syncStatus, schedules, visitHistory, travelLog, fleetVehicles } = state;
 
   const today = localDateStr();
@@ -78,6 +78,7 @@ export default function AlertLog() {
   const [statsRouteTime, setStatsRouteTime] = useState('all'); // 'all' | 'this-week' | '30d' | '90d'
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
   const [autoClearing, setAutoClearing] = useState(false);
+  const [autoAccepting, setAutoAccepting] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
@@ -297,6 +298,13 @@ export default function AlertLog() {
       if (hoursSince < 48) return false;
       return a.status === 'resolved' || a.globalworxDone;
     }).length;
+  }, [enrichedAlerts]);
+
+  // Count alerts eligible for auto-accept (has URL, not yet accepted/done/completed)
+  const autoAcceptCount = useMemo(() => {
+    return enrichedAlerts.filter(a =>
+      a.acceptanceUrl && !a.globalworxAccepted && !a.globalworxDone && !a.globalworxCompleted
+    ).length;
   }, [enrichedAlerts]);
 
   // Comprehensive statistics across all dimensions
@@ -556,6 +564,27 @@ export default function AlertLog() {
       alert(`Failed to auto-clear: ${err.message}`);
     } finally {
       setAutoClearing(false);
+    }
+  }
+
+  // Auto-accept: send all unaccepted alerts to GlobalWorx backend for acceptance
+  async function handleAutoAccept() {
+    if (autoAcceptCount === 0) {
+      alert('No alerts to auto-accept. Alerts must have an acceptance URL and not already be accepted.');
+      return;
+    }
+    setAutoAccepting(true);
+    try {
+      const result = await autoAcceptAlerts();
+      if (result.accepted > 0) {
+        // Refresh alerts to pick up new "Processed" labels
+        await fetchGmailAlerts();
+      }
+      alert(`Auto-Accept: ${result.accepted} accepted, ${result.failed} failed out of ${result.total}`);
+    } catch (err) {
+      alert(`Auto-Accept failed: ${err.message}`);
+    } finally {
+      setAutoAccepting(false);
     }
   }
 
@@ -1435,6 +1464,16 @@ export default function AlertLog() {
             <span className="al-stat blue" title="Accepted on GlobalWorx">{stats.accepted} <span>Accepted</span></span>
             <span className="al-stat teal" title="Store visited — awaiting GW completion">{stats.done} <span>Done</span></span>
             <span className="al-stat emerald" title="Completed on GlobalWorx">{stats.completed} <span>Completed</span></span>
+            {autoAcceptCount > 0 && (
+              <button
+                className="al-btn-autoaccept"
+                onClick={handleAutoAccept}
+                disabled={autoAccepting}
+                title={`${autoAcceptCount} alert(s) have acceptance URLs — auto-accept on GlobalWorx`}
+              >
+                {autoAccepting ? 'Accepting...' : `Auto-Accept ${autoAcceptCount}`}
+              </button>
+            )}
             {autoClearCount > 0 && (
               <button
                 className="al-btn-autoclear"

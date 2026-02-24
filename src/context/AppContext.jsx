@@ -4,6 +4,7 @@ import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '..
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone } from '../services/gmailAlertService';
+import { acceptAlerts as gwAcceptAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
 import localWarehouses from '../data/warehouses.json';
@@ -810,6 +811,34 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  // Auto-accept unaccepted alerts via GlobalWorx backend (Puppeteer)
+  const autoAcceptAlerts = useCallback(async () => {
+    const unaccepted = state.alerts.filter(a =>
+      a.acceptanceUrl && !a.globalworxAccepted && !a.globalworxDone && !a.globalworxCompleted
+    );
+    if (unaccepted.length === 0) return { accepted: 0, failed: 0, total: 0 };
+
+    const payload = unaccepted.map(a => ({
+      url: a.acceptanceUrl,
+      refNumber: a.refNumber,
+      emailId: a.emailId,
+    }));
+
+    const { results } = await gwAcceptAlerts(payload);
+
+    // Label successfully accepted emails as "Processed" in Gmail
+    const acceptedIds = results.filter(r => r.success && r.emailId).map(r => r.emailId);
+    if (acceptedIds.length > 0 && isGmailConnected()) {
+      try {
+        await labelAlertMessages(acceptedIds);
+      } catch (_) {}
+    }
+
+    const accepted = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+    return { accepted, failed, total: unaccepted.length, results };
+  }, [state.alerts]);
+
   const syncAlertsFromGithub = useCallback(() => {
     if (!getToken()) return;
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
@@ -1197,6 +1226,7 @@ export function AppProvider({ children }) {
     syncFromGithub,
     saveToGithub,
     fetchGmailAlerts,
+    autoAcceptAlerts,
     syncAlertsFromGithub,
     loadAlertImage,
     saveSchedule,

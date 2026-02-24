@@ -4,6 +4,55 @@
  */
 
 /**
+ * Sub-route mapping — sub-routes are combined into their parent route
+ * e.g., route 206 is a sub-route of 210, so their data is merged
+ */
+export const SUB_ROUTE_MAP = {
+  '206': '210',
+};
+
+/**
+ * Storage routes — these trucks deliver supplies to storage locations.
+ * Loads/Route Orders are internal supply movements, NOT cost of goods sold.
+ * Only Invoice transactions to named stores count for revenue/metrics.
+ */
+export const STORAGE_ROUTES = new Set(['211']);
+
+// Reverse lookup: parent → [sub-routes]
+const SUB_ROUTE_CHILDREN = {};
+for (const [sub, parent] of Object.entries(SUB_ROUTE_MAP)) {
+  if (!SUB_ROUTE_CHILDREN[parent]) SUB_ROUTE_CHILDREN[parent] = [];
+  SUB_ROUTE_CHILDREN[parent].push(sub);
+}
+
+/**
+ * Get the effective route (parent) for a given route number
+ */
+export function getParentRoute(route) {
+  return SUB_ROUTE_MAP[route] || route;
+}
+
+/**
+ * Get all route numbers in a group (parent + sub-routes)
+ */
+export function getRouteGroup(route) {
+  const parent = getParentRoute(route);
+  const children = SUB_ROUTE_CHILDREN[parent] || [];
+  return [parent, ...children];
+}
+
+/**
+ * Get display label for a route (e.g., "210 (+206)")
+ */
+export function getRouteLabel(route) {
+  const children = SUB_ROUTE_CHILDREN[route];
+  if (children && children.length > 0) {
+    return `${route} (+${children.join(', +')})`;
+  }
+  return route;
+}
+
+/**
  * Parse and normalize raw transaction JSON from the bookmarklet
  */
 export function parseTransactions(rawArray) {
@@ -123,7 +172,7 @@ export function matchCustomerToStore(custName, custNum, stores) {
 /**
  * Deduplicate transactions by ID — keeps first occurrence of each ID
  */
-function dedup(txs) {
+export function dedup(txs) {
   const seen = new Set();
   return txs.filter(t => {
     if (!t.id || !seen.has(t.id)) {
@@ -135,46 +184,71 @@ function dedup(txs) {
 }
 
 /**
- * Analyze transactions grouped by route
+ * Analyze transactions grouped by route (sub-routes merged into parent)
  */
 export function analyzeByRoute(transactions) {
   const routes = {};
 
   for (const tx of transactions) {
-    if (!tx.route || tx.isVoid) continue;
-    if (!routes[tx.route]) {
-      routes[tx.route] = {
-        route: tx.route,
+    if (!tx.route) continue;
+    // Map sub-routes to their parent
+    const effectiveRoute = getParentRoute(tx.route);
+    if (!routes[effectiveRoute]) {
+      routes[effectiveRoute] = {
+        route: effectiveRoute,
+        subRoutes: new Set(),
         transactions: [],
         dates: new Set(),
       };
     }
-    routes[tx.route].transactions.push(tx);
-    if (tx.settlementDate) routes[tx.route].dates.add(tx.settlementDate);
+    if (tx.route !== effectiveRoute) {
+      routes[effectiveRoute].subRoutes.add(tx.route);
+    }
+    routes[effectiveRoute].transactions.push(tx);
+    if (tx.settlementDate && !tx.isVoid) routes[effectiveRoute].dates.add(tx.settlementDate);
   }
 
   return Object.values(routes).map(r => {
     const txs = r.transactions;
-    const loads = dedup(txs.filter(t => t.docType === 'Load' || t.docType === 'Route Order'));
-    const invoices = dedup(txs.filter(t => t.docType === 'Invoice'));
-    const deliveries = dedup(txs.filter(t => t.docType === 'Delivery'));
-    const truckInv = dedup(txs.filter(t => t.docType === 'Truck Inventory'));
+    // Non-void transactions for totals
+    const activeTxs = txs.filter(t => !t.isVoid);
+    const voidTxs = txs.filter(t => t.isVoid);
+    const isStorage = STORAGE_ROUTES.has(r.route);
+    const loads = dedup(activeTxs.filter(t => t.docType === 'Load' || t.docType === 'Route Order'));
+    const invoices = dedup(activeTxs.filter(t => t.docType === 'Invoice'));
+    const deliveries = dedup(activeTxs.filter(t => t.docType === 'Delivery'));
+    const truckInv = dedup(activeTxs.filter(t => t.docType === 'Truck Inventory'));
 
-    const loadTotal = loads.reduce((s, t) => s + t.amount, 0);
+    // Storage routes: loads are internal supply movements, not COGS
+    const loadTotal = isStorage ? 0 : loads.reduce((s, t) => s + t.amount, 0);
     const grossSales = invoices.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
     const credits = invoices.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
     const netSales = grossSales + credits;
     const sellThrough = loadTotal > 0 ? (netSales / loadTotal) * 100 : 0;
     const storeNames = new Set(invoices.filter(t => t.custName).map(t => t.custName));
-    const dsdOk = txs.filter(t => t.dsd === 'OK').length;
-    const dsdMissing = txs.filter(t => t.dsd === 'Missing').length;
+    const dsdOk = activeTxs.filter(t => t.dsd === 'OK').length;
+    const dsdMissing = activeTxs.filter(t => t.dsd === 'Missing').length;
     const dates = [...r.dates].sort();
 
+    // Payment method breakdown — from non-void invoices only
+    const paymentBreakdown = {};
+    for (const inv of invoices) {
+      const method = inv.invoiceType || 'Other';
+      if (!paymentBreakdown[method]) paymentBreakdown[method] = { count: 0, total: 0 };
+      paymentBreakdown[method].count++;
+      paymentBreakdown[method].total += inv.amount;
+    }
+
+    const subRoutes = [...(r.subRoutes || [])].sort();
     return {
       route: r.route,
+      subRoutes,
+      isStorage,
+      displayRoute: subRoutes.length > 0 ? `${r.route} (+${subRoutes.join(', +')})` : r.route,
       dateRange: dates.length > 0 ? `${formatDateShort(dates[0])} - ${formatDateShort(dates[dates.length - 1])}` : '',
       dates,
       loadTotal,
+      rawLoadTotal: loads.reduce((s, t) => s + t.amount, 0),
       grossSales,
       credits,
       netSales,
@@ -187,6 +261,9 @@ export function analyzeByRoute(transactions) {
       deliveryTotal: deliveries.reduce((s, t) => s + t.deliveryAmount, 0),
       deliveryDiffTotal: deliveries.reduce((s, t) => s + t.deliveryDifference, 0),
       truckInventory: truckInv.reduce((s, t) => s + t.amount, 0),
+      paymentBreakdown,
+      voidCount: voidTxs.length,
+      voidTotal: voidTxs.filter(t => t.docType === 'Invoice').reduce((s, t) => s + t.amount, 0),
       transactionCount: txs.length,
       transactions: txs,
     };
@@ -194,11 +271,15 @@ export function analyzeByRoute(transactions) {
 }
 
 /**
- * Analyze transactions grouped by day within a route
+ * Analyze transactions grouped by day within a route (includes sub-routes)
  */
 export function analyzeByDay(transactions, routeFilter) {
+  const isStorage = routeFilter ? STORAGE_ROUTES.has(getParentRoute(routeFilter)) : false;
   const filtered = routeFilter
-    ? transactions.filter(t => t.route === routeFilter)
+    ? (() => {
+        const group = new Set(getRouteGroup(routeFilter));
+        return transactions.filter(t => group.has(t.route));
+      })()
     : transactions;
 
   const days = {};
@@ -216,7 +297,8 @@ export function analyzeByDay(transactions, routeFilter) {
     const loads = dedup(txs.filter(t => t.docType === 'Load' || t.docType === 'Route Order'));
     const invoices = dedup(txs.filter(t => t.docType === 'Invoice'));
 
-    const loadTotal = loads.reduce((s, t) => s + t.amount, 0);
+    // Storage routes: loads are internal supply movements, not COGS
+    const loadTotal = isStorage ? 0 : loads.reduce((s, t) => s + t.amount, 0);
     const grossSales = invoices.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
     const credits = invoices.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
     const netSales = grossSales + credits;
@@ -239,27 +321,35 @@ export function analyzeByDay(transactions, routeFilter) {
 }
 
 /**
- * Get store-level breakdown for a specific route and date
+ * Get store-level breakdown for a specific route and date (includes sub-routes)
  */
 export function analyzeByStore(transactions, routeFilter, dateFilter) {
-  let filtered = transactions.filter(t => !t.isVoid);
-  if (routeFilter) filtered = filtered.filter(t => t.route === routeFilter);
+  // Include ALL transactions (including voids) — voids appear in ledger but not in totals
+  let filtered = [...transactions];
+  if (routeFilter) {
+    const group = new Set(getRouteGroup(routeFilter));
+    filtered = filtered.filter(t => group.has(t.route));
+  }
   if (dateFilter) filtered = filtered.filter(t => t.settlementDate === dateFilter || t.docDate?.date === dateFilter);
 
   const stores = {};
+  const routeOpsKey = '__route_ops__';
   for (const tx of filtered) {
-    if (!tx.custName || tx.docType === 'Settle') continue;
-    const key = tx.custName;
+    if (tx.docType === 'Settle') continue;
+    // Group transactions without a customer (Load, Route Order, Truck Inventory) under "Route Operations"
+    const key = tx.custName || routeOpsKey;
+    const label = tx.custName || 'Route Operations';
     if (!stores[key]) {
-      stores[key] = { custName: tx.custName, custNum: tx.custNum, transactions: [] };
+      stores[key] = { custName: label, custNum: tx.custNum || '', transactions: [], isRouteOps: key === routeOpsKey };
     }
     stores[key].transactions.push(tx);
   }
 
   return Object.values(stores).map(s => {
-    const invoices = s.transactions.filter(t => t.docType === 'Invoice');
+    // Only count non-void invoices in totals
+    const invoices = s.transactions.filter(t => t.docType === 'Invoice' && !t.isVoid);
     const total = invoices.reduce((sum, t) => sum + t.amount, 0);
-    const dsdStatus = s.transactions.find(t => t.dsd)?.dsd || '';
+    const dsdStatus = s.transactions.find(t => t.dsd && !t.isVoid)?.dsd || '';
 
     return {
       custName: s.custName,
@@ -268,8 +358,140 @@ export function analyzeByStore(transactions, routeFilter, dateFilter) {
       invoiceCount: invoices.length,
       dsd: dsdStatus,
       transactions: s.transactions,
+      isRouteOps: s.isRouteOps || false,
     };
-  }).sort((a, b) => b.total - a.total);
+  }).sort((a, b) => {
+    // Route Operations always first
+    if (a.isRouteOps) return -1;
+    if (b.isRouteOps) return 1;
+    return b.total - a.total;
+  });
+}
+
+/**
+ * Extract route number from warehouse (Rt 99) customer name
+ * "208 - JOBBER" → "208", "200 - Jose Nunez" → "200"
+ */
+function extractRouteFromWarehouseCust(custName) {
+  if (!custName) return null;
+  const match = custName.match(/^(\d{2,3})\s*-/);
+  return match ? String(parseInt(match[1], 10)) : null;
+}
+
+/**
+ * Get the next calendar day in YYYY-MM-DD format
+ */
+function nextDay(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Match warehouse (Rt 99) invoices to route loads
+ * Returns per-route comparison: warehouse invoice vs route load
+ * Handles 1-day offset — warehouse invoices the evening before,
+ * route records the load the next morning
+ */
+export function analyzeWarehouseMatchup(transactions) {
+  const rt99 = transactions.filter(t => t.route === '99' && !t.isVoid);
+  const others = transactions.filter(t => t.route !== '99' && !t.isVoid);
+
+  // Warehouse invoices grouped by target route + date
+  const whInvoices = {};
+  for (const tx of rt99) {
+    if (tx.docType !== 'Invoice') continue;
+    const targetRoute = extractRouteFromWarehouseCust(tx.custName);
+    if (!targetRoute) continue;
+    const date = tx.settlementDate || tx.docDate?.date || '';
+    if (!date) continue;
+    const key = `${targetRoute}|${date}`;
+    if (!whInvoices[key]) whInvoices[key] = { route: targetRoute, date, invoices: [], custName: tx.custName };
+    whInvoices[key].invoices.push(tx);
+  }
+
+  // Route loads grouped by route + date
+  const routeLoads = {};
+  for (const tx of others) {
+    if (tx.docType !== 'Load' && tx.docType !== 'Route Order') continue;
+    const route = tx.route;
+    const date = tx.settlementDate || tx.docDate?.date || '';
+    if (!date) continue;
+    const key = `${route}|${date}`;
+    if (!routeLoads[key]) routeLoads[key] = { route, date, loads: [] };
+    routeLoads[key].loads.push(tx);
+  }
+
+  // Match warehouse invoices to route loads, allowing 1-day offset
+  const results = [];
+  const matchedLoadKeys = new Set();
+
+  for (const whKey of Object.keys(whInvoices)) {
+    const wh = whInvoices[whKey];
+    const whDeduped = dedup(wh.invoices);
+    const whAmount = whDeduped.reduce((s, t) => s + t.amount, 0);
+    const invoiceId = whDeduped.map(t => t.id).filter(Boolean).join(', ');
+
+    // Try same-date match first, then next-day match
+    const sameDayKey = `${wh.route}|${wh.date}`;
+    const nextDayKey = `${wh.route}|${nextDay(wh.date)}`;
+    const rl = routeLoads[sameDayKey] || routeLoads[nextDayKey];
+    const rlKey = routeLoads[sameDayKey] ? sameDayKey : (routeLoads[nextDayKey] ? nextDayKey : null);
+
+    if (rlKey) matchedLoadKeys.add(rlKey);
+
+    const routeLoadAmount = rl ? dedup(rl.loads).reduce((s, t) => s + t.amount, 0) : 0;
+    const loadDate = rl ? rl.date : '';
+    const diff = whAmount - routeLoadAmount;
+    const matched = !!rl && Math.abs(diff) < 0.01;
+
+    results.push({
+      route: wh.route,
+      date: wh.date,
+      dateFormatted: formatDateShort(wh.date),
+      loadDate,
+      loadDateFormatted: formatDateShort(loadDate),
+      custName: wh.custName,
+      invoiceId,
+      warehouseAmount: whAmount,
+      routeLoadAmount,
+      difference: diff,
+      matched,
+      hasWarehouse: true,
+      hasRouteLoad: !!rl,
+    });
+  }
+
+  // Add unmatched route loads (no warehouse invoice on same day or day before)
+  for (const rlKey of Object.keys(routeLoads)) {
+    if (matchedLoadKeys.has(rlKey)) continue;
+    const rl = routeLoads[rlKey];
+    const routeLoadAmount = dedup(rl.loads).reduce((s, t) => s + t.amount, 0);
+
+    results.push({
+      route: rl.route,
+      date: rl.date,
+      dateFormatted: formatDateShort(rl.date),
+      loadDate: rl.date,
+      loadDateFormatted: formatDateShort(rl.date),
+      custName: '',
+      invoiceId: '',
+      warehouseAmount: 0,
+      routeLoadAmount,
+      difference: -routeLoadAmount,
+      matched: false,
+      hasWarehouse: false,
+      hasRouteLoad: true,
+    });
+  }
+
+  return results.sort((a, b) => {
+    const rc = a.route.localeCompare(b.route, undefined, { numeric: true });
+    return rc !== 0 ? rc : a.date.localeCompare(b.date);
+  });
 }
 
 function formatDateShort(dateStr) {

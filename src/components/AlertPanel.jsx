@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   getGoogleClientId,
@@ -32,7 +32,7 @@ function getAlertStatus(alert, store) {
 }
 
 export default function AlertPanel() {
-  const { state, fetchGmailAlerts, selectStore, setMapView, setPage, setFilterRoute } = useApp();
+  const { state, fetchGmailAlerts, autoAcceptAlerts, selectStore, setMapView, setPage, setFilterRoute } = useApp();
   const { alerts, stores, visitHistory } = state;
 
   const [showSetup, setShowSetup] = useState(false);
@@ -41,6 +41,10 @@ export default function AlertPanel() {
   const [fetchResult, setFetchResult] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
   const [debugData, setDebugData] = useState(null);
+  const [autoCheck, setAutoCheck] = useState(() => localStorage.getItem('gw_auto_check') === 'true');
+  const [autoCheckStatus, setAutoCheckStatus] = useState(''); // '' | 'checking' | 'Next check in Xm'
+  const autoCheckRef = useRef(null);
+  const nextCheckRef = useRef(null);
 
   const connected = isGmailConnected();
   const hasClientId = !!getGoogleClientId();
@@ -122,6 +126,59 @@ export default function AlertPanel() {
     setClientIdInput('');
   }
 
+  // Auto-Check: periodic fetch + auto-accept cycle
+  const AUTO_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes
+
+  const runAutoCheck = useCallback(async () => {
+    if (!isGmailConnected()) return;
+    setAutoCheckStatus('checking');
+    try {
+      await fetchGmailAlerts();
+      try { await autoAcceptAlerts(); } catch (_) {}
+    } catch (_) {}
+    setAutoCheckStatus('');
+  }, [fetchGmailAlerts, autoAcceptAlerts]);
+
+  function toggleAutoCheck() {
+    const next = !autoCheck;
+    setAutoCheck(next);
+    localStorage.setItem('gw_auto_check', String(next));
+    if (next && connected) {
+      // Run immediately, then set interval
+      runAutoCheck();
+    }
+  }
+
+  useEffect(() => {
+    if (autoCheckRef.current) clearInterval(autoCheckRef.current);
+    if (nextCheckRef.current) clearInterval(nextCheckRef.current);
+
+    if (autoCheck && connected) {
+      let lastRun = Date.now();
+      autoCheckRef.current = setInterval(() => {
+        lastRun = Date.now();
+        runAutoCheck();
+      }, AUTO_CHECK_INTERVAL);
+
+      // Update countdown display every 30s
+      nextCheckRef.current = setInterval(() => {
+        const elapsed = Date.now() - lastRun;
+        const remaining = Math.max(0, Math.ceil((AUTO_CHECK_INTERVAL - elapsed) / 60000));
+        setAutoCheckStatus(prev => prev === 'checking' ? prev : `Next in ${remaining}m`);
+      }, 30000);
+
+      // Initial countdown
+      setAutoCheckStatus(`Next in 15m`);
+    } else {
+      setAutoCheckStatus('');
+    }
+
+    return () => {
+      if (autoCheckRef.current) clearInterval(autoCheckRef.current);
+      if (nextCheckRef.current) clearInterval(nextCheckRef.current);
+    };
+  }, [autoCheck, connected, runAutoCheck]);
+
   return (
     <div className="alert-panel">
       <div className="panel-header">
@@ -143,6 +200,15 @@ export default function AlertPanel() {
               disabled={fetching}
             >
               {fetching ? 'Fetching...' : 'Fetch'}
+            </button>
+          )}
+          {connected && (
+            <button
+              className={`btn btn-xs ${autoCheck ? 'btn-active' : ''}`}
+              onClick={toggleAutoCheck}
+              title={autoCheck ? `Auto-Check ON — ${autoCheckStatus || 'fetches & accepts every 15 min'}` : 'Enable auto-check: fetch alerts & auto-accept every 15 min'}
+            >
+              {autoCheck ? (autoCheckStatus === 'checking' ? 'Checking...' : `Auto ✓`) : 'Auto'}
             </button>
           )}
           <button

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const whatsapp = require('./whatsapp');
+const globalworx = require('./globalworx');
 
 const app = express();
 const PORT = 3001;
@@ -65,6 +66,48 @@ app.post('/api/whatsapp/send-report', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('Send report error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GlobalWorx Auto-Accept Endpoints ─────────────────────────────────────────
+
+// Check if GlobalWorx acceptance service (Puppeteer/Chrome) is available
+app.get('/api/globalworx/status', async (req, res) => {
+  try {
+    const status = await globalworx.checkStatus();
+    res.json(status);
+  } catch (err) {
+    res.json({ available: false, error: err.message });
+  }
+});
+
+// Accept a single alert on GlobalWorx
+app.post('/api/globalworx/accept', async (req, res) => {
+  try {
+    const { url, refNumber } = req.body;
+    if (!url || !refNumber) {
+      return res.status(400).json({ error: 'url and refNumber are required' });
+    }
+    const result = await globalworx.acceptBatch([{ url, refNumber }]);
+    res.json(result.results[0] || { success: false, error: 'No result' });
+  } catch (err) {
+    console.error('GlobalWorx accept error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Accept a batch of alerts on GlobalWorx
+app.post('/api/globalworx/accept-batch', async (req, res) => {
+  try {
+    const { alerts } = req.body;
+    if (!alerts || !Array.isArray(alerts) || alerts.length === 0) {
+      return res.status(400).json({ error: 'alerts array is required' });
+    }
+    const result = await globalworx.acceptBatch(alerts);
+    res.json(result);
+  } catch (err) {
+    console.error('GlobalWorx batch accept error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
