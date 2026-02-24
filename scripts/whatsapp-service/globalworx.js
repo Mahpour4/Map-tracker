@@ -11,6 +11,10 @@ const fs = require('fs');
 const RESOLUTION_HOURS = '48';
 const SCREENSHOT_DIR = path.join(__dirname, 'gw-debug');
 
+// Default geolocation to grant to pages that request it (GlobalWorx requires geolocation for Complete)
+// Using a generic US location — the exact coordinates don't matter, GW just needs permission granted
+const DEFAULT_GEO = { latitude: 38.8977, longitude: -77.0365, accuracy: 100 };
+
 // Ensure debug screenshot directory exists
 if (!fs.existsSync(SCREENSHOT_DIR)) {
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
@@ -370,6 +374,11 @@ async function acceptBatch(alerts) {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
 
+    // Grant geolocation permission — GlobalWorx may request it during Accept/Complete flows
+    const context = browser.defaultBrowserContext();
+    await context.overridePermissions('https://globalworx.bfrg.com', ['geolocation']);
+    await page.setGeolocation(DEFAULT_GEO);
+
     for (let i = 0; i < alerts.length; i++) {
       const alert = alerts[i];
       console.log(`[GW] --- Alert ${i + 1}/${alerts.length} ---`);
@@ -477,6 +486,7 @@ async function completeAlert(page, url, refNumber) {
       console.log(`[GW]   Found Complete button via "${btn.selector}": ${tag}`);
 
       // Attempt 1: Puppeteer native .click() — fires real mousedown/mouseup/click events
+      // After clicking, GlobalWorx requests geolocation, submits form, then navigates away
       console.log(`[GW]   Attempt 1: Puppeteer native .click()`);
       await btn.element.evaluate(el => el.scrollIntoView({ block: 'center' }));
       await sleep(500);
@@ -485,7 +495,8 @@ async function completeAlert(page, url, refNumber) {
       } catch (clickErr) {
         console.log(`[GW]   Puppeteer .click() threw: ${clickErr.message} — trying evaluate fallbacks`);
       }
-      await sleep(3000);
+      // Wait for geolocation grant + form submission + page navigation
+      await sleep(5000);
 
       // Verify: is the button still there?
       let stillThere = await findCompleteButton();
@@ -599,6 +610,13 @@ async function completeBatch(alerts) {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
+
+    // Grant geolocation permission — GlobalWorx "Complete Here" triggers a geolocation request
+    // Without this, the browser blocks the request and the Complete flow hangs
+    const context = browser.defaultBrowserContext();
+    await context.overridePermissions('https://globalworx.bfrg.com', ['geolocation']);
+    await page.setGeolocation(DEFAULT_GEO);
+    console.log('[GW] Geolocation permission granted for Complete flow');
 
     for (let i = 0; i < alerts.length; i++) {
       const alert = alerts[i];
