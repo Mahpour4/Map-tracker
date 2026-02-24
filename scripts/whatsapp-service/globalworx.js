@@ -436,10 +436,11 @@ async function completeAlert(page, url, refNumber) {
     // Look for "Complete Here" button: <input class="timelog-btn" value="Complete Here">
     let completed = false;
 
+    // ONLY match the exact "Complete Here" button — class="timelog-btn" or exact value
+    // Do NOT use broad wildcards like input[value*="Complete"] — they match dashboard filters
     const completeCssSelectors = [
       'input.timelog-btn',
       'input[value="Complete Here"]',
-      'input[value*="Complete"]',
     ];
     for (const sel of completeCssSelectors) {
       const found = await findAllInFrames(page, sel);
@@ -451,19 +452,16 @@ async function completeAlert(page, url, refNumber) {
         await found.elements[0].evaluate(el => el.click());
         completed = true;
         await sleep(2000);
-        // Debug: screenshot after clicking Complete
         await saveDebug(page, refNumber, 'after-complete-click');
         break;
       }
     }
 
-    // XPath fallback
+    // XPath fallback — specific selectors only
     if (!completed) {
       const completeXpaths = [
-        "//input[contains(@value, 'Complete Here')]",
-        "//input[contains(@value, 'Complete')]",
+        "//input[@value='Complete Here']",
         "//input[contains(@class, 'timelog-btn')]",
-        "//button[contains(text(), 'Complete')]",
       ];
       for (const xpath of completeXpaths) {
         const found = await findInFrames(page, xpath);
@@ -475,6 +473,18 @@ async function completeAlert(page, url, refNumber) {
           await saveDebug(page, refNumber, 'after-complete-click-xpath');
           break;
         }
+      }
+    }
+
+    // Text-based fallback
+    if (!completed) {
+      const textEl = await findByText(page, ['Complete Here']);
+      if (textEl) {
+        console.log(`[GW]   Found Complete button via text search "Complete Here"`);
+        await textEl.evaluate(el => el.click());
+        completed = true;
+        await sleep(2000);
+        await saveDebug(page, refNumber, 'after-complete-click-text');
       }
     }
 
