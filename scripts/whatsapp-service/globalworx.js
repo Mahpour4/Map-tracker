@@ -380,8 +380,29 @@ async function completeAlert(page, url, refNumber) {
     if (completed) {
       console.log(`[GW]   COMPLETED ${refNumber}`);
       return { success: true };
+    }
+
+    // Complete button not found — check if "Accept Here" is still showing
+    // That means the alert was NEVER actually accepted on GlobalWorx
+    let acceptStillShowing = false;
+    const acceptCheckSelectors = [
+      'input.accept-btn',
+      'input[value="Accept Here"]',
+      'input[value*="Accept"]',
+    ];
+    for (const sel of acceptCheckSelectors) {
+      const found = await findAllInFrames(page, sel);
+      if (found && found.elements.length > 0) {
+        acceptStillShowing = true;
+        break;
+      }
+    }
+
+    if (acceptStillShowing) {
+      console.log(`[GW]   SKIPPED ${refNumber} — "Accept Here" still showing (alert was never accepted on GlobalWorx)`);
+      return { success: false, notAccepted: true, error: 'Alert was never accepted on GlobalWorx' };
     } else {
-      console.log(`[GW]   FAILED to complete ${refNumber} — Complete button not found (may already be completed)`);
+      console.log(`[GW]   ${refNumber} — No Complete or Accept button found (already completed/expired on GlobalWorx)`);
       return { success: false, error: 'Complete button not found' };
     }
 

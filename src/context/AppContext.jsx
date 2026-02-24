@@ -772,26 +772,34 @@ export function AppProvider({ children }) {
       }));
       const { results } = await gwCompleteAlerts(payload);
 
-      // Label ALL done alerts as completed in Gmail (even if GW complete button wasn't found —
-      // that just means it was already completed or expired on GlobalWorx's side)
-      const emailIds = toComplete.map(a => a.emailId).filter(Boolean);
+      // Only label alerts as Completed if the GW completion succeeded OR the page
+      // confirmed it was already completed. Do NOT label if the alert was never accepted
+      // (backend returns notAccepted=true when "Accept Here" button is still showing).
+      const successIds = [];
+      const notAccepted = [];
+      results.forEach(r => {
+        if (r.notAccepted) {
+          notAccepted.push(r.refNumber);
+        } else {
+          // success=true means Complete clicked, success=false means no Complete button
+          // but if notAccepted is not set, it means the alert WAS accepted (just already completed/expired)
+          successIds.push(r.emailId);
+        }
+      });
+      const emailIds = successIds.filter(Boolean);
       if (emailIds.length > 0) {
         await labelAlertsCompleted(emailIds);
-        toComplete.forEach(a => { a.globalworxCompleted = true; });
+        toComplete.filter(a => emailIds.includes(a.emailId)).forEach(a => { a.globalworxCompleted = true; });
       }
 
-      const succeeded = results.filter(r => r.success).length;
-      const noButton = results.filter(r => !r.success).length;
-      console.log(`[Alerts] GlobalWorx completion: ${succeeded} completed, ${noButton} already closed. All ${emailIds.length} labeled in Gmail.`);
-    } catch (err) {
-      console.warn('[Alerts] GlobalWorx completion service unavailable, labeling Gmail only:', err.message);
-      // Backend not running — still label Gmail as completed
-      const emailIds = toComplete.map(a => a.emailId).filter(Boolean);
-      if (emailIds.length > 0) {
-        labelAlertsCompleted(emailIds);
-        toComplete.forEach(a => { a.globalworxCompleted = true; });
-        console.log(`[Alerts] ${emailIds.length} done alert(s) labeled "Completed" in Gmail (GW skipped).`);
+      if (notAccepted.length > 0) {
+        console.warn(`[Alerts] ${notAccepted.length} alert(s) were never accepted on GlobalWorx — skipping Completed label: ${notAccepted.join(', ')}`);
       }
+      const completed = results.filter(r => r.success).length;
+      const alreadyClosed = results.filter(r => !r.success && !r.notAccepted).length;
+      console.log(`[Alerts] GlobalWorx completion: ${completed} completed, ${alreadyClosed} already closed, ${notAccepted.length} not accepted. ${emailIds.length} labeled in Gmail.`);
+    } catch (err) {
+      console.warn('[Alerts] GlobalWorx completion service unavailable — not labeling (will retry next cycle):', err.message);
     }
   }
 
