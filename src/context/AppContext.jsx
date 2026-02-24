@@ -4,7 +4,7 @@ import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '..
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted } from '../services/gmailAlertService';
-import { acceptAlerts as gwAcceptAlerts } from '../services/globalworxService';
+import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
 import localWarehouses from '../data/warehouses.json';
@@ -613,7 +613,7 @@ export function AppProvider({ children }) {
         }
         // After store data refreshes, mark resolved alerts as Done in Gmail
         markResolvedAlertsDone(state.alerts, stores);
-        markDoneAlertsCompleted(state.alerts);
+        autoCompleteAlerts(state.alerts);
       })
       .catch((err) => {
         dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'error', error: err.message } });
@@ -747,23 +747,51 @@ export function AppProvider({ children }) {
     }
   }
 
-  // Auto-label Done alerts as "GLOBAL WORKS/Completed" after 48 hours
-  function markDoneAlertsCompleted(alerts) {
+  // Auto-complete Done alerts: click "Complete Here" on GlobalWorx, then label Gmail
+  // Eligible: globalworxDone + has acceptanceUrl + not yet globalworxCompleted
+  async function autoCompleteAlerts(alerts) {
     if (!isGmailConnected()) return;
-    const now = new Date();
-    const toMark = alerts.filter(a => {
+
+    const toComplete = alerts.filter(a => {
       if (!a.emailId || a.globalworxCompleted) return false;
       if (!a.globalworxDone) return false;
-      if (!a.dateReceived) return false;
-      const alertDate = new Date(a.dateReceived + 'T00:00:00');
-      const hoursSince = (now - alertDate) / (1000 * 60 * 60);
-      return hoursSince >= 48;
+      if (!a.acceptanceUrl) return false;
+      return true;
     });
 
-    if (toMark.length > 0) {
-      labelAlertsCompleted(toMark.map(a => a.emailId));
-      toMark.forEach(a => { a.globalworxCompleted = true; });
-      console.log(`[Alerts] ${toMark.length} done alert(s) (48h+) queued for "Completed" label.`);
+    if (toComplete.length === 0) return;
+
+    console.log(`[Alerts] ${toComplete.length} done alert(s) eligible for GlobalWorx completion`);
+
+    // Try to click "Complete Here" on GlobalWorx via Puppeteer backend
+    try {
+      const payload = toComplete.map(a => ({
+        url: a.acceptanceUrl,
+        refNumber: a.refNumber,
+        emailId: a.emailId,
+      }));
+      const { results } = await gwCompleteAlerts(payload);
+
+      // Label ALL done alerts as completed in Gmail (even if GW complete button wasn't found —
+      // that just means it was already completed or expired on GlobalWorx's side)
+      const emailIds = toComplete.map(a => a.emailId).filter(Boolean);
+      if (emailIds.length > 0) {
+        await labelAlertsCompleted(emailIds);
+        toComplete.forEach(a => { a.globalworxCompleted = true; });
+      }
+
+      const succeeded = results.filter(r => r.success).length;
+      const noButton = results.filter(r => !r.success).length;
+      console.log(`[Alerts] GlobalWorx completion: ${succeeded} completed, ${noButton} already closed. All ${emailIds.length} labeled in Gmail.`);
+    } catch (err) {
+      console.warn('[Alerts] GlobalWorx completion service unavailable, labeling Gmail only:', err.message);
+      // Backend not running — still label Gmail as completed
+      const emailIds = toComplete.map(a => a.emailId).filter(Boolean);
+      if (emailIds.length > 0) {
+        labelAlertsCompleted(emailIds);
+        toComplete.forEach(a => { a.globalworxCompleted = true; });
+        console.log(`[Alerts] ${emailIds.length} done alert(s) labeled "Completed" in Gmail (GW skipped).`);
+      }
     }
   }
 
@@ -828,7 +856,7 @@ export function AppProvider({ children }) {
       markResolvedAlertsDone(merged, state.stores);
 
       // Mark Done alerts 48h+ as "GLOBAL WORKS/Completed" in Gmail (non-blocking)
-      markDoneAlertsCompleted(merged);
+      autoCompleteAlerts(merged);
 
       return { newCount: newAlerts.length, rawMessages };
     } catch (err) {

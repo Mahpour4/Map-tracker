@@ -21,7 +21,7 @@ Gmail Alert Email
 [3] Auto-Done ──> Store visited after alert date? Mark resolved
     |              Gmail label: "GLOBAL WORKS/Done"
     v
-[4] Auto-Completed ──> Done alert older than 48 hours? Archive it
+[4] Auto-Completed ──> Done alert? Click "Complete Here" on GlobalWorx + archive
                         Gmail label: "GLOBAL WORKS/Completed"
 ```
 
@@ -43,6 +43,7 @@ Located in `scripts/whatsapp-service/`:
 - `GET /api/globalworx/status` — Check if Puppeteer/Chrome is available
 - `POST /api/globalworx/accept` — Accept a single alert (`{ url, refNumber }`)
 - `POST /api/globalworx/accept-batch` — Accept multiple alerts in sequence
+- `POST /api/globalworx/complete-batch` — Complete multiple alerts (click "Complete Here")
 
 ### Frontend (React)
 
@@ -120,14 +121,18 @@ This is the key connection between **store visit/sale data** and **alert resolut
 
 **Trigger:** Runs automatically after `markResolvedAlertsDone()` in the same fetch cycle
 
-**Code:** `AppContext.jsx` → `markDoneAlertsCompleted()`
+**Code:** `AppContext.jsx` → `autoCompleteAlerts()` → `globalworxService.completeAlerts()` → backend `globalworx.js`
 
 **Logic:**
-For each alert that is `globalworxDone` but NOT yet `globalworxCompleted`:
+For each alert that is `globalworxDone` + has `acceptanceUrl` + NOT yet `globalworxCompleted`:
 
-1. Check if the alert's `dateReceived` is more than 48 hours ago
-2. If yes → apply the `GLOBAL WORKS/Completed` Gmail label
-3. Completed alerts are hidden from the main alert view (archived)
+1. Navigate to the GlobalWorx acceptance URL via Puppeteer (headless)
+2. If "Complete Here" button is found → click it to close the issue on GlobalWorx
+3. If button is not found → issue was already completed/expired on GlobalWorx (still proceed)
+4. Apply the `GLOBAL WORKS/Completed` Gmail label regardless
+5. Completed alerts are hidden from the main alert view (archived)
+
+If the Puppeteer backend is unavailable, the Gmail label is still applied (GW step is skipped gracefully).
 
 This can also be triggered manually via the "Auto-Clear" button in AlertLog.
 
@@ -142,7 +147,7 @@ The system uses four Gmail labels to track alert lifecycle:
 | `Map Tracker/Logged` | Alert email was fetched and parsed | `fetchGmailAlerts()` |
 | `Processed` | Alert was accepted on GlobalWorx | `autoAcceptAlerts()` |
 | `GLOBAL WORKS/Done` | Store was visited after alert date | `markResolvedAlertsDone()` |
-| `GLOBAL WORKS/Completed` | Alert archived (done + 48h elapsed) | `markDoneAlertsCompleted()` |
+| `GLOBAL WORKS/Completed` | Alert archived + closed on GlobalWorx | `autoCompleteAlerts()` |
 
 Labels are auto-created if they don't exist (except Done/Completed which must exist in Gmail).
 
@@ -165,7 +170,7 @@ The "Auto" toggle button on the Alert Panel enables a 15-minute polling cycle:
                               markResolvedAlertsDone()
                                     |
                                     v
-                              markDoneAlertsCompleted()
+                              autoCompleteAlerts()
                                     |
                                     v
                               Wait 15 minutes → repeat

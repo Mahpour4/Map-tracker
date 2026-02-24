@@ -112,6 +112,21 @@ app.post('/api/globalworx/accept-batch', async (req, res) => {
   }
 });
 
+// Complete a batch of alerts on GlobalWorx (click "Complete Here")
+app.post('/api/globalworx/complete-batch', async (req, res) => {
+  try {
+    const { alerts } = req.body;
+    if (!alerts || !Array.isArray(alerts) || alerts.length === 0) {
+      return res.status(400).json({ error: 'alerts array is required' });
+    }
+    const result = await globalworx.completeBatch(alerts);
+    res.json(result);
+  } catch (err) {
+    console.error('GlobalWorx batch complete error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Initialize WhatsApp client and start server
 whatsapp.initialize();
 

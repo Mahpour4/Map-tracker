@@ -34,3 +34,21 @@ export async function acceptAlerts(alerts) {
   }
   return await res.json();
 }
+
+/**
+ * Complete a batch of alerts on GlobalWorx via the backend (clicks "Complete Here").
+ * @param {Array<{ url: string, refNumber: string, emailId?: string }>} alerts
+ * @returns {{ results: Array<{ refNumber: string, success: boolean, error?: string }> }}
+ */
+export async function completeAlerts(alerts) {
+  const res = await fetch(`${BASE}/complete-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alerts }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `GlobalWorx service error: ${res.status}`);
+  }
+  return await res.json();
+}

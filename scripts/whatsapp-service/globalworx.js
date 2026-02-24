@@ -321,6 +321,130 @@ async function acceptBatch(alerts) {
 }
 
 /**
+ * Complete a single alert by navigating to its GlobalWorx URL and clicking "Complete Here".
+ * This is for alerts that were already accepted and are now being closed out.
+ * @param {import('puppeteer').Page} page
+ * @param {string} url - Same GlobalWorx acceptance URL (shows "Complete Here" after acceptance)
+ * @param {string} refNumber
+ * @returns {{ success: boolean, error?: string }}
+ */
+async function completeAlert(page, url, refNumber) {
+  console.log(`[GW] Completing ${refNumber}: ${url.substring(0, 100)}...`);
+
+  try {
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 20000 });
+    await sleep(2000);
+
+    // Look for "Complete Here" button: <input class="timelog-btn" value="Complete Here">
+    let completed = false;
+
+    const completeCssSelectors = [
+      'input.timelog-btn',
+      'input[value="Complete Here"]',
+      'input[value*="Complete"]',
+    ];
+    for (const sel of completeCssSelectors) {
+      const found = await findAllInFrames(page, sel);
+      if (found && found.elements.length > 0) {
+        const tag = await found.elements[0].evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
+        console.log(`[GW]   Found Complete button via CSS "${sel}": ${tag}`);
+        await found.elements[0].evaluate(el => el.scrollIntoView({ block: 'center' }));
+        await sleep(500);
+        await found.elements[0].click();
+        completed = true;
+        break;
+      }
+    }
+
+    // XPath fallback
+    if (!completed) {
+      const completeXpaths = [
+        "//input[contains(@value, 'Complete Here')]",
+        "//input[contains(@value, 'Complete')]",
+        "//input[contains(@class, 'timelog-btn')]",
+        "//button[contains(text(), 'Complete')]",
+      ];
+      for (const xpath of completeXpaths) {
+        const found = await findInFrames(page, xpath);
+        if (found) {
+          console.log(`[GW]   Found Complete button via XPath: ${xpath.substring(0, 50)}`);
+          await found.element.click();
+          completed = true;
+          break;
+        }
+      }
+    }
+
+    await sleep(1500);
+
+    if (completed) {
+      console.log(`[GW]   COMPLETED ${refNumber}`);
+      return { success: true };
+    } else {
+      console.log(`[GW]   FAILED to complete ${refNumber} — Complete button not found (may already be completed)`);
+      return { success: false, error: 'Complete button not found' };
+    }
+
+  } catch (err) {
+    console.error(`[GW]   ERROR completing ${refNumber}:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Complete a batch of alerts sequentially using a shared browser.
+ * @param {Array<{ url: string, refNumber: string, emailId?: string }>} alerts
+ * @returns {{ results: Array<{ refNumber: string, success: boolean, error?: string }> }}
+ */
+async function completeBatch(alerts) {
+  if (!alerts || alerts.length === 0) {
+    return { results: [] };
+  }
+
+  console.log(`[GW] Starting batch completion: ${alerts.length} alert(s)`);
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,900'],
+    });
+  } catch (err) {
+    console.error('[GW] Failed to launch browser:', err.message);
+    return {
+      results: alerts.map(a => ({ refNumber: a.refNumber, success: false, error: 'Browser launch failed: ' + err.message })),
+    };
+  }
+
+  const results = [];
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+
+    for (let i = 0; i < alerts.length; i++) {
+      const alert = alerts[i];
+      console.log(`[GW] --- Complete ${i + 1}/${alerts.length} ---`);
+      const result = await completeAlert(page, alert.url, alert.refNumber);
+      results.push({ refNumber: alert.refNumber, emailId: alert.emailId, ...result });
+
+      if (i < alerts.length - 1) {
+        await sleep(1000);
+      }
+    }
+  } finally {
+    await browser.close();
+    console.log('[GW] Browser closed.');
+  }
+
+  const completed = results.filter(r => r.success).length;
+  const failed = results.filter(r => !r.success).length;
+  console.log(`[GW] DONE: ${completed} completed, ${failed} failed out of ${alerts.length}`);
+
+  return { results };
+}
+
+/**
  * Check if Puppeteer/Chrome is available.
  */
 async function checkStatus() {
@@ -336,4 +460,4 @@ async function checkStatus() {
   }
 }
 
-module.exports = { acceptAlert, acceptBatch, checkStatus };
+module.exports = { acceptAlert, acceptBatch, completeAlert, completeBatch, checkStatus };
