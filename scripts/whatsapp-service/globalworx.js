@@ -88,26 +88,11 @@ async function acceptAlert(page, url, refNumber) {
     // Brief wait for JS app to finish rendering after network settles
     await sleep(2000);
 
-    // Step 0: Dismiss Terms & Conditions overlay if present
-    // The T&C has a button: <input class="vf-form-button vf-primary" value="Accept">
-    // This is NOT the actual "Accept Here" button — it's the terms acceptance
-    try {
-      const tcButton = await findAllInFrames(page, 'input.vf-form-button[value="Accept"], input.vf-primary[value="Accept"]');
-      if (tcButton && tcButton.elements.length > 0) {
-        const tag = await tcButton.elements[0].evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
-        console.log(`[GW]   Found T&C Accept button: ${tag} — clicking to dismiss`);
-        await tcButton.elements[0].evaluate(el => el.click());
-        await sleep(2000);
-      }
-    } catch (_) {
-      // T&C not present or already dismissed — continue
-    }
-
-    // Strategy 1: Click "Accept Here" button
+    // Strategy 1: Click "Accept Here" button (class="accept-btn")
+    // IMPORTANT: Do NOT click other "Accept" buttons (vf-form-button etc) — those navigate away
     let acceptClicked = false;
 
     // 1a: CSS selector — the button is <input type="button" value="Accept Here" class="accept-btn">
-    // Only match the specific accept-btn class or exact "Accept Here" value — NOT the broad wildcard
     const acceptCssSelectors = [
       'input.accept-btn',
       'input[value="Accept Here"]',
@@ -123,7 +108,7 @@ async function acceptAlert(page, url, refNumber) {
         acceptClicked = true;
         // Wait for the resolution form/modal to appear
         try {
-          await page.waitForSelector('input.si-accept-confirm, input[value="Accept Issue"], select[name*="restime"], select', { timeout: 8000 });
+          await page.waitForSelector('input.si-accept-confirm, input[value="Accept Issue"]', { timeout: 8000 });
           console.log(`[GW]   Resolution form appeared`);
         } catch (_) {
           console.log(`[GW]   Timed out waiting for resolution form — sleeping 4s`);
@@ -133,7 +118,7 @@ async function acceptAlert(page, url, refNumber) {
       }
     }
 
-    // 1b: XPath fallback — only specific selectors, not broad wildcards
+    // 1b: XPath fallback
     if (!acceptClicked) {
       const acceptSelectors = [
         "//input[contains(@value, 'Accept Here')]",
@@ -162,12 +147,14 @@ async function acceptAlert(page, url, refNumber) {
       }
     }
 
+    // If "Accept Here" was NOT found, do NOT proceed — abort early
     if (!acceptClicked) {
-      console.log(`[GW]   No "Accept Here" button found for ${refNumber}`);
+      console.log(`[GW]   FAILED ${refNumber} — "Accept Here" button not found on page`);
+      return { success: false, error: 'Accept Here button not found' };
     }
 
     // Strategy 2: Set resolution time to 48 hours
-    // The dropdown shows "within X hour(s)" — use indexOf (not includes) for older JS environments
+    // Only runs if "Accept Here" was clicked and resolution form appeared
     let timeSet = false;
 
     try {
@@ -195,13 +182,10 @@ async function acceptAlert(page, url, refNumber) {
       }
 
       timeSet = await page.evaluate((hours) => {
-        // Find the resolution select
+        // Find the resolution select — must be a restime/resolution select, NOT dashboard filters
         var sel = document.querySelector('select[name*="restime"]')
                || document.querySelector('select[id*="restime"]')
-               || document.querySelector('select[name*="time"]')
-               || document.querySelector('select[name*="hour"]')
-               || document.querySelector('select[name*="resolution"]')
-               || document.querySelector('select');
+               || document.querySelector('select[name*="resolution"]');
         if (!sel || !sel.options || sel.options.length === 0) return false;
 
         // Find the option with value or text containing the target hours (e.g. "48")
@@ -245,18 +229,16 @@ async function acceptAlert(page, url, refNumber) {
 
     try {
       // 3a: CSS selector — button is <input class="si-accept-confirm mobilebutton" value="Accept Issue">
+      // IMPORTANT: Only match the actual "Accept Issue" submit — NOT generic submit buttons
       const submitCssSelectors = [
         'input.si-accept-confirm',
         'input[value="Accept Issue"]',
         'input[value*="Accept Issue"]',
-        'input[value="Submit"]',
-        'input[value="Confirm"]',
-        'input[type="submit"]',
       ];
       for (const sel of submitCssSelectors) {
         const found = await findAllInFrames(page, sel);
         if (found && found.elements.length > 0) {
-          const tag = await found.elements[0].evaluate(el => `${el.tagName} value="${el.value}"`);
+          const tag = await found.elements[0].evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
           console.log(`[GW]   Found Submit button via CSS "${sel}": ${tag}`);
           await found.elements[0].evaluate(el => el.scrollIntoView({ block: 'center' }));
           await sleep(500);
@@ -271,12 +253,7 @@ async function acceptAlert(page, url, refNumber) {
         const submitXpathSelectors = [
           "//input[contains(@class, 'si-accept-confirm')]",
           "//input[contains(@value, 'Accept Issue')]",
-          "//input[contains(@value, 'Submit')]",
-          "//input[contains(@value, 'Confirm')]",
           "//button[contains(text(), 'Accept Issue')]",
-          "//button[contains(text(), 'Submit')]",
-          "//button[contains(text(), 'Confirm')]",
-          "//input[@type='submit']",
         ];
         for (const xpath of submitXpathSelectors) {
           const found = await findInFrames(page, xpath);
@@ -286,6 +263,16 @@ async function acceptAlert(page, url, refNumber) {
             submitted = true;
             break;
           }
+        }
+      }
+
+      // 3c: Text-based fallback
+      if (!submitted) {
+        const textEl = await findByText(page, ['Accept Issue']);
+        if (textEl) {
+          console.log(`[GW]   Found Submit button via text search "Accept Issue"`);
+          await textEl.evaluate(el => el.click());
+          submitted = true;
         }
       }
 
