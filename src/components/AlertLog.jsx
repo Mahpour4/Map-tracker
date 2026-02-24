@@ -287,16 +287,13 @@ export default function AlertLog() {
     return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
   }, [enrichedAlerts, filterDate, weekDates, filterRoute, filterVendor, searchTerm]);
 
-  // Count alerts eligible for auto-clear (resolved + 48h+ old + not yet completed)
+  // Count alerts eligible for auto-clear (Done + has acceptance URL + not yet completed)
   const autoClearCount = useMemo(() => {
-    const now = new Date();
     return enrichedAlerts.filter(a => {
       if (a.globalworxCompleted) return false;
-      if (!a.dateReceived) return false;
-      const alertDate = new Date(a.dateReceived + 'T00:00:00');
-      const hoursSince = (now - alertDate) / (1000 * 60 * 60);
-      if (hoursSince < 48) return false;
-      return a.status === 'resolved' || a.globalworxDone;
+      if (!a.globalworxDone) return false;
+      if (!a.acceptanceUrl) return false;
+      return true;
     }).length;
   }, [enrichedAlerts]);
 
@@ -540,18 +537,14 @@ export default function AlertLog() {
   // Auto-clear: label all clearable alerts as completed in one step
   // Eligible: resolved 48h+ OR globalworxDone 48h+ (not yet labeled completed)
   async function handleAutoClear() {
-    const now = new Date();
     const eligible = enrichedAlerts.filter(a => {
       if (a.globalworxCompleted) return false;
-      if (!a.dateReceived) return false;
+      if (!a.globalworxDone) return false;
       if (!a.acceptanceUrl) return false;
-      const alertDate = new Date(a.dateReceived + 'T00:00:00');
-      const hoursSince = (now - alertDate) / (1000 * 60 * 60);
-      if (hoursSince < 48) return false;
-      return a.status === 'resolved' || a.globalworxDone;
+      return true;
     });
     if (eligible.length === 0) {
-      alert('No alerts to auto-clear. Alerts must be resolved or Done, and older than 48 hours.');
+      alert('No alerts to auto-clear. Alerts must be Done and have an acceptance URL.');
       return;
     }
     setAutoClearing(true);
@@ -1479,7 +1472,7 @@ export default function AlertLog() {
                 className="al-btn-autoclear"
                 onClick={handleAutoClear}
                 disabled={autoClearing}
-                title={`${autoClearCount} resolved alert(s) are 48+ hours old — clear them without needing GlobalWorx`}
+                title={`${autoClearCount} Done alert(s) — click Complete on GlobalWorx and label as Completed`}
               >
                 {autoClearing ? 'Clearing...' : `Auto-Clear ${autoClearCount}`}
               </button>
