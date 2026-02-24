@@ -336,6 +336,26 @@ export async function labelAlertsCompleted(messageIds) {
   }
 }
 
+/** Remove Done + Completed labels from emails (for cleanup of falsely labeled alerts) */
+export async function unlabelAlertsDoneAndCompleted(messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  try {
+    const removeIds = [];
+    const doneId = await getDoneLabelId();
+    if (doneId) removeIds.push(doneId);
+    const completedId = await getCompletedLabelId();
+    if (completedId) removeIds.push(completedId);
+    if (removeIds.length === 0) return;
+    await gmailPost('/users/me/messages/batchModify', {
+      ids: messageIds,
+      removeLabelIds: removeIds,
+    });
+    console.log(`[Gmail] Removed Done/Completed labels from ${messageIds.length} email(s)`);
+  } catch (err) {
+    console.error('[Gmail] Failed to remove labels:', err);
+  }
+}
+
 export async function labelAlertMessages(messageIds) {
   if (!messageIds || messageIds.length === 0) return;
   try {

@@ -88,25 +88,42 @@ async function acceptAlert(page, url, refNumber) {
     // Brief wait for JS app to finish rendering after network settles
     await sleep(2000);
 
+    // Step 0: Dismiss Terms & Conditions overlay if present
+    // The T&C has a button: <input class="vf-form-button vf-primary" value="Accept">
+    // This is NOT the actual "Accept Here" button — it's the terms acceptance
+    try {
+      const tcButton = await findAllInFrames(page, 'input.vf-form-button[value="Accept"], input.vf-primary[value="Accept"]');
+      if (tcButton && tcButton.elements.length > 0) {
+        const tag = await tcButton.elements[0].evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
+        console.log(`[GW]   Found T&C Accept button: ${tag} — clicking to dismiss`);
+        await tcButton.elements[0].evaluate(el => el.click());
+        await sleep(2000);
+      }
+    } catch (_) {
+      // T&C not present or already dismissed — continue
+    }
+
     // Strategy 1: Click "Accept Here" button
     let acceptClicked = false;
 
-    // 1a: CSS selector on input[value] — the button is <input type="button" value="Accept Here" class="accept-btn">
+    // 1a: CSS selector — the button is <input type="button" value="Accept Here" class="accept-btn">
+    // Only match the specific accept-btn class or exact "Accept Here" value — NOT the broad wildcard
     const acceptCssSelectors = [
       'input.accept-btn',
       'input[value="Accept Here"]',
-      'input[value*="Accept"]',
     ];
     for (const sel of acceptCssSelectors) {
       const found = await findAllInFrames(page, sel);
       if (found && found.elements.length > 0) {
         const tag = await found.elements[0].evaluate(el => `${el.tagName} class="${el.className}" value="${el.value}"`);
         console.log(`[GW]   Found Accept button via CSS "${sel}": ${tag}`);
-        await found.elements[0].click();
+        await found.elements[0].evaluate(el => el.scrollIntoView({ block: 'center' }));
+        await sleep(300);
+        await found.elements[0].evaluate(el => el.click());
         acceptClicked = true;
         // Wait for the resolution form/modal to appear
         try {
-          await page.waitForSelector('input.si-accept-confirm, input[value="Accept Issue"], select[name*="restime"]', { timeout: 8000 });
+          await page.waitForSelector('input.si-accept-confirm, input[value="Accept Issue"], select[name*="restime"], select', { timeout: 8000 });
           console.log(`[GW]   Resolution form appeared`);
         } catch (_) {
           console.log(`[GW]   Timed out waiting for resolution form — sleeping 4s`);
@@ -116,21 +133,17 @@ async function acceptAlert(page, url, refNumber) {
       }
     }
 
-    // 1b: XPath fallback
+    // 1b: XPath fallback — only specific selectors, not broad wildcards
     if (!acceptClicked) {
       const acceptSelectors = [
         "//input[contains(@value, 'Accept Here')]",
-        "//input[contains(@value, 'Accept')]",
         "//input[@class='accept-btn']",
-        "//button[contains(., 'Accept')]",
-        "//button[contains(text(), 'Accept')]",
-        "//*[contains(@class, 'accept')]",
       ];
       for (const xpath of acceptSelectors) {
         const found = await findInFrames(page, xpath);
         if (found) {
           console.log(`[GW]   Found Accept button via XPath: ${xpath.substring(0, 60)}`);
-          await found.element.click();
+          await found.element.evaluate(el => el.click());
           acceptClicked = true;
           await sleep(1500);
           break;
@@ -138,8 +151,19 @@ async function acceptAlert(page, url, refNumber) {
       }
     }
 
+    // 1c: Text-based fallback — search for "Accept Here" text
     if (!acceptClicked) {
-      console.log(`[GW]   No Accept button found for ${refNumber}`);
+      const textEl = await findByText(page, ['Accept Here']);
+      if (textEl) {
+        console.log(`[GW]   Found Accept button via text search "Accept Here"`);
+        await textEl.evaluate(el => el.click());
+        acceptClicked = true;
+        await sleep(1500);
+      }
+    }
+
+    if (!acceptClicked) {
+      console.log(`[GW]   No "Accept Here" button found for ${refNumber}`);
     }
 
     // Strategy 2: Set resolution time to 48 hours
@@ -147,6 +171,29 @@ async function acceptAlert(page, url, refNumber) {
     let timeSet = false;
 
     try {
+      // Diagnostic: log all selects and their options
+      const selectInfo = await page.evaluate(() => {
+        var selects = document.querySelectorAll('select');
+        var info = [];
+        for (var i = 0; i < selects.length; i++) {
+          var s = selects[i];
+          var opts = [];
+          for (var j = 0; j < s.options.length; j++) {
+            opts.push({ value: s.options[j].value, text: s.options[j].text });
+          }
+          info.push({ name: s.name || '', id: s.id || '', optionCount: s.options.length, options: opts });
+        }
+        return info;
+      });
+      if (selectInfo.length > 0) {
+        console.log(`[GW]   Found ${selectInfo.length} select(s) on page:`);
+        selectInfo.forEach((s, i) => {
+          console.log(`[GW]     Select ${i}: name="${s.name}" id="${s.id}" options=[${s.options.map(o => `"${o.value}:${o.text}"`).join(', ')}]`);
+        });
+      } else {
+        console.log(`[GW]   No select elements found on page`);
+      }
+
       timeSet = await page.evaluate((hours) => {
         // Find the resolution select
         var sel = document.querySelector('select[name*="restime"]')
@@ -213,7 +260,7 @@ async function acceptAlert(page, url, refNumber) {
           console.log(`[GW]   Found Submit button via CSS "${sel}": ${tag}`);
           await found.elements[0].evaluate(el => el.scrollIntoView({ block: 'center' }));
           await sleep(500);
-          await found.elements[0].click();
+          await found.elements[0].evaluate(el => el.click());
           submitted = true;
           break;
         }
@@ -235,7 +282,7 @@ async function acceptAlert(page, url, refNumber) {
           const found = await findInFrames(page, xpath);
           if (found) {
             console.log(`[GW]   Found Submit button via XPath: ${xpath.substring(0, 50)}`);
-            await found.element.click();
+            await found.element.evaluate(el => el.click());
             submitted = true;
             break;
           }

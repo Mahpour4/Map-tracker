@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, getToken } from '../services/githubService';
-import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted } from '../services/gmailAlertService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
@@ -792,8 +792,18 @@ export function AppProvider({ children }) {
         toComplete.filter(a => emailIds.includes(a.emailId)).forEach(a => { a.globalworxCompleted = true; });
       }
 
+      // Strip false Done/Completed labels from alerts that were never accepted on GlobalWorx
       if (notAccepted.length > 0) {
-        console.warn(`[Alerts] ${notAccepted.length} alert(s) were never accepted on GlobalWorx — skipping Completed label: ${notAccepted.join(', ')}`);
+        const notAcceptedAlerts = toComplete.filter(a => notAccepted.includes(a.refNumber));
+        const stripIds = notAcceptedAlerts.map(a => a.emailId).filter(Boolean);
+        if (stripIds.length > 0) {
+          console.warn(`[Alerts] Stripping Done/Completed labels from ${stripIds.length} falsely-labeled alert(s): ${notAccepted.join(', ')}`);
+          await unlabelAlertsDoneAndCompleted(stripIds);
+          notAcceptedAlerts.forEach(a => {
+            a.globalworxDone = false;
+            a.globalworxCompleted = false;
+          });
+        }
       }
       const completed = results.filter(r => r.success).length;
       const alreadyClosed = results.filter(r => !r.success && !r.notAccepted).length;
