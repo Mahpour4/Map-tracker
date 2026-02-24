@@ -5,10 +5,37 @@
  */
 
 const puppeteer = require('puppeteer');
+const path = require('path');
+const fs = require('fs');
 
 const RESOLUTION_HOURS = '48';
+const SCREENSHOT_DIR = path.join(__dirname, 'gw-debug');
+
+// Ensure debug screenshot directory exists
+if (!fs.existsSync(SCREENSHOT_DIR)) {
+  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+}
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Save a debug screenshot and page HTML for troubleshooting.
+ * @param {import('puppeteer').Page} page
+ * @param {string} refNumber
+ * @param {string} stage - e.g. 'page-loaded', 'after-accept', 'after-complete', 'error'
+ */
+async function saveDebug(page, refNumber, stage) {
+  try {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const base = `${refNumber}_${stage}_${ts}`;
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, `${base}.png`), fullPage: true });
+    const html = await page.content();
+    fs.writeFileSync(path.join(SCREENSHOT_DIR, `${base}.html`), html);
+    console.log(`[GW]   DEBUG saved: ${base}.png + .html`);
+  } catch (e) {
+    console.warn(`[GW]   Failed to save debug: ${e.message}`);
+  }
+}
 
 /**
  * Find a clickable element by its visible text using JS innerText search.
@@ -88,6 +115,9 @@ async function acceptAlert(page, url, refNumber) {
     // Brief wait for JS app to finish rendering after network settles
     await sleep(2000);
 
+    // Debug: screenshot after page load
+    await saveDebug(page, refNumber, 'accept-page-loaded');
+
     // Strategy 1: Click "Accept Here" button (class="accept-btn")
     // IMPORTANT: Do NOT click other "Accept" buttons (vf-form-button etc) — those navigate away
     let acceptClicked = false;
@@ -150,7 +180,8 @@ async function acceptAlert(page, url, refNumber) {
     // If "Accept Here" was NOT found, check if "Complete Here" is showing
     // That means the alert was ALREADY accepted — treat as success
     if (!acceptClicked) {
-      const completeCheck = await findAllInFrames(page, 'input.timelog-btn, input[value="Complete Here"], input[value*="Complete"]');
+      await saveDebug(page, refNumber, 'accept-not-found');
+      const completeCheck = await findAllInFrames(page, 'input.timelog-btn, input[value="Complete Here"]');
       if (completeCheck && completeCheck.elements.length > 0) {
         console.log(`[GW]   "Accept Here" not found but "Complete Here" is showing — already accepted on GlobalWorx`);
         return { success: true, alreadyAccepted: true };
@@ -293,10 +324,12 @@ async function acceptAlert(page, url, refNumber) {
     await sleep(1500);
 
     if (submitted) {
+      await saveDebug(page, refNumber, 'after-accept-submit');
       console.log(`[GW]   ACCEPTED ${refNumber}`);
       return { success: true };
     } else {
-      console.log(`[GW]   FAILED ${refNumber} — Submit button not found`);
+      await saveDebug(page, refNumber, 'accept-submit-not-found');
+      console.log(`[GW]   FAILED ${refNumber} — "Accept Issue" submit button not found`);
       return { success: false, error: 'Submit button not found' };
     }
 
@@ -375,6 +408,31 @@ async function completeAlert(page, url, refNumber) {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 20000 });
     await sleep(2000);
 
+    // Debug: screenshot after page load
+    await saveDebug(page, refNumber, 'complete-page-loaded');
+
+    // Log all buttons/inputs on the page for debugging
+    const pageButtons = await page.evaluate(() => {
+      var inputs = document.querySelectorAll('input[type="button"], input[type="submit"], button');
+      var result = [];
+      for (var i = 0; i < inputs.length; i++) {
+        var el = inputs[i];
+        result.push({
+          tag: el.tagName,
+          type: el.type || '',
+          value: el.value || '',
+          className: el.className || '',
+          text: (el.textContent || '').trim().substring(0, 50),
+          visible: window.getComputedStyle(el).display !== 'none' && window.getComputedStyle(el).visibility !== 'hidden',
+        });
+      }
+      return result;
+    });
+    console.log(`[GW]   Page has ${pageButtons.length} button(s):`);
+    pageButtons.forEach((b, i) => {
+      console.log(`[GW]     ${i}: <${b.tag} type="${b.type}" value="${b.value}" class="${b.className}"> visible=${b.visible} text="${b.text}"`);
+    });
+
     // Look for "Complete Here" button: <input class="timelog-btn" value="Complete Here">
     let completed = false;
 
@@ -390,8 +448,11 @@ async function completeAlert(page, url, refNumber) {
         console.log(`[GW]   Found Complete button via CSS "${sel}": ${tag}`);
         await found.elements[0].evaluate(el => el.scrollIntoView({ block: 'center' }));
         await sleep(500);
-        await found.elements[0].click();
+        await found.elements[0].evaluate(el => el.click());
         completed = true;
+        await sleep(2000);
+        // Debug: screenshot after clicking Complete
+        await saveDebug(page, refNumber, 'after-complete-click');
         break;
       }
     }
@@ -408,27 +469,28 @@ async function completeAlert(page, url, refNumber) {
         const found = await findInFrames(page, xpath);
         if (found) {
           console.log(`[GW]   Found Complete button via XPath: ${xpath.substring(0, 50)}`);
-          await found.element.click();
+          await found.element.evaluate(el => el.click());
           completed = true;
+          await sleep(2000);
+          await saveDebug(page, refNumber, 'after-complete-click-xpath');
           break;
         }
       }
     }
-
-    await sleep(1500);
 
     if (completed) {
       console.log(`[GW]   COMPLETED ${refNumber}`);
       return { success: true };
     }
 
-    // Complete button not found — check if "Accept Here" is still showing
-    // That means the alert was NEVER actually accepted on GlobalWorx
+    // Complete button not found — screenshot for debugging
+    await saveDebug(page, refNumber, 'complete-not-found');
+
+    // Check if "Accept Here" is still showing — means never accepted
     let acceptStillShowing = false;
     const acceptCheckSelectors = [
       'input.accept-btn',
       'input[value="Accept Here"]',
-      'input[value*="Accept"]',
     ];
     for (const sel of acceptCheckSelectors) {
       const found = await findAllInFrames(page, sel);
@@ -442,12 +504,13 @@ async function completeAlert(page, url, refNumber) {
       console.log(`[GW]   SKIPPED ${refNumber} — "Accept Here" still showing (alert was never accepted on GlobalWorx)`);
       return { success: false, notAccepted: true, error: 'Alert was never accepted on GlobalWorx' };
     } else {
-      console.log(`[GW]   ${refNumber} — No Complete or Accept button found (already completed/expired on GlobalWorx)`);
+      console.log(`[GW]   ${refNumber} — No Complete or Accept button found (unknown page state)`);
       return { success: false, error: 'Complete button not found' };
     }
 
   } catch (err) {
     console.error(`[GW]   ERROR completing ${refNumber}:`, err.message);
+    try { await saveDebug(page, refNumber, 'complete-error'); } catch (_) {}
     return { success: false, error: err.message };
   }
 }
