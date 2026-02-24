@@ -147,9 +147,15 @@ async function acceptAlert(page, url, refNumber) {
       }
     }
 
-    // If "Accept Here" was NOT found, do NOT proceed — abort early
+    // If "Accept Here" was NOT found, check if "Complete Here" is showing
+    // That means the alert was ALREADY accepted — treat as success
     if (!acceptClicked) {
-      console.log(`[GW]   FAILED ${refNumber} — "Accept Here" button not found on page`);
+      const completeCheck = await findAllInFrames(page, 'input.timelog-btn, input[value="Complete Here"], input[value*="Complete"]');
+      if (completeCheck && completeCheck.elements.length > 0) {
+        console.log(`[GW]   "Accept Here" not found but "Complete Here" is showing — already accepted on GlobalWorx`);
+        return { success: true, alreadyAccepted: true };
+      }
+      console.log(`[GW]   FAILED ${refNumber} — neither "Accept Here" nor "Complete Here" found on page`);
       return { success: false, error: 'Accept Here button not found' };
     }
 
