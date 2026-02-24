@@ -749,8 +749,17 @@ export function AppProvider({ children }) {
 
   // Auto-complete Done alerts: click "Complete Here" on GlobalWorx, then label Gmail
   // Eligible: globalworxDone + has acceptanceUrl + not yet globalworxCompleted
+  let _completingInProgress = false;
   async function autoCompleteAlerts(alerts) {
     if (!isGmailConnected()) return;
+    if (_completingInProgress) {
+      console.log('[Alerts] autoCompleteAlerts already running — skipping duplicate call');
+      return;
+    }
+    _completingInProgress = true;
+    try { await _doAutoComplete(alerts); } finally { _completingInProgress = false; }
+  }
+  async function _doAutoComplete(alerts) {
 
     const toComplete = alerts.filter(a => {
       if (!a.emailId || a.globalworxCompleted) return false;
