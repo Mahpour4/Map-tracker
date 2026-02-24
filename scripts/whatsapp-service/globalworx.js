@@ -514,8 +514,8 @@ async function completeAlert(page, url, refNumber) {
       console.log(`[GW]   SKIPPED ${refNumber} — "Accept Here" still showing (alert was never accepted on GlobalWorx)`);
       return { success: false, notAccepted: true, error: 'Alert was never accepted on GlobalWorx' };
     } else {
-      console.log(`[GW]   ${refNumber} — No Complete or Accept button found (unknown page state)`);
-      return { success: false, error: 'Complete button not found' };
+      console.log(`[GW]   ${refNumber} — No Complete or Accept button found (already completed/expired on GlobalWorx)`);
+      return { success: true, alreadyCompleted: true };
     }
 
   } catch (err) {
