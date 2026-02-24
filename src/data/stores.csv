@@ -36,7 +36,7 @@ GTW00132,GTW00132,Giant 132,1320 Londontown Blvd,Eldersburg,MD,21784,204,Route 2
 WAW02551,WAW02551,Walmart 2551,209 E Ridgeville Blvd,Mt Airy,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3670092,-77.1624096,,2026-02-20,No
 FLW02611,FLW02611,Food Lion 2611,705 LISBON CENTER DR,WOODBINE,MD,21797,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3505307,-77.0665483,2026-02-20,2026-02-20,No
 WGW00014,WGW00014,Wegmans 14,122 SHAWAN RD,HUNT VALLEY,MD,21030,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.4979919,-76.656472,,,Yes
-FLW01412,01412,Food Lion 1412,8508 LIBERTY RD,Randallstown,MD,21133,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3610807,-76.7747577,2026-02-17,2026-02-17,No
+FLW01412,01412,Food Lion 1412,8508 LIBERTY RD,Randallstown,MD,21133,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3610807,-76.7747577,2026-02-17,2026-02-24,No
 WGW00047,WGW00047,Wegmans 47,8855 MCGRAW RD,COLUMBIA,MD,21045,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.2037,-76.861,,,Yes
 WGW00054,WGW00054,Wegmans 54,7830 WORMANS MILL RD,FREDERICK,MD,21703,201,Route 201 Driver,Maryland Central,Maryland Central,Maryland Central,39.4457336,-77.3999528,,,Yes
 WGW00060,WGW00060,Wegmans 60,1413 SOUTH MAIN CHAPEL WAY,GAMBRILLS,MD,21054,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.0316375,-76.6883935,,2026-02-13,No
@@ -70,7 +70,7 @@ FLW01653,FLW01653,Food Lion 1653,1565 HYDE PARK RD,ESSEX,MD,21221,214,Route 214 
 RDW00096,RDW00096,Redners 96,7938 EASTERN AVE,BALTIMORE,MD,21224,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2965631,-76.507546,,2026-02-16,No
 WAW00098,WAW00098,Walmart Glen Burnie,6721 Chesapeake Center Dr,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1899534,-76.6059009,,,Yes
 FLW01543,01543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1273757,-76.6415943,2026-02-23,2026-02-17,No
-FLW01153,01153,Food Lion 1153,12158 BRITTINGHAM LN,Princess Anne,MD,21853,206,Route 206 Driver,Eastern Shore Maryland,Princess Anne,Princess Anne,38.2160415,-75.7009628,2026-02-18,2026-02-21,No
+FLW01153,01153,Food Lion 1153,12158 BRITTINGHAM LN,Princess Anne,MD,21853,206,Route 206 Driver,Eastern Shore Maryland,Princess Anne,Princess Anne,38.2160415,-75.7009628,2026-02-18,2026-02-24,No
 FLW01158,FLW01158,Food Lion 1158,6 WASHINGTON ST,Cambridge,MD,21613,210,Route 210 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.5597277,-76.0642697,,2026-02-21,No
 FLW01179,01179,Food Lion 1179,4092 LANKFORD HWY,Exmore,VA,23350,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.5216935,-75.8315606,2026-02-17,2026-02-17,No
 FLW01206,01206,Food Lion 1206,32 N DUPONT HWY,SELBYVILLE,DE,19975,206,Route 210 Driver,Delaware,SELBYVILLE,SELBYVILLE,38.4605,-75.221,2026-02-19,2026-02-11,No
