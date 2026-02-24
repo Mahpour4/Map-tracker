@@ -376,7 +376,7 @@ async function acceptBatch(alerts) {
 
     // Grant geolocation permission — GlobalWorx may request it during Accept/Complete flows
     const context = browser.defaultBrowserContext();
-    await context.overridePermissions('https://globalworx.bfrg.com', ['geolocation']);
+    await context.overridePermissions('https://adusa.goglobalworx.com', ['geolocation']);
     await page.setGeolocation(DEFAULT_GEO);
 
     for (let i = 0; i < alerts.length; i++) {
@@ -595,7 +595,7 @@ async function completeBatch(alerts) {
   let browser;
   try {
     browser = await puppeteer.launch({
-      headless: 'new',
+      headless: false,  // TEMP: visible browser for debugging — change back to 'new' when done
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,900'],
     });
   } catch (err) {
@@ -614,7 +614,7 @@ async function completeBatch(alerts) {
     // Grant geolocation permission — GlobalWorx "Complete Here" triggers a geolocation request
     // Without this, the browser blocks the request and the Complete flow hangs
     const context = browser.defaultBrowserContext();
-    await context.overridePermissions('https://globalworx.bfrg.com', ['geolocation']);
+    await context.overridePermissions('https://adusa.goglobalworx.com', ['geolocation']);
     await page.setGeolocation(DEFAULT_GEO);
     console.log('[GW] Geolocation permission granted for Complete flow');
 
