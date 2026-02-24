@@ -780,11 +780,11 @@ export function AppProvider({ children }) {
       results.forEach(r => {
         if (r.notAccepted) {
           notAccepted.push(r.refNumber);
-        } else {
-          // success=true means Complete clicked, success=false means no Complete button
-          // but if notAccepted is not set, it means the alert WAS accepted (just already completed/expired)
+        } else if (r.success) {
+          // Only label as Completed if the Complete button was actually clicked
           successIds.push(r.emailId);
         }
+        // success=false without notAccepted = Complete button not found, don't label
       });
       const emailIds = successIds.filter(Boolean);
       if (emailIds.length > 0) {
