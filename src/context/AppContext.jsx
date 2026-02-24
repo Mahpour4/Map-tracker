@@ -1318,6 +1318,7 @@ export function AppProvider({ children }) {
     saveToGithub,
     fetchGmailAlerts,
     autoAcceptAlerts,
+    autoCompleteAlerts,
     syncAlertsFromGithub,
     loadAlertImage,
     saveSchedule,

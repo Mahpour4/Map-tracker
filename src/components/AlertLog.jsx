@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
-import { fetchAlertImage, isGmailConnected, labelAlertsCompleted } from '../services/gmailAlertService';
+import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
@@ -42,7 +42,7 @@ function formatDate(dateStr) {
 }
 
 export default function AlertLog() {
-  const { state, selectStore, setSidebarTab, setMapView, setPage, setFilterRoute, setFilterRegion, setFilterType, setSearch, loadAlertImage, fetchGmailAlerts, autoAcceptAlerts, syncFromGithub } = useApp();
+  const { state, selectStore, setSidebarTab, setMapView, setPage, setFilterRoute, setFilterRegion, setFilterType, setSearch, loadAlertImage, fetchGmailAlerts, autoAcceptAlerts, autoCompleteAlerts, syncFromGithub } = useApp();
   const { alerts, stores, alertImages, syncStatus, schedules, visitHistory, travelLog, fleetVehicles } = state;
 
   const today = localDateStr();
@@ -544,6 +544,7 @@ export default function AlertLog() {
     const eligible = enrichedAlerts.filter(a => {
       if (a.globalworxCompleted) return false;
       if (!a.dateReceived) return false;
+      if (!a.acceptanceUrl) return false;
       const alertDate = new Date(a.dateReceived + 'T00:00:00');
       const hoursSince = (now - alertDate) / (1000 * 60 * 60);
       if (hoursSince < 48) return false;
@@ -555,11 +556,10 @@ export default function AlertLog() {
     }
     setAutoClearing(true);
     try {
-      const ids = eligible.map(a => a.emailId).filter(Boolean);
-      if (ids.length > 0) {
-        await labelAlertsCompleted(ids);
-        fetchGmailAlerts();
-      }
+      // Use the same Puppeteer flow as autoCompleteAlerts — clicks "Complete Here" on
+      // GlobalWorx first, then labels Gmail as Completed only if the button was pressed
+      await autoCompleteAlerts(eligible);
+      fetchGmailAlerts();
     } catch (err) {
       alert(`Failed to auto-clear: ${err.message}`);
     } finally {
