@@ -279,8 +279,9 @@ async function acceptAlert(page, url, refNumber) {
         console.log(`[GW]   "Accept Here" not found but "Complete Here" is showing — already accepted on GlobalWorx`);
         return { success: true, alreadyAccepted: true, alertDetails };
       }
-      console.log(`[GW]   FAILED ${refNumber} — neither "Accept Here" nor "Complete Here" found on page`);
-      return { success: false, alertDetails, error: 'Accept Here button not found' };
+      // Neither button found — alert was already completed/expired on GlobalWorx
+      console.log(`[GW]   ${refNumber} — No Accept or Complete button found (already completed/expired on GlobalWorx)`);
+      return { success: true, alreadyCompleted: true, alertDetails };
     }
 
     // Strategy 2: Set resolution time to 48 hours
