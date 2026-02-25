@@ -669,7 +669,7 @@ export default function AlertLog() {
 
         // Accept or Complete button still there → leave open
         stillActive = results.filter(r => r.hasCompleteButton || r.hasAcceptButton).length;
-        expired = noCompleteBtn.length;
+        expired = noButtons.length;
         errors = results.filter(r => r.error).length;
       }
 
