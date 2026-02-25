@@ -42,6 +42,89 @@ async function saveDebug(page, refNumber, stage) {
 }
 
 /**
+ * Scrape structured alert details from the GlobalWorx page.
+ * Extracts label/data pairs, store info, address, phone, status etc.
+ * @param {import('puppeteer').Page} page
+ * @returns {object|null} scraped details or null on error
+ */
+async function scrapeAlertDetails(page) {
+  try {
+    return await page.evaluate(() => {
+      var result = {};
+
+      // Find the main schedlist div (not the csidiv prompt)
+      var schedDiv = document.querySelector('.schedlist:not(.csiprompt *)');
+      if (!schedDiv) {
+        // fallback: find any div with class schedlist
+        var allScheds = document.querySelectorAll('.schedlist');
+        for (var s = 0; s < allScheds.length; s++) {
+          if (!allScheds[s].closest('.csiprompt')) { schedDiv = allScheds[s]; break; }
+        }
+      }
+      if (!schedDiv) {
+        // last fallback: scrape from the whole page
+        schedDiv = document;
+      }
+
+      // Extract label/data pairs from event-detail table
+      var labels = schedDiv.querySelectorAll('.event-detail-label');
+      var details = {};
+      for (var i = 0; i < labels.length; i++) {
+        var labelTd = labels[i];
+        var labelText = (labelTd.textContent || '').replace(/\u00a0/g, '').replace(/:$/, '').trim();
+        // The data is in the next sibling tr > td.event-detail-data
+        var nextTr = labelTd.closest('tr');
+        if (nextTr) nextTr = nextTr.nextElementSibling;
+        if (nextTr) {
+          var dataTd = nextTr.querySelector('.event-detail-data');
+          if (dataTd) {
+            // Get text with <br> converted to newlines
+            details[labelText] = dataTd.innerHTML
+              .replace(/<br\s*\/?>/gi, '\n')
+              .replace(/<[^>]+>/g, '')
+              .replace(/&amp;/g, '&')
+              .replace(/&nbsp;/g, ' ')
+              .trim();
+          }
+        }
+      }
+      result.details = details;
+
+      // Store name from span.tier
+      var tier = schedDiv.querySelector('.tier');
+      if (tier) result.storeName = tier.textContent.trim();
+
+      // Status from span.statusName
+      var statusEl = schedDiv.querySelector('.statusName');
+      if (statusEl) result.status = statusEl.textContent.trim();
+
+      // DateTime from span.datetime
+      var dtEl = schedDiv.querySelector('.datetime');
+      if (dtEl) result.dateTime = dtEl.textContent.trim();
+
+      // Address from div.event-address
+      var addrEl = schedDiv.querySelector('.event-address');
+      if (addrEl) {
+        result.address = addrEl.textContent.replace(/[\n\r]+/g, ', ').trim();
+      }
+
+      // Phone from div.phone
+      var phoneEl = schedDiv.querySelector('.phone');
+      if (phoneEl) result.phone = phoneEl.textContent.trim();
+
+      // Duration from span.duration
+      var durEl = schedDiv.querySelector('.duration');
+      if (durEl) result.duration = durEl.textContent.trim();
+
+      return result;
+    });
+  } catch (err) {
+    console.warn(`[GW]   Failed to scrape alert details: ${err.message}`);
+    return null;
+  }
+}
+
+/**
  * Find a clickable element by its visible text using JS innerText search.
  * Much more reliable than XPath for JS-rendered apps (Sencha/ExtJS etc).
  * Returns an ElementHandle or null.
@@ -122,6 +205,12 @@ async function acceptAlert(page, url, refNumber) {
     // Debug: screenshot after page load
     await saveDebug(page, refNumber, 'accept-page-loaded');
 
+    // Scrape alert details from the page (Created By, Reason, Location, etc.)
+    const alertDetails = await scrapeAlertDetails(page);
+    if (alertDetails) {
+      console.log(`[GW]   Scraped details: Created By="${alertDetails.details?.['Created By'] || 'N/A'}", Alert Type="${alertDetails.details?.['Alert Type'] || 'N/A'}"`);
+    }
+
     // Strategy 1: Click "Accept Here" button (class="accept-btn")
     // IMPORTANT: Do NOT click other "Accept" buttons (vf-form-button etc) — those navigate away
     let acceptClicked = false;
@@ -188,10 +277,10 @@ async function acceptAlert(page, url, refNumber) {
       const completeCheck = await findAllInFrames(page, 'input.timelog-btn, input[value="Complete Here"]');
       if (completeCheck && completeCheck.elements.length > 0) {
         console.log(`[GW]   "Accept Here" not found but "Complete Here" is showing — already accepted on GlobalWorx`);
-        return { success: true, alreadyAccepted: true };
+        return { success: true, alreadyAccepted: true, alertDetails };
       }
       console.log(`[GW]   FAILED ${refNumber} — neither "Accept Here" nor "Complete Here" found on page`);
-      return { success: false, error: 'Accept Here button not found' };
+      return { success: false, alertDetails, error: 'Accept Here button not found' };
     }
 
     // Strategy 2: Set resolution time to 48 hours
@@ -330,11 +419,11 @@ async function acceptAlert(page, url, refNumber) {
     if (submitted) {
       await saveDebug(page, refNumber, 'after-accept-submit');
       console.log(`[GW]   ACCEPTED ${refNumber}`);
-      return { success: true };
+      return { success: true, alertDetails };
     } else {
       await saveDebug(page, refNumber, 'accept-submit-not-found');
       console.log(`[GW]   FAILED ${refNumber} — "Accept Issue" submit button not found`);
-      return { success: false, error: 'Submit button not found' };
+      return { success: false, alertDetails, error: 'Submit button not found' };
     }
 
   } catch (err) {
@@ -419,6 +508,12 @@ async function completeAlert(page, url, refNumber) {
 
     // Debug: screenshot after page load
     await saveDebug(page, refNumber, 'complete-page-loaded');
+
+    // Scrape alert details from the page (Created By, Reason, Location, etc.)
+    const alertDetails = await scrapeAlertDetails(page);
+    if (alertDetails) {
+      console.log(`[GW]   Scraped details: Created By="${alertDetails.details?.['Created By'] || 'N/A'}", Alert Type="${alertDetails.details?.['Alert Type'] || 'N/A'}"`);
+    }
 
     // Log all buttons/inputs on the page for debugging
     const pageButtons = await page.evaluate(() => {
@@ -537,7 +632,7 @@ async function completeAlert(page, url, refNumber) {
           if (stillThere) {
             console.log(`[GW]   Button STILL present after all 3 attempts — click FAILED`);
             await saveDebug(page, refNumber, 'after-complete-all-attempts-failed');
-            return { success: false, clickFailed: true, error: 'Complete button found but click did not register after 3 attempts' };
+            return { success: false, clickFailed: true, alertDetails, error: 'Complete button found but click did not register after 3 attempts' };
           }
         }
       }
@@ -545,7 +640,7 @@ async function completeAlert(page, url, refNumber) {
       // Button is gone — click was successful
       await saveDebug(page, refNumber, 'after-complete-verified');
       console.log(`[GW]   COMPLETED ${refNumber} (verified — button no longer present)`);
-      return { success: true };
+      return { success: true, alertDetails };
     }
 
     // Complete button not found — screenshot for debugging
@@ -567,10 +662,10 @@ async function completeAlert(page, url, refNumber) {
 
     if (acceptStillShowing) {
       console.log(`[GW]   SKIPPED ${refNumber} — "Accept Here" still showing (alert was never accepted on GlobalWorx)`);
-      return { success: false, notAccepted: true, error: 'Alert was never accepted on GlobalWorx' };
+      return { success: false, notAccepted: true, alertDetails, error: 'Alert was never accepted on GlobalWorx' };
     } else {
       console.log(`[GW]   ${refNumber} — No Complete or Accept button found (already completed/expired on GlobalWorx)`);
-      return { success: true, alreadyCompleted: true };
+      return { success: true, alreadyCompleted: true, alertDetails };
     }
 
   } catch (err) {
@@ -595,7 +690,7 @@ async function completeBatch(alerts) {
   let browser;
   try {
     browser = await puppeteer.launch({
-      headless: false,  // TEMP: visible browser for debugging — change back to 'new' when done
+      headless: 'new',
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,900'],
     });
   } catch (err) {

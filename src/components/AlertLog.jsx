@@ -836,12 +836,25 @@ export default function AlertLog() {
       doc.setFont('helvetica', 'normal');
       doc.text(`${todayStr} | ${routeAlerts.length} alerts | ${open} open | ${resolved} resolved`, pageWidth / 2, 17, { align: 'center' });
 
-      // Build table rows — phone-optimized columns:
-      // Store (name + address), Last Svc (days + sched day), Status, Response (monthly stats), Image
+      // Build table rows — columns:
+      // Store (name + address), Details (Created By, Reason, Location), Last Svc, Status, Response, Image
       const tableData = routeAlerts.map((a, i) => {
         // Store column: name #number + address + city
         const addr = a.store?.address || '';
         const storeCell = `${a.storeName} #${a.storeNumber}\n${addr}${addr && a.city ? ', ' : ''}${a.city || ''}`;
+
+        // Details column: Created By + Reason (items + location) from GlobalWorx scrape
+        const detailParts = [];
+        if (a.gwCreatedBy) detailParts.push(`By: ${a.gwCreatedBy}`);
+        if (a.gwReason) {
+          // Reason may contain multiple lines like "Ad items: 2\nNon Ad items: 0\nTotal items: 2\nLocation: Shelf/In aisle"
+          // or "Consolidate/Loose product\nLocation: Back room"
+          detailParts.push(a.gwReason);
+        }
+        if (a.gwAlertType && !detailParts.some(p => p.includes(a.gwAlertType))) {
+          detailParts.unshift(a.gwAlertType);
+        }
+        const detailsCell = detailParts.join('\n') || '';
 
         // Last Svc column: days since visit + schedule day
         const svcParts = [];
@@ -868,6 +881,7 @@ export default function AlertLog() {
         return [
           i + 1,
           storeCell,
+          detailsCell,
           lastSvcCell,
           statusCell,
           responseCell,
@@ -877,51 +891,56 @@ export default function AlertLog() {
 
       autoTable(doc, {
         startY: 21,
-        head: [['#', 'Store', 'Last Svc', 'Status', 'Response', 'Image']],
+        head: [['#', 'Store', 'Details', 'Last Svc', 'Status', 'Response', 'Image']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: [37, 99, 235], fontSize: 7, fontStyle: 'bold', cellPadding: 1.5 },
-        bodyStyles: { fontSize: 7, minCellHeight: 28, cellPadding: 1.5, lineHeightFactor: 1.3 },
+        bodyStyles: { fontSize: 6.5, minCellHeight: 28, cellPadding: 1.5, lineHeightFactor: 1.3 },
         columnStyles: {
           0: { cellWidth: 7, halign: 'center' },
-          1: { cellWidth: 46 },
-          2: { cellWidth: 22 },
-          3: { cellWidth: 14, halign: 'center' },
-          4: { cellWidth: 36 },
-          5: { cellWidth: 42 },
+          1: { cellWidth: 38 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 13, halign: 'center' },
+          5: { cellWidth: 32 },
+          6: { cellWidth: 38 },
         },
-        margin: { left: 8, right: 8 },
-        tableWidth: pageWidth - 16,
+        margin: { left: 7, right: 7 },
+        tableWidth: pageWidth - 14,
         didParseCell: function (data) {
           if (data.section !== 'body') return;
           const a = routeAlerts[data.row.index];
           if (!a) return;
-          // Status column (3)
-          if (data.column.index === 3) {
+          // Status column (4)
+          if (data.column.index === 4) {
             data.cell.styles.fontStyle = 'bold';
             if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
             else if (a.status === 'unresolved') data.cell.styles.textColor = [239, 68, 68];
             else data.cell.styles.textColor = [156, 163, 175];
           }
-          // Last Service column (2)
-          if (data.column.index === 2) {
+          // Last Service column (3)
+          if (data.column.index === 3) {
             if (a.daysSinceService === null) data.cell.styles.textColor = [156, 163, 175];
             else if (a.daysSinceService > 14) data.cell.styles.textColor = [239, 68, 68];
             else if (a.daysSinceService > 7) data.cell.styles.textColor = [249, 115, 22];
             else data.cell.styles.textColor = [34, 197, 94];
             data.cell.styles.fontStyle = 'bold';
           }
-          // Response column (4)
-          if (data.column.index === 4) {
+          // Response column (5)
+          if (data.column.index === 5) {
             if (a.status === 'resolved') data.cell.styles.textColor = [34, 197, 94];
             else if (a.status === 'unresolved') data.cell.styles.textColor = a.days > 7 ? [239, 68, 68] : [249, 115, 22];
             else data.cell.styles.textColor = [156, 163, 175];
             data.cell.styles.fontStyle = 'bold';
           }
+          // Details column (2) — slightly smaller font for dense content
+          if (data.column.index === 2) {
+            data.cell.styles.fontSize = 6;
+          }
         },
         didDrawCell: function (data) {
-          // Embed thumbnail in Image column (5)
-          if (data.section !== 'body' || data.column.index !== 5) return;
+          // Embed thumbnail in Image column (6)
+          if (data.section !== 'body' || data.column.index !== 6) return;
           const a = routeAlerts[data.row.index];
           const img = a ? processedImages[a.emailId] : null;
           if (!img) return;

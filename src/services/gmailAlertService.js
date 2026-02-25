@@ -761,7 +761,7 @@ export function matchAlertToStore(alert, stores) {
 
 // ---- Alert CSV serialization ----
 
-const ALERT_CSV_HEADER = 'RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,DateReceived';
+const ALERT_CSV_HEADER = 'RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,DateReceived,GwCreatedBy,GwAlertType,GwReason';
 
 function quoteCsvField(val) {
   const s = (val || '').toString();
@@ -782,6 +782,9 @@ export function alertsToCsv(alerts) {
       a.company,
       a.routeNumber || '',
       a.dateReceived || '',
+      a.gwCreatedBy || '',
+      a.gwAlertType || '',
+      a.gwReason || '',
     ].map(quoteCsvField).join(','));
   });
   return lines.join('\n');
@@ -823,6 +826,9 @@ export function parseAlertsCsv(csv) {
       company: cols[7] || '',
       routeNumber: cols[8] || '',
       dateReceived: cols[9] || '',
+      gwCreatedBy: cols[10] || '',
+      gwAlertType: cols[11] || '',
+      gwReason: cols[12] || '',
     };
   });
 }

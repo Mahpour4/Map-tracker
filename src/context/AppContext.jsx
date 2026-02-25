@@ -786,6 +786,20 @@ export function AppProvider({ children }) {
       }));
       const { results } = await gwCompleteAlerts(payload);
 
+      // Store scraped GlobalWorx details on each alert (flatten to top-level fields for CSV persistence)
+      results.forEach(r => {
+        if (r.alertDetails) {
+          const alert = toComplete.find(a => a.refNumber === r.refNumber);
+          if (alert) {
+            alert.gwDetails = r.alertDetails;
+            const d = r.alertDetails.details || {};
+            if (d['Created By']) alert.gwCreatedBy = d['Created By'];
+            if (d['Alert Type']) alert.gwAlertType = d['Alert Type'];
+            if (d['Reason']) alert.gwReason = d['Reason'];
+          }
+        }
+      });
+
       // Only label alerts as Completed if the GW completion succeeded OR the page
       // confirmed it was already completed. Do NOT label if the alert was never accepted
       // (backend returns notAccepted=true when "Accept Here" button is still showing).
@@ -957,6 +971,20 @@ export function AppProvider({ children }) {
     }));
 
     const { results } = await gwAcceptAlerts(payload);
+
+    // Store scraped GlobalWorx details on each alert (flatten to top-level fields for CSV persistence)
+    results.forEach(r => {
+      if (r.alertDetails) {
+        const alert = unaccepted.find(a => a.refNumber === r.refNumber);
+        if (alert) {
+          alert.gwDetails = r.alertDetails;
+          const d = r.alertDetails.details || {};
+          if (d['Created By']) alert.gwCreatedBy = d['Created By'];
+          if (d['Alert Type']) alert.gwAlertType = d['Alert Type'];
+          if (d['Reason']) alert.gwReason = d['Reason'];
+        }
+      }
+    });
 
     // Label successfully accepted emails as "Processed" in Gmail (marks globalworxAccepted = true on next fetch)
     const acceptedIds = results.filter(r => r.success && r.emailId).map(r => r.emailId);
