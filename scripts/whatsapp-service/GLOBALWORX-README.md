@@ -49,6 +49,7 @@ Located in `scripts/whatsapp-service/`:
 - `POST /api/globalworx/accept` — Accept a single alert (`{ url, refNumber }`)
 - `POST /api/globalworx/accept-batch` — Accept multiple alerts in sequence
 - `POST /api/globalworx/complete-batch` — Complete multiple alerts (click "Complete Here")
+- `POST /api/globalworx/scrape-batch` — Scrape alert details without clicking (for PDF backfill)
 
 ### Frontend (React)
 
@@ -163,6 +164,18 @@ GlobalWorx's "Complete Here" calls `schedList.checkout()` which internally reque
 
 **Code:** `AlertLog.jsx` → `generateRoutePDF()`
 
+**Auto-Scrape on PDF Generation:**
+
+Before building the PDF, `generateRoutePDF()` checks if any alerts are missing GlobalWorx details (`gwCreatedBy`). If so, it calls the scrape-batch endpoint to backfill the data:
+
+1. Filters alerts that have an `acceptanceUrl` but no `gwCreatedBy`
+2. Sends the batch to `POST /api/globalworx/scrape-batch`
+3. Backend launches Puppeteer, navigates to each URL, scrapes details (read-only — no button clicking)
+4. Stores `gwCreatedBy`, `gwAlertType`, `gwReason` on each alert object
+5. Proceeds to build the PDF with the now-populated Details column
+
+This ensures alerts accepted before the scraping feature was added (pre-v2.19.0) still get full details in the PDF report.
+
 Each route PDF includes a table with columns:
 
 | Column | Source |
@@ -184,6 +197,25 @@ Non Ad items: 0
 Total items: 2
 Location: Shelf/In aisle
 ```
+
+### Scrape-Only Flow (Backfill)
+
+**Trigger:** Called automatically by PDF generation, or available via API
+
+**Code:** `globalworxService.js` → `scrapeAlertDetails()` → backend `globalworx.js` → `scrapeBatch()`
+
+**Purpose:** Navigate to GlobalWorx alert pages and extract details without clicking any buttons. Used to backfill `gwCreatedBy`, `gwAlertType`, and `gwReason` for alerts processed before scraping was implemented.
+
+**For each alert URL:**
+
+1. Launch Puppeteer (headless), navigate to the GlobalWorx acceptance URL
+2. Extract data from the page DOM:
+   - **Alert Type** — from `.event-detail-data` paired with "Alert Type" label
+   - **Created By** — from `.event-detail-data` paired with "Created By" label
+   - **Reason** — from `.event-detail-data` paired with "Reason" label (includes items + location)
+   - Store name, vendor, status, address, phone (additional metadata)
+3. Return `{ alertDetails: { details: { ... } } }` for each alert
+4. No buttons are clicked — purely read-only operation
 
 ---
 

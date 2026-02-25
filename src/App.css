@@ -5152,6 +5152,37 @@ textarea {
   cursor: not-allowed;
 }
 
+.al-btn-checkstatus {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #7c3aed;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  transition: all 0.15s;
+  margin-left: 6px;
+}
+.al-btn-checkstatus:hover {
+  background: #7c3aed;
+  color: white;
+  border-color: #7c3aed;
+}
+.al-btn-checkstatus:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.al-check-input {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #7c3aed;
+}
+
 .al-wa-status {
   display: inline-block;
   padding: 2px 8px;

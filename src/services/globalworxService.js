@@ -59,6 +59,25 @@ export async function completeAlerts(alerts) {
  * @param {Array<{ url: string, refNumber: string }>} alerts
  * @returns {{ results: Array<{ refNumber: string, alertDetails: object|null }> }}
  */
+/**
+ * Check the status of alerts on GlobalWorx without clicking any buttons.
+ * Returns which buttons are present (Accept Here / Complete Here / neither).
+ * @param {Array<{ url: string, refNumber: string, emailId?: string }>} alerts
+ * @returns {{ results: Array<{ refNumber: string, emailId: string, hasCompleteButton: boolean, hasAcceptButton: boolean }> }}
+ */
+export async function checkAlertStatus(alerts) {
+  const res = await fetch(`${BASE}/check-status-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alerts }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `GlobalWorx service error: ${res.status}`);
+  }
+  return await res.json();
+}
+
 export async function scrapeAlertDetails(alerts) {
   const res = await fetch(`${BASE}/scrape-batch`, {
     method: 'POST',

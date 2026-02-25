@@ -3,7 +3,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
-import { scrapeAlertDetails as gwScrapeDetails } from '../services/globalworxService';
+import { scrapeAlertDetails as gwScrapeDetails, checkAlertStatus as gwCheckStatus } from '../services/globalworxService';
+import { labelAlertsCompleted } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
@@ -80,6 +81,8 @@ export default function AlertLog() {
   const [selectedAlertRef, setSelectedAlertRef] = useState(null); // refNumber of expanded alert
   const [autoClearing, setAutoClearing] = useState(false);
   const [autoAccepting, setAutoAccepting] = useState(false);
+  const [checkedAlerts, setCheckedAlerts] = useState(new Set());
+  const [statusChecking, setStatusChecking] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
@@ -110,6 +113,13 @@ export default function AlertLog() {
     const interval = setInterval(check, 30000);
     return () => { mounted = false; clearInterval(interval); };
   }, []);
+
+  // Auto-fetch Gmail alerts on mount to pick up label flags (Accepted/Done/Completed)
+  useEffect(() => {
+    if (isGmailConnected() && state.alerts.length > 0) {
+      fetchGmailAlerts().catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- PDF sent tracking (persisted in localStorage) ---
   const PDF_SENT_KEY = 'pdf_sent_log';
@@ -212,8 +222,9 @@ export default function AlertLog() {
       const now = new Date();
       result = result.filter(a => {
         if (a.globalworxCompleted) return false;
-        // Also hide Done alerts older than 48h — GW button has expired
-        if (a.globalworxDone && a.dateReceived) {
+        // In default 'all' view, hide Done alerts older than 48h (GW button expired)
+        // But keep them visible when a specific status filter is active
+        if (filterStatus === 'all' && a.globalworxDone && a.dateReceived) {
           const alertDate = new Date(a.dateReceived + 'T00:00:00');
           if ((now - alertDate) / (1000 * 60 * 60) >= 48) return false;
         }
@@ -266,6 +277,17 @@ export default function AlertLog() {
   // Summary stats (reflect active date/route/vendor filters so counts match visible results)
   const stats = useMemo(() => {
     let base = enrichedAlerts;
+    if (!showCompleted) {
+      const now = new Date();
+      base = base.filter(a => {
+        if (a.globalworxCompleted) return false;
+        if (filterStatus === 'all' && a.globalworxDone && a.dateReceived) {
+          const alertDate = new Date(a.dateReceived + 'T00:00:00');
+          if ((now - alertDate) / (1000 * 60 * 60) >= 48) return false;
+        }
+        return true;
+      });
+    }
     if (filterDate === 'this-week') base = base.filter(a => weekDates.has(a.dateReceived));
     else if (filterDate) base = base.filter(a => a.dateReceived === filterDate);
     if (filterRoute !== 'all') base = base.filter(a => a.routeNumber === filterRoute);
@@ -286,7 +308,7 @@ export default function AlertLog() {
       ? Math.round(resolvedWithDays.reduce((sum, a) => sum + a.days, 0) / resolvedWithDays.length)
       : null;
     return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
-  }, [enrichedAlerts, filterDate, weekDates, filterRoute, filterVendor, searchTerm]);
+  }, [enrichedAlerts, showCompleted, filterStatus, filterDate, weekDates, filterRoute, filterVendor, searchTerm]);
 
   // Count alerts eligible for auto-clear (Done + has acceptance URL + not yet completed)
   const autoClearCount = useMemo(() => {
@@ -451,7 +473,9 @@ export default function AlertLog() {
   // Determine which routes are expanded
   const isRouteExpanded = (route) => {
     if (expandedRoutes !== null) return expandedRoutes.has(route);
-    // Auto mode: expand routes with unresolved alerts
+    // Auto mode: when a status filter is active, expand all routes that have matching alerts
+    if (filterStatus !== 'all') return alertsByRoute.some(([r]) => r === route);
+    // Default: expand routes with unresolved alerts
     const routeAlerts = alertsByRoute.find(([r]) => r === route);
     if (!routeAlerts) return false;
     return routeAlerts[1].some(a => a.status === 'unresolved');
@@ -579,6 +603,94 @@ export default function AlertLog() {
       alert(`Auto-Accept failed: ${err.message}`);
     } finally {
       setAutoAccepting(false);
+    }
+  }
+
+  // --- Check Status: checkbox selection + GW page inspection ---
+  function isAlertCheckable(a) {
+    return !a.globalworxCompleted;
+  }
+
+  function toggleAlertCheck(refNumber, e) {
+    e.stopPropagation();
+    setCheckedAlerts(prev => {
+      const next = new Set(prev);
+      if (next.has(refNumber)) next.delete(refNumber);
+      else next.add(refNumber);
+      return next;
+    });
+  }
+
+  function toggleRouteCheck(routeAlerts, e) {
+    e.stopPropagation();
+    const checkableRefs = routeAlerts.filter(a => isAlertCheckable(a)).map(a => a.refNumber);
+    setCheckedAlerts(prev => {
+      const next = new Set(prev);
+      const allChecked = checkableRefs.every(ref => next.has(ref));
+      if (allChecked) checkableRefs.forEach(ref => next.delete(ref));
+      else checkableRefs.forEach(ref => next.add(ref));
+      return next;
+    });
+  }
+
+  async function handleCheckStatus() {
+    if (checkedAlerts.size === 0) return;
+    const selected = enrichedAlerts.filter(a =>
+      checkedAlerts.has(a.refNumber) && !a.globalworxCompleted
+    );
+    if (selected.length === 0) {
+      alert('No checkable alerts selected.');
+      return;
+    }
+    setStatusChecking(true);
+    try {
+      const withUrl = selected.filter(a => a.acceptanceUrl);
+      const noUrl = selected.filter(a => !a.acceptanceUrl);
+
+      let stillActive = 0;
+      let expired = 0;
+      let errors = 0;
+
+      // Check GW pages for alerts that have URLs
+      if (withUrl.length > 0) {
+        const payload = withUrl.map(a => ({
+          url: a.acceptanceUrl,
+          refNumber: a.refNumber,
+          emailId: a.emailId,
+        }));
+        const { results } = await gwCheckStatus(payload);
+
+        // No buttons at all → clear and label as Completed
+        const noButtons = results.filter(r => !r.hasCompleteButton && !r.hasAcceptButton && !r.error);
+        if (noButtons.length > 0) {
+          const emailIds = noButtons.map(r => r.emailId).filter(Boolean);
+          if (emailIds.length > 0) await labelAlertsCompleted(emailIds);
+        }
+
+        // Accept or Complete button still there → leave open
+        stillActive = results.filter(r => r.hasCompleteButton || r.hasAcceptButton).length;
+        expired = noCompleteBtn.length;
+        errors = results.filter(r => r.error).length;
+      }
+
+      // Alerts without URLs — label as completed directly (no GW page to check)
+      if (noUrl.length > 0) {
+        const emailIds = noUrl.map(a => a.emailId).filter(Boolean);
+        if (emailIds.length > 0) await labelAlertsCompleted(emailIds);
+        expired += noUrl.length;
+      }
+
+      let msg = `Check Status: ${expired} closed`;
+      if (stillActive > 0) msg += `, ${stillActive} still active on GW`;
+      if (errors > 0) msg += `, ${errors} errors`;
+      alert(msg);
+
+      setCheckedAlerts(new Set());
+      if (expired > 0) await fetchGmailAlerts();
+    } catch (err) {
+      alert(`Check Status failed: ${err.message}`);
+    } finally {
+      setStatusChecking(false);
     }
   }
 
@@ -1521,6 +1633,16 @@ export default function AlertLog() {
                 {autoClearing ? 'Clearing...' : `Auto-Clear ${autoClearCount}`}
               </button>
             )}
+            {checkedAlerts.size > 0 && (
+              <button
+                className="al-btn-checkstatus"
+                onClick={handleCheckStatus}
+                disabled={statusChecking}
+                title={`Check GlobalWorx status for ${checkedAlerts.size} selected alert(s)`}
+              >
+                {statusChecking ? 'Checking...' : `Check Status ${checkedAlerts.size}`}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1564,13 +1686,13 @@ export default function AlertLog() {
         {/* Filters */}
         <div className="al-filters">
           <div className="al-filter-group">
-            <button className={`al-filter-btn ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>
+            <button className={`al-filter-btn ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterStatus('all'); setExpandedRoutes(null); setCheckedAlerts(new Set()); }}>
               All ({stats.total})
             </button>
-            <button className={`al-filter-btn red ${filterStatus === 'unresolved' ? 'active' : ''}`} onClick={() => setFilterStatus('unresolved')}>
+            <button className={`al-filter-btn red ${filterStatus === 'unresolved' ? 'active' : ''}`} onClick={() => { setFilterStatus('unresolved'); setExpandedRoutes(null); setCheckedAlerts(new Set()); }}>
               Open ({stats.open})
             </button>
-            <button className={`al-filter-btn green ${filterStatus === 'resolved' ? 'active' : ''}`} onClick={() => setFilterStatus('resolved')}>
+            <button className={`al-filter-btn green ${filterStatus === 'resolved' ? 'active' : ''}`} onClick={() => { setFilterStatus('resolved'); setExpandedRoutes(null); setCheckedAlerts(new Set()); }}>
               Resolved ({stats.resolved})
             </button>
             {stats.completed > 0 && (
@@ -2086,6 +2208,17 @@ export default function AlertLog() {
                   <table className="al-table">
                     <thead>
                       <tr>
+                        <th style={{ width: 32, textAlign: 'center', padding: '8px 4px' }}>
+                          <input
+                            type="checkbox"
+                            checked={routeAlerts.filter(a => isAlertCheckable(a)).length > 0 &&
+                                     routeAlerts.filter(a => isAlertCheckable(a)).every(a => checkedAlerts.has(a.refNumber))}
+                            onChange={(e) => toggleRouteCheck(routeAlerts, e)}
+                            onClick={(e) => e.stopPropagation()}
+                            title="Select all checkable alerts in this route"
+                            className="al-check-input"
+                          />
+                        </th>
                         <th style={{ width: 36 }}></th>
                         <th>Store</th>
                         <th>City</th>
@@ -2131,6 +2264,16 @@ export default function AlertLog() {
                               className={`${a.status} clickable${isDetailOpen ? ' al-row-selected' : ''}`}
                               onClick={() => handleAlertRowClick(a)}
                             >
+                              <td style={{ textAlign: 'center', padding: '8px 4px' }} onClick={(e) => e.stopPropagation()}>
+                                {isAlertCheckable(a) ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={checkedAlerts.has(a.refNumber)}
+                                    onChange={(e) => toggleAlertCheck(a.refNumber, e)}
+                                    className="al-check-input"
+                                  />
+                                ) : null}
+                              </td>
                               <td>
                                 <span className="al-status-dot" style={{ background: a.color }}></span>
                               </td>
@@ -2233,7 +2376,7 @@ export default function AlertLog() {
                             {/* ── Inline detail panel ── */}
                             {isDetailOpen && (
                               <tr className="al-detail-row">
-                                <td colSpan={13}>
+                                <td colSpan={14}>
                                   <div className="al-detail-panel">
 
                                     {/* Store profile */}
@@ -2380,7 +2523,7 @@ export default function AlertLog() {
 
                             {isImgOpen && (
                               <tr className="al-image-row">
-                                <td colSpan={13}>
+                                <td colSpan={14}>
                                   <div className="al-image-container">
                                     {imgData?.loading && <span className="al-image-loading">Loading image...</span>}
                                     {imgData?.error && <span className="al-image-error">{imgData.error}</span>}

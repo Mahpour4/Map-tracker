@@ -797,6 +797,90 @@ async function scrapeBatch(alerts) {
 }
 
 /**
+ * Check the status of alerts on GlobalWorx without clicking any buttons.
+ * Navigates to each URL and checks which buttons are present.
+ * @param {Array<{ url: string, refNumber: string, emailId?: string }>} alerts
+ * @returns {{ results: Array<{ refNumber: string, emailId: string, hasCompleteButton: boolean, hasAcceptButton: boolean, alertDetails: object|null }> }}
+ */
+async function checkStatusBatch(alerts) {
+  if (!alerts || alerts.length === 0) {
+    return { results: [] };
+  }
+
+  console.log(`[GW] Starting batch status check: ${alerts.length} alert(s)`);
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,900'],
+    });
+  } catch (err) {
+    console.error('[GW] Failed to launch browser:', err.message);
+    return {
+      results: alerts.map(a => ({ refNumber: a.refNumber, emailId: a.emailId || '', hasCompleteButton: false, hasAcceptButton: false, alertDetails: null, error: err.message })),
+    };
+  }
+
+  const results = [];
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+
+    for (let i = 0; i < alerts.length; i++) {
+      const alert = alerts[i];
+      console.log(`[GW] --- Check Status ${i + 1}/${alerts.length}: ${alert.refNumber} ---`);
+      try {
+        await page.goto(alert.url, { waitUntil: 'networkidle2', timeout: 20000 });
+        await sleep(2000);
+
+        // Scrape alert details
+        const alertDetails = await scrapeAlertDetails(page);
+
+        // Check for "Complete Here" button
+        let hasCompleteButton = false;
+        const completeCss = ['input.timelog-btn', 'input[value="Complete Here"]'];
+        for (const sel of completeCss) {
+          const found = await findAllInFrames(page, sel);
+          if (found && found.elements.length > 0) {
+            hasCompleteButton = true;
+            break;
+          }
+        }
+
+        // Check for "Accept Here" button
+        let hasAcceptButton = false;
+        const acceptCss = ['input.accept-btn', 'input[value="Accept Here"]'];
+        for (const sel of acceptCss) {
+          const found = await findAllInFrames(page, sel);
+          if (found && found.elements.length > 0) {
+            hasAcceptButton = true;
+            break;
+          }
+        }
+
+        console.log(`[GW]   Status: Complete=${hasCompleteButton}, Accept=${hasAcceptButton}${!hasCompleteButton && !hasAcceptButton ? ' (expired/completed)' : ''}`);
+        results.push({ refNumber: alert.refNumber, emailId: alert.emailId || '', hasCompleteButton, hasAcceptButton, alertDetails });
+      } catch (err) {
+        console.error(`[GW]   ERROR checking ${alert.refNumber}:`, err.message);
+        results.push({ refNumber: alert.refNumber, emailId: alert.emailId || '', hasCompleteButton: false, hasAcceptButton: false, alertDetails: null, error: err.message });
+      }
+
+      if (i < alerts.length - 1) await sleep(500);
+    }
+  } finally {
+    await browser.close();
+    console.log('[GW] Browser closed.');
+  }
+
+  const expired = results.filter(r => !r.hasCompleteButton && !r.hasAcceptButton && !r.error).length;
+  const active = results.filter(r => r.hasCompleteButton || r.hasAcceptButton).length;
+  console.log(`[GW] DONE: ${active} active, ${expired} expired/completed, ${results.length - active - expired} errors out of ${alerts.length}`);
+  return { results };
+}
+
+/**
  * Check if Puppeteer/Chrome is available.
  */
 async function checkStatus() {
@@ -812,4 +896,4 @@ async function checkStatus() {
   }
 }
 
-module.exports = { acceptAlert, acceptBatch, completeAlert, completeBatch, scrapeBatch, checkStatus };
+module.exports = { acceptAlert, acceptBatch, completeAlert, completeBatch, scrapeBatch, checkStatusBatch, checkStatus };
