@@ -12,8 +12,8 @@ dist
 dist-ssr
 *.local
 
-# Local launcher script (machine-specific paths)
-start.bat
+# Local launcher script
+# start.bat is now tracked in the repo
 
 # WhatsApp service session data
 scripts/whatsapp-service/.wwebjs_auth/
