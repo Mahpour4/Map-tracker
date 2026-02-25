@@ -1,12 +1,12 @@
 # GlobalWorx Auto-Accept & Alert Lifecycle System
 
-This document explains the full automated alert lifecycle — from incoming Gmail alert emails through GlobalWorx acceptance to automatic resolution marking. This feature was previously built and deleted; this is a rebuild from scratch.
+This document explains the full automated alert lifecycle — from incoming Gmail alert emails through GlobalWorx acceptance, completion, and data scraping for PDF reports.
 
 ---
 
 ## Overview
 
-When a GlobalWorx service alert email arrives in Gmail, the system can now handle the entire lifecycle automatically:
+When a GlobalWorx service alert email arrives in Gmail, the system handles the entire lifecycle automatically:
 
 ```
 Gmail Alert Email
@@ -15,14 +15,19 @@ Gmail Alert Email
 [1] Fetch & Parse ──> Alert appears in Alert Panel / Alert Log
     |
     v
-[2] Auto-Accept ──> Puppeteer clicks through GlobalWorx acceptance form (headless)
+[2] Auto-Accept ──> Puppeteer clicks "Accept Here" + "Accept Issue" on GlobalWorx
     |                Gmail label: "Processed"
+    |                Scrapes: Created By, Alert Type, Reason, Location
     v
 [3] Auto-Done ──> Store visited after alert date? Mark resolved
     |              Gmail label: "GLOBAL WORKS/Done"
     v
-[4] Auto-Completed ──> Done alert? Click "Complete Here" on GlobalWorx + archive
-                        Gmail label: "GLOBAL WORKS/Completed"
+[4] Auto-Complete ──> Click "Complete Here" on GlobalWorx (with geolocation grant)
+    |                  Post-click verification: confirms button is gone
+    |                  Gmail label: "GLOBAL WORKS/Completed"
+    v
+[5] PDF Report ──> Route PDF includes scraped GW details per alert
+                    (Created By, Reason, Items, Location)
 ```
 
 ---
@@ -36,7 +41,7 @@ Located in `scripts/whatsapp-service/`:
 | File | Purpose |
 |------|---------|
 | `server.js` | Express server on port 3001, routes for WhatsApp + GlobalWorx |
-| `globalworx.js` | Puppeteer module that opens GlobalWorx acceptance URLs and clicks through the form |
+| `globalworx.js` | Puppeteer module — accepts, completes, scrapes alert details from GlobalWorx |
 
 **API Endpoints:**
 
@@ -50,10 +55,10 @@ Located in `scripts/whatsapp-service/`:
 | File | Purpose |
 |------|---------|
 | `src/services/globalworxService.js` | HTTP client that calls the backend endpoints |
-| `src/services/gmailAlertService.js` | Gmail API integration — fetches alert emails, manages labels |
-| `src/context/AppContext.jsx` | Orchestration — `fetchGmailAlerts()`, `autoAcceptAlerts()`, `markResolvedAlertsDone()`, `markDoneAlertsCompleted()` |
+| `src/services/gmailAlertService.js` | Gmail API integration — fetches alert emails, manages labels (including Error label) |
+| `src/context/AppContext.jsx` | Orchestration — `fetchGmailAlerts()`, `autoAcceptAlerts()`, `markResolvedAlertsDone()`, `autoCompleteAlerts()` |
 | `src/components/AlertPanel.jsx` | UI — Auto-Check toggle button, 15-minute polling timer |
-| `src/components/AlertLog.jsx` | UI — Full alert list, status badges, manual Auto-Clear button |
+| `src/components/AlertLog.jsx` | UI — Full alert list, status badges, manual Auto-Clear button, PDF report generation |
 
 ---
 
@@ -67,7 +72,7 @@ Located in `scripts/whatsapp-service/`:
 
 1. Calls `gmailAlertService.fetchAlertEmails(afterDate)` which queries Gmail API for emails matching the alert subject pattern
 2. Parses subject lines to extract: store number, ref number (ADUSA-XXXXXXX), alert type
-3. Reads Gmail labels on each email to set flags: `globalworxAccepted`, `globalworxDone`, `globalworxCompleted`
+3. Reads Gmail labels on each email to set flags: `globalworxAccepted`, `globalworxDone`, `globalworxCompleted`, `globalworxError`
 4. Extracts the GlobalWorx acceptance URL from the email body (`acceptanceUrl`)
 5. Matches each alert to a store in the store database using store number
 6. Merges with existing alerts (dedupes by refNumber), prunes alerts older than 30 days
@@ -84,18 +89,17 @@ Located in `scripts/whatsapp-service/`:
 3. Backend launches headless Chrome via Puppeteer and processes each alert sequentially:
 
    **For each alert URL:**
-   - **Strategy 1 (Accept):** Finds and clicks the "Accept Here" button (CSS selectors → XPath fallback)
-   - **Strategy 2 (Resolution Time):** Sets the resolution dropdown to "within 48 hours" (uses `indexOf` for compatibility with older JS environments on the GlobalWorx page)
-   - **Strategy 3 (Submit):** Finds and clicks the "Accept Issue" submit button
+   - **Scrape details** — Extracts Created By, Alert Type, Reason (items + location), store info from the page
+   - **Strategy 1 (Accept):** Finds and clicks the "Accept Here" button (`input.accept-btn`)
+   - **Strategy 2 (Resolution Time):** Sets the resolution dropdown to "within 48 hours"
+   - **Strategy 3 (Submit):** Finds and clicks the "Accept Issue" submit button (`input.si-accept-confirm`)
 
-4. After all accepts complete, labels successful emails as `Processed` in Gmail via `labelAlertsProcessed()`
+   **Edge cases:**
+   - "Complete Here" showing instead → alert already accepted → returns `success: true, alreadyAccepted`
+   - Neither button found → alert already completed/expired → returns `success: true, alreadyCompleted`
 
-**Important notes on the Puppeteer implementation:**
-- Runs in headless mode (`headless: 'new'`) — no visible browser window
-- Uses a 6-second initial wait after page load for Sencha/jQuery Mobile apps to finish rendering
-- Falls back from CSS selectors to XPath to text search for maximum resilience
-- The Strategy 2 resolution dropdown code uses `indexOf` instead of `includes` because the GlobalWorx page's JS environment has broken String.prototype.includes polyfills
-- All `page.evaluate()` code uses `var` and classic for-loops instead of ES6 to avoid compatibility issues
+4. After all accepts complete, labels successful emails as `Processed` in Gmail
+5. Stores scraped `gwCreatedBy`, `gwAlertType`, `gwReason` on each alert object
 
 ### Stage 3: Auto-Mark Resolved as "Done"
 
@@ -115,41 +119,151 @@ For each alert that has an `emailId` and is NOT already `globalworxDone`:
 4. **If that date >= the alert's `dateReceived`** → the store was visited after the alert → mark as resolved
 5. Apply the `GLOBAL WORKS/Done` Gmail label via batch modify API
 
-This is the key connection between **store visit/sale data** and **alert resolution**. When a driver visits a store (recorded via GPS proximity or data import), any outstanding alerts for that store automatically get marked as Done.
+### Stage 4: Auto-Complete via GlobalWorx (Puppeteer)
 
-### Stage 4: Auto-Mark Completed (48h+ Done alerts)
-
-**Trigger:** Runs automatically after `markResolvedAlertsDone()` in the same fetch cycle
+**Trigger:** Runs automatically after `markResolvedAlertsDone()`, or manually via "Auto-Clear" button in AlertLog
 
 **Code:** `AppContext.jsx` → `autoCompleteAlerts()` → `globalworxService.completeAlerts()` → backend `globalworx.js`
 
-**Logic:**
-For each alert that is `globalworxDone` + has `acceptanceUrl` + NOT yet `globalworxCompleted`:
+**Eligibility:** `globalworxDone` + has `acceptanceUrl` + NOT `globalworxCompleted` + NOT `globalworxError`
+
+**Concurrency guard:** Only one completion batch runs at a time (`_completingInProgress` flag)
+
+**For each alert URL:**
 
 1. Navigate to the GlobalWorx acceptance URL via Puppeteer (headless)
-2. If "Complete Here" button is found → click it to close the issue on GlobalWorx
-3. If button is not found → issue was already completed/expired on GlobalWorx (still proceed)
-4. Apply the `GLOBAL WORKS/Completed` Gmail label regardless
-5. Completed alerts are hidden from the main alert view (archived)
+2. **Scrape alert details** from the page (same as accept flow)
+3. Look for "Complete Here" button (`input.timelog-btn`)
+4. **Click with 3 fallback strategies + post-click verification:**
 
-If the Puppeteer backend is unavailable, the Gmail label is still applied (GW step is skipped gracefully).
+   | Attempt | Method | Why |
+   |---------|--------|-----|
+   | 1 | Puppeteer native `.click()` | Real mouse events (mousedown/mouseup/click) |
+   | 2 | `el.onclick.call(el, event)` | Direct onclick handler invocation — works with inline `onclick="..."` attributes |
+   | 3 | `schedList.checkout(btn.form, btn)` | Call the GlobalWorx JS function directly |
 
-This can also be triggered manually via the "Auto-Clear" button in AlertLog.
+5. **Post-click verification:** After each attempt, re-checks if the button is still on the page
+6. Only returns `success: true` when the button is confirmed gone
+
+**Geolocation handling:**
+GlobalWorx's "Complete Here" calls `schedList.checkout()` which internally requests `navigator.geolocation.getCurrentPosition()`. The browser grants geolocation permission via `overridePermissions('https://adusa.goglobalworx.com', ['geolocation'])` + fake coordinates. Without this, the "Requesting Geolocation..." overlay hangs forever.
+
+**Result processing:**
+
+| Result | Action |
+|--------|--------|
+| `success: true` | Apply `GLOBAL WORKS/Completed` Gmail label |
+| `success: true, alreadyCompleted` | Apply `GLOBAL WORKS/Completed` label (no buttons = expired/done) |
+| `notAccepted: true` | Strip Done/Completed labels (alert was never accepted) |
+| `clickFailed: true` | Retry next cycle; after 2 failures → apply `GLOBAL WORKS/Error` label |
+
+### Stage 5: PDF Route Report
+
+**Trigger:** "PDF" button per route in AlertLog
+
+**Code:** `AlertLog.jsx` → `generateRoutePDF()`
+
+Each route PDF includes a table with columns:
+
+| Column | Source |
+|--------|--------|
+| # | Row number |
+| Store | Store name + address from alert data |
+| **Details** | **Created By, Alert Type, Reason (items + location) — scraped from GlobalWorx** |
+| Last Svc | Days since last visit + scheduled day |
+| Status | Open / Resolved |
+| Response | Resolution time + monthly alert count |
+| Image | Alert image from Gmail |
+
+The Details column shows data like:
+```
+Excessive out of stocks
+By: Creamer, Stephanie
+Ad items: 2
+Non Ad items: 0
+Total items: 2
+Location: Shelf/In aisle
+```
 
 ---
 
 ## Gmail Labels
 
-The system uses four Gmail labels to track alert lifecycle:
+The system uses five Gmail labels to track alert lifecycle:
 
 | Label | Purpose | Applied by |
 |-------|---------|-----------|
 | `Map Tracker/Logged` | Alert email was fetched and parsed | `fetchGmailAlerts()` |
 | `Processed` | Alert was accepted on GlobalWorx | `autoAcceptAlerts()` |
 | `GLOBAL WORKS/Done` | Store was visited after alert date | `markResolvedAlertsDone()` |
-| `GLOBAL WORKS/Completed` | Alert archived + closed on GlobalWorx | `autoCompleteAlerts()` |
+| `GLOBAL WORKS/Completed` | Alert closed on GlobalWorx (verified) | `autoCompleteAlerts()` |
+| `GLOBAL WORKS/Error` | Complete click failed after 2 retries | `autoCompleteAlerts()` |
 
-Labels are auto-created if they don't exist (except Done/Completed which must exist in Gmail).
+Labels are auto-created if they don't exist (except Done which must exist in Gmail).
+
+---
+
+## Alert Data Fields (CSV Persistence)
+
+Alerts are persisted to CSV with these columns:
+
+| Field | Source |
+|-------|--------|
+| RefNumber | Parsed from email subject (ADUSA-XXXXXXX) |
+| EmailID | Gmail message ID |
+| StoreID, StoreNumber, StoreName, City | Matched from store database |
+| Vendor, Company | Parsed from email subject |
+| RouteNumber | From store database |
+| DateReceived | Email date header |
+| **GwCreatedBy** | **Scraped from GlobalWorx page** |
+| **GwAlertType** | **Scraped from GlobalWorx page** |
+| **GwReason** | **Scraped from GlobalWorx page (includes items + location)** |
+
+---
+
+## Debug & Troubleshooting
+
+### Debug Screenshots
+
+Every GlobalWorx page interaction saves a screenshot + HTML dump to `scripts/whatsapp-service/gw-debug/`:
+
+```
+ADUSA-8917047_complete-page-loaded_2026-02-24T23-53-17.png
+ADUSA-8917047_after-complete-attempt1-failed_2026-02-24T23-53-23.png
+ADUSA-8917047_after-complete-verified_2026-02-24T23-53-26.png
+```
+
+Stages captured: `accept-page-loaded`, `accept-not-found`, `after-accept-submit`, `complete-page-loaded`, `after-complete-attempt1-failed`, `after-complete-attempt2-failed`, `after-complete-verified`, `after-complete-all-attempts-failed`, `complete-not-found`, `complete-error`
+
+### Console Log Prefixes
+
+| Prefix | Source |
+|--------|--------|
+| `[GW]` | Puppeteer backend (globalworx.js) |
+| `[Gmail]` | Gmail API operations |
+| `[Alerts]` | Alert lifecycle orchestration (AppContext) |
+| `[AutoAccept]` | Accept flow results |
+
+### Button Inventory
+
+Each page load logs all buttons on the GlobalWorx page with their tag, type, value, class, and visibility. Key buttons:
+
+| Button | Class | Purpose |
+|--------|-------|---------|
+| `Accept Here` | `accept-btn` | Accept the alert (Strategy 1) |
+| `Accept Issue` | `si-accept-confirm` | Submit the acceptance form (Strategy 3) |
+| `Complete Here` | `timelog-btn` | Complete/close the alert |
+| `Accept` | `vf-form-button vf-primary` | **DO NOT CLICK** — navigates to dashboard |
+
+### Common Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| "Requesting Geolocation..." hangs | Geolocation permission not granted | `overridePermissions` + `setGeolocation` (already implemented) |
+| Button found but click doesn't register | Inline `onclick` not triggered by DOM click | Attempt 2: `el.onclick.call()` (already implemented) |
+| Completed label applied but button not pressed | No post-click verification | Verification checks button is gone (already implemented) |
+| Alert retries forever | Neither button found = `success: false` | Returns `alreadyCompleted: true` (already fixed) |
+| Duplicate concurrent batches | Multiple triggers call `autoCompleteAlerts` | `_completingInProgress` concurrency guard |
 
 ---
 
@@ -165,13 +279,13 @@ The "Auto" toggle button on the Alert Panel enables a 15-minute polling cycle:
                                     |
                                     v
                               autoAcceptAlerts()
-                                    |
+                                    |  (scrapes GW details)
                                     v
                               markResolvedAlertsDone()
                                     |
                                     v
                               autoCompleteAlerts()
-                                    |
+                                    |  (verifies clicks, retries failures)
                                     v
                               Wait 15 minutes → repeat
 ```
@@ -196,19 +310,11 @@ Make sure Chrome/Chromium is available for Puppeteer. On first run, Puppeteer do
 
 ---
 
-## Debugging
+## Implementation Notes
 
-- **Console logs:** All stages log with prefixes `[GW]`, `[Gmail]`, `[Alerts]`, `[AutoAccept]` for easy filtering.
-- Each acceptance logs which CSS selector or XPath matched, and whether the resolution dropdown was set successfully.
-
----
-
-## Why This Was Rebuilt
-
-The original implementation was deleted. This rebuild addresses the same workflow but with improvements:
-
-1. **Headless browser** — no visible Chrome window, runs silently in background
-2. **Resilient element finding** — CSS → XPath → text search fallback chains
-3. **ES5-compatible evaluate code** — `var`, `indexOf`, for-loops instead of ES6 to handle GlobalWorx's older JS environment
-4. **Automatic full lifecycle** — previously only auto-accept existed; now Done and Completed stages are also automated
-5. **Lightweight** — no screenshots or disk writes, console logging only
+- **Headless browser** — runs in `headless: 'new'` mode (no visible Chrome window)
+- **Resilient element finding** — CSS → XPath → text search fallback chains
+- **ES5-compatible evaluate code** — `var`, `indexOf`, for-loops instead of ES6 to handle GlobalWorx's older JS environment
+- **CSS selector specificity** — Only matches exact button classes (`accept-btn`, `timelog-btn`, `si-accept-confirm`). Broad wildcards like `input[value*="Accept"]` match wrong elements (dashboard filters, navigation buttons)
+- **Geolocation override** — Required for Complete flow; granted to `https://adusa.goglobalworx.com`
+- **Retry with Error label** — Click failures retry up to 2 cycles before applying `GLOBAL WORKS/Error` label and excluding from future attempts
