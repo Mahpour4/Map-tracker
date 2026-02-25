@@ -160,9 +160,9 @@
       // Check opacity (disabled buttons often have low opacity)
       var computedOpacity = window.getComputedStyle(nextBtn).opacity;
       if (parseFloat(computedOpacity) < 0.5) nextEnabled = false;
-      // Check cursor style (disabled buttons often have default cursor)
+      // Check cursor style (not-allowed = disabled; skip 'default' since <img> naturally has it)
       var computedCursor = window.getComputedStyle(nextBtn).cursor;
-      if (computedCursor === 'default' || computedCursor === 'not-allowed') nextEnabled = false;
+      if (computedCursor === 'not-allowed') nextEnabled = false;
     }
 
     // If no new stores on this page, we've already scraped it — treat as last page
