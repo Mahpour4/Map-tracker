@@ -6,10 +6,10 @@ const CHAIN_TYPES = new Set([
   'weis', 'redners', 'acme', 'geresbecks', 'military',
 ]);
 const CHAIN_RADIUS_M = 805;
-const INDEPENDENT_RADIUS_M = 200;
+const INDEPENDENT_RADIUS_M = 400;
 const WAREHOUSE_RADIUS_M = 500;
 const CUSTOM_LOCATION_RADIUS_M = 500;
-const MIN_DWELL_MS = 15 * 60 * 1000; // 15 minutes
+const MIN_DWELL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Get the proximity radius for a store based on its type.
@@ -23,7 +23,7 @@ export function getProximityRadius(storeType) {
  * Analyze a vehicle's location history breadcrumbs to find dwell-based visits.
  *
  * A "visit" is when the vehicle stays within the proximity radius of a known
- * location for >= 10 minutes (not necessarily continuous, just total time
+ * location for >= 5 minutes (not necessarily continuous, just total time
  * within radius during a contiguous period).
  *
  * @param {Array} breadcrumbs - Sorted by time: [{ lat, lng, time, speed, description }]
