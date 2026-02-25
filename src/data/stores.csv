@@ -82,7 +82,7 @@ FLW01313,FLW01313,Food Lion 1313,300 THOMPSON CREEK MALL,Stevensville,MD,21666,2
 FLW01369,01369,Food Lion 1369,501 W Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Dover,Dover,39.4516822,-75.723283,2026-02-17,2026-02-17,No
 FLW01385,01385,Food Lion,1030 FOREST AVE,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1582,-75.5244,2026-02-20,2026-02-11,No
 FLW01419,01419,Food Lion,250 GATEWAY SOUTH BLVD,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.1228365,-75.4985452,2026-02-20,2026-02-20,No
-FLW01426,01426,Food Lion 1426,215 STADIUM ST,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Dover,Dover,39.2801631,-75.5909896,2026-02-20,2026-02-20,No
+FLW01426,01426,Food Lion 1426,215 STADIUM ST,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Dover,Dover,39.2801631,-75.5909896,2026-02-20,2026-02-25,No
 FLW01458,01458,Food Lion 1458,30214 SUSSEX HWY UNIT 5,Laurel,DE,19956,210,Route 210 Driver,Delaware,Laurel,Laurel,38.5562,-75.5713,2026-02-18,2026-02-24,No
 FLW01560,01560,Food Lion 1560,206 N Fruitland Blvd,Fruitland,MD,21826,206,Route 210 Driver,Eastern Shore Maryland,Fruitland,Fruitland,38.3244654,-75.6177442,2026-02-18,2026-02-24,No
 FLW02117,FLW02117,Food Lion 2117,31810 River Rd,Millington,MD,21651,210,Route 210 Driver,Eastern Shore Maryland,Millington,Millington,39.2649848,-75.8611169,,2026-02-12,No
@@ -135,7 +135,7 @@ WGW00044,WGW00044,Wegmans 44,101 CROSSTRAIL BLVD SE,LEESBURG,VA,20175,0,Wegmans 
 SRW00563,SRW00563,ShopRite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.5201387,-76.5601869,,2025-09-12,Yes
 SRW00567,00567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,204,Route 204 Driver,Baltimore County,Unassigned,Unassigned,39.3723579,-76.5640499,2026-02-24,2026-02-24,No
 FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-02-19,2026-02-25,No
-FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-02-19,2026-02-19,No
+FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-02-19,2026-02-25,No
 FLW00663,FLW00663,Food Lion Store 663,96 Somerset Blvd,Charles Town,WV,25414,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.289,-77.86,2026-02-24,2026-02-16,No
 FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.6263,-78.2271,2026-02-23,2026-02-16,No
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-02-24,2026-02-24,No
@@ -688,7 +688,7 @@ WGW00143,WGW00143,WEGMANS 143,41 RIDGE SQ NW,WASHINGTON,DC,20016,200,Route 200 D
 WMW00044,WMW00044,WEIS MARKETS 044,8115 Richie Hwy,Pasadena,MD,21122,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.107561467228244,-76.57438858409427,,,Yes
 WMW00238,WMW00238,WEIS MARKETS 238,400 ENTERPRISE CIR,MARTINSBURG,WV,25405,200,Route 200 Driver,Eastern Panhandle WV,Martinsburg,Martinsburg,39.4449922,-77.9903268,,2025-03-28,Yes
 WMW00279,WMW00279,WEIS MARKETS 279,750 PRINCE FREDERICK BLVD PRINCE,FREDERICK,MD,20678-3141,200,Route 200 Driver,Frederick County,Frederick County,Frederick County,38.5530153,-76.5971227,,2025-03-25,Yes
-WMW00084,WMW00084,Weis Market 084,7200 HOLABIRD AVE,DUNDALK,MD,21222,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2733619,-76.5169318,,2026-02-18,No
+WMW00084,WMW00084,Weis Market 084,7200 HOLABIRD AVE,DUNDALK,MD,21222,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2733619,-76.5169318,,2026-02-25,No
 CASH0517,CASH0517,Carrol Fuel Edmonson,2801 Edmondson Ave,Baltimore,MD,21223,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2945727,-76.6631192,2026-02-24,2026-02-02,No
 HF000002,HF000002,Harvest Fare Store 2,5708 Wabash Avenue,Baltimore,MD,21215,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3445225,-76.6956206,2026-02-24,2026-02-17,No
 CASH0447,CASH0447,Countryside Market,27215 Nanticoke Rd,Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Lower Shore,38.37082069734976,-75.60584759530016,2024-09-23,,Yes
