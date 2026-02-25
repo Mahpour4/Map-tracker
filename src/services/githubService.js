@@ -559,6 +559,56 @@ export async function saveTransactionsJson(jsonContent, message) {
   });
 }
 
+// ---- Map Snapshot JSON (GitHub Pages publish) ----
+
+const SNAPSHOT_FILE_PATH = 'docs/data/map-snapshot.json';
+const SNAPSHOT_SHA_KEY = 'github_snapshot_sha';
+
+function getSnapshotSha() {
+  return localStorage.getItem(SNAPSHOT_SHA_KEY) || '';
+}
+
+function saveSnapshotSha(sha) {
+  localStorage.setItem(SNAPSHOT_SHA_KEY, sha);
+}
+
+export async function fetchMapSnapshot() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SNAPSHOT_FILE_PATH}`,
+    { headers: headers(), cache: 'no-store' }
+  );
+
+  if (res.status === 404) {
+    return { content: '{}', sha: '' };
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveSnapshotSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveMapSnapshot(jsonContent, message) {
+  let sha = getSnapshotSha();
+  if (!sha) {
+    try { sha = (await fetchMapSnapshot()).sha; } catch { /* file may not exist */ }
+  }
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SNAPSHOT_FILE_PATH}`,
+    encoded,
+    message: message || 'Publish map snapshot for GitHub Pages',
+    sha,
+    fetchFn: fetchMapSnapshot,
+    saveShaFn: saveSnapshotSha,
+  });
+}
+
 /**
  * Test if the current token is valid by fetching the file.
  */

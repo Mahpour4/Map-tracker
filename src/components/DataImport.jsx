@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext';
 import cityCoords from '../data/cityCoords';
 import { geocodeAddress } from '../utils/geocodeAddress';
 import { parseTransactions, matchCustomerToStore } from '../services/daoTransactionParser';
+import { saveMapSnapshot } from '../services/githubService';
+import { getGrade, getLatestDate, getDaysSinceVisit, getStatusCounts } from '../utils/driverMetrics';
 
 // Known city names from cityCoords for address parsing
 const KNOWN_CITIES = Object.keys(cityCoords).map(k => {
@@ -231,6 +233,10 @@ export default function DataImport() {
   const txFileInputRef = useRef(null);
   const storeFileInputRef = useRef(null);
 
+  // Publish Map state
+  const [publishing, setPublishing] = useState(false);
+  const [publishResult, setPublishResult] = useState(null);
+
   // Store lookup
   const storeMap = useMemo(() => {
     const map = {};
@@ -333,7 +339,7 @@ export default function DataImport() {
   const txParsed = useMemo(() => parseTransactions(transactions), [transactions]);
 
   const bookmarkletCode = `javascript:void(fetch('${window.location.origin}/dao-bookmarklet.js').then(r=>r.text()).then(t=>eval(t)))`;
-  const websnakBookmarklet = `javascript:void(function(){var K='websnak-scraper-data';function toast(m,c){var tp=window.top||window;var t=tp.document.getElementById('ws-scrape-toast');if(!t){t=tp.document.createElement('div');t.id='ws-scrape-toast';t.style.cssText='position:fixed;top:20px;right:20px;padding:16px 24px;border-radius:8px;font-size:15px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);color:%23fff;max-width:500px;line-height:1.4';tp.document.body.appendChild(t)}t.style.background=c||'%233b82f6';t.innerHTML=m}console.log('WebSnak v5 AG Grid scraper');var ps=[];try{var gEls=document.querySelectorAll('.ag-root-wrapper,[class*=ag-root]');for(var gi=0;gi<gEls.length;gi++){var comp=gEls[gi].__agComponent||gEls[gi]._agComponent;if(comp){var api=comp.gridApi||comp.api||(comp.gridOptions&&comp.gridOptions.api);if(api&&api.forEachNode){api.forEachNode(function(n){if(!n.data)return;var d=n.data;var sid=d['Store Id']||d['StoreId']||d['STOREID']||d['storeId']||'';if(sid)ps.push({'Store Id':String(sid),'Name':String(d['Name']||d['NAME']||''),'Route/Jobber':String(d['Route/Jobber']||d['RouteJobber']||''),'Address':String(d['Address']||d['ADDRESS']||''),'Last Sale':String(d['Last Sale']||d['LastSale']||'')})});console.log('AG API: '+ps.length+' rows');break}}}}catch(e){console.log('AG API err:',e)}if(!ps.length){var hCells=document.querySelectorAll('.ag-header-cell');var cMap={};for(var hi=0;hi<hCells.length;hi++){var cid=hCells[hi].getAttribute('col-id')||'';var ts=hCells[hi].querySelector('.ag-header-cell-text');if(cid&&ts)cMap[cid]=ts.textContent.trim()}var rows=document.querySelectorAll('.ag-row');console.log('AG DOM: '+rows.length+' rows, '+Object.keys(cMap).length+' cols');for(var ri=0;ri<rows.length;ri++){var rCells=rows[ri].querySelectorAll('.ag-cell');var s={};for(var ci=0;ci<rCells.length;ci++){var ccid=rCells[ci].getAttribute('col-id')||'';s[cMap[ccid]||ccid]=rCells[ci].textContent.trim()}var sid=s['Store Id']||s['Store ID']||s['StoreId']||'';if(sid)ps.push({'Store Id':sid,'Name':s['Name']||'','Route/Jobber':s['Route/Jobber']||'','Address':s['Address']||'','Last Sale':s['Last Sale']||''})}}if(!ps.length){toast('No stores found. Make sure Search List tab is active.','%23ef4444');return}var ac=[];try{var rw=sessionStorage.getItem(K);if(rw)ac=JSON.parse(rw)}catch(e){}var ex=new Set(ac.map(function(s){return s['Store Id']}));var nw=ps.filter(function(s){return!ex.has(s['Store Id'])});ac=ac.concat(nw);sessionStorage.setItem(K,JSON.stringify(ac));toast('Scraped '+ps.length+' stores ('+nw.length+' new). Checking pagination...','%233b82f6');setTimeout(function(){var nb=document.getElementById('cmdNxt');var ne=false;var co='',cc='';if(nb){ne=true;if(nb.style.visibility==='hidden'||nb.style.display==='none')ne=false;var sr=(nb.src||'').toLowerCase();if(sr.indexOf('grey')>=0||sr.indexOf('gray')>=0||sr.indexOf('disabled')>=0||sr.indexOf('_dn')>=0)ne=false;co=window.getComputedStyle(nb).opacity;cc=window.getComputedStyle(nb).cursor;if(parseFloat(co)<0.5)ne=false;if(cc==='default'||cc==='not-allowed')ne=false}if(nw.length===0&&ac.length>0)ne=false;var pm=document.body.innerText.match(/Page:\\s*(\\d+)/),cp=pm?parseInt(pm[1]):'?';var tm=document.body.innerText.match(/Page:\\s*\\d+\\s*(?:of|\\/)\\s*(\\d+)/i);if(tm&&cp!=='?'&&cp>=parseInt(tm[1]))ne=false;var pp=sessionStorage.getItem(K+'-page');if(pp&&cp!=='?'&&String(cp)===pp){ne=false;sessionStorage.removeItem(K+'-page')}console.log('Next btn: found='+!!nb+' enabled='+ne+' newStores='+nw.length+' page='+cp+(tm?'/'+tm[1]:'')+(nb?' vis='+nb.style.visibility+' src='+(nb.src||'')+' opacity='+co+' cursor='+cc:''));if(ne){if(cp!=='?')sessionStorage.setItem(K+'-page',String(cp));toast('Page '+cp+': '+ps.length+' stores ('+nw.length+' new). Total: <b>'+ac.length+'</b><br>Clicking Next...','%233b82f6');setTimeout(function(){nb.click()},500)}else{if(!ac.length){toast('No stores found','%23ef4444');return}console.log('Last page. Generating download for '+ac.length+' stores...');var L=['['];for(var i=0;i<ac.length;i++){var s=ac[i],rv=parseInt(s['Route/Jobber']),rr=isNaN(rv)?"'"+s['Route/Jobber']+"'":String(rv);L.push("    {'Store Id': '"+s['Store Id']+"', 'Name': '"+(s.Name||'').replace(/'/g,"\\\\'")+"', 'Route/Jobber': "+rr+", 'Address': '"+(s.Address||'').replace(/'/g,"\\\\'")+"', 'Last Sale': '"+(s['Last Sale']||'')+"'}"+(i<ac.length-1?',':''))}L.push(']');var py=L.join('\\n');try{var blob=new Blob([py],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;var dd=new Date();a.download='websnak-stores-'+dd.getFullYear()+('0'+(dd.getMonth()+1)).slice(-2)+('0'+dd.getDate()).slice(-2)+'.txt';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){a.remove();URL.revokeObjectURL(url)},1000);toast('Done! <b>'+ac.length+'</b> stores downloaded!<br>Import the .txt file in Data Import.','%2322c55e');console.log('Download triggered: '+a.download)}catch(e){console.log('Download failed:',e);navigator.clipboard.writeText(py).then(function(){toast('Done! <b>'+ac.length+'</b> stores copied to clipboard!','%2322c55e')}).catch(function(){prompt('Copy this data:',py)})}sessionStorage.removeItem(K);sessionStorage.removeItem(K+'-page')}},500)}())`;
+  const websnakBookmarklet = `javascript:void(function(){var K='websnak-scraper-data';function toast(m,c){var tp=window.top||window;var t=tp.document.getElementById('ws-scrape-toast');if(!t){t=tp.document.createElement('div');t.id='ws-scrape-toast';t.style.cssText='position:fixed;top:20px;right:20px;padding:16px 24px;border-radius:8px;font-size:15px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);color:%23fff;max-width:500px;line-height:1.4';tp.document.body.appendChild(t)}t.style.background=c||'%233b82f6';t.innerHTML=m}console.log('WebSnak v5 AG Grid scraper');var ps=[];try{var gEls=document.querySelectorAll('.ag-root-wrapper,[class*=ag-root]');for(var gi=0;gi<gEls.length;gi++){var comp=gEls[gi].__agComponent||gEls[gi]._agComponent;if(comp){var api=comp.gridApi||comp.api||(comp.gridOptions&&comp.gridOptions.api);if(api&&api.forEachNode){api.forEachNode(function(n){if(!n.data)return;var d=n.data;var sid=d['Store Id']||d['StoreId']||d['STOREID']||d['storeId']||'';if(sid)ps.push({'Store Id':String(sid),'Name':String(d['Name']||d['NAME']||''),'Route/Jobber':String(d['Route/Jobber']||d['RouteJobber']||''),'Address':String(d['Address']||d['ADDRESS']||''),'Last Sale':String(d['Last Sale']||d['LastSale']||'')})});console.log('AG API: '+ps.length+' rows');var fk=[];api.forEachNode(function(fn){if(!fk.length&&fn.data)fk=Object.keys(fn.data)});if(fk.length)console.log('AG Grid columns:',fk.join(', '));break}}}}catch(e){console.log('AG API err:',e)}if(!ps.length){var hCells=document.querySelectorAll('.ag-header-cell');var cMap={};for(var hi=0;hi<hCells.length;hi++){var cid=hCells[hi].getAttribute('col-id')||'';var ts=hCells[hi].querySelector('.ag-header-cell-text');if(cid&&ts)cMap[cid]=ts.textContent.trim()}var rows=document.querySelectorAll('.ag-row');console.log('AG DOM: '+rows.length+' rows, '+Object.keys(cMap).length+' cols');for(var ri=0;ri<rows.length;ri++){var rCells=rows[ri].querySelectorAll('.ag-cell');var s={};for(var ci=0;ci<rCells.length;ci++){var ccid=rCells[ci].getAttribute('col-id')||'';s[cMap[ccid]||ccid]=rCells[ci].textContent.trim()}var sid=s['Store Id']||s['Store ID']||s['StoreId']||'';if(sid)ps.push({'Store Id':sid,'Name':s['Name']||'','Route/Jobber':s['Route/Jobber']||'','Address':s['Address']||'','Last Sale':s['Last Sale']||''})}}if(!ps.length){toast('No stores found. Make sure Search List tab is active.','%23ef4444');return}var ac=[];try{var rw=sessionStorage.getItem(K);if(rw)ac=JSON.parse(rw)}catch(e){}var ex=new Set(ac.map(function(s){return s['Store Id']}));var nw=ps.filter(function(s){return!ex.has(s['Store Id'])});ac=ac.concat(nw);sessionStorage.setItem(K,JSON.stringify(ac));toast('Scraped '+ps.length+' stores ('+nw.length+' new). Checking pagination...','%233b82f6');setTimeout(function(){var nb=document.getElementById('cmdNxt');var ne=false;var co='',cc='';if(nb){ne=true;if(nb.style.visibility==='hidden'||nb.style.display==='none')ne=false;var sr=(nb.src||'').toLowerCase();if(sr.indexOf('grey')>=0||sr.indexOf('gray')>=0||sr.indexOf('disabled')>=0||sr.indexOf('_dn')>=0)ne=false;co=window.getComputedStyle(nb).opacity;cc=window.getComputedStyle(nb).cursor;if(parseFloat(co)<0.5)ne=false;if(cc==='default'||cc==='not-allowed')ne=false}if(nw.length===0&&ac.length>0)ne=false;var pm=document.body.innerText.match(/Page:\\s*(\\d+)/),cp=pm?parseInt(pm[1]):'?';var tm=document.body.innerText.match(/Page:\\s*\\d+\\s*(?:of|\\/)\\s*(\\d+)/i);if(tm&&cp!=='?'&&cp>=parseInt(tm[1]))ne=false;var pp=sessionStorage.getItem(K+'-page');if(pp&&cp!=='?'&&String(cp)===pp){ne=false;sessionStorage.removeItem(K+'-page')}console.log('Next btn: found='+!!nb+' enabled='+ne+' newStores='+nw.length+' page='+cp+(tm?'/'+tm[1]:'')+(nb?' vis='+nb.style.visibility+' src='+(nb.src||'')+' opacity='+co+' cursor='+cc:''));if(ne){if(cp!=='?')sessionStorage.setItem(K+'-page',String(cp));toast('Page '+cp+': '+ps.length+' stores ('+nw.length+' new). Total: <b>'+ac.length+'</b><br>Clicking Next...','%233b82f6');setTimeout(function(){nb.click()},500)}else{if(!ac.length){toast('No stores found','%23ef4444');return}console.log('Last page. Generating download for '+ac.length+' stores...');var L=['['];for(var i=0;i<ac.length;i++){var s=ac[i],rv=parseInt(s['Route/Jobber']),rr=isNaN(rv)?"'"+s['Route/Jobber']+"'":String(rv);L.push("    {'Store Id': '"+s['Store Id']+"', 'Name': '"+(s.Name||'').replace(/'/g,"\\\\'")+"', 'Route/Jobber': "+rr+", 'Address': '"+(s.Address||'').replace(/'/g,"\\\\'")+"', 'Last Sale': '"+(s['Last Sale']||'')+"'}"+(i<ac.length-1?',':''))}L.push(']');var py=L.join('\\n');try{var blob=new Blob([py],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;var dd=new Date();a.download='websnak-stores-'+dd.getFullYear()+('0'+(dd.getMonth()+1)).slice(-2)+('0'+dd.getDate()).slice(-2)+'.txt';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){a.remove();URL.revokeObjectURL(url)},1000);toast('Done! <b>'+ac.length+'</b> stores downloaded!<br>Import the .txt file in Data Import.','%2322c55e');console.log('Download triggered: '+a.download)}catch(e){console.log('Download failed:',e);navigator.clipboard.writeText(py).then(function(){toast('Done! <b>'+ac.length+'</b> stores copied to clipboard!','%2322c55e')}).catch(function(){prompt('Copy this data:',py)})}sessionStorage.removeItem(K);sessionStorage.removeItem(K+'-page')}},500)}())`;
 
   function txProcessFileData(text) {
     setTxImporting(true);
@@ -418,6 +424,56 @@ export default function DataImport() {
     }
     if (updates.length > 0) bulkImportStores(updates, []);
     setTxSyncResult({ updated: updates.length, total: Object.keys(latestByStore).length });
+  }
+
+  async function publishMap() {
+    setPublishing(true);
+    setPublishResult(null);
+    try {
+      // Build route metrics
+      const routeMap = {};
+      stores.forEach(s => {
+        const r = s.routeNumber || '0';
+        if (r === '0') return;
+        if (!routeMap[r]) routeMap[r] = [];
+        routeMap[r].push(s);
+      });
+
+      const routes = Object.entries(routeMap).map(([number, routeStores]) => {
+        const counts = getStatusCounts(routeStores);
+        const active = routeStores.length - counts.never - counts.dormant;
+        const coverage = active > 0 ? (counts.onTrack / active) * 100 : 0;
+        const grade = getGrade(coverage);
+        return { number, grade: grade.letter, color: grade.color, coverage, storeCount: routeStores.length };
+      });
+
+      // Build snapshot
+      const snapshot = {
+        publishedAt: new Date().toISOString(),
+        stores: stores.map(s => ({
+          id: s.id, name: s.name, lat: s.lat, lng: s.lng,
+          routeNumber: s.routeNumber || '0', type: s.type || 'other',
+          address: s.address || '', city: s.city || '', state: s.state || '',
+          lastVisited: getLatestDate(s) || '',
+        })),
+        routes,
+        zones: (state.zones || []).map(z => ({
+          id: z.id, name: z.name, color: z.color, bounds: z.bounds,
+        })),
+        subZones: (state.zones || []).flatMap(z =>
+          (z.subZones || []).map(sz => ({
+            id: sz.id, name: sz.name, color: sz.color, bounds: sz.bounds, parentZoneId: z.id,
+          }))
+        ),
+      };
+
+      await saveMapSnapshot(JSON.stringify(snapshot, null, 2));
+      setPublishResult({ ok: true, count: stores.length, time: new Date().toLocaleTimeString() });
+    } catch (e) {
+      setPublishResult({ ok: false, error: e.message });
+    } finally {
+      setPublishing(false);
+    }
   }
 
   return (
@@ -747,6 +803,36 @@ export default function DataImport() {
           </div>
         </div>
       )}
+
+      {/* Publish Map Section */}
+      <div className="data-import-geocode-section" style={{ marginTop: 16 }}>
+        <h3>Publish Map</h3>
+        <p className="data-import-desc" style={{ margin: '4px 0 10px' }}>
+          Publish a read-only map for coworkers. They can view it at:<br />
+          <a href="https://mahpour4.github.io/Map-tracker/" target="_blank" rel="noopener noreferrer"
+            style={{ color: '#3b82f6' }}>
+            mahpour4.github.io/Map-tracker
+          </a>
+        </p>
+        <div className="data-import-actions">
+          <button className="btn btn-primary" onClick={publishMap} disabled={publishing || stores.length === 0}>
+            {publishing ? 'Publishing...' : 'Publish Map'}
+          </button>
+        </div>
+        {publishResult && publishResult.ok && (
+          <div className="data-import-success" style={{ marginTop: 8, cursor: 'pointer' }} onClick={() => setPublishResult(null)}>
+            Published {publishResult.count} stores at {publishResult.time}. Coworkers can refresh the page to see updates.
+          </div>
+        )}
+        {publishResult && !publishResult.ok && (
+          <div className="data-import-error" style={{ marginTop: 8 }}>
+            Publish failed: {publishResult.error}
+          </div>
+        )}
+        <p className="data-import-desc" style={{ margin: '8px 0 0', fontSize: 11, color: '#94a3b8' }}>
+          First time? Enable GitHub Pages in repo Settings &rarr; Pages &rarr; Source: branch, folder: /docs
+        </p>
+      </div>
     </div>
   );
 }

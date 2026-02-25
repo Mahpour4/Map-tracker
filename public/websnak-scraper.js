@@ -36,6 +36,9 @@
             if (node.data) allData.push(node.data);
           });
           console.log('AG Grid API: got ' + allData.length + ' rows');
+          if (allData.length > 0) {
+            console.log('AG Grid columns:', Object.keys(allData[0]).join(', '));
+          }
           break;
         }
       }
