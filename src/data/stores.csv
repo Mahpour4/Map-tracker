@@ -47,7 +47,7 @@ SFW07573M,SFW07573M,Shoppers Fort Meade,3441 Fort Meade Rd,Maryland City,MD,2072
 FLW02501,02501,Food Lion,8300 ICE CRYSTAL DR,Scaggsville,MD,20723,207,Route 207 Driver,Howard County,Howard County,Howard County,39.1440516,-76.899909,2026-02-16,2026-02-16,No
 WMW00287,WMW00287,Weis 287,6551 Waterloo Rd,Elkridge,MD,21075,200,Route 200 Driver,Howard County,Howard County,Howard County,39.1914184,-76.7927454,,,Yes
 SFW00068,SFW00068,Shoppers Germantown,18066 Mateny Rd,Germantown,MD,20874,200,Route 200 Driver,Montgomery County,Montgomery County,Montgomery County,39.148022,-77.2728831,,,Yes
-FLW01661,FLW01661,Food Lion 1661,845 ROCKVILLE PIKE,Rockville,MD,20852,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.0761984,-77.1378639,2026-02-18,2026-02-18,No
+FLW01661,FLW01661,Food Lion 1661,845 ROCKVILLE PIKE,Rockville,MD,20852,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.0761984,-77.1378639,2026-02-18,2026-02-25,No
 FLW01414,01414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,,2026-02-16,No
 WGW00040,00040,Wegmans 40,9001 McHugh Dr,Lanham,MD,20706,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9214562,-76.8506973,,2025-10-23,Yes
 WMW00276,00276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.6714743,-77.0087584,,2026-02-12,No
@@ -108,7 +108,7 @@ IND00107,IND00107,Ocean Exxon,324 Sunburst Hwy,Cambridge,MD,21613,210,Route 210 
 RDW00013,RDW00013,Redners 13,1388 SALT CREEK DR,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.161852568574055,-75.51963987995825,,2026-02-20,No
 RDW00056,RDW00056,Redners 56,24120 Zinfandel Ln,Lewes,DE,19958,206,Route 210 Driver,Delaware,Lewes,Lewes,38.7447928,-75.186878,,2026-02-21,No
 RDW00057,RDW00057,Redners 15,28253 LEXUS DR,Milford,DE,19963,206,Route 210 Driver,Delaware,Milford,Milford,38.8973253,-75.4412135,2026-02-11,2026-02-19,No
-RDW00044,RDW00044,Redners 16,25 GREENTREE DR,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1609269,-75.5567543,,2026-02-20,No
+RDW00044,RDW00044,Redners 16,25 GREENTREE DR,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1609269,-75.5567543,,2026-02-25,No
 IND00108,IND00108,Seaside Deli,7207 Coastal Hwy,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.3937273,-75.0639322,,,Yes
 AMW02679,AMW02679,Acme 2679,18578 Coastal Hwy,Lewes,DE,19958,210,Route 210 Driver,Delaware,Lewes,Lewes,38.774761467228245,-75.14238858409426,2026-02-21,2026-02-13,No
 IND00102,IND00102,Exxon,100 Dominion Rd,Cambridge,MD,21613,210,Route 210 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.566852568574056,-76.07413987995825,,,Yes
@@ -141,7 +141,7 @@ FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-02-24,2026-02-24,No
 FLW01442,FLW01442,Food Lion 1442,6920 Crestwood Blvd,Frederick,MD,21703,204,Route 204 Driver,Maryland Central,Maryland Central,Maryland Central,39.3907553,-77.4250267,2026-02-20,2026-02-20,No
 FLW02194,FLW02194,Food Lion Store 2194,78 Worchester Dr,Falling Waters,WV,25419,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.5664,-77.8352,2026-02-20,2026-02-24,No
-FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.7143841,-78.1751887,2026-02-23,2026-02-23,No
+FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.7143841,-78.1751887,2026-02-23,2026-02-25,No
 FLW02257,FLW02257,Food Lion 2257,130 Duella Dr,Inwood,WV,25428,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.3617259,-78.0340871,2026-02-24,2026-02-24,No
 GTW06104,GTW06104,Giant 6104,1729 Dual Hwy,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6153582,-77.6915555,2026-02-17,2026-02-17,No
 GTW06275,GTW06275,Giant 6275,1650 C Wesel Blvd,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6386737,-77.7374129,2026-02-17,2026-02-17,No
@@ -370,7 +370,7 @@ FLW00950,FLW00950,FOOD LION 0950,511 E BALTIMORE ST & GRAND DR,TANEYTOWN,MD,2178
 FLW01162,FLW01162,FOOD LION 1162,2060 YELLOW SPRING RD,FREDERICK,MD,21702,204,Route 204 Driver,Frederick County,Frederick County,Frederick County,39.4143,-77.4105,2026-02-20,2026-02-20,No
 FLW01216,FLW01216,FOOD LION 1216,231 TIPPIN DR,THURMONT,MD,21788,204,Route 204 Driver,Unassigned,Unassigned,Unassigned,39.6167968,-77.4201931,2026-02-19,2026-02-06,No
 FLW01238,FLW01238,FOOD LION 1238,11800 OLD NATIONAL PIKE,NEW MARKET,MD,21774,204,Route 204 Driver,Frederick County,Frederick County,Frederick County,39.3835253,-77.2544029,2026-02-20,2026-02-20,No
-FLW01413,FLW01413,FOOD LION 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3887957,-76.5074782,2026-02-18,2026-02-18,No
+FLW01413,FLW01413,FOOD LION 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3887957,-76.5074782,2026-02-18,2026-02-25,No
 FLW01423,FLW01423,FOOD LION 1423,2458 CHURCHVILLE RD,BEL AIR,MD,21015,214,Route 204 Driver,Harford County,Harford County,Harford County,39.5568664,-76.2718674,2026-02-13,2026-02-13,No
 FLW01465,FLW01465,FOOD LION 1465,1312 S MAIN ST STE 4,MOUNT AIRY,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,2026-02-20,2026-02-20,No
 FLW02193,FLW02193,FOOD LION 2193,3000 GAMBER RD,FINKSBURG,MD,21048,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4941814,-76.8942659,2026-02-19,2026-02-19,No
