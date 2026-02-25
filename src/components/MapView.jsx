@@ -88,7 +88,7 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited) {
     ? getRecencyTier(lastVisited).color
     : (typeColors[type] || typeColors.other);
   const size = isSelected ? 14 : 10;
-  const border = isSelected ? '3px solid #1e3a5f' : '2px solid #fff';
+  const border = isSelected ? '3px solid #1e3a5f' : '2px solid #000';
   const blinkClass = isSelected ? 'marker-blink' : '';
   const tier = visitMode ? getRecencyTier(lastVisited) : null;
   const pulseClass = (visitMode && tier && tier.pulse) ? tier.pulse : '';

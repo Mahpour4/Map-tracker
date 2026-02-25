@@ -2,21 +2,15 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
-import { parseTransactions, analyzeByRoute, analyzeByDay, analyzeByStore, analyzeWarehouseMatchup, dedup, STORAGE_ROUTES, matchCustomerToStore } from '../services/daoTransactionParser';
+import { parseTransactions, analyzeByRoute, analyzeByDay, analyzeByStore, analyzeWarehouseMatchup, dedup } from '../services/daoTransactionParser';
 
 export default function Transactions() {
-  const { state, setTransactions, bulkImportStores } = useApp();
+  const { state, setTransactions } = useApp();
   const transactions = state.transactions || [];
-  const [importing, setImporting] = useState(false);
-  const [syncResult, setSyncResult] = useState(null);
-  const [importError, setImportError] = useState('');
   const [expandedRoute, setExpandedRoute] = useState(null);
   const [expandedDay, setExpandedDay] = useState(null);
-  const [showSetup, setShowSetup] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [reportRouteFilter, setReportRouteFilter] = useState('all');
-  const fileInputRef = useRef(null);
   const reportMenuRef = useRef(null);
 
   const parsed = useMemo(() => parseTransactions(transactions), [transactions]);
@@ -44,93 +38,6 @@ export default function Transactions() {
     };
   }, [routeAnalysis, parsed, warehouseData]);
 
-  function processFileData(text) {
-    setImporting(true);
-    setImportError('');
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      setImportError('File does not contain valid JSON. Make sure you exported it using the DAO bookmarklet.');
-      setImporting(false);
-      return;
-    }
-    if (!Array.isArray(data) || data.length === 0) {
-      setImportError('No transaction data found in the file.');
-      setImporting(false);
-      return;
-    }
-    // Merge with existing — dedup by ID, newer overwrites older
-    const newIds = new Set(data.map(d => d.id).filter(Boolean));
-    const kept = transactions.filter(t => !t.id || !newIds.has(t.id));
-    setTransactions([...kept, ...data]);
-    setImportError('');
-    setImporting(false);
-  }
-
-  function handleFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => processFileData(reader.result);
-    reader.onerror = () => { setImportError('Failed to read file.'); };
-    reader.readAsText(file);
-    e.target.value = ''; // Reset so same file can be re-imported
-  }
-
-  function handleDrop(e) {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => processFileData(reader.result);
-    reader.onerror = () => { setImportError('Failed to read file.'); };
-    reader.readAsText(file);
-  }
-
-  function handleClear() {
-    if (confirm('Clear all transaction data?')) {
-      setTransactions([]);
-      setExpandedRoute(null);
-      setExpandedDay(null);
-      setSyncResult(null);
-    }
-  }
-
-  function syncLastSaleFromTransactions() {
-    const stores = state.stores || [];
-    if (stores.length === 0 || parsed.length === 0) return;
-
-    // Only use non-void Invoice lines with a valid amount
-    const invoices = parsed.filter(t =>
-      t.docType === 'Invoice' && !t.isVoid && (t.amount || 0) > 0
-    );
-
-    // Build map: storeId → latest invoice date
-    const latestByStore = {};
-    for (const tx of invoices) {
-      const store = matchCustomerToStore(tx.custName, tx.custNum, stores);
-      if (!store) continue;
-      const date = tx.settlementDate || tx.docDate?.date;
-      if (!date) continue;
-      if (!latestByStore[store.id] || date > latestByStore[store.id]) {
-        latestByStore[store.id] = date;
-      }
-    }
-
-    // Build a single batch of updates — only where transaction date is newer
-    const updates = [];
-    for (const [storeId, date] of Object.entries(latestByStore)) {
-      const store = stores.find(s => s.id === storeId);
-      if (!store) continue;
-      if (!store.lastSaleDate || date > store.lastSaleDate) {
-        updates.push({ id: storeId, lastSaleDate: date });
-      }
-    }
-    if (updates.length > 0) bulkImportStores(updates, []);
-    setSyncResult({ updated: updates.length, total: Object.keys(latestByStore).length });
-  }
 
   function fmt(n) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
@@ -737,34 +644,14 @@ export default function Transactions() {
     return analyzeByStore(parsed, expandedRoute, expandedDay);
   }, [parsed, expandedRoute, expandedDay]);
 
-  // Bookmarklet URL
-  const bookmarkletCode = `javascript:void(fetch('${window.location.origin}/dao-bookmarklet.js').then(r=>r.text()).then(t=>eval(t)))`;
-
   return (
     <div className="tx-container">
       <div className="tx-header">
         <h2 title="Weekly transaction data imported from the DAO Dashboard — shows route sales performance, sell-through rates, and DSD compliance">Transactions</h2>
         <div className="tx-header-actions">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".txt,.json"
-            onChange={handleFileSelect}
-            style={{ display: 'none' }}
-          />
-          <button className="tx-btn tx-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={importing}
-            title="Import a .txt file exported from the DAO Dashboard using the bookmarklet">
-            {importing ? 'Importing...' : 'Import File'}
-          </button>
           {transactions.length > 0 && (
-            <button className="tx-btn tx-btn-secondary" onClick={handleClear}
+            <button className="tx-btn tx-btn-secondary" onClick={() => { if (confirm('Clear all transaction data?')) setTransactions([]); }}
               title="Remove all imported transaction data">Clear</button>
-          )}
-          {parsed.length > 0 && (
-            <button className="tx-btn tx-btn-primary" onClick={syncLastSaleFromTransactions}
-              title="Update each store's Last Sale date from the most recent Invoice in this transaction data">
-              Sync Last Sale
-            </button>
           )}
           {reportPeriods.length > 0 && (
             <div className="tx-report-dropdown-wrap" ref={reportMenuRef}>
@@ -805,43 +692,8 @@ export default function Transactions() {
               )}
             </div>
           )}
-          <button className="tx-btn tx-btn-secondary" onClick={() => setShowSetup(s => !s)}
-            title="Show instructions for exporting data from the DAO Dashboard">
-            {showSetup ? 'Hide Setup' : 'Setup'}
-          </button>
         </div>
       </div>
-
-      {importError && <div className="tx-error">{importError}</div>}
-      {syncResult && (
-        <div className="tx-sync-result" onClick={() => setSyncResult(null)} style={{ cursor: 'pointer' }}>
-          {syncResult.updated > 0
-            ? `Last Sale updated on ${syncResult.updated} store${syncResult.updated !== 1 ? 's' : ''} (${syncResult.total} matched from transactions)`
-            : `No updates needed — all ${syncResult.total} matched stores already have current dates`}
-          {' '}✕
-        </div>
-      )}
-
-      {showSetup && (
-        <div className="tx-setup">
-          <h3>How to import transactions from DAO Dashboard</h3>
-          <ol>
-            <li>Go to the <a href="https://dashboard.daogroup.com/Dashboards/DocumentViewer/DocumentViewerForm4.aspx" target="_blank" rel="noopener noreferrer">DAO Document Viewer</a></li>
-            <li>Set your date range and filters, then click Search</li>
-            <li>Set <strong>Max Rows</strong> to a high number (e.g., 500) so all data loads on one page</li>
-            <li>
-              Drag this link to your bookmarks bar:{' '}
-              <a className="tx-bookmarklet-link" href={bookmarkletCode} onClick={e => e.preventDefault()}>
-                DAO Scraper
-              </a>
-              <br />
-              <small>Or paste the script from <code>public/dao-bookmarklet.js</code> into the browser console</small>
-            </li>
-            <li>Click the bookmarklet — it downloads a <strong>.txt file</strong> with the transaction data</li>
-            <li>Come back here, click <strong>"Import File"</strong> and select the downloaded .txt file (or drag it onto the drop zone below)</li>
-          </ol>
-        </div>
-      )}
 
       {totalStats && (
         <div className="tx-summary-bar" title="Route 99 (Warehouse) is the source — Load is liability (inventory sent out), Sales are the return/profit from stores">
@@ -899,15 +751,9 @@ export default function Transactions() {
       )}
 
       {routeAnalysis.length === 0 ? (
-        <div
-          className={`tx-dropzone${dragOver ? ' drag-over' : ''}`}
-          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <p>Drop a .txt file here or click to import</p>
-          <p className="tx-dropzone-hint">Click <strong>"Setup"</strong> above for instructions on exporting from the DAO dashboard</p>
+        <div className="tx-dropzone">
+          <p>No transaction data loaded</p>
+          <p className="tx-dropzone-hint">Import transaction files from the <strong>Data Import</strong> page</p>
         </div>
       ) : (
         <div className="tx-routes">

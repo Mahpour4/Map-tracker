@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import cityCoords from '../data/cityCoords';
-import { batchGeocode, geocodeAddress } from '../utils/geocodeAddress';
+import { geocodeAddress } from '../utils/geocodeAddress';
+import { parseTransactions, matchCustomerToStore } from '../services/daoTransactionParser';
 
 // Known city names from cityCoords for address parsing
 const KNOWN_CITIES = Object.keys(cityCoords).map(k => {
@@ -212,18 +213,23 @@ function detectStoreType(name, id) {
 }
 
 export default function DataImport() {
-  const { state, bulkImportStores, addImportEntry, bulkRecordVisits } = useApp();
+  const { state, bulkImportStores, addImportEntry, setTransactions } = useApp();
   const { stores, importLog } = state;
+  const transactions = state.transactions || [];
 
   const [rawInput, setRawInput] = useState('');
   const [parsed, setParsed] = useState(null);
   const [applied, setApplied] = useState(false);
   const [expandedEntry, setExpandedEntry] = useState(null); // id of expanded log entry
 
-  // Re-geocode state
-  const [geocoding, setGeocoding] = useState(false);
-  const [geocodeProgress, setGeocodeProgress] = useState('');
-  const [geocodeResult, setGeocodeResult] = useState(null);
+  // Transaction import state
+  const [txImporting, setTxImporting] = useState(false);
+  const [txImportError, setTxImportError] = useState('');
+  const [txDragOver, setTxDragOver] = useState(false);
+  const [showTxSetup, setShowTxSetup] = useState(false);
+  const [txSyncResult, setTxSyncResult] = useState(null);
+  const txFileInputRef = useRef(null);
+  const storeFileInputRef = useRef(null);
 
   // Store lookup
   const storeMap = useMemo(() => {
@@ -323,32 +329,96 @@ export default function DataImport() {
     setApplied(false);
   }
 
-  const handleRegeocode = useCallback(async () => {
-    setGeocoding(true);
-    setGeocodeResult(null);
-    setGeocodeProgress('Starting...');
+  // --- Transaction Import ---
+  const txParsed = useMemo(() => parseTransactions(transactions), [transactions]);
 
+  const bookmarkletCode = `javascript:void(fetch('${window.location.origin}/dao-bookmarklet.js').then(r=>r.text()).then(t=>eval(t)))`;
+  const websnakBookmarklet = `javascript:void(function(){var K='websnak-scraper-data';function toast(m,c){var tp=window.top||window;var t=tp.document.getElementById('ws-scrape-toast');if(!t){t=tp.document.createElement('div');t.id='ws-scrape-toast';t.style.cssText='position:fixed;top:20px;right:20px;padding:16px 24px;border-radius:8px;font-size:15px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);color:%23fff;max-width:500px;line-height:1.4';tp.document.body.appendChild(t)}t.style.background=c||'%233b82f6';t.innerHTML=m}console.log('WebSnak v5 AG Grid scraper');var ps=[];try{var gEls=document.querySelectorAll('.ag-root-wrapper,[class*=ag-root]');for(var gi=0;gi<gEls.length;gi++){var comp=gEls[gi].__agComponent||gEls[gi]._agComponent;if(comp){var api=comp.gridApi||comp.api||(comp.gridOptions&&comp.gridOptions.api);if(api&&api.forEachNode){api.forEachNode(function(n){if(!n.data)return;var d=n.data;var sid=d['Store Id']||d['StoreId']||d['STOREID']||d['storeId']||'';if(sid)ps.push({'Store Id':String(sid),'Name':String(d['Name']||d['NAME']||''),'Route/Jobber':String(d['Route/Jobber']||d['RouteJobber']||''),'Address':String(d['Address']||d['ADDRESS']||''),'Last Sale':String(d['Last Sale']||d['LastSale']||'')})});console.log('AG API: '+ps.length+' rows');break}}}}catch(e){console.log('AG API err:',e)}if(!ps.length){var hCells=document.querySelectorAll('.ag-header-cell');var cMap={};for(var hi=0;hi<hCells.length;hi++){var cid=hCells[hi].getAttribute('col-id')||'';var ts=hCells[hi].querySelector('.ag-header-cell-text');if(cid&&ts)cMap[cid]=ts.textContent.trim()}var rows=document.querySelectorAll('.ag-row');console.log('AG DOM: '+rows.length+' rows, '+Object.keys(cMap).length+' cols');for(var ri=0;ri<rows.length;ri++){var rCells=rows[ri].querySelectorAll('.ag-cell');var s={};for(var ci=0;ci<rCells.length;ci++){var ccid=rCells[ci].getAttribute('col-id')||'';s[cMap[ccid]||ccid]=rCells[ci].textContent.trim()}var sid=s['Store Id']||s['Store ID']||s['StoreId']||'';if(sid)ps.push({'Store Id':sid,'Name':s['Name']||'','Route/Jobber':s['Route/Jobber']||'','Address':s['Address']||'','Last Sale':s['Last Sale']||''})}}if(!ps.length){toast('No stores found. Make sure Search List tab is active.','%23ef4444');return}var ac=[];try{var rw=sessionStorage.getItem(K);if(rw)ac=JSON.parse(rw)}catch(e){}var ex=new Set(ac.map(function(s){return s['Store Id']}));var nw=ps.filter(function(s){return!ex.has(s['Store Id'])});ac=ac.concat(nw);sessionStorage.setItem(K,JSON.stringify(ac));toast('Scraped '+ps.length+' stores ('+nw.length+' new). Checking pagination...','%233b82f6');setTimeout(function(){var nb=document.getElementById('cmdNxt');var ne=false;var co='',cc='';if(nb){ne=true;if(nb.style.visibility==='hidden'||nb.style.display==='none')ne=false;var sr=(nb.src||'').toLowerCase();if(sr.indexOf('grey')>=0||sr.indexOf('gray')>=0||sr.indexOf('disabled')>=0||sr.indexOf('_dn')>=0)ne=false;co=window.getComputedStyle(nb).opacity;cc=window.getComputedStyle(nb).cursor;if(parseFloat(co)<0.5)ne=false;if(cc==='default'||cc==='not-allowed')ne=false}if(nw.length===0&&ac.length>0)ne=false;var pm=document.body.innerText.match(/Page:\\s*(\\d+)/),cp=pm?parseInt(pm[1]):'?';var tm=document.body.innerText.match(/Page:\\s*\\d+\\s*(?:of|\\/)\\s*(\\d+)/i);if(tm&&cp!=='?'&&cp>=parseInt(tm[1]))ne=false;var pp=sessionStorage.getItem(K+'-page');if(pp&&cp!=='?'&&String(cp)===pp){ne=false;sessionStorage.removeItem(K+'-page')}console.log('Next btn: found='+!!nb+' enabled='+ne+' newStores='+nw.length+' page='+cp+(tm?'/'+tm[1]:'')+(nb?' vis='+nb.style.visibility+' src='+(nb.src||'')+' opacity='+co+' cursor='+cc:''));if(ne){if(cp!=='?')sessionStorage.setItem(K+'-page',String(cp));toast('Page '+cp+': '+ps.length+' stores ('+nw.length+' new). Total: <b>'+ac.length+'</b><br>Clicking Next...','%233b82f6');setTimeout(function(){nb.click()},500)}else{if(!ac.length){toast('No stores found','%23ef4444');return}console.log('Last page. Generating download for '+ac.length+' stores...');var L=['['];for(var i=0;i<ac.length;i++){var s=ac[i],rv=parseInt(s['Route/Jobber']),rr=isNaN(rv)?"'"+s['Route/Jobber']+"'":String(rv);L.push("    {'Store Id': '"+s['Store Id']+"', 'Name': '"+(s.Name||'').replace(/'/g,"\\\\'")+"', 'Route/Jobber': "+rr+", 'Address': '"+(s.Address||'').replace(/'/g,"\\\\'")+"', 'Last Sale': '"+(s['Last Sale']||'')+"'}"+(i<ac.length-1?',':''))}L.push(']');var py=L.join('\\n');try{var blob=new Blob([py],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;var dd=new Date();a.download='websnak-stores-'+dd.getFullYear()+('0'+(dd.getMonth()+1)).slice(-2)+('0'+dd.getDate()).slice(-2)+'.txt';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){a.remove();URL.revokeObjectURL(url)},1000);toast('Done! <b>'+ac.length+'</b> stores downloaded!<br>Import the .txt file in Data Import.','%2322c55e');console.log('Download triggered: '+a.download)}catch(e){console.log('Download failed:',e);navigator.clipboard.writeText(py).then(function(){toast('Done! <b>'+ac.length+'</b> stores copied to clipboard!','%2322c55e')}).catch(function(){prompt('Copy this data:',py)})}sessionStorage.removeItem(K);sessionStorage.removeItem(K+'-page')}},500)}())`;
+
+  function txProcessFileData(text) {
+    setTxImporting(true);
+    setTxImportError('');
+    let data;
     try {
-      const updates = await batchGeocode(stores, (i, total) => {
-        setGeocodeProgress(`Geocoding ${i} / ${total}...`);
-      }, 200);
-
-      if (updates.length > 0) {
-        bulkImportStores(updates.map(u => ({ id: u.id, lat: u.lat, lng: u.lng })), []);
-      }
-
-      setGeocodeResult({
-        total: stores.length,
-        updated: updates.length,
-        stores: updates,
-      });
-    } catch (err) {
-      setGeocodeResult({ error: err.message });
-    } finally {
-      setGeocoding(false);
-      setGeocodeProgress('');
+      data = JSON.parse(text);
+    } catch {
+      setTxImportError('File does not contain valid JSON. Make sure you exported it using the DAO bookmarklet.');
+      setTxImporting(false);
+      return;
     }
-  }, [stores, bulkImportStores]);
+    if (!Array.isArray(data) || data.length === 0) {
+      setTxImportError('No transaction data found in the file.');
+      setTxImporting(false);
+      return;
+    }
+    const newIds = new Set(data.map(d => d.id).filter(Boolean));
+    const kept = transactions.filter(t => !t.id || !newIds.has(t.id));
+    const merged = [...kept, ...data];
+    setTransactions(merged);
+
+    // Log the transaction import
+    const parsed = parseTransactions(data);
+    const dates = parsed.map(t => t.settlementDate || t.docDate?.date || '').filter(Boolean).sort();
+    const routes = [...new Set(parsed.map(t => t.route).filter(Boolean))].sort();
+    addImportEntry({
+      importType: 'transactions',
+      totalInFeed: data.length,
+      parsedCount: parsed.length,
+      newRecords: data.length - (transactions.length - kept.length),
+      duplicatesSkipped: transactions.length - kept.length,
+      dateRange: dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : '',
+      routes,
+    });
+
+    setTxImportError('');
+    setTxImporting(false);
+  }
+
+  function txHandleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => txProcessFileData(reader.result);
+    reader.onerror = () => { setTxImportError('Failed to read file.'); };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function txHandleDrop(e) {
+    e.preventDefault();
+    setTxDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => txProcessFileData(reader.result);
+    reader.onerror = () => { setTxImportError('Failed to read file.'); };
+    reader.readAsText(file);
+  }
+
+  function syncLastSaleFromTransactions() {
+    if (stores.length === 0 || txParsed.length === 0) return;
+    const invoices = txParsed.filter(t => t.docType === 'Invoice' && !t.isVoid && (t.amount || 0) > 0);
+    const latestByStore = {};
+    for (const tx of invoices) {
+      const store = matchCustomerToStore(tx.custName, tx.custNum, stores);
+      if (!store) continue;
+      const date = tx.settlementDate || tx.docDate?.date;
+      if (!date) continue;
+      if (!latestByStore[store.id] || date > latestByStore[store.id]) {
+        latestByStore[store.id] = date;
+      }
+    }
+    const updates = [];
+    for (const [storeId, date] of Object.entries(latestByStore)) {
+      const store = stores.find(s => s.id === storeId);
+      if (!store) continue;
+      if (!store.lastSaleDate || date > store.lastSaleDate) {
+        updates.push({ id: storeId, lastSaleDate: date });
+      }
+    }
+    if (updates.length > 0) bulkImportStores(updates, []);
+    setTxSyncResult({ updated: updates.length, total: Object.keys(latestByStore).length });
+  }
 
   return (
     <div className="data-import-page">
@@ -359,54 +429,114 @@ export default function DataImport() {
         </p>
       </div>
 
-      {/* Re-geocode Section */}
+      {/* Transaction Import Section */}
       <div className="data-import-geocode-section">
-        <h3>Re-geocode Store Coordinates</h3>
+        <h3>Transaction Import (DAO Dashboard)</h3>
         <p className="data-import-desc" style={{ margin: '4px 0 10px' }}>
-          Fix stores with inaccurate lat/lng by looking up their actual address.
-          Uses OpenStreetMap (free). Takes ~1 second per store due to rate limits.
-          {stores.length > 0 && ` (${stores.length} stores)`}
+          Import weekly transaction data from the DAO Dashboard.
+          {transactions.length > 0 && ` (${transactions.length} records, ${txParsed.length} parsed)`}
         </p>
+        <input
+          ref={txFileInputRef}
+          type="file"
+          accept=".txt,.json"
+          onChange={txHandleFileSelect}
+          style={{ display: 'none' }}
+        />
         <div className="data-import-actions">
-          <button
-            className="btn btn-primary"
-            onClick={handleRegeocode}
-            disabled={geocoding || stores.length === 0}
-          >
-            {geocoding ? geocodeProgress : 'Re-geocode All Stores'}
+          <button className="btn btn-primary" onClick={() => txFileInputRef.current?.click()} disabled={txImporting}>
+            {txImporting ? 'Importing...' : 'Import File'}
+          </button>
+          {txParsed.length > 0 && (
+            <button className="btn btn-primary" onClick={syncLastSaleFromTransactions}
+              title="Update each store's Last Sale date from the most recent Invoice in this transaction data">
+              Sync Last Sale
+            </button>
+          )}
+          <button className="btn btn-secondary" onClick={() => setShowTxSetup(s => !s)}>
+            {showTxSetup ? 'Hide Setup' : 'Setup'}
           </button>
         </div>
-        {geocodeResult && !geocodeResult.error && (
-          <div className="data-import-success" style={{ marginTop: 8 }}>
-            Done! {geocodeResult.updated} of {geocodeResult.total} stores had coordinates
-            updated (moved &gt;200m from previous position).
-            {geocodeResult.updated > 0 && (
-              <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12 }}>
-                {geocodeResult.stores.map(s => {
-                  const orig = stores.find(st => st.id === s.id);
-                  return (
-                    <li key={s.id}>
-                      {orig?.name || s.id}: {orig?.lat?.toFixed(4)},{orig?.lng?.toFixed(4)} → {s.lat.toFixed(4)},{s.lng.toFixed(4)}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+        {txImportError && <div className="data-import-error" style={{ marginTop: 8 }}>{txImportError}</div>}
+        {txSyncResult && (
+          <div className="data-import-success" style={{ marginTop: 8, cursor: 'pointer' }} onClick={() => setTxSyncResult(null)}>
+            {txSyncResult.updated > 0
+              ? `Last Sale updated on ${txSyncResult.updated} store${txSyncResult.updated !== 1 ? 's' : ''} (${txSyncResult.total} matched from transactions)`
+              : `No updates needed — all ${txSyncResult.total} matched stores already have current dates`}
+            {' '}✕
           </div>
         )}
-        {geocodeResult?.error && (
-          <div className="data-import-error" style={{ marginTop: 8 }}>
-            Geocoding failed: {geocodeResult.error}
+        {showTxSetup && (
+          <div className="data-import-success" style={{ marginTop: 8, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: 12 }}>
+            <h4 style={{ margin: '0 0 8px' }}>How to import transactions from DAO Dashboard</h4>
+            <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
+              <li>Go to the <a href="https://dashboard.daogroup.com/Dashboards/DocumentViewer/DocumentViewerForm4.aspx" target="_blank" rel="noopener noreferrer">DAO Document Viewer</a></li>
+              <li>Set your date range and filters, then click Search</li>
+              <li>Set <strong>Max Rows</strong> to a high number (e.g., 500) so all data loads on one page</li>
+              <li>
+                Drag this link to your bookmarks bar:{' '}
+                <a style={{ color: '#2563eb', fontWeight: 600, cursor: 'pointer' }} href={bookmarkletCode} onClick={e => {
+                  e.preventDefault();
+                  navigator.clipboard.writeText(bookmarkletCode).then(() => alert('Bookmarklet copied to clipboard! Paste it as a new bookmark URL.'));
+                }}>
+                  DAO Scraper
+                </a>
+              </li>
+              <li>Click the bookmarklet — it downloads a <strong>.txt file</strong> with the transaction data</li>
+              <li>Come back here, click <strong>"Import File"</strong> and select the downloaded .txt file</li>
+            </ol>
+          </div>
+        )}
+        {transactions.length === 0 && (
+          <div
+            className={`tx-dropzone${txDragOver ? ' drag-over' : ''}`}
+            style={{ marginTop: 10 }}
+            onDragOver={e => { e.preventDefault(); setTxDragOver(true); }}
+            onDragLeave={() => setTxDragOver(false)}
+            onDrop={txHandleDrop}
+            onClick={() => txFileInputRef.current?.click()}
+          >
+            <p>Drop a .txt file here or click to import</p>
+            <p className="tx-dropzone-hint">Click <strong>"Setup"</strong> above for instructions on exporting from the DAO dashboard</p>
           </div>
         )}
       </div>
 
       <div className="data-import-input-section">
+        <h3>Store Feed Import</h3>
+        <p className="data-import-desc" style={{ margin: '0 0 8px' }}>
+          Import store data from WebSnak.{' '}
+          <a style={{ color: '#2563eb', fontWeight: 600, cursor: 'pointer' }} href={websnakBookmarklet} onClick={e => {
+            e.preventDefault();
+            navigator.clipboard.writeText(websnakBookmarklet).then(() => alert('WebSnak Scraper copied to clipboard! Create a new bookmark and paste as the URL.'));
+          }}>
+            Copy WebSnak Scraper
+          </a>
+        </p>
+        <input
+          ref={storeFileInputRef}
+          type="file"
+          accept=".txt"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => { setRawInput(reader.result); setApplied(false); setParsed(null); };
+            reader.readAsText(file);
+            e.target.value = '';
+          }}
+          style={{ display: 'none' }}
+        />
+        <div className="data-import-actions" style={{ marginBottom: 8 }}>
+          <button className="btn btn-primary" onClick={() => storeFileInputRef.current?.click()} disabled={applied}>
+            Import File
+          </button>
+        </div>
         <textarea
           className="data-import-textarea"
           value={rawInput}
           onChange={(e) => setRawInput(e.target.value)}
-          placeholder={`Paste Python store data here, e.g.:\n\nstores = [\n    {'Store Id': 'FLW00246', 'Name': 'FOOD LION 0246', 'Route/Jobber': 206, 'Address': '11801 COASTAL HWY OCEAN CITY, MD. 21842', 'Last Sale': '02/12/2026', ...},\n    ...\n]`}
+          placeholder={`Or paste Python store data here, e.g.:\n\n[\n    {'Store Id': 'FLW00246', 'Name': 'FOOD LION 0246', 'Route/Jobber': 206, 'Address': '11801 COASTAL HWY OCEAN CITY, MD. 21842', 'Last Sale': '02/12/2026', ...},\n    ...\n]`}
           rows={10}
           disabled={applied}
         />
@@ -538,7 +668,8 @@ export default function DataImport() {
               const ts = new Date(entry.timestamp);
               const dateStr = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
               const timeStr = ts.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-              const lastStore = entry.stores?.length > 0 ? entry.stores[entry.stores.length - 1] : null;
+              const isTxImport = entry.importType === 'transactions';
+              const lastStore = !isTxImport && entry.stores?.length > 0 ? entry.stores[entry.stores.length - 1] : null;
 
               return (
                 <div key={entry.id} className="di-log-entry">
@@ -549,15 +680,35 @@ export default function DataImport() {
                     <div className="di-log-entry-left">
                       <span className={`al-chevron ${isExpanded ? 'expanded' : ''}`}>&#9654;</span>
                       <span className="di-log-entry-date">{dateStr} {timeStr}</span>
+                      {isTxImport && <span className="di-log-pill" style={{ background: '#dbeafe', color: '#1e40af', marginLeft: 6 }}>Transactions</span>}
+                      {!isTxImport && <span className="di-log-pill" style={{ background: '#dcfce7', color: '#166534', marginLeft: 6 }}>Store Feed</span>}
                     </div>
                     <div className="di-log-entry-pills">
-                      {entry.updatedCount > 0 && <span className="di-log-pill blue">{entry.updatedCount} updated</span>}
-                      {entry.addedCount > 0 && <span className="di-log-pill green">{entry.addedCount} new</span>}
-                      {entry.skippedCount > 0 && <span className="di-log-pill gray">{entry.skippedCount} skipped</span>}
-                      <span className="di-log-pill outline">{entry.totalInFeed} in feed</span>
+                      {isTxImport ? (
+                        <>
+                          <span className="di-log-pill blue">{entry.totalInFeed} records</span>
+                          {entry.parsedCount > 0 && <span className="di-log-pill green">{entry.parsedCount} parsed</span>}
+                          {entry.duplicatesSkipped > 0 && <span className="di-log-pill gray">{entry.duplicatesSkipped} dupes</span>}
+                        </>
+                      ) : (
+                        <>
+                          {entry.updatedCount > 0 && <span className="di-log-pill blue">{entry.updatedCount} updated</span>}
+                          {entry.addedCount > 0 && <span className="di-log-pill green">{entry.addedCount} new</span>}
+                          {entry.skippedCount > 0 && <span className="di-log-pill gray">{entry.skippedCount} skipped</span>}
+                          <span className="di-log-pill outline">{entry.totalInFeed} in feed</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                  {isExpanded && entry.stores && (
+                  {isExpanded && isTxImport && (
+                    <div className="di-log-entry-body">
+                      <div className="di-log-last-banner">
+                        {entry.dateRange && <><strong>Date range:</strong> {entry.dateRange}</>}
+                        {entry.routes?.length > 0 && <> &nbsp;|&nbsp; <strong>Routes:</strong> {entry.routes.join(', ')}</>}
+                      </div>
+                    </div>
+                  )}
+                  {isExpanded && !isTxImport && entry.stores && (
                     <div className="di-log-entry-body">
                       {lastStore && (
                         <div className="di-log-last-banner">
