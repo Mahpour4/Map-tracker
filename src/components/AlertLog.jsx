@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
+import { scrapeAlertDetails as gwScrapeDetails } from '../services/globalworxService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
@@ -709,6 +710,30 @@ export default function AlertLog() {
     setPdfGenerating(route);
 
     try {
+      // --- 0. Scrape GW details for alerts missing them ---
+      const needScrape = routeAlerts.filter(a => a.acceptanceUrl && !a.gwCreatedBy);
+      if (needScrape.length > 0) {
+        console.log(`[PDF] Scraping GW details for ${needScrape.length} alert(s) missing data...`);
+        try {
+          const payload = needScrape.map(a => ({ url: a.acceptanceUrl, refNumber: a.refNumber }));
+          const { results } = await gwScrapeDetails(payload);
+          results.forEach(r => {
+            if (r.alertDetails) {
+              const alert = routeAlerts.find(a => a.refNumber === r.refNumber);
+              if (alert) {
+                const d = r.alertDetails.details || {};
+                if (d['Created By']) alert.gwCreatedBy = d['Created By'];
+                if (d['Alert Type']) alert.gwAlertType = d['Alert Type'];
+                if (d['Reason']) alert.gwReason = d['Reason'];
+              }
+            }
+          });
+          console.log(`[PDF] Scraped ${results.filter(r => r.alertDetails).length}/${needScrape.length} alerts`);
+        } catch (err) {
+          console.warn('[PDF] GW scrape unavailable — Details column will be empty:', err.message);
+        }
+      }
+
       // --- 1. Gather images for all alerts ---
       const alertsWithEmail = routeAlerts.filter(a => a.emailId);
       const gmailOk = isGmailConnected();

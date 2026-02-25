@@ -737,6 +737,66 @@ async function completeBatch(alerts) {
 }
 
 /**
+ * Scrape alert details from GlobalWorx pages without clicking any buttons.
+ * Used to backfill gwCreatedBy/gwAlertType/gwReason for alerts accepted before v2.19.0.
+ * @param {Array<{ url: string, refNumber: string }>} alerts
+ * @returns {{ results: Array<{ refNumber: string, alertDetails: object|null }> }}
+ */
+async function scrapeBatch(alerts) {
+  if (!alerts || alerts.length === 0) {
+    return { results: [] };
+  }
+
+  console.log(`[GW] Starting batch scrape: ${alerts.length} alert(s)`);
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,900'],
+    });
+  } catch (err) {
+    console.error('[GW] Failed to launch browser:', err.message);
+    return {
+      results: alerts.map(a => ({ refNumber: a.refNumber, alertDetails: null })),
+    };
+  }
+
+  const results = [];
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+
+    for (let i = 0; i < alerts.length; i++) {
+      const alert = alerts[i];
+      console.log(`[GW] --- Scrape ${i + 1}/${alerts.length}: ${alert.refNumber} ---`);
+      try {
+        await page.goto(alert.url, { waitUntil: 'networkidle2', timeout: 20000 });
+        await sleep(2000);
+        const alertDetails = await scrapeAlertDetails(page);
+        if (alertDetails) {
+          console.log(`[GW]   Scraped: Created By="${alertDetails.details?.['Created By'] || 'N/A'}", Reason="${(alertDetails.details?.['Reason'] || 'N/A').substring(0, 60)}"`);
+        }
+        results.push({ refNumber: alert.refNumber, alertDetails });
+      } catch (err) {
+        console.error(`[GW]   ERROR scraping ${alert.refNumber}:`, err.message);
+        results.push({ refNumber: alert.refNumber, alertDetails: null });
+      }
+
+      if (i < alerts.length - 1) await sleep(500);
+    }
+  } finally {
+    await browser.close();
+    console.log('[GW] Browser closed.');
+  }
+
+  const scraped = results.filter(r => r.alertDetails).length;
+  console.log(`[GW] DONE: ${scraped} scraped, ${results.length - scraped} failed out of ${alerts.length}`);
+  return { results };
+}
+
+/**
  * Check if Puppeteer/Chrome is available.
  */
 async function checkStatus() {
@@ -752,4 +812,4 @@ async function checkStatus() {
   }
 }
 
-module.exports = { acceptAlert, acceptBatch, completeAlert, completeBatch, checkStatus };
+module.exports = { acceptAlert, acceptBatch, completeAlert, completeBatch, scrapeBatch, checkStatus };

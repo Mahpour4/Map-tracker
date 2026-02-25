@@ -52,3 +52,22 @@ export async function completeAlerts(alerts) {
   }
   return await res.json();
 }
+
+/**
+ * Scrape alert details from GlobalWorx pages without clicking any buttons.
+ * Used to backfill gwCreatedBy/gwAlertType/gwReason for PDF reports.
+ * @param {Array<{ url: string, refNumber: string }>} alerts
+ * @returns {{ results: Array<{ refNumber: string, alertDetails: object|null }> }}
+ */
+export async function scrapeAlertDetails(alerts) {
+  const res = await fetch(`${BASE}/scrape-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alerts }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `GlobalWorx service error: ${res.status}`);
+  }
+  return await res.json();
+}
