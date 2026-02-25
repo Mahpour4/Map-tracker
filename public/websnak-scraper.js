@@ -147,17 +147,25 @@
         pyLines.push(']');
         var pyText = pyLines.join('\n');
 
-        var blob = new Blob([pyText], { type: 'text/plain' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        var dd = new Date();
-        a.download = 'websnak-stores-' + dd.getFullYear() + ('0' + (dd.getMonth() + 1)).slice(-2) + ('0' + dd.getDate()).slice(-2) + '.txt';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        showToast('Done! <strong>' + accumulated.length + '</strong> stores downloaded!', '#22c55e', true);
+        try {
+          var blob = new Blob([pyText], { type: 'text/plain' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          var dd = new Date();
+          a.download = 'websnak-stores-' + dd.getFullYear() + ('0' + (dd.getMonth() + 1)).slice(-2) + ('0' + dd.getDate()).slice(-2) + '.txt';
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() { a.remove(); URL.revokeObjectURL(url); }, 2000);
+          showToast('Done! <strong>' + accumulated.length + '</strong> stores downloaded!', '#22c55e', true);
+          console.log('Download triggered: ' + a.download);
+        } catch(e) {
+          console.log('Download failed:', e);
+          navigator.clipboard.writeText(pyText).then(function() {
+            showToast('Done! <strong>' + accumulated.length + '</strong> stores copied to clipboard!', '#22c55e', true);
+          }).catch(function() { prompt('Copy this data:', pyText); });
+        }
         sessionStorage.removeItem(K);
       }
     }, 500);
