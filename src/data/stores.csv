@@ -58,7 +58,7 @@ SFW00080,SFW00080,Shoppers Capitol Heights,4801 Marlboro Pike,Capitol Heights,MD
 WAW05129,05129,Walmart 5129,6210 Annapolis Rd,Landover Hills,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9429674,-76.9079617,,,Yes
 SFW02618,02618,Shoppers Food Whse 2618,7790 RIVERDALE RD,Hyattsville,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9559,-76.9453,,2025-09-30,Yes
 FLW00656,00656,Food Lion 656,40955 MERCHANT LN,LEONARDTOWN,MD,20650,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2909,-76.6356,2026-02-19,2026-02-11,No
-FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.4999463,-76.7715778,2026-02-19,2026-02-24,No
+FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.4999463,-76.7715778,2026-02-19,2026-02-25,No
 FLW01316,01316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.631106,-77.0720882,2026-02-23,2026-02-12,No
 WMW00278,00278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.547702,-76.9827263,,2025-11-19,Yes
 FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6231162,-76.9084658,2026-02-23,2026-02-17,No
@@ -134,7 +134,7 @@ WGW00042,WGW00042,Wegmans 42,8297 STONEWALL SHOPS SQUARE,GAINESVILLE,VA,20155,20
 WGW00044,WGW00044,Wegmans 44,101 CROSSTRAIL BLVD SE,LEESBURG,VA,20175,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.1157,-77.5636,,,Yes
 SRW00563,SRW00563,ShopRite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.5201387,-76.5601869,,2025-09-12,Yes
 SRW00567,00567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,204,Route 204 Driver,Baltimore County,Unassigned,Unassigned,39.3723579,-76.5640499,2026-02-24,2026-02-24,No
-FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-02-19,2026-02-19,No
+FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-02-19,2026-02-25,No
 FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-02-19,2026-02-19,No
 FLW00663,FLW00663,Food Lion Store 663,96 Somerset Blvd,Charles Town,WV,25414,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.289,-77.86,2026-02-24,2026-02-16,No
 FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.6263,-78.2271,2026-02-23,2026-02-16,No
@@ -182,7 +182,7 @@ FLW01226,01226,Food Lion 1226,14641 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,
 FLW01249,01249,Food Lion 1249,5227 WATERWAY DR,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.5685,-77.3281,2026-02-06,2026-02-18,No
 FLW01261,01261,Food Lion 1261,13414 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.65846146722824,-77.25268858409427,2026-02-23,2026-02-13,No
 FLW01322,01322,Food Lion 1322,3059 CENTERVILLE RD,Herndon,VA,20171,209,Route 209 Driver,Northern Virginia,Herndon,Herndon,38.9696,-77.3861,2026-02-20,2026-02-16,No
-FLW01337,01337,Food Lion 1337,20789 GREAT FALLS PLZ,Sterling,VA,20165,209,Route 209 Driver,Northern Virginia,Sterling,Sterling,39.040721,-77.3580689,2026-02-20,2026-02-20,No
+FLW01337,01337,Food Lion 1337,20789 GREAT FALLS PLZ,Sterling,VA,20165,209,Route 209 Driver,Northern Virginia,Sterling,Sterling,39.040721,-77.3580689,2026-02-20,2026-02-25,No
 FLW01383,01383,Food Lion 1383,9121 CENTERVILLE RD,Manassas,VA,20110,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.75116146722824,-77.47828858409427,2026-02-19,2026-02-19,No
 FLW01471,01471,Food Lion 1471,17120 JEFFERSON DAVIS HWY,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.56876146722824,-77.33108858409427,2026-02-23,2026-02-18,No
 FLW01572,01572,Food Lion 1572,14630 MINNEVILLE RD,Dale City,VA,22193,209,Route 209 Driver,Northern Virginia,Dale City,Dale City,38.637,-77.3109,2026-02-19,2026-02-11,No
