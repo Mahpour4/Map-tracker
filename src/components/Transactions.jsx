@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
-import { parseTransactions, analyzeByRoute, analyzeByDay, analyzeByStore, analyzeWarehouseMatchup, dedup } from '../services/daoTransactionParser';
+import { parseTransactions, analyzeByRoute, analyzeByDay, analyzeByStore, analyzeWarehouseMatchup, dedup, EXPECTED_GP_PCT, expectedGP } from '../services/daoTransactionParser';
+import { WISE_PRODUCTS, getPriceTiers } from '../data/wiseProductPricing';
 
 export default function Transactions() {
   const { state, setTransactions } = useApp();
@@ -11,6 +12,8 @@ export default function Transactions() {
   const [expandedDay, setExpandedDay] = useState(null);
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [reportRouteFilter, setReportRouteFilter] = useState('all');
+  const [showProductCatalog, setShowProductCatalog] = useState(false);
+  const [catalogTierFilter, setCatalogTierFilter] = useState('all');
   const reportMenuRef = useRef(null);
 
   const parsed = useMemo(() => parseTransactions(transactions), [transactions]);
@@ -50,6 +53,28 @@ export default function Transactions() {
   function sellClass(p) {
     if (p >= 80) return 'tx-sell-good';
     if (p >= 50) return 'tx-sell-warn';
+    return 'tx-sell-bad';
+  }
+
+  function gpColor(gp, load) {
+    if (load <= 0) return '';
+    const eff = gp / (load * 0.408);
+    if (eff >= 0.7) return 'tx-sell-good';
+    if (eff >= 0.4) return 'tx-sell-warn';
+    return 'tx-sell-bad';
+  }
+
+  function gpPctColor(revenue, load) {
+    if (revenue <= 0) return '';
+    const pctVal = (revenue - load) / revenue * 100;
+    if (pctVal >= 20) return 'tx-sell-good';
+    if (pctVal >= 10) return 'tx-sell-warn';
+    return 'tx-sell-bad';
+  }
+
+  function efficiencyColor(ratio) {
+    if (ratio >= 0.7) return 'tx-sell-good';
+    if (ratio >= 0.4) return 'tx-sell-warn';
     return 'tx-sell-bad';
   }
 
@@ -238,6 +263,8 @@ export default function Transactions() {
       const routeTableData = deliveryRoutes.map(r => {
         const gp = r.netSales - r.loadTotal;
         const margin = r.netSales !== 0 ? (gp / r.netSales * 100) : 0;
+        const expGP = expectedGP(r.loadTotal);
+        const eff = expGP > 0 ? (gp / expGP * 100) : 0;
         return [
           r.isStorage ? `Rt ${r.displayRoute} (Storage)` : `Rt ${r.displayRoute}`,
           fmtPdf(r.loadTotal),
@@ -246,12 +273,16 @@ export default function Transactions() {
           fmtPdf(r.netSales),
           fmtPdf(gp),
           pctPdf(margin),
+          fmtPdf(expGP),
+          pctPdf(eff),
           String(r.storeCount),
           (r.dsdOk + r.dsdMissing) > 0 ? pctPdf(r.dsdCompliance) : '—',
         ];
       });
 
       // Add totals row
+      const totalsExpGP = expectedGP(totals.loadTotal);
+      const totalsEff = totalsExpGP > 0 ? (totals.grossProfit / totalsExpGP * 100) : 0;
       routeTableData.push([
         'TOTAL',
         fmtPdf(totals.loadTotal),
@@ -260,27 +291,31 @@ export default function Transactions() {
         fmtPdf(totals.netSales),
         fmtPdf(totals.grossProfit),
         pctPdf(totals.margin),
+        fmtPdf(totalsExpGP),
+        pctPdf(totalsEff),
         '',
         '',
       ]);
 
       autoTable(doc, {
         startY: y,
-        head: [['Route', 'Load', 'Gross', 'Credits', 'Revenue', 'GP', 'Margin', 'Stores', 'DSD']],
+        head: [['Route', 'Load', 'Gross', 'Credits', 'Revenue', 'GP', 'GP%', 'Exp GP', 'GP Eff', 'Stores', 'DSD']],
         body: routeTableData,
         theme: 'grid',
         headStyles: { fillColor: [30, 58, 95], fontSize: 8, fontStyle: 'bold', textColor: [255, 255, 255] },
         bodyStyles: { fontSize: 8 },
         columnStyles: {
-          0: { cellWidth: 35, fontStyle: 'bold' },
-          1: { cellWidth: 28, halign: 'right' },
-          2: { cellWidth: 28, halign: 'right' },
-          3: { cellWidth: 28, halign: 'right' },
-          4: { cellWidth: 28, halign: 'right' },
-          5: { cellWidth: 28, halign: 'right' },
-          6: { cellWidth: 18, halign: 'center' },
-          7: { cellWidth: 16, halign: 'center' },
+          0: { cellWidth: 30, fontStyle: 'bold' },
+          1: { cellWidth: 24, halign: 'right' },
+          2: { cellWidth: 24, halign: 'right' },
+          3: { cellWidth: 24, halign: 'right' },
+          4: { cellWidth: 24, halign: 'right' },
+          5: { cellWidth: 24, halign: 'right' },
+          6: { cellWidth: 16, halign: 'center' },
+          7: { cellWidth: 24, halign: 'right' },
           8: { cellWidth: 16, halign: 'center' },
+          9: { cellWidth: 14, halign: 'center' },
+          10: { cellWidth: 14, halign: 'center' },
         },
         margin: { left: 14, right: 14 },
         didParseCell: function (data) {
@@ -295,6 +330,18 @@ export default function Transactions() {
               } else {
                 data.cell.styles.textColor = totals.grossProfit >= 0 ? [34, 197, 94] : [220, 38, 38];
               }
+            }
+            // Exp GP column (7) — gray
+            if (data.column.index === 7) data.cell.styles.textColor = [100, 100, 100];
+            // GP Eff column (8) — color by efficiency
+            if (data.column.index === 8) {
+              const routeIdx = data.row.index;
+              const effVal = routeIdx < deliveryRoutes.length
+                ? parseFloat(data.cell.text[0])
+                : totalsEff;
+              if (effVal >= 70) data.cell.styles.textColor = [34, 197, 94];
+              else if (effVal >= 40) data.cell.styles.textColor = [234, 179, 8];
+              else data.cell.styles.textColor = [220, 38, 38];
             }
             if (data.row.index === routeTableData.length - 1) {
               data.cell.styles.fontStyle = 'bold';
@@ -725,6 +772,20 @@ export default function Transactions() {
               {fmt(totalStats.netSales - totalStats.loadTotal)}
             </span>
           </div>
+          <div className="tx-stat" title={`Expected GP at full retail, no promos = Load × 0.408 (${EXPECTED_GP_PCT}% product margin). DAO Revenue is post-promo, so actual GP will typically be lower.`}>
+            <span className="tx-stat-label">Expected GP</span>
+            <span className="tx-stat-value" style={{ color: '#9ca3af' }}>
+              {fmt(expectedGP(totalStats.loadTotal))}
+            </span>
+          </div>
+          <div className="tx-stat" title={`GP Efficiency = Actual GP ÷ Expected GP. Reflects promo deductions + sell-through. 70%+ = good (promos are normal). Below 40% = investigate unsold inventory.`}>
+            <span className="tx-stat-label">GP Efficiency</span>
+            <span className={`tx-stat-value ${efficiencyColor((totalStats.netSales - totalStats.loadTotal) / Math.max(expectedGP(totalStats.loadTotal), 1))}`}>
+              {totalStats.loadTotal > 0
+                ? pct((totalStats.netSales - totalStats.loadTotal) / expectedGP(totalStats.loadTotal) * 100)
+                : '0.0%'}
+            </span>
+          </div>
           {totalStats.warehouseLoad > 0 && (
             <div className="tx-stat" title="True Profit = Revenue - Warehouse Cost (supplier cost) — matches DAO Gross Profit report 'Profit Amount'">
               <span className="tx-stat-label">True Profit</span>
@@ -952,16 +1013,30 @@ export default function Transactions() {
                     <span className="tx-metric-label">Revenue</span>
                     <span className="tx-metric-value" style={{ color: '#3b82f6' }}>{fmt(r.netSales)}</span>
                   </span>
-                  <span className="tx-metric" title={`Gross Profit = Revenue minus Load: ${fmt(r.netSales - r.loadTotal)}`}>
+                  <span className="tx-metric" title={`Gross Profit = Revenue − Load. DAO Revenue is post-promo so this is your true cash GP after all promo deductions.`}>
                     <span className="tx-metric-label">GP</span>
-                    <span className={`tx-metric-value ${r.netSales - r.loadTotal >= 0 ? 'tx-sell-good' : 'tx-negative'}`}>{fmt(r.netSales - r.loadTotal)}</span>
+                    <span className={`tx-metric-value ${gpColor(r.netSales - r.loadTotal, r.loadTotal)}`}>{fmt(r.netSales - r.loadTotal)}</span>
                   </span>
-                  <span className="tx-metric" title={`Gross Margin: ${totalStats ? pct((r.netSales - r.loadTotal) / (r.netSales || 1) * 100) : '0%'} — Gross Profit as % of Revenue`}>
-                    <span className="tx-metric-label">Margin</span>
-                    <span className={`tx-metric-value ${r.netSales - r.loadTotal >= 0 ? 'tx-sell-good' : 'tx-negative'}`}>
+                  <span className="tx-metric" title={`GP% = GP ÷ Revenue. Target: ${EXPECTED_GP_PCT}% at full retail. Lower % = more promos or unsold inventory.`}>
+                    <span className="tx-metric-label">GP%</span>
+                    <span className={`tx-metric-value ${gpPctColor(r.netSales, r.loadTotal)}`}>
                       {r.netSales !== 0 ? pct((r.netSales - r.loadTotal) / r.netSales * 100) : '0.0%'}
                     </span>
                   </span>
+                  {r.loadTotal > 0 && (
+                    <span className="tx-metric tx-metric-expected" title={`Expected GP at full retail with no promos: Load × 0.408 = ${fmt(expectedGP(r.loadTotal))}. Actual GP will be lower due to chain store promo deductions.`}>
+                      <span className="tx-metric-label">Exp GP</span>
+                      <span className="tx-metric-value" style={{ color: '#9ca3af' }}>{fmt(expectedGP(r.loadTotal))}</span>
+                    </span>
+                  )}
+                  {r.loadTotal > 0 && expectedGP(r.loadTotal) > 0 && (
+                    <span className="tx-metric" title={`GP Efficiency = Actual GP ÷ Expected GP. 70%+ = healthy (promos account for ~25–30%). Below 40% = likely unsold inventory on truck.`}>
+                      <span className="tx-metric-label">Efficiency</span>
+                      <span className={`tx-metric-value ${efficiencyColor((r.netSales - r.loadTotal) / expectedGP(r.loadTotal))}`}>
+                        {pct((r.netSales - r.loadTotal) / expectedGP(r.loadTotal) * 100)}
+                      </span>
+                    </span>
+                  )}
                   <span className="tx-metric" title="Number of unique stores/customers invoiced on this route">
                     <span className="tx-metric-label">Stores</span>
                     <span className="tx-metric-value">{r.storeCount}</span>
@@ -1272,6 +1347,68 @@ export default function Transactions() {
               </div>
             </div>
           )}
+
+          {/* Product Pricing Catalog */}
+          <div className="tx-product-catalog">
+            <div className="tx-catalog-header" onClick={() => setShowProductCatalog(s => !s)}>
+              <div>
+                <span className="tx-catalog-title">Product Pricing Catalog</span>
+                <span className="tx-catalog-subtitle">Wise Foods — Jobber Cost vs Retail GP Reference ({WISE_PRODUCTS.length} SKUs)</span>
+              </div>
+              <span className="tx-catalog-chevron">{showProductCatalog ? '▲' : '▼'}</span>
+            </div>
+            {showProductCatalog && (
+              <>
+                <div className="tx-catalog-filters">
+                  <button
+                    className={`tx-catalog-filter-btn${catalogTierFilter === 'all' ? ' active' : ''}`}
+                    onClick={() => setCatalogTierFilter('all')}>
+                    All Tiers
+                  </button>
+                  {getPriceTiers().map(tier => (
+                    <button key={tier}
+                      className={`tx-catalog-filter-btn${catalogTierFilter === tier ? ' active' : ''}`}
+                      onClick={() => setCatalogTierFilter(tier)}>
+                      ${tier}
+                    </button>
+                  ))}
+                </div>
+                <div className="tx-catalog-legend">
+                  Formula: <strong>Expected GP = Load × 0.408</strong> — DAO Revenue is post-promotion, so GP Efficiency 70–80% is typical on promo routes. Below 40% = investigate unsold inventory.
+                </div>
+                <table className="tx-catalog-table">
+                  <thead>
+                    <tr>
+                      <th>Item #</th>
+                      <th>Description</th>
+                      <th>UIC</th>
+                      <th>Cost/Case</th>
+                      <th>Retail</th>
+                      <th>Case Retail</th>
+                      <th>GP/Case</th>
+                      <th>GP%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {WISE_PRODUCTS
+                      .filter(p => catalogTierFilter === 'all' || p.retail.toFixed(2) === catalogTierFilter)
+                      .map(p => (
+                        <tr key={p.id}>
+                          <td className="tx-catalog-id">{p.id}</td>
+                          <td>{p.desc}</td>
+                          <td className="tx-catalog-center">{p.uic}</td>
+                          <td className="tx-negative">{fmt(p.caseCost)}</td>
+                          <td className="tx-catalog-center">{fmt(p.retail)}</td>
+                          <td style={{ color: '#3b82f6', textAlign: 'right' }}>{fmt(p.caseRetail)}</td>
+                          <td className="tx-sell-good" style={{ textAlign: 'right' }}>{fmt(p.gpCase)}</td>
+                          <td className="tx-sell-good tx-catalog-center">{p.gpPct.toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

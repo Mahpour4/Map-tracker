@@ -4,6 +4,24 @@
  */
 
 /**
+ * GP benchmark — derived from Wise Foods Jobber pricing analysis.
+ * Case Cost = 71.4% of Case Retail; GP = 28.6% of retail ≈ 29%.
+ * In terms of load: Expected GP = Load × 0.408  (= Load × 29/71)
+ * DAO Revenue is already post-promotion, so GP Efficiency < 100% is normal on promo-heavy routes.
+ */
+export const EXPECTED_GP_PCT = 29.0;
+
+/**
+ * Calculate the expected (theoretical max) gross profit for a given load cost.
+ * Assumes 100% sell-through at full retail with no promos.
+ * @param {number} loadTotal - Total load cost (what was paid to Wise Foods)
+ * @returns {number} Expected GP in dollars
+ */
+export function expectedGP(loadTotal) {
+  return loadTotal * 0.408;
+}
+
+/**
  * Sub-route mapping — sub-routes are combined into their parent route
  * e.g., route 206 is a sub-route of 210, so their data is merged
  */
