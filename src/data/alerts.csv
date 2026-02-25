@@ -1,4 +1,4 @@
-RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,DateReceived
+RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,DateReceived,GwCreatedBy,GwAlertType,GwReason
 "ADUSA-8884204","19c5dfcb241f14ab","FLW01414","1414","Food Lion","Upper Marlboro","WISE FOODS","ADUSA","207","2026-02-14"
 "ADUSA-8883899","19c5d96f7dd68729","FLW01653","1653","Food Lion","Essex","WISE FOODS","ADUSA","214","2026-02-14"
 "ADUSA-8883546","19c5d2838f2da515","FLW01405","1405","Food Lion","Middle River","WISE FOODS","ADUSA","214","2026-02-14"
