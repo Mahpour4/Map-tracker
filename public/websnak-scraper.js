@@ -55,11 +55,11 @@
     for (var i = 0; i < allData.length; i++) {
       var d = allData[i];
       // Try common key patterns
-      var storeId = d['Store Id'] || d['StoreId'] || d['STOREID'] || d['storeId'] || '';
-      var name = d['Name'] || d['NAME'] || d['name'] || '';
-      var route = d['Route/Jobber'] || d['RouteJobber'] || d['ROUTEJOBBER'] || '';
-      var address = d['Address'] || d['ADDRESS'] || d['address'] || '';
-      var lastSale = d['Last Sale'] || d['LastSale'] || d['LASTSALE'] || '';
+      var storeId = d['STOREID'] || d['Store Id'] || d['StoreId'] || d['storeId'] || '';
+      var name = d['NAME'] || d['Name'] || d['name'] || '';
+      var route = d['ROUTENUM'] || d['Route/Jobber'] || d['RouteJobber'] || '';
+      var address = d['SRCHADDRESS'] || d['Address'] || d['ADDRESS'] || d['address'] || '';
+      var lastSale = d['LASTSALESDATE'] || d['Last Sale'] || d['LastSale'] || d['LASTSALE'] || '';
 
       if (storeId) {
         pageStores.push({
