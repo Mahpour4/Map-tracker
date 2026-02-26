@@ -1385,11 +1385,95 @@ export default function TravelLog() {
               </div>
             </div>
             <div className="tl-panel-scroll">
-              <div className="tl-timeline">
-                {breadcrumbEntries.length === 0
-                  ? <div className="tl-empty">No breadcrumb visits for this day / vehicle.</div>
-                  : breadcrumbEntries.map((entry, i) => renderEntry(entry, i))}
-              </div>
+              {breadcrumbEntries.length === 0
+                ? <div className="tl-empty" style={{ marginLeft: 0 }}>No breadcrumb visits for this day / vehicle.</div>
+                : (
+                  <table className="tl-bc-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Arrive</th>
+                        <th>Depart</th>
+                        <th>Dwell</th>
+                        <th>Location</th>
+                        <th>Type</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {breadcrumbEntries.map((entry, i) => {
+                        const liveCl = entry.locationId ? customLocations.find(c => c.id === entry.locationId) : null;
+                        const liveStore = entry.type === 'store' && entry.locationId ? stores.find(s => s.id === entry.locationId) : null;
+                        const liveWh = entry.type === 'warehouse' && entry.locationId ? warehouses.find(w => w.id === entry.locationId) : null;
+                        const isResolved = !!(liveCl || liveStore || liveWh);
+                        const effectivelyUnmatched = entry.type !== 'driving' && !isResolved;
+                        const displayName = isResolved
+                          ? (liveCl?.name || liveWh?.name || liveStore?.name)
+                          : (entry.destination || cleanLocationName(entry.locationName) || (entry.lat && entry.lng ? `${entry.lat.toFixed(4)}, ${entry.lng.toFixed(4)}` : 'Unknown'));
+                        const storeAddr = liveStore ? [liveStore.address, liveStore.city, liveStore.state].filter(Boolean).join(', ') : '';
+                        const addr = isResolved ? ((entry.destination || '').trim() || liveCl?.address || storeAddr || liveWh?.address || '') : '';
+                        const fmtTime = (t) => t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                        const arriveTime = fmtTime(entry.arrivalTime || entry.time);
+                        const departTime = fmtTime(entry.departureTime);
+                        const typeLabel = effectivelyUnmatched ? 'Unmatched' : getTypeLabel(entry.type);
+                        const typeClass = effectivelyUnmatched ? 'driving' : entry.type;
+                        const rawKey = entry.locationId || `${entry.vehicleVin}-${i}`;
+                        const mapQuery = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(displayName);
+
+                        return (
+                          <React.Fragment key={`${entry.vehicleVin}-${entry.locationId}-${i}`}>
+                            <tr className={`tl-bc-row tl-bc-${typeClass}`}>
+                              <td className="tl-bc-num">{i + 1}</td>
+                              <td className="tl-bc-time">{arriveTime}</td>
+                              <td className="tl-bc-time">{departTime}</td>
+                              <td className="tl-bc-dwell">{entry.dwellMinutes != null ? `${entry.dwellMinutes}m` : '-'}</td>
+                              <td className="tl-bc-loc">
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="tl-bc-loc-link"
+                                >
+                                  {displayName}
+                                </a>
+                                {addr && <span className="tl-bc-addr">{addr}</span>}
+                              </td>
+                              <td>
+                                <span
+                                  className={`tl-type-badge ${typeClass}`}
+                                  style={!effectivelyUnmatched && !['store','warehouse','driving'].includes(entry.type) ? { background: getTypeColor(entry.type), color: '#fff' } : undefined}
+                                >
+                                  {typeLabel}
+                                </span>
+                              </td>
+                              <td className="tl-bc-actions">
+                                {effectivelyUnmatched && (
+                                  <button className="tl-match-btn" onClick={() => { setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match</button>
+                                )}
+                                {isResolved && entry.type !== 'driving' && (
+                                  <button className="tl-delete-btn" onClick={() => {
+                                    const matchedName = liveCl?.name || liveStore?.name || liveWh?.name || entry.locationName;
+                                    if (window.confirm(`Unmatch "${matchedName}"?`)) unmatchEntry(entry.vehicleVin, selectedDate, entry.locationId);
+                                  }}>Unmatch</button>
+                                )}
+                                {entry.locationId && liveCl && (
+                                  <>
+                                    <button className="tl-edit-btn" onClick={() => { setEditForm({ name: liveCl.name, type: liveCl.type, address: liveCl.address || '' }); setEditingLocationId(liveCl.id); }}>Edit</button>
+                                    <button className="tl-delete-btn" onClick={() => { if (window.confirm(`Delete "${liveCl.name}"?`)) deleteCustomLocation(liveCl.id); }}>Delete</button>
+                                  </>
+                                )}
+                                <button className="tl-raw-toggle-btn" onClick={() => setExpandedRawIndex(expandedRawIndex === rawKey ? null : rawKey)} title="Raw data">{'{'}...{'}'}</button>
+                              </td>
+                            </tr>
+                            {expandedRawIndex === rawKey && (
+                              <tr><td colSpan="7"><pre className="tl-entry-raw">{JSON.stringify(entry, null, 2)}</pre></td></tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
             </div>
           </div>
         )}

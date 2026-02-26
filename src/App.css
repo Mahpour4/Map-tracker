@@ -7940,6 +7940,97 @@ textarea {
   font-family: monospace;
 }
 
+/* Breadcrumb table view */
+.tl-bc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.tl-bc-table thead th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+  padding: 6px 8px;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 1;
+}
+.tl-bc-table tbody tr.tl-bc-row {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+}
+.tl-bc-table tbody tr.tl-bc-row:hover {
+  background: #f9fafb;
+}
+.tl-bc-table td {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.tl-bc-num {
+  color: #9ca3af;
+  font-weight: 600;
+  font-size: 0.75rem;
+  width: 28px;
+  text-align: center;
+}
+.tl-bc-time {
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+.tl-bc-dwell {
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+.tl-bc-loc {
+  max-width: 320px;
+}
+.tl-bc-loc-link {
+  color: #111827;
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px dashed #d1d5db;
+  transition: all 0.15s;
+}
+.tl-bc-loc-link:hover {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  border-bottom-style: solid;
+}
+.tl-bc-addr {
+  display: block;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  font-weight: 400;
+  margin-top: 1px;
+}
+.tl-bc-actions {
+  white-space: nowrap;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+/* Row type accents */
+.tl-bc-row.tl-bc-store {
+  border-left: 3px solid #22c55e;
+}
+.tl-bc-row.tl-bc-warehouse {
+  border-left: 3px solid #f59e0b;
+}
+.tl-bc-row.tl-bc-driving {
+  border-left: 3px solid #3b82f6;
+}
+
 /* Google Maps links on addresses */
 .tl-map-link {
   color: inherit;
