@@ -48,7 +48,7 @@ FLW02501,02501,Food Lion,8300 ICE CRYSTAL DR,Scaggsville,MD,20723,207,Route 207 
 WMW00287,WMW00287,Weis 287,6551 Waterloo Rd,Elkridge,MD,21075,200,Route 200 Driver,Howard County,Howard County,Howard County,39.1914184,-76.7927454,,,Yes
 SFW00068,SFW00068,Shoppers Germantown,18066 Mateny Rd,Germantown,MD,20874,200,Route 200 Driver,Montgomery County,Montgomery County,Montgomery County,39.148022,-77.2728831,,,Yes
 FLW01661,FLW01661,Food Lion 1661,845 ROCKVILLE PIKE,Rockville,MD,20852,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.0761984,-77.1378639,2026-02-18,2026-02-25,No
-FLW01414,01414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,,2026-02-16,No
+FLW01414,01414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,2026-02-25,2026-02-16,No
 WGW00040,00040,Wegmans 40,9001 McHugh Dr,Lanham,MD,20706,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9214562,-76.8506973,,2025-10-23,Yes
 WMW00276,00276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.6714743,-77.0087584,,2026-02-12,No
 FLW02566,02566,Food Lion 2566,12675 Laurel Bowie Rd,Laurel,MD,20708,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.0652685,-76.8365901,2026-02-16,2026-02-16,No
@@ -57,12 +57,12 @@ SFW00079,SFW00079,Shoppers Forestville,5820 Silver Hill Rd,Forestville,MD,20747,
 SFW00080,SFW00080,Shoppers Capitol Heights,4801 Marlboro Pike,Capitol Heights,MD,20743,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.873462,-76.931513,,,Yes
 WAW05129,05129,Walmart 5129,6210 Annapolis Rd,Landover Hills,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9429674,-76.9079617,,,Yes
 SFW02618,02618,Shoppers Food Whse 2618,7790 RIVERDALE RD,Hyattsville,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9559,-76.9453,,2025-09-30,Yes
-FLW00656,00656,Food Lion 656,40955 MERCHANT LN,LEONARDTOWN,MD,20650,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2909,-76.6356,2026-02-19,2026-02-11,No
-FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.4999463,-76.7715778,2026-02-19,2026-02-26,No
+FLW00656,00656,Food Lion 656,40955 MERCHANT LN,LEONARDTOWN,MD,20650,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2909,-76.6356,2026-02-25,2026-02-11,No
+FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.4999463,-76.7715778,2026-02-25,2026-02-26,No
 FLW01316,01316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.631106,-77.0720882,2026-02-23,2026-02-12,No
 WMW00278,00278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.547702,-76.9827263,,2025-11-19,Yes
 FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6231162,-76.9084658,2026-02-23,2026-02-17,No
-FLW02547,02547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6199195,-76.934075,2026-02-23,2026-02-17,No
+FLW02547,02547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6199195,-76.934075,2026-02-25,2026-02-17,No
 WGW00041,WGW00041,Wegmans 41,Ridge Square NW,Washington,DC,20016,200,Route 200 Driver,Washington DC,Washington DC,Washington DC,38.9404451,-77.077732,,,Yes
 FLW01405,01405,Food Lion 1405,1413 FUSELAGE AVE,MIDDLE RIVER,MD,21220,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3324547,-76.4458499,2026-02-21,2026-02-21,No
 GBW00002,GBW00002,Geresbecks Baltimore,2109 Eastern Blvd,Baltimore,MD,21220,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3277067,-76.4407055,,,Yes
