@@ -23,7 +23,7 @@ function saveDeclinedReceipts(map) {
 }
 
 // ---- Route options from fleet data ----
-const routeOptions = [...new Set(fleetVehicles.map(v => v.routeNumber))]
+const routeOptions = [...new Set(fleetVehicles.map(v => v.routeNumber).filter(Boolean))]
   .sort((a, b) => {
     const na = parseInt(a), nb = parseInt(b);
     if (!isNaN(na) && !isNaN(nb)) return na - nb;

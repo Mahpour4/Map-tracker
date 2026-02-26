@@ -442,7 +442,8 @@ export default function FleetTracker() {
                   <th>Source / Gateway</th>
                   <th>Policy #</th>
                   <th>Insurance Pg</th>
-                  <th>Expiration</th>
+                  <th>Ins. Exp.</th>
+                  <th>Reg. Exp.</th>
                   {connected && <th>Driver</th>}
                   {connected && <th>Location</th>}
                   {connected && <th>Speed</th>}
@@ -468,6 +469,14 @@ export default function FleetTracker() {
                     <td className="ft-cell-policy">{v.policyNumber || '—'}</td>
                     <td className="ft-cell-inspage">{v.insuranceCardPage || '—'}</td>
                     <td className="ft-cell-expiry">{v.expirationDate || '—'}</td>
+                    <td className="ft-cell-regexpiry">
+                      {v.registration?.registrationExpires
+                        ? <span title={v.registration.temporaryRegistration ? `Temp reg — Conf: ${v.registration.temporaryRegistration.confirmationNumber}` : ''}>
+                            {v.registration.registrationExpires}
+                            {v.registration.temporaryRegistration && <span className="ft-temp-reg-badge"> TEMP</span>}
+                          </span>
+                        : '—'}
+                    </td>
                     {connected && <td>{v.driverName || '—'}</td>}
                     {connected && (
                       <td className="ft-cell-location">

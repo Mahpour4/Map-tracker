@@ -6605,6 +6605,21 @@ textarea {
   background: var(--bg);
 }
 
+.ft-cell-regexpiry { white-space: nowrap; }
+.ft-temp-reg-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 3px;
+  border: 1px solid #fcd34d;
+  vertical-align: middle;
+}
+
 .ft-header {
   margin-bottom: 16px;
 }
