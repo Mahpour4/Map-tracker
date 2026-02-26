@@ -1493,11 +1493,94 @@ export default function TravelLog() {
               </div>
             </div>
             <div className="tl-panel-scroll">
-              <div className="tl-timeline">
-                {drivingEntries.length === 0
-                  ? <div className="tl-empty">No driving periods for this day / vehicle.</div>
-                  : drivingEntries.map((entry, i) => renderEntry(entry, i))}
-              </div>
+              {drivingEntries.length === 0
+                ? <div className="tl-empty" style={{ marginLeft: 0 }}>No driving periods for this day / vehicle.</div>
+                : (
+                  <table className="tl-bc-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Start</th>
+                        <th>Duration</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Dist</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {drivingEntries.map((entry, i) => {
+                        const fmtTime = (t) => t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                        const startTime = fmtTime(entry.arrivalTime || entry.time);
+                        const parts = cleanLocationName(entry.locationName || '').split(' \u2192 ');
+                        const rawOrigin = isGarbageLocation(parts[0]) ? 'Unknown' : parts[0];
+                        const rawDest = isGarbageLocation(parts[1]) ? 'Unknown' : parts[1];
+                        const originText = (entry.origin || rawOrigin || '').trim();
+                        const destText = (entry.destination || rawDest || '').trim();
+                        const originQ = (entry.lat && entry.lng) ? `${entry.lat},${entry.lng}` : encodeURIComponent(rawOrigin);
+                        const destQ = (entry.destinationLat && entry.destinationLng) ? `${entry.destinationLat},${entry.destinationLng}` : encodeURIComponent(rawDest);
+                        const resolveId = (addr) => addr ? addressOverrides[addr] : null;
+                        const resolveLocation = (id) => {
+                          if (!id) return null;
+                          const cl = customLocations.find(c => c.id === id);
+                          if (cl) return { name: cl.name, addr: cl.address || '' };
+                          const st = stores.find(s => s.id === id);
+                          if (st) return { name: st.name, addr: [st.address, st.city, st.state].filter(Boolean).join(', ') };
+                          const wh = warehouses.find(w => w.id === id);
+                          if (wh) return { name: wh.name, addr: wh.address || '' };
+                          return null;
+                        };
+                        const originResolved = resolveLocation(resolveId(originText));
+                        const destResolved = resolveLocation(resolveId(destText));
+                        const rawKey = entry.locationId || `${entry.vehicleVin}-dp-${i}`;
+                        const hasSuggestion = suggestions.has(entry.locationId);
+                        const sug = hasSuggestion ? suggestions.get(entry.locationId) : null;
+
+                        return (
+                          <React.Fragment key={`dp-${entry.vehicleVin}-${i}`}>
+                            <tr className="tl-bc-row tl-bc-driving">
+                              <td className="tl-bc-num">{i + 1}</td>
+                              <td className="tl-bc-time">{startTime}</td>
+                              <td className="tl-bc-dwell">{entry.dwellMinutes != null ? `${entry.dwellMinutes}m` : '-'}</td>
+                              <td className="tl-bc-loc">
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${originQ}`} target="_blank" rel="noopener noreferrer" className="tl-bc-loc-link">
+                                  {originResolved ? originResolved.name : rawOrigin}
+                                </a>
+                                {originResolved
+                                  ? <button className="tl-driving-matched" onClick={() => removeAddressOverride(originText)}>Matched</button>
+                                  : !isGarbageLocation(originText) && <button className="tl-match-btn" onClick={() => { setMatchingEntry(entry); setMatchingField('origin'); setMatchSearch(''); setMatchTab('stores'); }}>Match</button>
+                                }
+                              </td>
+                              <td className="tl-bc-loc">
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${destQ}`} target="_blank" rel="noopener noreferrer" className="tl-bc-loc-link">
+                                  {destResolved ? destResolved.name : rawDest}
+                                </a>
+                                {destResolved
+                                  ? <button className="tl-driving-matched" onClick={() => removeAddressOverride(destText)}>Matched</button>
+                                  : <button className="tl-match-btn" onClick={() => { setMatchingEntry(entry); setMatchingField('dest'); setMatchSearch(''); setMatchTab('stores'); }}>Match</button>
+                                }
+                                {sug?.dest && (
+                                  <span className="tl-suggestion-badge">
+                                    {sug.dest.name}
+                                    <button className="tl-suggest-accept" title="Accept" onClick={() => handleAcceptSuggestion(entry, sug.dest)}>&#10003;</button>
+                                    <button className="tl-suggest-dismiss" title="Dismiss" onClick={() => handleDismissSuggestion(entry.locationId, 'dest')}>&#10007;</button>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="tl-bc-dist">{entry.distance > 0 ? `${entry.distance} mi` : '-'}</td>
+                              <td className="tl-bc-actions">
+                                <button className="tl-raw-toggle-btn" onClick={() => setExpandedRawIndex(expandedRawIndex === rawKey ? null : rawKey)} title="Raw data">{'{'}...{'}'}</button>
+                              </td>
+                            </tr>
+                            {expandedRawIndex === rawKey && (
+                              <tr><td colSpan="7"><pre className="tl-entry-raw">{JSON.stringify(entry, null, 2)}</pre></td></tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
             </div>
           </div>
         )}
