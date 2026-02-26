@@ -439,10 +439,10 @@
   const ts = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
   a.href = url;
   a.download = 'dao-transactions-' + ts + '.txt';
+  a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(function() { a.remove(); URL.revokeObjectURL(url); }, 2000);
 
   showToast('Downloaded ' + allData.length + ' transactions!', '#22c55e');
   setTimeout(function() { var el = document.getElementById('dao-scrape-toast'); if (el) el.remove(); }, 5000);
