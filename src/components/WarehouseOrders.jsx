@@ -518,6 +518,12 @@ export default function WarehouseOrders() {
                   <th className="wo-col-units">Order Units</th>
                   <th className="wo-col-total">Total $</th>
                 </tr>
+                <tr className="wo-totals-row">
+                  <td colSpan="5" className="wo-totals-label">TOTALS</td>
+                  <td className="wo-totals-val">{totals.totalCases || ''}</td>
+                  <td className="wo-totals-val">{totals.totalUnits || ''}</td>
+                  <td className="wo-totals-val">{totals.totalGross > 0 ? `$${totals.totalGross.toFixed(2)}` : ''}</td>
+                </tr>
               </thead>
                 {PRODUCT_CATEGORIES.map(cat => {
                   const products = grouped[cat] || [];

@@ -10257,6 +10257,29 @@ textarea {
   z-index: 2;
 }
 .wo-grid > thead th:last-child { border-right: none; }
+
+.wo-totals-row td {
+  position: sticky;
+  top: 28px;
+  background: #fef9c3;
+  border-bottom: 2px solid #ca8a04;
+  border-right: 1px solid #e5e7eb;
+  padding: 5px 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #92400e;
+  z-index: 2;
+}
+.wo-totals-row td:last-child { border-right: none; }
+.wo-totals-label {
+  text-align: right;
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  padding-right: 12px;
+}
+.wo-totals-val {
+  text-align: center;
+}
 .wo-cat-row {
   cursor: pointer;
   background: #e8edf3;
