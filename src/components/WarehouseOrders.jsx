@@ -792,9 +792,8 @@ export default function WarehouseOrders() {
     return () => clearInterval(interval);
   }, [selectedRoute, totals.totalCases, totals.totalUnits]);
 
-  // WhatsApp inbox — poll for messages every 5s when on queue tab
+  // WhatsApp inbox — always poll every 5s regardless of active tab
   useEffect(() => {
-    if (tab !== 'queue') return;
     let cancelled = false;
     const poll = async () => {
       if (cancelled) return;
@@ -824,7 +823,7 @@ export default function WarehouseOrders() {
     poll();
     const id = setInterval(poll, 5000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [tab]);
+  }, []);
 
   // Load WhatsApp groups when setup is opened
   useEffect(() => {
@@ -2269,8 +2268,11 @@ export default function WarehouseOrders() {
             </div>
           )}
 
-          {/* ── WhatsApp Inbox ────────────────────────────────────── */}
-          <div className="wa-inbox">
+        </div>
+      )}
+
+      {/* ── WhatsApp Inbox — always visible ─────────────────────────────── */}
+      <div className="wa-inbox">
             <div className="wa-inbox-header">
               <h3>WhatsApp Inbox</h3>
               <div className="wa-inbox-controls">
@@ -2733,8 +2735,6 @@ export default function WarehouseOrders() {
               </div>
             )}
           </div>
-        </div>
-      )}
 
       {tab === 'history' && (
         <div className="wo-history">
