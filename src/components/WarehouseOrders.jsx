@@ -1990,6 +1990,17 @@ export default function WarehouseOrders() {
                   {t(lang, 'tab')}: {buildTabName(selectedRoute, orderName, orderDate)}
                 </span>
               )}
+              {hasSpreadsheetId() && (
+                <a
+                  href={getSpreadsheetUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="wo-open-sheet-btn"
+                  title="Open spreadsheet in Google Sheets"
+                >
+                  {lang === 'es' ? 'Abrir Sheet' : 'Open Sheet'} &#x2197;
+                </a>
+              )}
             </div>
           )}
           {!sheetsConfigured && hasSpreadsheetId() && selectedRoute && (
