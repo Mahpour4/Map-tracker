@@ -26,7 +26,7 @@ if exist "scripts\whatsapp-service\package.json" (
 
 :: Start the WhatsApp service in the background
 echo Starting WhatsApp service...
-start "WhatsApp Service" cmd /c "cd scripts\whatsapp-service && node server.js"
+start "WhatsApp Service" cmd /k "cd scripts\whatsapp-service && node server.js"
 
 :: Give the backend a moment to start
 timeout /t 2 /nobreak >nul

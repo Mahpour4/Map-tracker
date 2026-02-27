@@ -58,8 +58,8 @@ const translations = {
 
     // Google Sheets
     googleSheets: 'Google Sheets',
-    pushToSheet: 'Push to Sheet',
-    pullFromSheet: 'Pull from Sheet',
+    pushToSheet: 'Upload Form',
+    pullFromSheet: 'Download Form',
     syncing: 'Syncing...',
     tab: 'Tab',
     sheets: 'Sheets',
@@ -143,6 +143,24 @@ const translations = {
     showLess: 'Show Less',
     casesPerOrder: 'cases/order',
     revenue: 'Revenue',
+
+    // Print
+    printPickSheet: 'Print Pick Sheet',
+
+    // WhatsApp message UI
+    guessOrder: 'Guess Order',
+    replyEta: 'Reply ETA',
+    replied: 'Replied',
+    createOrder: 'Create Order',
+    createOrderForRoute: 'Create Order for Route',
+    send: 'Send',
+    readyForPickup: 'Ready for pickup at:',
+    noItemsSelected: 'No items selected. Set quantities first.',
+    selectARoute: 'Please select a route',
+    orderGuess: 'Order Guess',
+    noMatch: 'Could not match any products. Try editing the message.',
+    assignSave: 'Save',
+    assignCancel: 'Cancel',
   },
 
   es: {
@@ -199,8 +217,8 @@ const translations = {
 
     // Google Sheets
     googleSheets: 'Google Sheets',
-    pushToSheet: 'Enviar a Hoja',
-    pullFromSheet: 'Traer de Hoja',
+    pushToSheet: 'Subir Forma',
+    pullFromSheet: 'Descargar Forma',
     syncing: 'Sincronizando...',
     tab: 'Pestana',
     sheets: 'Hojas',
@@ -284,6 +302,24 @@ const translations = {
     showLess: 'Ver Menos',
     casesPerOrder: 'cajas/orden',
     revenue: 'Ingresos',
+
+    // Print
+    printPickSheet: 'Imprimir Hoja de Seleccion',
+
+    // WhatsApp message UI
+    guessOrder: 'Adivinar Orden',
+    replyEta: 'Responder ETA',
+    replied: 'Respondido',
+    createOrder: 'Crear Orden',
+    createOrderForRoute: 'Crear Orden para Ruta',
+    send: 'Enviar',
+    readyForPickup: 'Listo para recoger a las:',
+    noItemsSelected: 'No hay articulos seleccionados. Establezca cantidades primero.',
+    selectARoute: 'Seleccione una ruta',
+    orderGuess: 'Estimacion de Orden',
+    noMatch: 'No se encontraron productos. Intente editar el mensaje.',
+    assignSave: 'Guardar',
+    assignCancel: 'Cancelar',
   },
 };
 

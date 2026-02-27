@@ -55,7 +55,16 @@ const initialState = {
   addressOverrides: localAddressOverrides, // { "destination address": "storeId" }
   customLocations: localCustomLocations, // [{ id, name, type, address, lat, lng }]
   transactions: localTransactions, // Raw DAO dashboard transaction data
-  warehouseOrders: localWarehouseOrders, // { orders: [], lastSyncedAt: null }
+  warehouseOrders: (() => {
+    try {
+      const saved = localStorage.getItem('warehouseOrders');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.orders) return parsed;
+      }
+    } catch { /* ignore */ }
+    return localWarehouseOrders;
+  })(), // { orders: [], lastSyncedAt: null }
   autoVisitEnabled: true,
   language: localStorage.getItem('app_language') || 'en',
 };
@@ -1345,14 +1354,18 @@ export function AppProvider({ children }) {
       });
   }, []);
 
-  // Auto-save warehouse orders to GitHub when they change
+  // Auto-save warehouse orders to localStorage + GitHub when they change
   const prevWarehouseOrdersRef = useRef(state.warehouseOrders);
   const warehouseOrdersSaveTimer = useRef(null);
   useEffect(() => {
-    if (!getToken()) return;
     if (prevWarehouseOrdersRef.current === state.warehouseOrders) return;
     prevWarehouseOrdersRef.current = state.warehouseOrders;
 
+    // Always save to localStorage (instant persistence)
+    try { localStorage.setItem('warehouseOrders', JSON.stringify(state.warehouseOrders)); } catch { /* quota */ }
+
+    // Save to GitHub if token available
+    if (!getToken()) return;
     if (warehouseOrdersSaveTimer.current) clearTimeout(warehouseOrdersSaveTimer.current);
     warehouseOrdersSaveTimer.current = setTimeout(() => {
       saveWarehouseOrdersJson(JSON.stringify(state.warehouseOrders))

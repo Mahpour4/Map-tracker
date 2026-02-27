@@ -10695,6 +10695,18 @@ textarea {
 }
 .wo-save-btn:hover { opacity: 0.9; }
 .wo-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wo-print-btn {
+  padding: 12px 24px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.wo-print-btn:hover { opacity: 0.9; }
+.wo-print-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Queue view */
 .wo-queue-table {
   width: 100%;
@@ -10740,6 +10752,18 @@ textarea {
 }
 .wo-del-btn { color: #dc2626; }
 .wo-del-btn:hover { background: #fef2f2; }
+.wo-queue-actions { display: flex; justify-content: flex-end; padding: 8px 0; }
+.wo-clear-local-btn {
+  padding: 6px 14px;
+  border: 1px solid #dc2626;
+  border-radius: var(--radius);
+  background: transparent;
+  color: #dc2626;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wo-clear-local-btn:hover { background: #fef2f2; }
 .wo-empty {
   text-align: center;
   padding: 48px;
@@ -11150,8 +11174,73 @@ textarea {
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 .wo-confirm-modal {
-  max-width: 650px;
+  max-width: 680px;
 }
+.wo-conflict-table-wrap {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+.wo-conflict-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.wo-conflict-table {
+  border: 1px solid #1e293b;
+}
+.wo-conflict-table th {
+  text-align: left;
+  padding: 4px 6px;
+  font-size: 0.7rem;
+  border-bottom: 2px solid #1e293b;
+  border-right: 1px solid #1e293b;
+  white-space: nowrap;
+}
+.wo-conflict-table th:last-child { border-right: none; }
+.wo-conflict-col-mt { background: #dbeafe; color: #1e40af; text-align: center; width: 50px; }
+.wo-conflict-col-gs { background: #dcfce7; color: #166534; text-align: center; width: 50px; }
+.wo-conflict-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #1e293b;
+  border-right: 1px solid #1e293b;
+  vertical-align: middle;
+}
+.wo-conflict-table td:last-child { border-right: none; }
+.wo-conflict-table tbody tr:last-child td { border-bottom: none; }
+.wo-conflict-resolved { opacity: 0.6; }
+.wo-conflict-product { display: flex; flex-direction: column; line-height: 1.2; }
+.wo-conflict-name { font-weight: 600; color: #1e293b; }
+.wo-conflict-detail { font-size: 0.65rem; color: #64748b; }
+.wo-conflict-val { text-align: center; font-weight: 700; font-size: 0.82rem; }
+.wo-conflict-picked { border-radius: 3px; }
+td.wo-conflict-val:nth-child(2) { background: #eff6ff; }
+td.wo-conflict-val:nth-child(3) { background: #f0fdf4; }
+td.wo-conflict-val.wo-conflict-picked:nth-child(2) { background: #bfdbfe; }
+td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
+.wo-conflict-btns { display: flex; gap: 3px; }
+.wo-conflict-keep-btn {
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wo-keep-app {
+  border: 1px solid #93c5fd;
+  background: #dbeafe;
+  color: #1e40af;
+}
+.wo-keep-app:hover { background: #bfdbfe; }
+.wo-keep-app.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.wo-keep-sheet {
+  border: 1px solid #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
+.wo-keep-sheet:hover { background: #bbf7d0; }
+.wo-keep-sheet.active { background: #16a34a; color: #fff; border-color: #16a34a; }
 .wo-modal-header {
   display: flex;
   justify-content: space-between;
@@ -12066,6 +12155,55 @@ textarea {
   display: flex;
   gap: 6px;
 }
+.wa-create-order-header-btn {
+  padding: 4px 12px;
+  border: 1px solid #22c55e;
+  border-radius: var(--radius);
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-create-order-header-btn:hover { background: #dcfce7; }
+.wa-guess-create {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wa-guess-route-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+}
+.wa-guess-route-row label {
+  font-weight: 600;
+  color: #374151;
+}
+.wa-guess-route-select {
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 0.68rem;
+}
+.wa-create-order-main {
+  padding: 4px 10px;
+  border: 1px solid #22c55e;
+  border-radius: 3px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.wa-create-order-main:hover { background: #16a34a; border-color: #16a34a; }
+.wa-create-order-main:disabled { background: #94a3b8; border-color: #94a3b8; cursor: not-allowed; }
 .wa-assign-btn {
   padding: 4px 12px;
   border: 1px solid #818cf8;
@@ -12137,18 +12275,38 @@ textarea {
   background: #f1f5f9;
 }
 .wa-msg-card {
+  position: relative;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  max-width: 280px;
-  min-width: 180px;
+  width: fit-content;
+  min-width: 200px;
+  max-width: 500px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
+.wa-msg-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  opacity: 0.7;
+}
+.wa-msg-close:hover { opacity: 1; }
 .wa-msg-image {
   width: 100%;
-  max-height: 300px;
-  overflow: hidden;
 }
 .wa-msg-image img {
   width: 100%;
@@ -12166,12 +12324,248 @@ textarea {
   color: #1e293b;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 120px;
-  overflow-y: auto;
+}
+.wa-msg-edited {
+  color: #f59e0b;
+  font-style: italic;
+  margin-right: 4px;
+}
+.wa-msg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px 6px;
 }
 .wa-msg-time {
-  padding: 4px 10px 6px;
   font-size: 0.68rem;
   color: var(--text-muted);
-  text-align: right;
 }
+.wa-msg-create-order {
+  display: flex;
+  gap: 4px;
+  padding: 4px 10px 6px;
+  border-top: 1px solid #f3f4f6;
+}
+.wa-msg-route-select {
+  flex: 1;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.72rem;
+}
+.wa-msg-create-btn {
+  padding: 3px 10px;
+  border: 1px solid #22c55e;
+  border-radius: var(--radius);
+  background: #22c55e;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wa-msg-create-btn:hover { background: #16a34a; border-color: #16a34a; }
+.wa-guess-btn {
+  padding: 3px 10px;
+  border: 1px solid #818cf8;
+  border-radius: var(--radius);
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-guess-btn:hover { background: #e0e7ff; }
+/* Reply ETA */
+.wa-reply-section { padding: 3px 8px 4px; border-top: 1px solid #f3f4f6; }
+.wa-reply-btn {
+  padding: 2px 10px;
+  border: 1px solid #0ea5e9;
+  border-radius: 3px;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-reply-btn:hover { background: #e0f2fe; }
+.wa-reply-panel { display: flex; flex-direction: column; gap: 4px; }
+.wa-reply-label { font-size: 0.68rem; font-weight: 600; color: #374151; }
+.wa-reply-time-btns { display: flex; gap: 3px; flex-wrap: wrap; }
+.wa-reply-time-btn {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 3px 8px; border: 1px solid #cbd5e1; border-radius: 3px;
+  background: #fff; font-size: 0.65rem; font-weight: 600;
+  cursor: pointer; color: #334155; line-height: 1.2;
+}
+.wa-reply-time-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+.wa-reply-time-btn.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+.wa-reply-time-val { font-size: 0.6rem; font-weight: 400; }
+.wa-reply-time-btn.active .wa-reply-time-val { color: #e0f2fe; }
+.wa-reply-send-row { display: flex; gap: 3px; align-items: center; }
+.wa-reply-time-input {
+  flex: 1; padding: 3px 6px; border: 1px solid var(--border);
+  border-radius: 3px; font-size: 0.7rem; font-weight: 600;
+}
+.wa-reply-send-btn {
+  padding: 3px 10px; border: none; border-radius: 3px;
+  background: #0ea5e9; color: #fff; font-size: 0.68rem;
+  font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.wa-reply-send-btn:hover { background: #0284c7; }
+.wa-reply-send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+.wa-reply-cancel-btn {
+  padding: 3px 8px; border: 1px solid #e5e7eb; border-radius: 3px;
+  background: #fff; font-size: 0.65rem; cursor: pointer; color: #6b7280;
+}
+.wa-reply-cancel-btn:hover { background: #f3f4f6; }
+
+/* Guess panel */
+.wa-guess-panel {
+  border-top: 2px solid #4338ca;
+  background: #fafafa;
+  padding: 6px 8px;
+}
+.wa-guess-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+.wa-guess-close {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0 2px;
+}
+.wa-guess-empty {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.wa-guess-section {
+  margin-bottom: 1px;
+}
+.wa-guess-section-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  font-size: 0.7rem;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+}
+.wa-guess-section-header:hover { background: #f1f5f9; }
+.wa-guess-expand {
+  font-size: 0.6rem;
+  color: #475569;
+  width: 10px;
+  flex-shrink: 0;
+}
+.wa-guess-text {
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+.wa-guess-count {
+  font-size: 0.62rem;
+  color: #64748b;
+  margin-left: auto;
+}
+.wa-guess-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+  margin: 0 0 1px;
+  border: 1px solid #94a3b8;
+  border-top: none;
+}
+.wa-guess-table th {
+  text-align: left;
+  padding: 2px 5px;
+  background: #334155;
+  color: #f8fafc;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+.wa-guess-table th:last-child { width: 42px; text-align: center; }
+.wa-guess-table td {
+  padding: 1px 5px;
+  border-bottom: 1px solid #475569;
+  line-height: 1.4;
+}
+.wa-guess-table tbody tr:last-child td { border-bottom: none; }
+.wa-guess-cat-row td {
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #1e293b;
+  font-size: 0.64rem;
+  padding: 2px 5px;
+  border-bottom: 1px solid #475569;
+}
+.wa-guess-checked { background: #dcfce7 !important; }
+.wa-guess-qty-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.wa-guess-qty-arrows {
+  display: flex;
+  gap: 2px;
+}
+.wa-guess-qty-arrows button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  font-weight: 700;
+}
+.wa-guess-qty-arrows button:first-child { background: #22c55e; }
+.wa-guess-qty-arrows button:first-child:hover { background: #16a34a; }
+.wa-guess-qty-arrows button:last-child { background: #dc2626; }
+.wa-guess-qty-arrows button:last-child:hover { background: #b91c1c; }
+.wa-guess-qty-arrows button:active { transform: scale(0.9); }
+.wa-guess-qty-input {
+  width: 32px;
+  padding: 1px 2px;
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  text-align: center;
+  font-weight: 700;
+  -moz-appearance: textfield;
+}
+.wa-guess-qty-input::-webkit-inner-spin-button,
+.wa-guess-qty-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.wa-guess-qty-input:focus { border-color: #4338ca; outline: none; }
+.wa-guess-load {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius);
+  background: #4338ca;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-guess-load:hover { background: #3730a3; }
+.wa-guess-load:disabled { background: #94a3b8; cursor: not-allowed; }

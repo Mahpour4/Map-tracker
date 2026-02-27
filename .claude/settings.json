@@ -3,7 +3,14 @@
     "allow": [
       "Bash(node:*)",
       "Read(//c/Users/S.Mahpour/Documents/GitHub//**)",
-      "Read(//c/Users/S.Mahpour/**)"
+      "Read(//c/Users/S.Mahpour/**)",
+      "Bash(git reset:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(npm version:*)"
     ]
   }
 }

@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { t } from '../locales/translations';
 import { PRODUCT_CATALOG, PRODUCT_CATEGORIES } from '../data/productCatalog';
@@ -11,7 +13,7 @@ import {
 import {
   getWhatsAppStatus, getWhatsAppGroups, getOrderMessages,
   dismissMessages, setOrderGroup, getOrderGroup,
-  getWaContacts, setWaContact, removeWaContact,
+  getWaContacts, setWaContact, removeWaContact, sendWhatsAppMessage,
 } from '../services/whatsappService';
 
 const ROUTE_INFO = {
@@ -41,7 +43,7 @@ Object.entries(ROUTE_DRIVERS).forEach(([route, name]) => {
 });
 
 export default function WarehouseOrders() {
-  const { state, addWarehouseOrder, updateWarehouseOrder, deleteWarehouseOrder, setLanguage } = useApp();
+  const { state, addWarehouseOrder, updateWarehouseOrder, deleteWarehouseOrder, setWarehouseOrders, setLanguage } = useApp();
   const { warehouseOrders, stores, language } = state;
   const lang = language || 'en';
   const orders = warehouseOrders?.orders || [];
@@ -492,6 +494,160 @@ export default function WarehouseOrders() {
     return { overview, topProducts, routeBreakdown, categoryMix, routeFavorites, orderFrequency, forecast, restock };
   }, [orders, statsRange]);
 
+  // ── Print Pick Sheet PDF ────────────────────────────────────────────────────
+  const printPickSheet = useCallback(() => {
+    const doc = new jsPDF('portrait', 'mm', 'letter');
+    const pw = doc.internal.pageSize.getWidth();
+    const fmtMoney = (n) => `$${n.toFixed(2)}`;
+    const dateDisplay = (() => {
+      const [y, m, d] = orderDate.split('-');
+      return `${parseInt(m)}/${parseInt(d)}/${y ? y.slice(-2) : ''}`;
+    })();
+    const ri = ROUTE_INFO[selectedRoute] || {};
+
+    // === Header ===
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('PICK SHEET', pw / 2, 14, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    let y = 22;
+
+    // Order info row
+    const infoItems = [
+      `Route: ${selectedRoute}`,
+      `Driver: ${orderName || ri.driver || '—'}`,
+      `Date: ${dateDisplay}`,
+    ];
+    if (ri.custNum) infoItems.push(`Cust#: ${ri.custNum}`);
+    doc.text(infoItems.join('    |    '), pw / 2, y, { align: 'center' });
+    y += 5;
+
+    // Invoice / Load info
+    const invParts = [];
+    if (invoiceNumber) invParts.push(`Invoice#: ${invoiceNumber}`);
+    if (invoiceCases) invParts.push(`Inv Cases: ${invoiceCases}`);
+    if (invoiceAmount) invParts.push(`Inv Amt: ${fmtMoney(parseFloat(invoiceAmount) || 0)}`);
+    if (loadNumber) invParts.push(`Load#: ${loadNumber}`);
+    if (loadCases) invParts.push(`Load Cases: ${loadCases}`);
+    if (loadAmount) invParts.push(`Load Amt: ${fmtMoney(parseFloat(loadAmount) || 0)}`);
+    if (invParts.length > 0) {
+      doc.setFontSize(8);
+      doc.text(invParts.join('    |    '), pw / 2, y, { align: 'center' });
+      y += 4;
+    }
+
+    // Separator line
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
+    doc.line(10, y, pw - 10, y);
+    y += 3;
+
+    // === Build items table — only items with qty > 0, grouped by category ===
+    const tableBody = [];
+    let globalIdx = 0;
+    PRODUCT_CATEGORIES.forEach(cat => {
+      const products = PRODUCT_CATALOG.filter(p => p.category === cat);
+      const catItems = products.filter(p => (cases[p.sku] || 0) > 0 || (units[p.sku] || 0) > 0);
+      if (catItems.length === 0) return;
+
+      // Category header row
+      const catCases = catItems.reduce((s, p) => s + (cases[p.sku] || 0), 0);
+      tableBody.push({
+        content: [cat.toUpperCase(), '', '', '', String(catCases), '', ''],
+        isCatHeader: true,
+      });
+
+      catItems.forEach(p => {
+        globalIdx++;
+        const qty = cases[p.sku] || 0;
+        const unitQty = units[p.sku] || 0;
+        const allUnits = (qty * p.upc) + unitQty;
+        const cost = allUnits * p.price;
+        const retail = allUnits * (p.retail || p.price);
+        tableBody.push({
+          content: [
+            String(globalIdx),
+            p.desc,
+            String(p.upc),
+            String(qty),
+            unitQty > 0 ? String(unitQty) : '',
+            fmtMoney(cost),
+            fmtMoney(retail),
+          ],
+          isCatHeader: false,
+        });
+      });
+    });
+
+    if (tableBody.length === 0) {
+      doc.setFontSize(12);
+      doc.text('No items to pick.', pw / 2, y + 10, { align: 'center' });
+      doc.save(`PickSheet_${selectedRoute}_${orderDate}.pdf`);
+      return;
+    }
+
+    // Checkbox column for picking
+    autoTable(doc, {
+      startY: y,
+      head: [['#', 'Product', 'UPC', 'Cases', 'Units', 'Cost', 'Retail', '\u2610']],
+      body: tableBody.map(row => [...row.content, '']),
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.2 },
+      headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },    // #
+        1: { cellWidth: 'auto' },                  // Product
+        2: { cellWidth: 14, halign: 'center' },    // UPC
+        3: { cellWidth: 16, halign: 'center' },    // Cases
+        4: { cellWidth: 14, halign: 'center' },    // Units
+        5: { cellWidth: 20, halign: 'right' },     // Cost
+        6: { cellWidth: 20, halign: 'right' },     // Retail
+        7: { cellWidth: 12, halign: 'center' },    // Checkbox
+      },
+      didParseCell: (data) => {
+        if (data.section !== 'body') return;
+        const row = tableBody[data.row.index];
+        if (row && row.isCatHeader) {
+          data.cell.styles.fillColor = [220, 220, 220];
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fontSize = 8;
+          if (data.column.index === 0) {
+            data.cell.colSpan = 3;
+          }
+          if (data.column.index > 0 && data.column.index < 3) {
+            data.cell.text = [];
+          }
+        }
+      },
+    });
+
+    // === Summary footer ===
+    const finalY = doc.lastAutoTable.finalY + 4;
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
+    doc.line(10, finalY, pw - 10, finalY);
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    const summaryY = finalY + 6;
+    const summaryText = `Total Cases: ${totals.totalCases}    |    Total Units: ${totals.totalUnits}    |    Cost: ${fmtMoney(totals.totalCost)}    |    Retail: ${fmtMoney(totals.totalGross)}`;
+    doc.text(summaryText, pw / 2, summaryY, { align: 'center' });
+
+    // Picked-by / notes section
+    const notesY = summaryY + 10;
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    doc.text('Picked by: ___________________________', 14, notesY);
+    doc.text(`Date/Time: ___________________________`, pw / 2 + 5, notesY);
+    doc.text('Notes: ________________________________________________________________________________', 14, notesY + 8);
+
+    // Save
+    const fileName = `PickSheet_${selectedRoute}_${orderName ? orderName.replace(/\s+/g, '') : 'order'}_${orderDate}.pdf`;
+    doc.save(fileName);
+  }, [selectedRoute, orderName, orderDate, cases, units, totals, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount]);
+
   // Save order
   const handleSave = useCallback(() => {
     if (!selectedRoute) return;
@@ -572,7 +728,15 @@ export default function WarehouseOrders() {
         ]);
         if (cancelled) return;
         setWaStatus(statusRes.status || 'offline');
-        setWaMessages(msgs);
+        setWaMessages(prev => {
+          const uiState = {};
+          prev.forEach(m => {
+            const flags = {};
+            Object.keys(m).forEach(k => { if (k.startsWith('_')) flags[k] = m[k]; });
+            if (Object.keys(flags).length) uiState[m.id] = flags;
+          });
+          return msgs.map(m => uiState[m.id] ? { ...m, ...uiState[m.id] } : m);
+        });
         setWaContacts(contacts);
         setWaOrderGroupId(groupId);
         setWaLastPoll(Date.now());
@@ -611,6 +775,132 @@ export default function WarehouseOrders() {
   const handleDismiss = async (ids) => {
     await dismissMessages(ids);
     setWaMessages(prev => prev.filter(m => !ids.includes(m.id)));
+  };
+
+  // Guess order from WhatsApp message text
+  const [waGuessResult, setWaGuessResult] = useState(null); // { msgId, items: [{ qty, text, matches: [{ sku, desc, category, score }] }] }
+
+  // Helper: score a search phrase against the catalog
+  const scoreCatalog = (text, searchTerms) => {
+    const textLower = text.toLowerCase();
+    const textWords = textLower.split(/\s+/).filter(w => w.length > 1);
+
+    return searchTerms.map(p => {
+      const descLower = p.desc.toLowerCase();
+      const catLower = p.category.toLowerCase();
+      const typeLower = (p.type || '').toLowerCase();
+      let score = 0;
+
+      // Exact full match
+      if (descLower === textLower) score += 200;
+      // Full text found in desc
+      if (descLower.includes(textLower)) score += 100;
+
+      // Each search word that matches desc, category, or type
+      textWords.forEach(tw => {
+        if (descLower.includes(tw)) score += 30;
+        if (catLower.includes(tw)) score += 20;
+        if (typeLower.includes(tw)) score += 15;
+      });
+
+      // Category size hints
+      if (textLower.includes('large') && catLower.includes('large')) score += 25;
+      if (textLower.includes('small') && catLower.includes('small')) score += 25;
+      if (textLower.includes('4.79') && catLower.includes('4.79')) score += 30;
+      if (textLower.includes('2.49') && catLower.includes('2.49')) score += 30;
+      if (textLower.includes('.50') && catLower.includes('.50')) score += 30;
+
+      return { sku: p.sku, desc: p.desc, category: p.category, upc: p.upc, score };
+    }).filter(p => p.score > 0).sort((a, b) => b.score - a.score);
+  };
+
+  const guessOrder = useCallback((msg) => {
+    if (!msg.body) return;
+    const lines = msg.body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const results = [];
+
+    // Build search index from catalog
+    const searchTerms = PRODUCT_CATALOG.map(p => {
+      const words = (p.desc + ' ' + p.category + ' ' + p.type).toLowerCase();
+      return { ...p, words };
+    });
+
+    for (const line of lines) {
+      // Try to extract quantity and product text
+      // Patterns: "25 onion ring", "4 each deep river large", "15 butter popcorn"
+      // Also: "4x deep river large and small bags" → means 4 of every matching flavor
+      const match = line.match(/^(\d+)\s*(?:each|ea|x|cs|cases?)?\s+(.+)$/i);
+      if (!match) continue;
+
+      const qty = parseInt(match[1]);
+      const text = match[2].trim();
+      if (qty <= 0 || !text) continue;
+
+      // Split on "and" to handle "deep river large and small bags"
+      // e.g. "deep river large and small bags" → ["deep river large", "deep river small bags"]
+      // We keep shared prefix words before "and" to prepend to the second part
+      const andParts = text.split(/\s+and\s+/i);
+      if (andParts.length > 1) {
+        // Find shared context from the first part (brand words)
+        // e.g. "deep river large" → prefix could be "deep river"
+        // We try: first part as-is, then prefix + second part
+        const firstPart = andParts[0].trim();
+        const firstWords = firstPart.split(/\s+/);
+
+        // Score first part directly
+        const firstMatches = scoreCatalog(firstPart, searchTerms);
+
+        // For second part, try prepending increasing prefixes from first part
+        // "deep river large" + "small bags" → try "deep river small bags", "deep small bags", "small bags"
+        const secondPart = andParts.slice(1).join(' and ').trim();
+        let bestSecondMatches = scoreCatalog(secondPart, searchTerms);
+
+        for (let i = 0; i < firstWords.length; i++) {
+          const prefix = firstWords.slice(0, firstWords.length - i).join(' ');
+          const combined = prefix + ' ' + secondPart;
+          const candidateMatches = scoreCatalog(combined, searchTerms);
+          if (candidateMatches.length > bestSecondMatches.length ||
+              (candidateMatches.length > 0 && candidateMatches[0].score > (bestSecondMatches[0]?.score || 0))) {
+            bestSecondMatches = candidateMatches;
+          }
+        }
+
+        // Merge both match lists, deduplicate by SKU, keep higher score
+        const allMatches = new Map();
+        [...firstMatches, ...bestSecondMatches].forEach(m => {
+          const existing = allMatches.get(m.sku);
+          if (!existing || m.score > existing.score) allMatches.set(m.sku, m);
+        });
+        const merged = [...allMatches.values()].sort((a, b) => b.score - a.score);
+
+        results.push({ qty, text, matches: merged, loadAll: true });
+      } else {
+        // Single search term — normal matching
+        const scored = scoreCatalog(text, searchTerms);
+        // If many matches found (e.g. "deep river large" matches all flavors), flag as loadAll
+        results.push({ qty, text, matches: scored, loadAll: scored.length > 3 });
+      }
+    }
+
+    setWaGuessResult({ msgId: msg.id, items: results });
+  }, []);
+
+  const loadGuessIntoForm = (contactRoute) => {
+    if (!waGuessResult) return;
+    if (contactRoute) setSelectedRoute(contactRoute);
+    const newCases = { ...cases };
+    // Load all checked items with their individual quantities
+    waGuessResult.items.forEach(item => {
+      item.matches.forEach(match => {
+        if (match.checked) {
+          const qty = match.qty ?? item.qty;
+          newCases[match.sku] = (newCases[match.sku] || 0) + qty;
+        }
+      });
+    });
+    setCases(newCases);
+    setTab('entry');
+    setWaGuessResult(null);
   };
 
   // Toggle category collapse
@@ -736,8 +1026,9 @@ export default function WarehouseOrders() {
       for (const item of items) {
         const sheetVal = sheetCases[item.sku] || 0;
         if (sheetVal > 0 && sheetVal !== item.cases) {
-          const prod = PRODUCT_CATALOG.find(p => p.sku === item.sku);
-          conflicts.push({ sku: item.sku, desc: prod?.description || item.sku, sheetVal, appVal: item.cases });
+          const skuPad = item.sku.padStart(6, '0');
+          const prod = PRODUCT_CATALOG.find(p => p.sku === item.sku || p.sku === skuPad);
+          conflicts.push({ sku: item.sku, desc: prod?.desc || item.sku, category: prod?.category || '', price: prod?.price || 0, sheetVal, appVal: item.cases });
         }
       }
 
@@ -849,8 +1140,9 @@ export default function WarehouseOrders() {
           const formVal = parseFloat(cases[sku]) || 0;
           const sheetVal = sheetItems[sku] || 0;
           if (formVal > 0 && sheetVal > 0 && formVal !== sheetVal) {
-            const prod = PRODUCT_CATALOG.find(p => p.sku === sku);
-            conflicts.push({ sku, desc: prod?.description || sku, sheetVal, appVal: formVal });
+            const skuPad = sku.padStart(6, '0');
+            const prod = PRODUCT_CATALOG.find(p => p.sku === sku || p.sku === skuPad);
+            conflicts.push({ sku, desc: prod?.desc || sku, category: prod?.category || '', price: prod?.price || 0, sheetVal, appVal: formVal });
           }
         }
 
@@ -1522,7 +1814,7 @@ export default function WarehouseOrders() {
               onClick={handleSave}
               disabled={!selectedRoute || (totals.totalCases === 0 && totals.totalUnits === 0) || saving}
             >
-              {saving ? t(lang, 'saving') : existingOrder ? t(lang, 'updateOrder') : t(lang, 'saveOrder')}
+              {saving ? t(lang, 'saving') : t(lang, 'saveOrder')}
             </button>
             {lastAutoSaved && <span className="wo-autosave-badge">{lang === 'es' ? 'Guardado' : 'Saved'} {lastAutoSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
             {sheetsConfigured && (
@@ -1779,7 +2071,15 @@ export default function WarehouseOrders() {
               onClick={handleSave}
               disabled={!selectedRoute || totals.totalCases === 0 || saving}
             >
-              {saving ? t(lang, 'saving') : existingOrder ? t(lang, 'updateOrder') : t(lang, 'saveOrder')}
+              {saving ? t(lang, 'saving') : t(lang, 'saveOrder')}
+            </button>
+            <button
+              className="wo-print-btn"
+              onClick={printPickSheet}
+              disabled={!selectedRoute || totals.totalCases === 0}
+              title={t(lang, 'printPickSheet')}
+            >
+              {t(lang, 'printPickSheet')}
             </button>
           </div>
         </div>
@@ -1862,6 +2162,21 @@ export default function WarehouseOrders() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {queueOrders.length > 0 && (
+            <div className="wo-queue-actions">
+              <button
+                className="wo-clear-local-btn"
+                onClick={() => {
+                  if (window.confirm('Clear all local orders? Orders already pushed to Google Sheets will remain there.')) {
+                    setWarehouseOrders({ orders: [], lastSyncedAt: warehouseOrders?.lastSyncedAt || null });
+                  }
+                }}
+              >
+                Clear All Local Orders
+              </button>
+            </div>
           )}
 
           {/* ── WhatsApp Inbox ────────────────────────────────────── */}
@@ -1969,11 +2284,11 @@ export default function WarehouseOrders() {
                             value={waEditContact.route}
                             onChange={e => setWaEditContact(prev => ({ ...prev, route: e.target.value }))}
                           >
-                            <option value="">Route...</option>
+                            <option value="">{t(lang, 'route')}...</option>
                             {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
                           </select>
-                          <button className="wa-assign-save" onClick={() => handleAssignContact(phone)}>Save</button>
-                          <button className="wa-assign-cancel" onClick={() => setWaEditContact(null)}>Cancel</button>
+                          <button className="wa-assign-save" onClick={() => handleAssignContact(phone)}>{t(lang, 'assignSave')}</button>
+                          <button className="wa-assign-cancel" onClick={() => setWaEditContact(null)}>{t(lang, 'assignCancel')}</button>
                         </div>
                       )}
 
@@ -1981,17 +2296,344 @@ export default function WarehouseOrders() {
                       <div className="wa-messages">
                         {msgs.map(m => (
                           <div key={m.id} className="wa-msg-card">
+                            <button className="wa-msg-close" onClick={() => handleDismiss([m.id])}>×</button>
                             {m.mediaBase64 && m.mediaType?.startsWith('image/') && (
                               <div className="wa-msg-image">
                                 <img src={`data:${m.mediaType};base64,${m.mediaBase64}`} alt="Order" />
                               </div>
                             )}
                             {m.body && <div className="wa-msg-body">{m.body}</div>}
-                            <div className="wa-msg-time">
-                              {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              {' '}
-                              {new Date(m.timestamp).toLocaleDateString()}
+                            <div className="wa-msg-footer">
+                              <div className="wa-msg-time">
+                                {m.edited && <span className="wa-msg-edited">(edited)</span>}
+                                {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {' '}
+                                {new Date(m.timestamp).toLocaleDateString()}
+                              </div>
+                              {m.body && (
+                                <button className="wa-guess-btn" onClick={() => guessOrder(m)}>
+                                  {t(lang, 'guessOrder')}
+                                </button>
+                              )}
                             </div>
+                            <div className="wa-msg-create-order">
+                              <select
+                                className="wa-msg-route-select"
+                                value={m._createRoute ?? routeNum ?? ''}
+                                onChange={e => {
+                                  setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _createRoute: e.target.value } : msg));
+                                }}
+                              >
+                                <option value="">{t(lang, 'route')}...</option>
+                                {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
+                              </select>
+                              <button
+                                className="wa-msg-create-btn"
+                                onClick={async () => {
+                                  const route = m._createRoute ?? routeNum ?? '';
+                                  if (!route) { alert(t(lang, 'selectARoute')); return; }
+                                  const today = new Date().toISOString().split('T')[0];
+                                  const name = ROUTE_DRIVERS[route] || displayName;
+
+                                  // Build items from guessed matches
+                                  const orderCases = {};
+                                  if (waGuessResult && waGuessResult.msgId === m.id) {
+                                    waGuessResult.items.forEach(item => {
+                                      item.matches.forEach(match => {
+                                        if (match.checked && (match.qty ?? 0) > 0) {
+                                          orderCases[match.sku] = (orderCases[match.sku] || 0) + match.qty;
+                                        }
+                                      });
+                                    });
+                                  }
+
+                                  // Build order items array
+                                  const items = Object.entries(orderCases)
+                                    .filter(([, qty]) => qty > 0)
+                                    .map(([sku, qty]) => {
+                                      const p = PRODUCT_CATALOG.find(pr => pr.sku === sku);
+                                      const caseUnits = qty * (p?.upc || 0);
+                                      return {
+                                        sku, category: p?.category || '', desc: p?.desc || '',
+                                        cases: qty, orderUnits: 0, upc: p?.upc || 0,
+                                        price: p?.price || 0, units: caseUnits,
+                                        gross: caseUnits * (p?.price || 0),
+                                      };
+                                    });
+
+                                  if (items.length === 0) { alert(t(lang, 'noItemsSelected')); return; }
+
+                                  const totalCases = items.reduce((s, i) => s + i.cases, 0);
+                                  const totalUnits = items.reduce((s, i) => s + i.units, 0);
+                                  const totalGross = items.reduce((s, i) => s + i.gross, 0);
+
+                                  const orderData = {
+                                    routeNumber: route, date: today, name,
+                                    invoiceNumber: '', invoiceCases: '', invoiceAmount: '',
+                                    loadNumber: '', loadCases: '', loadAmount: '',
+                                    status: 'pending', source: 'whatsapp', items,
+                                    totals: { totalCases, totalUnits, totalGross },
+                                  };
+
+                                  // Save to queue
+                                  addWarehouseOrder(orderData);
+
+                                  // Push to Google Sheets
+                                  if (isGoogleSheetsConfigured()) {
+                                    try {
+                                      setSyncing(true);
+                                      const result = await pushOrderToSheet({
+                                        routeNumber: route, date: today, name,
+                                        items: items.map(i => ({ sku: i.sku, cases: i.cases })),
+                                      });
+                                      if (result.success) {
+                                        setSyncMsg({ type: 'success', text: `Pushed "${result.tab}" — ${result.written} items` });
+                                      }
+                                    } catch (err) {
+                                      setSyncMsg({ type: 'error', text: err.message });
+                                    }
+                                    setSyncing(false);
+                                  }
+
+                                  // Also load into form for editing
+                                  setSelectedRoute(route);
+                                  setOrderName(name);
+                                  setOrderDate(today);
+                                  setCases(prev => {
+                                    const merged = { ...prev };
+                                    Object.entries(orderCases).forEach(([sku, qty]) => {
+                                      merged[sku] = (merged[sku] || 0) + qty;
+                                    });
+                                    return merged;
+                                  });
+                                  setWaGuessResult(null);
+                                  setTab('entry');
+                                }}
+                              >
+                                {t(lang, 'createOrder')}
+                              </button>
+                            </div>
+                            {/* Reply with pickup time */}
+                            <div className="wa-reply-section">
+                              {m._replyOpen ? (
+                                <div className="wa-reply-panel">
+                                  <div className="wa-reply-label">{t(lang, 'readyForPickup')}</div>
+                                  <div className="wa-reply-time-btns">
+                                    {[
+                                      { label: '+30m', min: 30 },
+                                      { label: '+45m', min: 45 },
+                                      { label: '+1hr', min: 60 },
+                                      { label: '+2hr', min: 120 },
+                                    ].map(opt => {
+                                      const etaTime = new Date(Date.now() + opt.min * 60000);
+                                      const timeStr = etaTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                      return (
+                                        <button
+                                          key={opt.label}
+                                          className={`wa-reply-time-btn ${m._replyTime === timeStr ? 'active' : ''}`}
+                                          onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyTime: timeStr } : msg))}
+                                        >
+                                          {opt.label}<span className="wa-reply-time-val">{timeStr}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="wa-reply-send-row">
+                                    <input
+                                      className="wa-reply-time-input"
+                                      value={m._replyTime || ''}
+                                      onChange={e => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyTime: e.target.value } : msg))}
+                                      placeholder="e.g. 3:30 PM"
+                                    />
+                                    <button
+                                      className="wa-reply-send-btn"
+                                      disabled={!m._replyTime || m._replySending}
+                                      onClick={async () => {
+                                        if (!m._replyTime || !waOrderGroupId) return;
+                                        setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replySending: true } : msg));
+                                        try {
+                                          const pushName = m.pushName || displayName;
+                                          const msg = `@${pushName} your order will be ready for pickup at: *${m._replyTime}*`;
+                                          await sendWhatsAppMessage(waOrderGroupId, msg);
+                                          setWaMessages(prev => prev.map(msg2 => msg2.id === m.id ? { ...msg2, _replyOpen: false, _replySending: false, _replySent: true, _replyTime: '' } : msg2));
+                                        } catch (err) {
+                                          alert('Failed to send: ' + err.message);
+                                          setWaMessages(prev => prev.map(msg2 => msg2.id === m.id ? { ...msg2, _replySending: false } : msg2));
+                                        }
+                                      }}
+                                    >
+                                      {m._replySending ? '...' : t(lang, 'send')}
+                                    </button>
+                                    <button className="wa-reply-cancel-btn" onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyOpen: false, _replyTime: '' } : msg))}>
+                                      {t(lang, 'cancel')}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  className="wa-reply-btn"
+                                  onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyOpen: true } : msg))}
+                                >
+                                  {m._replySent ? `✓ ${t(lang, 'replied')}` : t(lang, 'replyEta')}
+                                </button>
+                              )}
+                            </div>
+                            {/* Guess results */}
+                            {waGuessResult && waGuessResult.msgId === m.id && (
+                              <div className="wa-guess-panel">
+                                <div className="wa-guess-header">
+                                  <strong>{t(lang, 'orderGuess')}</strong>
+                                  <button className="wa-guess-close" onClick={() => setWaGuessResult(null)}>x</button>
+                                </div>
+                                {waGuessResult.items.length === 0 ? (
+                                  <div className="wa-guess-empty">{t(lang, 'noMatch')}</div>
+                                ) : (
+                                  <>
+                                    {waGuessResult.items.map((item, idx) => {
+                                      // Group matches by category
+                                      const groups = {};
+                                      const priceOrder = ['.50 Cents', '2.49 Products', '4.79 Products', 'Crunch Time'];
+                                      item.matches.forEach(match => {
+                                        const cat = match.category || 'Other';
+                                        if (!groups[cat]) groups[cat] = [];
+                                        groups[cat].push(match);
+                                      });
+                                      const sortedCats = Object.keys(groups).sort((a, b) => {
+                                        const ai = priceOrder.findIndex(p => a.includes(p));
+                                        const bi = priceOrder.findIndex(p => b.includes(p));
+                                        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                                      });
+                                      const checkedCount = item.matches.filter(m => m.checked).length;
+                                      const isExpanded = !!item.expanded;
+
+                                      return (
+                                        <div key={idx} className="wa-guess-section">
+                                          <div
+                                            className="wa-guess-section-header"
+                                            onClick={() => {
+                                              setWaGuessResult(prev => ({
+                                                ...prev,
+                                                items: prev.items.map((it, i) => i === idx ? { ...it, expanded: !it.expanded } : it)
+                                              }));
+                                            }}
+                                          >
+                                            <span className="wa-guess-expand">{isExpanded ? '▾' : '▸'}</span>
+                                            <span className="wa-guess-text">{item.text}</span>
+                                            <span className="wa-guess-count">
+                                              {checkedCount > 0 ? `${checkedCount} added` : `${item.matches.length} found`}
+                                            </span>
+                                          </div>
+                                          {isExpanded && (
+                                            <table className="wa-guess-table">
+                                              <thead>
+                                                <tr>
+                                                  <th>Product</th>
+                                                  <th>Qty</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {sortedCats.map(cat => (
+                                                  <React.Fragment key={cat}>
+                                                    <tr className="wa-guess-cat-row">
+                                                      <td colSpan="2">{cat}</td>
+                                                    </tr>
+                                                    {groups[cat].map(match => (
+                                                      <tr key={match.sku} className={match.checked ? 'wa-guess-checked' : ''}>
+                                                        <td>{match.desc}</td>
+                                                        <td>
+                                                          <div className="wa-guess-qty-wrap">
+                                                            <div className="wa-guess-qty-arrows">
+                                                              <button onClick={() => {
+                                                                const val = Math.max(0, (match.qty ?? 0) - 1);
+                                                                setWaGuessResult(prev => ({ ...prev, items: prev.items.map((it, i) => i === idx ? { ...it, matches: it.matches.map(m => m.sku === match.sku ? { ...m, qty: val, checked: val > 0 } : m) } : it) }));
+                                                              }}>−</button>
+                                                              <button onClick={() => {
+                                                                const val = (match.qty ?? 0) + 1;
+                                                                setWaGuessResult(prev => ({ ...prev, items: prev.items.map((it, i) => i === idx ? { ...it, matches: it.matches.map(m => m.sku === match.sku ? { ...m, qty: val, checked: true } : m) } : it) }));
+                                                              }}>+</button>
+                                                            </div>
+                                                            <input
+                                                              type="number"
+                                                              className="wa-guess-qty-input"
+                                                              min="0"
+                                                              value={match.qty ?? 0}
+                                                              onChange={e => {
+                                                                const val = parseInt(e.target.value) || 0;
+                                                                setWaGuessResult(prev => ({
+                                                                  ...prev,
+                                                                  items: prev.items.map((it, i) => i === idx ? {
+                                                                    ...it,
+                                                                    matches: it.matches.map(m => m.sku === match.sku ? { ...m, qty: val, checked: val > 0 } : m)
+                                                                  } : it)
+                                                                }));
+                                                              }}
+                                                            />
+                                                          </div>
+                                                        </td>
+                                                      </tr>
+                                                    ))}
+                                                  </React.Fragment>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                    {(() => {
+                                      const hasChecked = waGuessResult.items.some(it => it.matches.some(m => m.checked));
+                                      const guessRoute = waGuessResult.guessRoute ?? routeNum ?? '';
+                                      return hasChecked && (
+                                        <div className="wa-guess-create">
+                                          <div className="wa-guess-route-row">
+                                            <label>Route:</label>
+                                            <select
+                                              className="wa-guess-route-select"
+                                              value={guessRoute}
+                                              onChange={e => setWaGuessResult(prev => ({ ...prev, guessRoute: e.target.value }))}
+                                            >
+                                              <option value="">-- select route --</option>
+                                              {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
+                                            </select>
+                                          </div>
+                                          <button
+                                            className="wa-create-order-btn wa-create-order-main"
+                                            onClick={() => {
+                                              if (!guessRoute) { alert('Please select a route'); return; }
+                                              setSelectedRoute(guessRoute);
+                                              setOrderName(displayName);
+                                              setOrderDate(new Date().toISOString().split('T')[0]);
+                                              // Load checked items
+                                              const newCases = {};
+                                              waGuessResult.items.forEach(item => {
+                                                item.matches.forEach(match => {
+                                                  if (match.checked) {
+                                                    const qty = match.qty ?? 0;
+                                                    newCases[match.sku] = (newCases[match.sku] || 0) + qty;
+                                                  }
+                                                });
+                                              });
+                                              setCases(prev => {
+                                                const merged = { ...prev };
+                                                Object.entries(newCases).forEach(([sku, qty]) => {
+                                                  merged[sku] = (merged[sku] || 0) + qty;
+                                                });
+                                                return merged;
+                                              });
+                                              setWaGuessResult(null);
+                                              setTab('entry');
+                                            }}
+                                            disabled={!guessRoute}
+                                          >
+                                            {t(lang, 'createOrderForRoute')} {guessRoute || '—'}
+                                          </button>
+                                        </div>
+                                      );
+                                    })()}
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2621,25 +3263,45 @@ export default function WarehouseOrders() {
             <p className="wo-modal-desc">
               {showConfirm.type === 'push'
                 ? `Tab "${confirmTab}" already has values for ${showConfirm.conflicts.length} item(s) that differ from the form:`
-                : `Your form has values for ${showConfirm.conflicts.length} item(s) that differ from the sheet:`}
+                : `${showConfirm.conflicts.length} item(s) differ between Map Tracker and Google Sheet. Pick which to keep for each:`}
             </p>
-            <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '12px' }}>
-              <table className="wo-grid" style={{ fontSize: '0.8rem' }}>
+            <div className="wo-conflict-table-wrap">
+              <table className="wo-conflict-table">
                 <thead>
                   <tr>
-                    <th>SKU</th>
                     <th>Product</th>
-                    <th style={{ background: '#dbeafe', color: '#1e40af' }}>{t(lang, 'appForm')}</th>
-                    <th style={{ background: '#dcfce7', color: '#166534' }}>{t(lang, 'googleSheet')}</th>
+                    <th className="wo-conflict-col-mt">Map Tracker</th>
+                    <th className="wo-conflict-col-gs">Google Sheet</th>
+                    <th>Keep</th>
                   </tr>
                 </thead>
                 <tbody>
                   {showConfirm.conflicts.map(c => (
-                    <tr key={c.sku}>
-                      <td>{c.sku}</td>
-                      <td>{c.desc}</td>
-                      <td style={{ background: '#eff6ff', fontWeight: 700 }}>{c.appVal}</td>
-                      <td style={{ background: '#f0fdf4', fontWeight: 700 }}>{c.sheetVal}</td>
+                    <tr key={c.sku} className={c._keep ? 'wo-conflict-resolved' : ''}>
+                      <td>
+                        <div className="wo-conflict-product">
+                          <span className="wo-conflict-name">{c.desc}</span>
+                          <span className="wo-conflict-detail">{c.category} · ${c.price?.toFixed(2)}</span>
+                        </div>
+                      </td>
+                      <td className={`wo-conflict-val ${c._keep === 'app' ? 'wo-conflict-picked' : ''}`}>{c.appVal}</td>
+                      <td className={`wo-conflict-val ${c._keep === 'sheet' ? 'wo-conflict-picked' : ''}`}>{c.sheetVal}</td>
+                      <td>
+                        <div className="wo-conflict-btns">
+                          <button
+                            className={`wo-conflict-keep-btn wo-keep-app ${c._keep === 'app' ? 'active' : ''}`}
+                            onClick={() => setShowConfirm(prev => ({ ...prev, conflicts: prev.conflicts.map(x => x.sku === c.sku ? { ...x, _keep: 'app' } : x) }))}
+                          >
+                            Map Tracker
+                          </button>
+                          <button
+                            className={`wo-conflict-keep-btn wo-keep-sheet ${c._keep === 'sheet' ? 'active' : ''}`}
+                            onClick={() => setShowConfirm(prev => ({ ...prev, conflicts: prev.conflicts.map(x => x.sku === c.sku ? { ...x, _keep: 'sheet' } : x) }))}
+                          >
+                            Google Sheet
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2648,18 +3310,24 @@ export default function WarehouseOrders() {
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button className="wo-clear-btn" onClick={() => setShowConfirm(null)}>{t(lang, 'cancel')}</button>
               <button
-                className="wo-copy-btn"
-                style={{ background: '#fef3c7', color: '#92400e', borderColor: '#fbbf24', padding: '10px 20px', fontWeight: 700 }}
-                onClick={showConfirm.onMerge}
-              >
-                3. {t(lang, 'mergeSkipExisting')}
-              </button>
-              <button
                 className="wo-save-btn"
                 style={{ marginLeft: 0 }}
-                onClick={showConfirm.onOverwrite}
+                disabled={!showConfirm.conflicts.every(c => c._keep)}
+                onClick={() => {
+                  // Apply per-item choices
+                  const newCases = { ...cases };
+                  showConfirm.conflicts.forEach(c => {
+                    if (c._keep === 'sheet') {
+                      newCases[c.sku] = c.sheetVal;
+                    }
+                    // 'app' means keep current form value — no change needed
+                  });
+                  setCases(newCases);
+                  setShowConfirm(null);
+                  setSyncMsg({ type: 'success', text: `Resolved ${showConfirm.conflicts.length} conflict(s)` });
+                }}
               >
-                {showConfirm.type === 'push' ? `1. ${t(lang, 'overwriteSheet')}` : `2. ${t(lang, 'overwriteForm')}`}
+                Apply Choices
               </button>
             </div>
           </div>

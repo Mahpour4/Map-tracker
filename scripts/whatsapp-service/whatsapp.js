@@ -6,17 +6,35 @@ let status = 'disconnected'; // disconnected | qr-pending | connected
 let qrCode = null;
 
 // Order message buffer — incoming messages from the order group
-let orderGroupId = null; // set via API
-let orderMessages = []; // { id, from, pushName, body, timestamp, hasMedia, mediaBase64, mediaType }
-const MAX_MESSAGES = 200;
-
-// Phone number → driver/route mapping (persisted to file)
 const fs2 = require('fs');
 const path = require('path');
+
+const MESSAGES_FILE = path.join(__dirname, 'order-messages.json');
 const CONTACTS_FILE = path.join(__dirname, 'order-contacts.json');
-let contactMap = {}; // { phoneNumber: { name, route } }
+const GROUP_FILE = path.join(__dirname, 'order-group.json');
+const MAX_MESSAGES = 200;
+
+// Load persisted state
+let orderGroupId = null;
+try { orderGroupId = JSON.parse(fs2.readFileSync(GROUP_FILE, 'utf8')).groupId || null; } catch { }
+
+let orderMessages = [];
+try { orderMessages = JSON.parse(fs2.readFileSync(MESSAGES_FILE, 'utf8')) || []; } catch { }
+
+let contactMap = {};
 try { contactMap = JSON.parse(fs2.readFileSync(CONTACTS_FILE, 'utf8')); } catch { }
+
+// Save helpers
+let msgSaveTimer = null;
+function saveMessages() {
+  if (msgSaveTimer) return; // debounce
+  msgSaveTimer = setTimeout(() => {
+    msgSaveTimer = null;
+    try { fs2.writeFileSync(MESSAGES_FILE, JSON.stringify(orderMessages)); } catch (e) { console.error('Save messages error:', e.message); }
+  }, 1000);
+}
 function saveContacts() { fs2.writeFileSync(CONTACTS_FILE, JSON.stringify(contactMap, null, 2)); }
+function saveGroup() { fs2.writeFileSync(GROUP_FILE, JSON.stringify({ groupId: orderGroupId })); }
 
 function getStatus() {
   return { status, qrCode: status === 'qr-pending' ? qrCode : null };
@@ -109,10 +127,49 @@ function initialize() {
       if (orderMessages.length > MAX_MESSAGES) {
         orderMessages = orderMessages.slice(-MAX_MESSAGES);
       }
+      saveMessages();
 
       console.log(`📩 Order msg from ${entry.pushName} (${phone}): ${entry.body.substring(0, 60)}${entry.body.length > 60 ? '...' : ''}${entry.hasMedia ? ' [+media]' : ''}`);
     } catch (err) {
       console.error('Message listener error:', err.message);
+    }
+  });
+
+  // Listen for edited messages — update the buffer (WhatsApp allows edits up to 15 min)
+  client.on('message_edit', (msg, newBody, prevBody) => {
+    try {
+      if (!orderGroupId) return;
+      if (msg.from !== orderGroupId) return;
+
+      const idx = orderMessages.findIndex(m => m.id === msg.id._serialized);
+      if (idx !== -1) {
+        // Only process edits for messages within the last 15 minutes
+        const fifteenMin = 15 * 60 * 1000;
+        if (Date.now() - orderMessages[idx].timestamp > fifteenMin) return;
+
+        orderMessages[idx].body = newBody;
+        orderMessages[idx].edited = true;
+        saveMessages();
+        console.log(`📝 Order msg edited by ${orderMessages[idx].pushName}: "${prevBody.substring(0, 30)}..." → "${newBody.substring(0, 30)}..."`);
+      }
+    } catch (err) {
+      console.error('Message edit listener error:', err.message);
+    }
+  });
+
+  // Listen for deleted messages — remove from buffer
+  client.on('message_revoke_everyone', (after, before) => {
+    try {
+      if (!orderGroupId) return;
+      const msgId = after.id._serialized;
+      const idx = orderMessages.findIndex(m => m.id === msgId);
+      if (idx !== -1) {
+        const removed = orderMessages.splice(idx, 1)[0];
+        saveMessages();
+        console.log(`🗑️ Order msg deleted by ${removed.pushName}: "${(removed.body || '').substring(0, 40)}..."`);
+      }
+    } catch (err) {
+      console.error('Message revoke listener error:', err.message);
     }
   });
 
@@ -189,6 +246,7 @@ async function sendReportToGroup(groupId, routeNumber, stats) {
 // Set which group to listen to for orders
 function setOrderGroup(groupId) {
   orderGroupId = groupId;
+  saveGroup();
   console.log(`📋 Order group set to: ${groupId}`);
 }
 
@@ -214,6 +272,7 @@ function dismissMessages(ids) {
   } else {
     orderMessages = orderMessages.filter(m => !ids.includes(m.id));
   }
+  saveMessages();
 }
 
 // Contact mapping
