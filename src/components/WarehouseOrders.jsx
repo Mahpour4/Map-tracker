@@ -519,7 +519,8 @@ export default function WarehouseOrders() {
                   <th className="wo-col-total">Total $</th>
                 </tr>
                 <tr className="wo-totals-row">
-                  <td colSpan="5" className="wo-totals-label">TOTALS</td>
+                  <td colSpan="4" className="wo-totals-label">TOTALS</td>
+                  <td className="wo-totals-val">{totals.totalUnits > 0 ? `$${(totals.totalGross / totals.totalUnits).toFixed(2)}` : ''}</td>
                   <td className="wo-totals-val">{totals.totalCases || ''}</td>
                   <td className="wo-totals-val">{totals.totalUnits || ''}</td>
                   <td className="wo-totals-val">{totals.totalGross > 0 ? `$${totals.totalGross.toFixed(2)}` : ''}</td>
