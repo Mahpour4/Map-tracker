@@ -12666,6 +12666,20 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
   width: 10px;
   flex-shrink: 0;
 }
+.wa-guess-qty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 9px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
 .wa-guess-text {
   color: #1e293b;
   font-weight: 600;

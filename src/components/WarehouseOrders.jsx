@@ -928,10 +928,38 @@ export default function WarehouseOrders() {
       return { ...p, words };
     });
 
+    // Detect category headers like "Order 50.cent", "4.79:", "2.49 Products", "50 cent"
+    // These set the active category context for subsequent lines
+    let activeCategory = null;
+    const categoryPatterns = [
+      { pattern: /50[\s.]*cent/i, category: '.50 Cents' },
+      { pattern: /\.50/i, category: '.50 Cents' },
+      { pattern: /2[\s.]*49/i, category: '2.49 Products' },
+      { pattern: /4[\s.]*79/i, category: '4.79 Products' },
+      { pattern: /deep\s*river\s*small/i, category: 'Deep River Small' },
+      { pattern: /deep\s*river\s*large/i, category: 'Deep River Large' },
+      { pattern: /crunch\s*time/i, category: 'Crunch Time' },
+      { pattern: /candy/i, category: 'Candy' },
+      { pattern: /snacks?/i, category: 'Snacks' },
+      { pattern: /smoothie/i, category: 'Smoothies' },
+      { pattern: /salsa|dip/i, category: 'Salsa & Dips' },
+      { pattern: /variety/i, category: 'Variety Packs' },
+    ];
+
     for (const line of lines) {
+      // Check if this line is a category header (no leading number, or "Order 50.cent", "4.79:")
+      const isHeader = /^(order\s+)?[\d.]+\s*(cent|product|:)/i.test(line) ||
+                       /^(order|deep river|crunch time|candy|snacks?|smoothie|salsa|variety)/i.test(line);
+      if (isHeader) {
+        const matched = categoryPatterns.find(cp => cp.pattern.test(line));
+        if (matched) {
+          activeCategory = matched.category;
+          continue; // Skip header lines, don't parse as product
+        }
+      }
+
       // Try to extract quantity and product text
       // Patterns: "25 onion ring", "4 each deep river large", "15 butter popcorn"
-      // Also: "4x deep river large and small bags" → means 4 of every matching flavor
       const match = line.match(/^(\d+)\s*(?:each|ea|x|cs|cases?)?\s+(.+)$/i);
       if (!match) continue;
 
@@ -939,50 +967,61 @@ export default function WarehouseOrders() {
       const text = match[2].trim();
       if (qty <= 0 || !text) continue;
 
+      // When a category header is active, prefer products in that category
+      const terms = activeCategory
+        ? searchTerms.filter(p => p.category === activeCategory)
+        : searchTerms;
+      // Fallback to all terms if category filter yields no matches
+      const scoreFn = (t) => {
+        const catResults = scoreCatalog(t, terms);
+        return catResults.length > 0 ? catResults : (activeCategory ? scoreCatalog(t, searchTerms) : []);
+      };
+
       // Split on "and" to handle "deep river large and small bags"
-      // e.g. "deep river large and small bags" → ["deep river large", "deep river small bags"]
-      // We keep shared prefix words before "and" to prepend to the second part
       const andParts = text.split(/\s+and\s+/i);
+      let matches;
+      let loadAll = false;
       if (andParts.length > 1) {
-        // Find shared context from the first part (brand words)
-        // e.g. "deep river large" → prefix could be "deep river"
-        // We try: first part as-is, then prefix + second part
         const firstPart = andParts[0].trim();
         const firstWords = firstPart.split(/\s+/);
-
-        // Score first part directly
-        const firstMatches = scoreCatalog(firstPart, searchTerms);
-
-        // For second part, try prepending increasing prefixes from first part
-        // "deep river large" + "small bags" → try "deep river small bags", "deep small bags", "small bags"
+        const firstMatches = scoreFn(firstPart);
         const secondPart = andParts.slice(1).join(' and ').trim();
-        let bestSecondMatches = scoreCatalog(secondPart, searchTerms);
-
+        let bestSecondMatches = scoreFn(secondPart);
         for (let i = 0; i < firstWords.length; i++) {
           const prefix = firstWords.slice(0, firstWords.length - i).join(' ');
           const combined = prefix + ' ' + secondPart;
-          const candidateMatches = scoreCatalog(combined, searchTerms);
+          const candidateMatches = scoreFn(combined);
           if (candidateMatches.length > bestSecondMatches.length ||
               (candidateMatches.length > 0 && candidateMatches[0].score > (bestSecondMatches[0]?.score || 0))) {
             bestSecondMatches = candidateMatches;
           }
         }
-
-        // Merge both match lists, deduplicate by SKU, keep higher score
         const allMatches = new Map();
         [...firstMatches, ...bestSecondMatches].forEach(m => {
           const existing = allMatches.get(m.sku);
           if (!existing || m.score > existing.score) allMatches.set(m.sku, m);
         });
-        const merged = [...allMatches.values()].sort((a, b) => b.score - a.score);
-
-        results.push({ qty, text, matches: merged, loadAll: true });
+        matches = [...allMatches.values()].sort((a, b) => b.score - a.score);
+        loadAll = true;
       } else {
-        // Single search term — normal matching
-        const scored = scoreCatalog(text, searchTerms);
-        // If many matches found (e.g. "deep river large" matches all flavors), flag as loadAll
-        results.push({ qty, text, matches: scored, loadAll: scored.length > 3 });
+        matches = scoreFn(text);
+        loadAll = matches.length > 3;
       }
+
+      // Auto-assign qty to the best match when there's a clear winner
+      if (matches.length === 1) {
+        matches[0].qty = qty;
+        matches[0].checked = true;
+      } else if (matches.length > 1) {
+        const best = matches[0];
+        const second = matches[1];
+        if (best.score >= second.score * 1.5) {
+          best.qty = qty;
+          best.checked = true;
+        }
+      }
+
+      results.push({ qty, text, matches, loadAll, category: activeCategory });
     }
 
     setWaGuessResult({ msgId: msg.id, items: results });
@@ -2884,9 +2923,10 @@ export default function WarehouseOrders() {
                                             }}
                                           >
                                             <span className="wa-guess-expand">{isExpanded ? '▾' : '▸'}</span>
+                                            <span className="wa-guess-qty-badge">{item.qty}</span>
                                             <span className="wa-guess-text">{item.text}</span>
                                             <span className="wa-guess-count">
-                                              {checkedCount > 0 ? `${checkedCount} added` : `${item.matches.length} found`}
+                                              {checkedCount > 0 ? `${checkedCount} selected` : `${item.matches.length} match${item.matches.length !== 1 ? 'es' : ''}`}
                                             </span>
                                           </div>
                                           {isExpanded && (
