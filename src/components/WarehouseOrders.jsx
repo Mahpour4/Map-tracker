@@ -40,6 +40,7 @@ export default function WarehouseOrders() {
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
   const [cases, setCases] = useState({}); // { sku: number }
+  const [units, setUnits] = useState({}); // { sku: number } - individual units (not full cases)
   const [orderName, setOrderName] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceCases, setInvoiceCases] = useState('');
@@ -72,10 +73,13 @@ export default function WarehouseOrders() {
   // Load existing order into cases state when found
   const loadExistingOrder = useCallback((order) => {
     const c = {};
+    const u = {};
     (order.items || []).forEach(item => {
       if (item.cases > 0) c[item.sku] = item.cases;
+      if (item.orderUnits > 0) u[item.sku] = item.orderUnits;
     });
     setCases(c);
+    setUnits(u);
     setOrderName(order.name || '');
     setInvoiceNumber(order.invoiceNumber || '');
     setInvoiceCases(order.invoiceCases || '');
@@ -100,14 +104,14 @@ export default function WarehouseOrders() {
     setSelectedRoute(r);
     const existing = orders.find(o => o.routeNumber === r && o.date === orderDate);
     if (existing) loadExistingOrder(existing);
-    else { setCases({}); setOrderName(ROUTE_DRIVERS[r] || ''); setInvoiceNumber(''); setInvoiceCases(''); setInvoiceAmount(''); setLoadNumber(''); setLoadCases(''); setLoadAmount(''); }
+    else { setCases({}); setUnits({}); setOrderName(ROUTE_DRIVERS[r] || ''); setInvoiceNumber(''); setInvoiceCases(''); setInvoiceAmount(''); setLoadNumber(''); setLoadCases(''); setLoadAmount(''); }
   }, [orders, orderDate, loadExistingOrder]);
 
   const handleDateChange = useCallback((d) => {
     setOrderDate(d);
     const existing = orders.find(o => o.routeNumber === selectedRoute && o.date === d);
     if (existing) loadExistingOrder(existing);
-    else { setCases({}); setOrderName(''); setInvoiceNumber(''); setInvoiceCases(''); setInvoiceAmount(''); setLoadNumber(''); setLoadCases(''); setLoadAmount(''); }
+    else { setCases({}); setUnits({}); setOrderName(''); setInvoiceNumber(''); setInvoiceCases(''); setInvoiceAmount(''); setLoadNumber(''); setLoadCases(''); setLoadAmount(''); }
   }, [orders, selectedRoute, loadExistingOrder]);
 
   // Filter products by search
@@ -135,36 +139,47 @@ export default function WarehouseOrders() {
   // Totals
   const totals = useMemo(() => {
     let totalCases = 0, totalUnits = 0, totalGross = 0;
-    Object.entries(cases).forEach(([sku, qty]) => {
-      if (qty > 0) {
-        const product = PRODUCT_CATALOG.find(p => p.sku === sku);
-        if (product) {
-          totalCases += qty;
-          totalUnits += qty * product.upc;
-          totalGross += qty * product.upc * product.price;
+    // Get all SKUs that have cases or units
+    const allSkus = new Set([...Object.keys(cases), ...Object.keys(units)]);
+    allSkus.forEach(sku => {
+      const product = PRODUCT_CATALOG.find(p => p.sku === sku);
+      if (product) {
+        const caseQty = cases[sku] || 0;
+        const unitQty = units[sku] || 0;
+        if (caseQty > 0 || unitQty > 0) {
+          totalCases += caseQty;
+          const caseUnits = caseQty * product.upc;
+          totalUnits += caseUnits + unitQty;
+          totalGross += (caseUnits + unitQty) * product.price;
         }
       }
     });
     return { totalCases, totalUnits, totalGross };
-  }, [cases]);
+  }, [cases, units]);
 
   // Save order
   const handleSave = useCallback(() => {
     if (!selectedRoute) return;
     setSaving(true);
-    const items = Object.entries(cases)
-      .filter(([, qty]) => qty > 0)
-      .map(([sku, qty]) => {
+    const allSkus = new Set([...Object.keys(cases), ...Object.keys(units)]);
+    const items = [...allSkus]
+      .filter(sku => (cases[sku] || 0) > 0 || (units[sku] || 0) > 0)
+      .map(sku => {
+        const qty = cases[sku] || 0;
+        const unitQty = units[sku] || 0;
         const p = PRODUCT_CATALOG.find(pr => pr.sku === sku);
+        const caseUnits = qty * (p?.upc || 0);
+        const allUnits = caseUnits + unitQty;
         return {
           sku,
           category: p?.category || '',
           desc: p?.desc || '',
           cases: qty,
+          orderUnits: unitQty,
           upc: p?.upc || 0,
           price: p?.price || 0,
-          units: qty * (p?.upc || 0),
-          gross: qty * (p?.upc || 0) * (p?.price || 0),
+          units: allUnits,
+          gross: allUnits * (p?.price || 0),
         };
       });
 
@@ -190,7 +205,7 @@ export default function WarehouseOrders() {
       addWarehouseOrder(orderData);
     }
     setTimeout(() => setSaving(false), 500);
-  }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder]);
+  }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder]);
 
   // Toggle category collapse
   const toggleCat = (cat) => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -199,6 +214,17 @@ export default function WarehouseOrders() {
   const setCaseCount = (sku, val) => {
     const num = val === '' ? 0 : parseFloat(val) || 0;
     setCases(prev => {
+      const next = { ...prev };
+      if (num > 0) next[sku] = num;
+      else delete next[sku];
+      return next;
+    });
+  };
+
+  // Set individual unit count for a product
+  const setUnitCount = (sku, val) => {
+    const num = val === '' ? 0 : parseFloat(val) || 0;
+    setUnits(prev => {
       const next = { ...prev };
       if (num > 0) next[sku] = num;
       else delete next[sku];
@@ -510,10 +536,12 @@ export default function WarehouseOrders() {
                       </tr>
                       {!isCollapsed && products.map(p => {
                         const qty = cases[p.sku] || 0;
-                        const units = qty * p.upc;
-                        const total = units * p.price;
+                        const unitQty = units[p.sku] || 0;
+                        const allUnits = (qty * p.upc) + unitQty;
+                        const total = allUnits * p.price;
+                        const hasQty = qty > 0 || unitQty > 0;
                         return (
-                          <tr key={p.sku} className={`wo-product-row ${qty > 0 ? 'wo-has-qty' : ''}`}>
+                          <tr key={p.sku} className={`wo-product-row ${hasQty ? 'wo-has-qty' : ''}`}>
                             <td className="wo-col-sku">{p.sku}</td>
                             <td className="wo-col-desc">{p.desc}</td>
                             <td className="wo-col-type">{p.type}</td>
@@ -530,8 +558,18 @@ export default function WarehouseOrders() {
                                 tabIndex={0}
                               />
                             </td>
-                            <td className="wo-col-units">{qty > 0 ? units : ''}</td>
-                            <td className="wo-col-total">{qty > 0 ? `$${total.toFixed(2)}` : ''}</td>
+                            <td className="wo-col-units">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={unitQty || ''}
+                                onChange={e => setUnitCount(p.sku, e.target.value)}
+                                className="wo-case-input"
+                                tabIndex={0}
+                              />
+                            </td>
+                            <td className="wo-col-total">{hasQty ? `$${total.toFixed(2)}` : ''}</td>
                           </tr>
                         );
                       })}
