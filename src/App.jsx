@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Component, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { version } from '../package.json';
 import Sidebar from './components/Sidebar';
@@ -19,13 +19,114 @@ import Transactions from './components/Transactions';
 import WarehouseOrders from './components/WarehouseOrders';
 import './App.css';
 
+// ── Global error boundary ─────────────────────────────────────────────────────
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[App] Render error caught by ErrorBoundary:', error);
+    console.error('[App] Component stack:', info.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 32, fontFamily: 'monospace' }}>
+          <h2 style={{ color: '#c00' }}>Something went wrong</h2>
+          <pre style={{ color: '#333', whiteSpace: 'pre-wrap' }}>{this.state.error.message}</pre>
+          <button onClick={() => this.setState({ error: null })} style={{ marginTop: 12 }}>
+            Dismiss and retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ── Global unhandled error / rejection logging ────────────────────────────────
+function useGlobalErrorLogging() {
+  useEffect(() => {
+    const onError = (event) => {
+      console.error('[App] Unhandled error:', event.message, '|', event.filename, 'line', event.lineno);
+    };
+    const onUnhandledRejection = (event) => {
+      console.error('[App] Unhandled promise rejection:', event.reason);
+    };
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onUnhandledRejection);
+    };
+  }, []);
+}
+
+const NAV_GROUPS = [
+  {
+    id: 'fleet',
+    label: 'Fleet',
+    items: [
+      { id: 'fleet', label: 'Fleet Tracker' },
+      { id: 'fuel', label: 'Fuel Tracker' },
+      { id: 'travelLog', label: 'Travel Log' },
+    ],
+  },
+  {
+    id: 'routes',
+    label: 'Routes',
+    items: [
+      { id: 'map', label: 'Map View' },
+      { id: 'schedule', label: 'Route Schedule' },
+      { id: 'leaderboard', label: 'Route Leaderboard' },
+      { id: 'drivers', label: 'Driver Dashboard' },
+    ],
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    items: [
+      { id: 'warehouseOrders', label: 'Orders' },
+      { id: 'transactions', label: 'Transactions' },
+      { id: 'import', label: 'Data Import' },
+      { id: 'alerts', label: 'Alert Log' },
+      { id: 'visits', label: 'Visit History' },
+    ],
+  },
+  {
+    id: 'locations',
+    label: 'Locations',
+    items: [
+      { id: 'warehouses', label: 'Warehouses' },
+      { id: 'customLocations', label: 'Custom Locations' },
+    ],
+  },
+];
+
+function getActiveGroup(page) {
+  return NAV_GROUPS.find(g => g.items.some(i => i.id === page || (page === 'alertAnalytics' && i.id === 'alerts')))?.id || null;
+}
+
 function AppContent() {
+  useGlobalErrorLogging();
   const { state, setPage } = useApp();
   const page = state.currentPage;
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [openGroup, setOpenGroup] = useState(() => getActiveGroup(state.currentPage));
 
-  const nav = (target) => { setPage(target); setMenuOpen(false); };
+  const nav = (target) => {
+    setPage(target);
+    setMenuOpen(false);
+  };
+
+  const toggleGroup = (groupId) => {
+    setOpenGroup(prev => prev === groupId ? null : groupId);
+  };
 
   return (
     <div className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
@@ -42,21 +143,45 @@ function AppContent() {
 
           {/* Nav links — center */}
           <nav className={`page-nav-links${menuOpen ? ' open' : ''}`} aria-label="Main navigation">
-            <button className={`page-nav-btn ${page === 'map' ? 'active' : ''}`} onClick={() => nav('map')}>Map View</button>
-            <button className={`page-nav-btn ${page === 'leaderboard' ? 'active' : ''}`} onClick={() => nav('leaderboard')}>Route Leaderboard</button>
-            <button className={`page-nav-btn ${page === 'drivers' ? 'active' : ''}`} onClick={() => nav('drivers')}>Driver Dashboard</button>
-            <button className={`page-nav-btn ${page === 'visits' ? 'active' : ''}`} onClick={() => nav('visits')}>Visit History</button>
-            <button className={`page-nav-btn ${page === 'schedule' ? 'active' : ''}`} onClick={() => nav('schedule')}>Route Schedule</button>
-            <button className={`page-nav-btn ${page === 'import' ? 'active' : ''}`} onClick={() => nav('import')}>Data Import</button>
-            <button className={`page-nav-btn ${page === 'alerts' || page === 'alertAnalytics' ? 'active' : ''}`} onClick={() => nav('alerts')}>Alert Log</button>
-            <button className={`page-nav-btn ${page === 'fleet' ? 'active' : ''}`} onClick={() => nav('fleet')}>Fleet Tracker</button>
-            <button className={`page-nav-btn ${page === 'fuel' ? 'active' : ''}`} onClick={() => nav('fuel')}>Fuel Tracker</button>
-            <button className={`page-nav-btn ${page === 'transactions' ? 'active' : ''}`} onClick={() => nav('transactions')}>Transactions</button>
-            <button className={`page-nav-btn ${page === 'warehouseOrders' ? 'active' : ''}`} onClick={() => nav('warehouseOrders')}>Orders</button>
-            <button className={`page-nav-btn ${page === 'travelLog' ? 'active' : ''}`} onClick={() => nav('travelLog')}>Travel Log</button>
-            <button className={`page-nav-btn ${page === 'warehouses' ? 'active' : ''}`} onClick={() => nav('warehouses')}>Warehouses</button>
-            <button className={`page-nav-btn ${page === 'customLocations' ? 'active' : ''}`} onClick={() => nav('customLocations')}>Custom Locations</button>
+            {/* Pinned top-level tabs */}
+            <button className={`page-nav-btn${page === 'map' ? ' active' : ''}`} onClick={() => nav('map')}>Map</button>
+            <button className={`page-nav-btn${page === 'warehouseOrders' ? ' active' : ''}`} onClick={() => nav('warehouseOrders')}>Orders</button>
+            <button className={`page-nav-btn${page === 'alerts' || page === 'alertAnalytics' ? ' active' : ''}`} onClick={() => nav('alerts')}>Alerts</button>
+            <span className="page-nav-divider" />
+            {/* Group dropdowns */}
+            {NAV_GROUPS.map(group => {
+              const isGroupActive = group.items.some(i => i.id === page || (page === 'alertAnalytics' && i.id === 'alerts'));
+              const isOpen = openGroup === group.id;
+              return (
+                <button
+                  key={group.id}
+                  className={`page-nav-btn page-nav-group-btn${isGroupActive ? ' active' : ''}${isOpen ? ' open' : ''}`}
+                  onClick={() => toggleGroup(group.id)}
+                  aria-expanded={isOpen}
+                >
+                  {group.label}
+                  <svg className="page-nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="2 4 6 8 10 4" />
+                  </svg>
+                </button>
+              );
+            })}
           </nav>
+
+          {/* Sub-nav row — slides down when a group is open */}
+          {NAV_GROUPS.map(group => (
+            <div key={group.id} className={`page-nav-subnav${openGroup === group.id ? ' open' : ''}`} aria-hidden={openGroup !== group.id}>
+              {group.items.map(item => (
+                <button
+                  key={item.id}
+                  className={`page-nav-subnav-btn${(page === item.id || (page === 'alertAnalytics' && item.id === 'alerts')) ? ' active' : ''}`}
+                  onClick={() => { nav(item.id); setOpenGroup(null); }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
 
           {/* Actions — far right */}
           <div className="page-nav-actions">
@@ -119,9 +244,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 
