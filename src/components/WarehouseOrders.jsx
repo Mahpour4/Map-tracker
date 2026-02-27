@@ -499,11 +499,82 @@ export default function WarehouseOrders() {
     const doc = new jsPDF('portrait', 'mm', 'letter');
     const pw = doc.internal.pageSize.getWidth();
     const fmtMoney = (n) => `$${n.toFixed(2)}`;
-    const dateDisplay = (() => {
-      const [y, m, d] = orderDate.split('-');
+    const fmtDate = (iso) => {
+      const [y, m, d] = iso.split('-');
       return `${parseInt(m)}/${parseInt(d)}/${y ? y.slice(-2) : ''}`;
-    })();
+    };
+    const dateDisplay = fmtDate(orderDate);
     const ri = ROUTE_INFO[selectedRoute] || {};
+    const driverName = orderName || ri.driver || '—';
+
+    // === Cover Page — Order History Log ===
+    const routeHistory = (warehouseOrders?.orders || [])
+      .filter(o => o.routeNumber === selectedRoute)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Route ${selectedRoute} — ${driverName}`, pw / 2, 16, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text('Order History Log', pw / 2, 23, { align: 'center' });
+
+    const historyRows = routeHistory.map(o => {
+      const isCurrent = o.date === orderDate && (o.invoiceNumber || '') === (invoiceNumber || '');
+      return {
+        data: [
+          fmtDate(o.date),
+          o.invoiceNumber || '—',
+          o.invoiceCases || '—',
+          o.invoiceAmount ? fmtMoney(parseFloat(o.invoiceAmount) || 0) : '—',
+          o.loadNumber || '—',
+          o.loadCases || '—',
+          o.loadAmount ? fmtMoney(parseFloat(o.loadAmount) || 0) : '—',
+        ],
+        isCurrent,
+      };
+    });
+
+    const histTotals = routeHistory.reduce((acc, o) => {
+      acc.invCases += parseFloat(o.invoiceCases) || 0;
+      acc.invAmt   += parseFloat(o.invoiceAmount) || 0;
+      acc.ldCases  += parseFloat(o.loadCases) || 0;
+      acc.ldAmt    += parseFloat(o.loadAmount) || 0;
+      return acc;
+    }, { invCases: 0, invAmt: 0, ldCases: 0, ldAmt: 0 });
+
+    autoTable(doc, {
+      startY: 28,
+      head: [['Date', 'Invoice #', 'WH Cases', 'WH Amount', 'Load #', 'DRV Cases', 'DRV Amount']],
+      body: [
+        ...historyRows.map(r => r.data),
+        ['TOTAL', '', String(histTotals.invCases), fmtMoney(histTotals.invAmt), '', String(histTotals.ldCases), fmtMoney(histTotals.ldAmt)],
+      ],
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [30, 58, 95], textColor: 255, fontStyle: 'bold', halign: 'center' },
+      columnStyles: {
+        0: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'right' },
+        5: { halign: 'center' },
+        6: { halign: 'right' },
+      },
+      didParseCell: (data) => {
+        if (data.section !== 'body') return;
+        const rowIndex = data.row.index;
+        if (rowIndex < historyRows.length && historyRows[rowIndex].isCurrent) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [219, 234, 254];
+        }
+        if (rowIndex === historyRows.length) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [243, 244, 246];
+        }
+      },
+    });
+
+    // === Pick Sheet starts on new page ===
+    doc.addPage();
 
     // === Header ===
     doc.setFontSize(18);
@@ -646,7 +717,7 @@ export default function WarehouseOrders() {
     // Save
     const fileName = `PickSheet_${selectedRoute}_${orderName ? orderName.replace(/\s+/g, '') : 'order'}_${orderDate}.pdf`;
     doc.save(fileName);
-  }, [selectedRoute, orderName, orderDate, cases, units, totals, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount]);
+  }, [selectedRoute, orderName, orderDate, cases, units, totals, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, warehouseOrders]);
 
   // Save order
   const handleSave = useCallback(() => {
