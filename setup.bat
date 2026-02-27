@@ -2,11 +2,12 @@
 title Map Tracker - First Time Setup
 color 0A
 
-:: Keep window open if double-clicked directly
-if not defined SETUP_RUNNING (
-    set SETUP_RUNNING=1
-    cmd /k "%~f0"
-    exit
+:: ── Request admin elevation once at the top ────────────────────────────────
+net session >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo Requesting administrator access...
+    powershell -NoProfile -Command "Start-Process cmd -ArgumentList '/c \"%~f0\" & pause' -Verb RunAs"
+    exit /b
 )
 
 echo ============================================
@@ -21,20 +22,17 @@ cd /d "%~dp0"
 echo [1/4] Checking for Node.js...
 where node >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo Node.js not found. Attempting to install via winget...
+    echo Node.js not found. Installing via winget...
     echo.
-
     winget install OpenJS.NodeJS.LTS --silent --accept-source-agreements --accept-package-agreements
     if %ERRORLEVEL% NEQ 0 (
-        echo.
-        echo winget install failed. Trying PowerShell download...
+        echo winget failed. Trying PowerShell download...
         powershell -NoProfile -ExecutionPolicy Bypass -Command ^
             "$out = Join-Path $env:TEMP 'node-lts.msi';" ^
             "Write-Host 'Downloading Node.js LTS...';" ^
-            "$url = 'https://nodejs.org/dist/v22.14.0/node-v22.14.0-x64.msi';" ^
-            "Invoke-WebRequest -Uri $url -OutFile $out;" ^
+            "Invoke-WebRequest -Uri 'https://nodejs.org/dist/v22.14.0/node-v22.14.0-x64.msi' -OutFile $out;" ^
             "Write-Host 'Installing...';" ^
-            "Start-Process msiexec.exe -Wait -ArgumentList '/I', $out, '/quiet', '/norestart';" ^
+            "Start-Process msiexec.exe -Wait -ArgumentList '/I',$out,'/quiet','/norestart';" ^
             "Remove-Item $out -Force"
     )
 
@@ -45,9 +43,8 @@ if %ERRORLEVEL% NEQ 0 (
     if %ERRORLEVEL% NEQ 0 (
         echo.
         echo ============================================
-        echo   Node.js installed but needs a restart.
-        echo   Please restart your computer, then
-        echo   run setup.bat again.
+        echo   Restart required to finish Node install.
+        echo   Restart your computer then run setup.bat
         echo ============================================
         echo.
         pause
@@ -64,8 +61,7 @@ echo [2/4] Installing main app dependencies...
 call npm install
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo ERROR: npm install failed.
-    echo Check your internet connection and try again.
+    echo ERROR: npm install failed. Check internet and try again.
     echo.
     pause
     exit /b 1
