@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    port: 5174,
+    strictPort: true,
     proxy: {
       // Proxy Motive API requests to bypass CORS
       '/api/motive': {
