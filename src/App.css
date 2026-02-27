@@ -10120,3 +10120,294 @@ textarea {
   .tx-stat + .tx-stat { border-left: none; border-top: 1px solid var(--border); padding-top: 8px; }
 }
 
+/* ==============================
+   WAREHOUSE ORDERS
+   ============================== */
+.wo-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.wo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.wo-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.wo-tabs {
+  display: flex;
+  gap: 4px;
+}
+.wo-tab {
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.wo-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.wo-controls {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.wo-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.wo-controls select,
+.wo-controls input[type="date"],
+.wo-controls input[type="text"] {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  min-width: 120px;
+}
+.wo-copy-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wo-copy-btn:hover { background: #e0f2fe; }
+.wo-copy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wo-existing-badge {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 20px;
+  font-weight: 600;
+  align-self: center;
+}
+.wo-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.wo-search input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+.wo-clear-search {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.wo-grid-wrapper {
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.wo-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.wo-grid > thead th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+  padding: 8px 8px;
+  border-bottom: 2px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 2;
+}
+.wo-cat-row {
+  cursor: pointer;
+  background: #f8fafc;
+}
+.wo-cat-row:hover {
+  background: #f1f5f9;
+}
+.wo-cat-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #1e293b;
+  padding: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+.wo-cat-arrow {
+  display: inline-block;
+  width: 16px;
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+.wo-cat-total {
+  text-align: center;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+.wo-product-row td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.wo-product-row:hover {
+  background: #fafbfc;
+}
+.wo-product-row.wo-has-qty {
+  background: #f0fdf4;
+}
+.wo-product-row.wo-has-qty:hover {
+  background: #dcfce7;
+}
+.wo-col-sku {
+  color: #9ca3af;
+  font-size: 0.72rem;
+  font-family: monospace;
+  width: 70px;
+}
+.wo-col-desc { font-weight: 500; }
+.wo-col-type {
+  color: #6b7280;
+  font-size: 0.75rem;
+  width: 70px;
+}
+.wo-col-upc, .wo-col-price {
+  text-align: center;
+  color: #6b7280;
+  width: 60px;
+}
+.wo-col-cases { width: 80px; }
+.wo-case-input {
+  width: 60px;
+  padding: 4px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.wo-case-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.wo-has-qty .wo-case-input {
+  border-color: #22c55e;
+  background: #fff;
+}
+.wo-col-units, .wo-col-total {
+  text-align: right;
+  font-weight: 600;
+  color: #374151;
+  width: 70px;
+}
+.wo-summary {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+.wo-save-btn {
+  margin-left: auto;
+  padding: 8px 24px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.wo-save-btn:hover { opacity: 0.9; }
+.wo-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Queue view */
+.wo-queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.wo-queue-table thead th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6b7280;
+  padding: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+.wo-queue-row td {
+  padding: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.wo-queue-row:hover { background: #f9fafb; }
+.wo-status {
+  font-size: 0.68rem;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.wo-status-pending { background: #fef3c7; color: #92400e; }
+.wo-status-submitted { background: #dbeafe; color: #1e40af; }
+.wo-status-synced { background: #d1fae5; color: #065f46; }
+.wo-status-fulfilled { background: #f0fdf4; color: #16a34a; }
+.wo-queue-actions {
+  display: flex;
+  gap: 6px;
+}
+.wo-queue-actions button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.wo-del-btn { color: #dc2626; }
+.wo-del-btn:hover { background: #fef2f2; }
+.wo-empty {
+  text-align: center;
+  padding: 48px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+

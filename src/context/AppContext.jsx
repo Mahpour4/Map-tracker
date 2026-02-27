@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, fetchWarehouseOrdersJson, saveWarehouseOrdersJson, getToken } from '../services/githubService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, labelAlertsError, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
@@ -12,6 +12,7 @@ import localTravelLog from '../data/travelLog.json';
 import localAddressOverrides from '../data/addressOverrides.json';
 import localCustomLocations from '../data/customLocations.json';
 import localTransactions from '../data/transactions.json';
+import localWarehouseOrders from '../data/warehouseOrders.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -54,6 +55,7 @@ const initialState = {
   addressOverrides: localAddressOverrides, // { "destination address": "storeId" }
   customLocations: localCustomLocations, // [{ id, name, type, address, lat, lng }]
   transactions: localTransactions, // Raw DAO dashboard transaction data
+  warehouseOrders: localWarehouseOrders, // { orders: [], lastSyncedAt: null }
   autoVisitEnabled: true,
 };
 
@@ -456,6 +458,21 @@ function reducer(state, action) {
       return { ...state, transactions: action.payload };
     case 'SET_TRANSACTIONS':
       return { ...state, transactions: action.payload };
+    // Warehouse Orders
+    case 'LOAD_WAREHOUSE_ORDERS':
+      return { ...state, warehouseOrders: action.payload };
+    case 'SET_WAREHOUSE_ORDERS':
+      return { ...state, warehouseOrders: action.payload };
+    case 'ADD_WAREHOUSE_ORDER': {
+      const newOrder = { id: uuidv4(), createdAt: new Date().toISOString(), ...action.payload };
+      return { ...state, warehouseOrders: { ...state.warehouseOrders, orders: [...state.warehouseOrders.orders, newOrder] } };
+    }
+    case 'UPDATE_WAREHOUSE_ORDER': {
+      const updOrders = state.warehouseOrders.orders.map(o => o.id === action.payload.id ? { ...o, ...action.payload, updatedAt: new Date().toISOString() } : o);
+      return { ...state, warehouseOrders: { ...state.warehouseOrders, orders: updOrders } };
+    }
+    case 'DELETE_WAREHOUSE_ORDER':
+      return { ...state, warehouseOrders: { ...state.warehouseOrders, orders: state.warehouseOrders.orders.filter(o => o.id !== action.payload) } };
     // Custom locations (gas stations, storage, meeting points, driver homes, etc.)
     case 'LOAD_CUSTOM_LOCATIONS':
       return { ...state, customLocations: action.payload };
@@ -1306,6 +1323,40 @@ export function AppProvider({ children }) {
     return () => { if (transactionsSaveTimer.current) clearTimeout(transactionsSaveTimer.current); };
   }, [state.transactions]);
 
+  // Load warehouse orders from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchWarehouseOrdersJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (data && data.orders) {
+            dispatch({ type: 'LOAD_WAREHOUSE_ORDERS', payload: data });
+          }
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => {
+        console.error('Failed to load warehouse orders:', err);
+      });
+  }, []);
+
+  // Auto-save warehouse orders to GitHub when they change
+  const prevWarehouseOrdersRef = useRef(state.warehouseOrders);
+  const warehouseOrdersSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevWarehouseOrdersRef.current === state.warehouseOrders) return;
+    prevWarehouseOrdersRef.current = state.warehouseOrders;
+
+    if (warehouseOrdersSaveTimer.current) clearTimeout(warehouseOrdersSaveTimer.current);
+    warehouseOrdersSaveTimer.current = setTimeout(() => {
+      saveWarehouseOrdersJson(JSON.stringify(state.warehouseOrders))
+        .catch((err) => console.error('Failed to save warehouse orders:', err));
+    }, 2000);
+
+    return () => { if (warehouseOrdersSaveTimer.current) clearTimeout(warehouseOrdersSaveTimer.current); };
+  }, [state.warehouseOrders]);
+
   const actions = {
     addStore: useCallback(
       (store) => dispatch({ type: 'ADD_STORE', payload: store }),
@@ -1472,6 +1523,22 @@ export function AppProvider({ children }) {
     // Transactions
     setTransactions: useCallback(
       (transactions) => dispatch({ type: 'SET_TRANSACTIONS', payload: transactions }),
+      []
+    ),
+    addWarehouseOrder: useCallback(
+      (order) => dispatch({ type: 'ADD_WAREHOUSE_ORDER', payload: order }),
+      []
+    ),
+    updateWarehouseOrder: useCallback(
+      (order) => dispatch({ type: 'UPDATE_WAREHOUSE_ORDER', payload: order }),
+      []
+    ),
+    deleteWarehouseOrder: useCallback(
+      (id) => dispatch({ type: 'DELETE_WAREHOUSE_ORDER', payload: id }),
+      []
+    ),
+    setWarehouseOrders: useCallback(
+      (orders) => dispatch({ type: 'SET_WAREHOUSE_ORDERS', payload: orders }),
       []
     ),
   };
