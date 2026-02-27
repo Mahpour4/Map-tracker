@@ -57,6 +57,7 @@ const initialState = {
   transactions: localTransactions, // Raw DAO dashboard transaction data
   warehouseOrders: localWarehouseOrders, // { orders: [], lastSyncedAt: null }
   autoVisitEnabled: true,
+  language: localStorage.getItem('app_language') || 'en',
 };
 
 const easternShoreSubsections = {
@@ -473,6 +474,10 @@ function reducer(state, action) {
     }
     case 'DELETE_WAREHOUSE_ORDER':
       return { ...state, warehouseOrders: { ...state.warehouseOrders, orders: state.warehouseOrders.orders.filter(o => o.id !== action.payload) } };
+    // Language
+    case 'SET_LANGUAGE':
+      localStorage.setItem('app_language', action.payload);
+      return { ...state, language: action.payload };
     // Custom locations (gas stations, storage, meeting points, driver homes, etc.)
     case 'LOAD_CUSTOM_LOCATIONS':
       return { ...state, customLocations: action.payload };
@@ -1539,6 +1544,10 @@ export function AppProvider({ children }) {
     ),
     setWarehouseOrders: useCallback(
       (orders) => dispatch({ type: 'SET_WAREHOUSE_ORDERS', payload: orders }),
+      []
+    ),
+    setLanguage: useCallback(
+      (lang) => dispatch({ type: 'SET_LANGUAGE', payload: lang }),
       []
     ),
   };
