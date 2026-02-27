@@ -127,12 +127,20 @@ export default function WarehouseOrders() {
 
   // Load existing order into cases state when found
   const loadExistingOrder = useCallback((order) => {
+    console.log('[WO] loadExistingOrder called:', {
+      route: order.routeNumber,
+      date: order.date,
+      name: order.name,
+      itemCount: (order.items || []).length,
+      items: order.items,
+    });
     const c = {};
     const u = {};
     (order.items || []).forEach(item => {
       if (item.cases > 0) c[item.sku] = item.cases;
       if (item.orderUnits > 0) u[item.sku] = item.orderUnits;
     });
+    console.log('[WO] Setting cases:', c, '| units:', u);
     setCases(c);
     setUnits(u);
     setOrderName(order.name || '');
@@ -1587,9 +1595,9 @@ export default function WarehouseOrders() {
               <span className="wo-lang-flag">
                 {language === 'en' ? (
                   <svg viewBox="0 0 60 40" width="28" height="19">
-                    <rect width="60" height="13.3" fill="#D52B1E"/>
-                    <rect y="13.3" width="60" height="13.4" fill="#F9E300"/>
-                    <rect y="26.7" width="60" height="13.3" fill="#007934"/>
+                    <rect width="60" height="20" fill="#FCD116"/>
+                    <rect y="20" width="60" height="10" fill="#003893"/>
+                    <rect y="30" width="60" height="10" fill="#CE1126"/>
                   </svg>
                 ) : (
                   <svg viewBox="0 0 60 40" width="28" height="19">
@@ -1627,9 +1635,9 @@ export default function WarehouseOrders() {
               <span className="wo-lang-flag">
                 {language === 'en' ? (
                   <svg viewBox="0 0 60 40" width="24" height="16">
-                    <rect width="60" height="13.3" fill="#D52B1E"/>
-                    <rect y="13.3" width="60" height="13.4" fill="#F9E300"/>
-                    <rect y="26.7" width="60" height="13.3" fill="#007934"/>
+                    <rect width="60" height="20" fill="#FCD116"/>
+                    <rect y="20" width="60" height="10" fill="#003893"/>
+                    <rect y="30" width="60" height="10" fill="#CE1126"/>
                   </svg>
                 ) : (
                   <svg viewBox="0 0 60 40" width="24" height="16">

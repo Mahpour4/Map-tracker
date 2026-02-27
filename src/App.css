@@ -1369,6 +1369,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
@@ -1439,6 +1440,81 @@ textarea {
   background: var(--primary);
   color: #fff;
   border-radius: 6px;
+}
+
+/* Divider between pinned tabs and group dropdowns */
+.page-nav-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border, #e5e7eb);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* Group button chevron */
+.page-nav-group-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.page-nav-group-chevron {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.page-nav-group-btn.open .page-nav-group-chevron {
+  transform: rotate(180deg);
+}
+
+/* Sub-nav row */
+.page-nav-subnav {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px 10px;
+  background: var(--bg);
+  border-top: 1px solid var(--border, #e5e7eb);
+  animation: subnav-slide-down 0.18s ease;
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.page-nav-subnav.open {
+  display: flex;
+}
+
+@keyframes subnav-slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-nav-subnav-btn {
+  padding: 7px 20px;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, color 0.15s;
+}
+
+.page-nav-subnav-btn:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.page-nav-subnav-btn.active {
+  background: var(--primary);
+  color: #fff;
 }
 
 /* Actions — right */
