@@ -10125,8 +10125,8 @@ textarea {
    ============================== */
 .wo-page {
   padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 .wo-header {
   display: flex;
@@ -10608,4 +10608,73 @@ textarea {
   color: #dc2626;
   font-weight: 700;
   cursor: help;
+}
+
+/* Confirmation panel — warehouse vs driver */
+.wo-confirm-panel {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.wo-confirm-side {
+  flex: 1;
+  padding: 10px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.wo-confirm-side:first-child {
+  background: #fef9ee;
+}
+.wo-confirm-side:last-child {
+  background: #eef6ff;
+}
+.wo-confirm-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  align-self: center;
+  white-space: nowrap;
+}
+.wo-confirm-side label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.wo-confirm-side input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.wo-confirm-side input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+}
+.wo-confirm-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.wo-confirm-vs-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
 }
