@@ -58,3 +58,70 @@ export async function sendWhatsAppReport(groupId, routeNumber, stats) {
   }
   return res.json();
 }
+
+// ── Order Message Inbox ──────────────────────────────────────────────────────
+
+export async function setOrderGroup(groupId) {
+  const res = await fetch(`${BASE}/set-order-group`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId }),
+  });
+  return res.json();
+}
+
+export async function getOrderGroup() {
+  try {
+    const res = await fetch(`${BASE}/order-group`);
+    const data = await res.json();
+    return data.groupId || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getOrderMessages(since = 0) {
+  try {
+    const res = await fetch(`${BASE}/order-messages?since=${since}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.messages || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function dismissMessages(ids) {
+  const res = await fetch(`${BASE}/dismiss-messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  return res.json();
+}
+
+export async function getWaContacts() {
+  try {
+    const res = await fetch(`${BASE}/contacts`);
+    const data = await res.json();
+    return data.contacts || {};
+  } catch {
+    return {};
+  }
+}
+
+export async function setWaContact(phone, name, route) {
+  const res = await fetch(`${BASE}/contacts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, name, route }),
+  });
+  return res.json();
+}
+
+export async function removeWaContact(phone) {
+  const res = await fetch(`${BASE}/contacts/${encodeURIComponent(phone)}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}

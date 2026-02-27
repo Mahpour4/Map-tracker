@@ -70,6 +70,54 @@ app.post('/api/whatsapp/send-report', async (req, res) => {
   }
 });
 
+// ── Order Group Message Endpoints ────────────────────────────────────────────
+
+// Set which WhatsApp group to listen to for orders
+app.post('/api/whatsapp/set-order-group', (req, res) => {
+  const { groupId } = req.body;
+  if (!groupId) return res.status(400).json({ error: 'groupId is required' });
+  whatsapp.setOrderGroup(groupId);
+  res.json({ success: true, groupId });
+});
+
+// Get current order group
+app.get('/api/whatsapp/order-group', (req, res) => {
+  res.json({ groupId: whatsapp.getOrderGroup() });
+});
+
+// Get buffered order messages (optionally since a timestamp)
+app.get('/api/whatsapp/order-messages', (req, res) => {
+  const since = parseInt(req.query.since) || 0;
+  const messages = whatsapp.getOrderMessages(since);
+  res.json({ messages });
+});
+
+// Dismiss order messages
+app.post('/api/whatsapp/dismiss-messages', (req, res) => {
+  const { ids } = req.body; // array of message IDs, or empty to clear all
+  whatsapp.dismissMessages(ids || []);
+  res.json({ success: true });
+});
+
+// Set phone → driver/route mapping
+app.post('/api/whatsapp/contacts', (req, res) => {
+  const { phone, name, route } = req.body;
+  if (!phone) return res.status(400).json({ error: 'phone is required' });
+  whatsapp.setContact(phone, name || '', route || '');
+  res.json({ success: true });
+});
+
+// Get all contacts
+app.get('/api/whatsapp/contacts', (req, res) => {
+  res.json({ contacts: whatsapp.getContacts() });
+});
+
+// Remove a contact mapping
+app.delete('/api/whatsapp/contacts/:phone', (req, res) => {
+  whatsapp.removeContact(req.params.phone);
+  res.json({ success: true });
+});
+
 // ── GlobalWorx Auto-Accept Endpoints ─────────────────────────────────────────
 
 // Check if GlobalWorx acceptance service (Puppeteer/Chrome) is available

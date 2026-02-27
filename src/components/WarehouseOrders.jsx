@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { t } from '../locales/translations';
 import { PRODUCT_CATALOG, PRODUCT_CATEGORIES } from '../data/productCatalog';
@@ -6,8 +6,13 @@ import {
   getGoogleClientId, setGoogleClientId,
   getSpreadsheetId, setSpreadsheetId,
   isGoogleSheetsConfigured, isSignedIn, signOut, authenticate,
-  pushOrderToSheet, getOrderFromSheet, listSheetTabs, buildTabName, readSheetCases, getSheetTabUrl, getSpreadsheetUrl, hasSpreadsheetId, createTemplateCopy,
+  pushOrderToSheet, getOrderFromSheet, listSheetTabs, buildTabName, readSheetCases, getSheetTabUrl, getSpreadsheetUrl, hasSpreadsheetId, createTemplateCopy, renameSheetTab,
 } from '../services/googleSheetsService';
+import {
+  getWhatsAppStatus, getWhatsAppGroups, getOrderMessages,
+  dismissMessages, setOrderGroup, getOrderGroup,
+  getWaContacts, setWaContact, removeWaContact,
+} from '../services/whatsappService';
 
 const ROUTE_INFO = {
   '200': { driver: 'Jose Nunez', custNum: '00000956', whRouteCode: '360099', drvRouteCode: '360200' },
@@ -60,6 +65,21 @@ export default function WarehouseOrders() {
   const [loadAmount, setLoadAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [statsRange, setStatsRange] = useState('all');
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const [lastAutoSaved, setLastAutoSaved] = useState(null);
+  const autoSaveRef = useRef(null);
+
+  // WhatsApp inbox state
+  const [waMessages, setWaMessages] = useState([]);
+  const [waContacts, setWaContacts] = useState({});
+  const [waGroups, setWaGroups] = useState([]);
+  const [waOrderGroupId, setWaOrderGroupId] = useState(null);
+  const [waStatus, setWaStatus] = useState('offline');
+  const [waLastPoll, setWaLastPoll] = useState(0);
+  const [waEditContact, setWaEditContact] = useState(null); // { phone, name, route }
+  const [waShowSetup, setWaShowSetup] = useState(false);
+  const waPollerRef = useRef(null);
 
   // Google Sheets sync state
   const [showSettings, setShowSettings] = useState(false);
@@ -182,7 +202,7 @@ export default function WarehouseOrders() {
 
   // Totals
   const totals = useMemo(() => {
-    let totalCases = 0, totalUnits = 0, totalGross = 0;
+    let totalCases = 0, totalUnits = 0, totalCost = 0, totalGross = 0;
     // Get all SKUs that have cases or units
     const allSkus = new Set([...Object.keys(cases), ...Object.keys(units)]);
     allSkus.forEach(sku => {
@@ -194,12 +214,283 @@ export default function WarehouseOrders() {
           totalCases += caseQty;
           const caseUnits = caseQty * product.upc;
           totalUnits += caseUnits + unitQty;
-          totalGross += (caseUnits + unitQty) * product.price;
+          totalCost += (caseUnits + unitQty) * product.price;
+          totalGross += (caseUnits + unitQty) * (product.retail || product.price);
         }
       }
     });
-    return { totalCases, totalUnits, totalGross };
+    return { totalCases, totalUnits, totalCost, totalGross };
   }, [cases, units]);
+
+  // Stats computations
+  const statsData = useMemo(() => {
+    // Filter orders by date range
+    const now = new Date();
+    const filtered = orders.filter(o => {
+      if (statsRange === 'all') return true;
+      const d = new Date(o.date);
+      const days = statsRange === '7' ? 7 : statsRange === '30' ? 30 : 90;
+      return (now - d) / 86400000 <= days;
+    });
+
+    if (filtered.length === 0) return null;
+
+    // Overview
+    let oCases = 0, oCost = 0, oRevenue = 0, oUnits = 0;
+    filtered.forEach(o => {
+      oCases += o.totals?.totalCases || 0;
+      oUnits += o.totals?.totalUnits || 0;
+      oCost += o.totals?.totalCost || 0;
+      oRevenue += o.totals?.totalGross || 0;
+    });
+    const overview = {
+      totalOrders: filtered.length,
+      totalCases: oCases,
+      totalUnits: oUnits,
+      totalCost: oCost,
+      totalRevenue: oRevenue,
+      grossProfit: oRevenue - oCost,
+      avgCasesPerOrder: filtered.length > 0 ? Math.round(oCases / filtered.length) : 0,
+    };
+
+    // Top products
+    const prodMap = {};
+    filtered.forEach(o => {
+      (o.items || []).forEach(item => {
+        if (!prodMap[item.sku]) prodMap[item.sku] = { sku: item.sku, desc: item.desc, category: item.category, cases: 0, units: 0, cost: 0, revenue: 0, orderCount: 0 };
+        prodMap[item.sku].cases += item.cases || 0;
+        prodMap[item.sku].units += item.units || 0;
+        prodMap[item.sku].cost += (item.units || 0) * (item.price || 0);
+        const cat = PRODUCT_CATALOG.find(p => p.sku === item.sku);
+        prodMap[item.sku].revenue += (item.units || 0) * (cat?.retail || item.price || 0);
+        prodMap[item.sku].orderCount += 1;
+      });
+    });
+    const topProducts = Object.values(prodMap).sort((a, b) => b.cases - a.cases);
+
+    // Route breakdown
+    const routeMap = {};
+    filtered.forEach(o => {
+      const r = o.routeNumber || 'Unknown';
+      if (!routeMap[r]) routeMap[r] = { route: r, driver: ROUTE_DRIVERS[r] || o.name || '-', orders: 0, cases: 0, units: 0, revenue: 0, cost: 0, dates: [] };
+      routeMap[r].orders += 1;
+      routeMap[r].cases += o.totals?.totalCases || 0;
+      routeMap[r].units += o.totals?.totalUnits || 0;
+      routeMap[r].revenue += o.totals?.totalGross || 0;
+      routeMap[r].cost += o.totals?.totalCost || 0;
+      if (o.date) routeMap[r].dates.push(o.date);
+    });
+    const routeBreakdown = Object.values(routeMap).sort((a, b) => b.cases - a.cases).map(r => ({
+      ...r,
+      avgCases: r.orders > 0 ? Math.round(r.cases / r.orders) : 0,
+      lastOrder: r.dates.sort().reverse()[0] || '-',
+    }));
+
+    // Category mix
+    const catMap = {};
+    filtered.forEach(o => {
+      (o.items || []).forEach(item => {
+        const c = item.category || 'Other';
+        if (!catMap[c]) catMap[c] = { category: c, cases: 0, units: 0, cost: 0, revenue: 0 };
+        catMap[c].cases += item.cases || 0;
+        catMap[c].units += item.units || 0;
+        catMap[c].cost += (item.units || 0) * (item.price || 0);
+        const cat = PRODUCT_CATALOG.find(p => p.sku === item.sku);
+        catMap[c].revenue += (item.units || 0) * (cat?.retail || item.price || 0);
+      });
+    });
+    const categoryMix = Object.values(catMap).sort((a, b) => b.cases - a.cases).map(c => ({
+      ...c,
+      pct: oCases > 0 ? (c.cases / oCases * 100) : 0,
+      margin: c.revenue > 0 ? ((c.revenue - c.cost) / c.revenue * 100) : 0,
+    }));
+
+    // Route favorites (top 5 products per route)
+    const routeFavs = {};
+    filtered.forEach(o => {
+      const r = o.routeNumber || 'Unknown';
+      if (!routeFavs[r]) routeFavs[r] = { route: r, driver: ROUTE_DRIVERS[r] || o.name || '-', products: {} };
+      (o.items || []).forEach(item => {
+        if (!routeFavs[r].products[item.sku]) routeFavs[r].products[item.sku] = { sku: item.sku, desc: item.desc, cases: 0 };
+        routeFavs[r].products[item.sku].cases += item.cases || 0;
+      });
+    });
+    const routeFavorites = Object.values(routeFavs).map(r => ({
+      ...r,
+      top5: Object.values(r.products).sort((a, b) => b.cases - a.cases).slice(0, 5),
+    })).sort((a, b) => a.route.localeCompare(b.route));
+
+    // Order frequency per route
+    const orderFrequency = Object.values(routeMap).map(r => {
+      const sorted = r.dates.sort();
+      let avgDays = 0;
+      if (sorted.length > 1) {
+        let totalDays = 0;
+        for (let i = 1; i < sorted.length; i++) {
+          totalDays += (new Date(sorted[i]) - new Date(sorted[i - 1])) / 86400000;
+        }
+        avgDays = Math.round(totalDays / (sorted.length - 1));
+      }
+      const lastDate = sorted[sorted.length - 1];
+      const daysSince = lastDate ? Math.round((now - new Date(lastDate)) / 86400000) : null;
+      return { route: r.route, driver: r.driver, orders: r.orders, avgDays, lastOrder: lastDate || '-', daysSince };
+    }).sort((a, b) => a.route.localeCompare(b.route));
+
+    // Order Forecasting — uses ALL orders (not filtered) for prediction accuracy
+    const forecast = (() => {
+      if (orders.length < 2) return null;
+      const now2 = new Date();
+
+      // Per-route forecast
+      const routeForecasts = Object.entries(routeMap).map(([route, data]) => {
+        const sorted = [...data.dates].sort();
+        const driver = data.driver;
+
+        // Avg days between orders
+        let avgDays = 0;
+        if (sorted.length > 1) {
+          let total = 0;
+          for (let i = 1; i < sorted.length; i++) {
+            total += (new Date(sorted[i]) - new Date(sorted[i - 1])) / 86400000;
+          }
+          avgDays = Math.round(total / (sorted.length - 1));
+        }
+
+        // Predicted next order date
+        const lastDate = sorted[sorted.length - 1];
+        const predictedDate = lastDate && avgDays > 0
+          ? new Date(new Date(lastDate).getTime() + avgDays * 86400000)
+          : null;
+        const daysSince = lastDate ? Math.round((now2 - new Date(lastDate)) / 86400000) : null;
+        const daysUntil = predictedDate ? Math.round((predictedDate - now2) / 86400000) : null;
+        const isOverdue = daysUntil !== null && daysUntil < 0;
+        const isDueSoon = daysUntil !== null && daysUntil >= 0 && daysUntil <= 2;
+
+        // Suggested order — avg cases per product across orders for this route
+        const routeOrders = orders.filter(o => o.routeNumber === route);
+        const prodTotals = {};
+        routeOrders.forEach(o => {
+          (o.items || []).forEach(item => {
+            if (!prodTotals[item.sku]) prodTotals[item.sku] = { sku: item.sku, desc: item.desc, category: item.category, totalCases: 0, count: 0 };
+            if (item.cases > 0) {
+              prodTotals[item.sku].totalCases += item.cases;
+              prodTotals[item.sku].count += 1;
+            }
+          });
+        });
+        const suggestedItems = Object.values(prodTotals)
+          .filter(p => p.count > 0)
+          .map(p => ({ ...p, avgCases: Math.round(p.totalCases / p.count), frequency: Math.round(p.count / routeOrders.length * 100) }))
+          .sort((a, b) => b.avgCases - a.avgCases);
+
+        const suggestedTotalCases = suggestedItems.reduce((sum, p) => sum + p.avgCases, 0);
+
+        return {
+          route, driver, avgDays, lastDate, predictedDate,
+          daysSince, daysUntil, isOverdue, isDueSoon,
+          orderCount: routeOrders.length,
+          suggestedItems, suggestedTotalCases,
+        };
+      }).sort((a, b) => {
+        // Sort: overdue first, then due soon, then by days until
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+        if (a.isDueSoon && !b.isDueSoon) return -1;
+        if (!a.isDueSoon && b.isDueSoon) return 1;
+        return (a.daysUntil || 999) - (b.daysUntil || 999);
+      });
+
+      // Weekly demand — total expected cases in the next 7 days
+      const weeklyDemand = {};
+      routeForecasts.forEach(rf => {
+        if (rf.daysUntil !== null && rf.daysUntil <= 7) {
+          rf.suggestedItems.forEach(item => {
+            if (!weeklyDemand[item.sku]) weeklyDemand[item.sku] = { sku: item.sku, desc: item.desc, category: item.category, cases: 0, routes: [] };
+            weeklyDemand[item.sku].cases += item.avgCases;
+            weeklyDemand[item.sku].routes.push(rf.route);
+          });
+        }
+      });
+      const weeklyItems = Object.values(weeklyDemand).sort((a, b) => b.cases - a.cases);
+      const weeklyTotalCases = weeklyItems.reduce((sum, p) => sum + p.cases, 0);
+
+      return { routeForecasts, weeklyItems, weeklyTotalCases };
+    })();
+
+    // Restock Planner — usage this week + projected reorder with 10% buffer
+    const restock = (() => {
+      if (orders.length === 0) return null;
+      const now3 = new Date();
+      const weekAgo = new Date(now3.getTime() - 7 * 86400000);
+      const twoWeeksAgo = new Date(now3.getTime() - 14 * 86400000);
+
+      // This week's usage (last 7 days)
+      const thisWeekOrders = orders.filter(o => new Date(o.date) >= weekAgo);
+      const lastWeekOrders = orders.filter(o => {
+        const d = new Date(o.date);
+        return d >= twoWeeksAgo && d < weekAgo;
+      });
+
+      // Aggregate usage per product
+      const usageMap = {};
+      const addUsage = (orderList, key) => {
+        orderList.forEach(o => {
+          (o.items || []).forEach(item => {
+            if (!usageMap[item.sku]) {
+              usageMap[item.sku] = { sku: item.sku, desc: item.desc, category: item.category, thisWeek: 0, lastWeek: 0, projected: 0, reorder: 0 };
+            }
+            const totalUnits = (item.cases || 0) * (item.upc || 1) + (item.units || 0);
+            usageMap[item.sku][key] += item.cases || 0;
+          });
+        });
+      };
+      addUsage(thisWeekOrders, 'thisWeek');
+      addUsage(lastWeekOrders, 'lastWeek');
+
+      // Calculate weekly avg across ALL history for better projection
+      const allWeeks = {};
+      orders.forEach(o => {
+        const weekNum = Math.floor((now3 - new Date(o.date)) / (7 * 86400000));
+        (o.items || []).forEach(item => {
+          if (!allWeeks[item.sku]) allWeeks[item.sku] = {};
+          if (!allWeeks[item.sku][weekNum]) allWeeks[item.sku][weekNum] = 0;
+          allWeeks[item.sku][weekNum] += item.cases || 0;
+        });
+      });
+
+      // Projected = avg weekly usage; Reorder = projected * 1.10
+      Object.keys(usageMap).forEach(sku => {
+        const weeks = allWeeks[sku] || {};
+        const weekValues = Object.values(weeks);
+        const avgWeekly = weekValues.length > 0 ? weekValues.reduce((a, b) => a + b, 0) / weekValues.length : 0;
+        usageMap[sku].projected = Math.round(avgWeekly * 10) / 10;
+        usageMap[sku].reorder = Math.ceil(avgWeekly * 1.10);
+        usageMap[sku].trend = usageMap[sku].thisWeek > usageMap[sku].lastWeek ? 'up' : usageMap[sku].thisWeek < usageMap[sku].lastWeek ? 'down' : 'flat';
+      });
+
+      const items = Object.values(usageMap)
+        .filter(p => p.thisWeek > 0 || p.projected > 0)
+        .sort((a, b) => b.reorder - a.reorder);
+
+      const totalThisWeek = items.reduce((s, p) => s + p.thisWeek, 0);
+      const totalReorder = items.reduce((s, p) => s + p.reorder, 0);
+
+      // Group by category
+      const byCategory = {};
+      items.forEach(item => {
+        const cat = item.category || 'Other';
+        if (!byCategory[cat]) byCategory[cat] = { category: cat, thisWeek: 0, reorder: 0, items: 0 };
+        byCategory[cat].thisWeek += item.thisWeek;
+        byCategory[cat].reorder += item.reorder;
+        byCategory[cat].items += 1;
+      });
+      const categories = Object.values(byCategory).sort((a, b) => b.reorder - a.reorder);
+
+      return { items, categories, totalThisWeek, totalReorder, thisWeekOrderCount: thisWeekOrders.length };
+    })();
+
+    return { overview, topProducts, routeBreakdown, categoryMix, routeFavorites, orderFrequency, forecast, restock };
+  }, [orders, statsRange]);
 
   // Save order
   const handleSave = useCallback(() => {
@@ -250,6 +541,77 @@ export default function WarehouseOrders() {
     }
     setTimeout(() => setSaving(false), 500);
   }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder]);
+
+  // Auto-save every 30 seconds when there are unsaved changes
+  useEffect(() => {
+    autoSaveRef.current = handleSave;
+  }, [handleSave]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (selectedRoute && (totals.totalCases > 0 || totals.totalUnits > 0)) {
+        autoSaveRef.current();
+        setLastAutoSaved(new Date());
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [selectedRoute, totals.totalCases, totals.totalUnits]);
+
+  // WhatsApp inbox — poll for messages every 5s when on queue tab
+  useEffect(() => {
+    if (tab !== 'queue') return;
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const [statusRes, msgs, contacts, groupId] = await Promise.all([
+          getWhatsAppStatus(),
+          getOrderMessages(0),
+          getWaContacts(),
+          getOrderGroup(),
+        ]);
+        if (cancelled) return;
+        setWaStatus(statusRes.status || 'offline');
+        setWaMessages(msgs);
+        setWaContacts(contacts);
+        setWaOrderGroupId(groupId);
+        setWaLastPoll(Date.now());
+      } catch { /* service offline */ }
+    };
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [tab]);
+
+  // Load WhatsApp groups when setup is opened
+  useEffect(() => {
+    if (!waShowSetup) return;
+    getWhatsAppGroups().then(g => setWaGroups(g)).catch(() => {});
+  }, [waShowSetup]);
+
+  // Group messages by phone number
+  const waGrouped = useMemo(() => {
+    const groups = {};
+    waMessages.forEach(m => {
+      if (!groups[m.from]) groups[m.from] = [];
+      groups[m.from].push(m);
+    });
+    // Sort each group by timestamp desc
+    Object.values(groups).forEach(arr => arr.sort((a, b) => b.timestamp - a.timestamp));
+    return groups;
+  }, [waMessages]);
+
+  const handleAssignContact = async (phone) => {
+    if (!waEditContact) return;
+    await setWaContact(phone, waEditContact.name, waEditContact.route);
+    setWaContacts(prev => ({ ...prev, [phone]: { name: waEditContact.name, route: waEditContact.route } }));
+    setWaEditContact(null);
+  };
+
+  const handleDismiss = async (ids) => {
+    await dismissMessages(ids);
+    setWaMessages(prev => prev.filter(m => !ids.includes(m.id)));
+  };
 
   // Toggle category collapse
   const toggleCat = (cat) => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -530,19 +892,42 @@ export default function WarehouseOrders() {
     setSyncing(false);
   }, [cases]);
 
-  // Parse a sheet tab name like "200 Jose Nunez 2/26/26" into { route, driver, date, tabName }
+  // Parse a sheet tab name into { route, driver, date, tabName }
+  // Supports: "200 Jose Nunez 2/26/26", "200 Jose 2.26.26", "Eastern shore 2.26.26", "Eastern shore 2/26/26"
   const parseTabName = useCallback((tabName) => {
-    // Pattern: routeNum driverName M/DD/YY
-    const match = tabName.match(/^(\d{3})\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})$/);
-    if (match) {
-      return { route: match[1], driver: match[2], date: match[3], tabName };
+    if (/^template$/i.test(tabName.trim())) return null;
+    // Date pattern: M/DD/YY or M.DD.YY or M-DD-YY
+    const datePattern = /(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})$/;
+    const dateMatch = tabName.match(datePattern);
+    if (!dateMatch) return null;
+    const date = dateMatch[1].replace(/\./g, '/').replace(/-/g, '/');
+    const prefix = tabName.slice(0, dateMatch.index).trim();
+    // Check if prefix starts with a 3-digit route number
+    const routeMatch = prefix.match(/^(\d{3})\s+(.+)$/);
+    if (routeMatch) {
+      return { route: routeMatch[1], driver: routeMatch[2].trim(), date, tabName };
     }
-    // Fallback: try just route + date
-    const match2 = tabName.match(/^(\d{3})\s+(\d{1,2}\/\d{1,2}\/\d{2,4})$/);
-    if (match2) {
-      return { route: match2[1], driver: ROUTE_DRIVERS[match2[1]] || 'Unknown', date: match2[2], tabName };
+    // No route number — use the prefix as driver/name, try to find route
+    if (prefix) {
+      const foundRoute = Object.entries(ROUTE_INFO).find(([, info]) =>
+        info.driver && prefix.toLowerCase().includes(info.driver.toLowerCase())
+      );
+      return { route: foundRoute ? foundRoute[0] : '—', driver: prefix, date, tabName };
     }
-    return null; // not an order tab (e.g. "Template")
+    return null;
+  }, []);
+
+  // Check if a tab name matches standard format: "200 Jose Nunez 2/26/26"
+  const isStandardFormat = useCallback((tabName) => {
+    return /^\d{3}\s+.+?\s+\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(tabName);
+  }, []);
+
+  // Build the correct standard tab name from parsed data
+  const buildStandardName = useCallback((parsed) => {
+    if (!parsed || parsed.route === '—') return null;
+    const info = ROUTE_INFO[parsed.route];
+    const driver = info?.driver || parsed.driver;
+    return `${parsed.route} ${driver} ${parsed.date}`;
   }, []);
 
   // Load sheet tabs for history view + recent dropdown
@@ -572,6 +957,23 @@ export default function WarehouseOrders() {
     }
     setHistoryLoading(false);
   }, []);
+
+  // Rename a sheet tab to standard format
+  const handleFixTabName = useCallback(async (entry, parsed) => {
+    const sheetId = tabSheetIds[entry.tabName];
+    if (sheetId == null) return;
+    const standard = buildStandardName(parsed);
+    if (!standard || standard === entry.tabName) return;
+    try {
+      setSyncMsg({ type: 'success', text: `Renaming "${entry.tabName}" → "${standard}"...` });
+      await renameSheetTab(sheetId, standard);
+      setSyncMsg({ type: 'success', text: `Renamed to "${standard}"` });
+      setTimeout(() => setSyncMsg(null), 3000);
+      loadHistoryTabs();
+    } catch (err) {
+      setSyncMsg({ type: 'error', text: `Rename failed: ${err.message}` });
+    }
+  }, [tabSheetIds, buildStandardName, loadHistoryTabs]);
 
   // Load just the recent tabs dropdown (lightweight, for order entry page)
   const loadRecentTabs = useCallback(async () => {
@@ -637,64 +1039,286 @@ export default function WarehouseOrders() {
   }, [historyTabs, parseTabName]);
 
   const sheetsConfigured = isGoogleSheetsConfigured();
+  const isSetupComplete = settingsRole && hasSpreadsheetId() && isSignedIn();
+
+  // Gate: show setup screen if role or sheet not configured
+  // Setup state for sign-in step
+  const [setupSigningIn, setSetupSigningIn] = useState(false);
+  const [setupSignInError, setSetupSignInError] = useState('');
+
+  if (!isSetupComplete) {
+    const step2Done = hasSpreadsheetId() && (settingsRole === 'worker' ? !!workerName : true);
+    const step3Done = isSignedIn();
+
+    const handleSetupSignIn = async () => {
+      setSetupSigningIn(true);
+      setSetupSignInError('');
+      try {
+        // Save config first
+        if (settingsRole === 'worker') {
+          localStorage.setItem('wo_worker_name', workerName);
+          setSpreadsheetId(spreadsheetId);
+        } else {
+          setGoogleClientId(clientId);
+          setSpreadsheetId(spreadsheetId);
+        }
+        await authenticate();
+        setSetupSigningIn(false);
+      } catch (err) {
+        setSetupSigningIn(false);
+        setSetupSignInError(err.message || 'Sign in failed');
+      }
+    };
+
+    return (
+      <div className="wo-page">
+        <div className="wo-setup-gate">
+          <div className="wo-setup-card">
+            <h2>{lang === 'es' ? 'Configuracion Inicial' : 'First Time Setup'}</h2>
+
+            {/* Step 1: Pick role */}
+            <div className={`wo-setup-step ${settingsRole ? 'wo-setup-done' : 'wo-setup-active'}`}>
+              <div className="wo-setup-step-num">{settingsRole ? '\u2714' : '1'}</div>
+              <div className="wo-setup-step-content">
+                <h3>{lang === 'es' ? '¿Quien eres?' : 'Who are you?'}</h3>
+                {!settingsRole ? (
+                  <div className="wo-role-options">
+                    <button className="wo-role-btn wo-role-worker" onClick={() => { setSettingsRole('worker'); localStorage.setItem('wo_role', 'worker'); }}>
+                      <span className="wo-role-icon">&#x1F477;</span>
+                      <span className="wo-role-name">{lang === 'es' ? 'Trabajador' : 'Worker'}</span>
+                      <span className="wo-role-desc">{lang === 'es' ? 'Crear y editar ordenes' : 'Create & edit orders'}</span>
+                    </button>
+                    <button className="wo-role-btn wo-role-admin" onClick={() => { setSettingsRole('admin'); localStorage.setItem('wo_role', 'admin'); }}>
+                      <span className="wo-role-icon">&#x1F4BC;</span>
+                      <span className="wo-role-name">{lang === 'es' ? 'Admin / Dueño' : 'Owner / Admin'}</span>
+                      <span className="wo-role-desc">{lang === 'es' ? 'Control total' : 'Full control'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="wo-setup-selected">
+                    <span>{settingsRole === 'worker' ? '\u{1F477}' : '\u{1F4BC}'} {settingsRole === 'worker' ? (lang === 'es' ? 'Trabajador' : 'Worker') : (lang === 'es' ? 'Admin' : 'Admin')}</span>
+                    <button className="wo-role-change" onClick={() => { setSettingsRole(''); localStorage.removeItem('wo_role'); }}>
+                      {lang === 'es' ? 'Cambiar' : 'Change'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Step 2: Enter details */}
+            {settingsRole && (
+              <div className={`wo-setup-step ${step2Done ? 'wo-setup-done' : 'wo-setup-active'}`}>
+                <div className="wo-setup-step-num">{step2Done ? '\u2714' : '2'}</div>
+                <div className="wo-setup-step-content">
+                  {settingsRole === 'worker' ? (
+                    <>
+                      <h3>{lang === 'es' ? 'Tu informacion' : 'Your Info'}</h3>
+                      <p className="wo-settings-desc">{lang === 'es' ? 'Pide el link del Google Sheet a tu admin.' : 'Ask your admin for the Google Sheet link.'}</p>
+                      <label className="wo-settings-label">
+                        {lang === 'es' ? 'Tu nombre' : 'Your Name'}
+                        <input
+                          type="text"
+                          value={workerName}
+                          onChange={e => setWorkerName(e.target.value)}
+                          placeholder={lang === 'es' ? 'Ej: Johnny' : 'E.g. Johnny'}
+                          className="wo-settings-url"
+                        />
+                      </label>
+                      <label className="wo-settings-label" style={{ marginTop: 8 }}>
+                        {lang === 'es' ? 'Link del Google Sheet' : 'Google Sheet Link'}
+                        <input
+                          type="text"
+                          value={spreadsheetId}
+                          onChange={e => {
+                            let val = e.target.value;
+                            const urlMatch = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+                            if (urlMatch) val = urlMatch[1];
+                            setSpreadsheetIdState(val);
+                          }}
+                          placeholder={lang === 'es' ? 'Pegar link del Google Sheet' : 'Paste Google Sheet link here'}
+                          className="wo-settings-url"
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <h3>{lang === 'es' ? 'Conexion' : 'Connection'}</h3>
+                      <label className="wo-settings-label">
+                        {t(lang, 'spreadsheetId')}
+                        <input
+                          type="text"
+                          value={spreadsheetId}
+                          onChange={e => {
+                            let val = e.target.value;
+                            const urlMatch = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+                            if (urlMatch) val = urlMatch[1];
+                            setSpreadsheetIdState(val);
+                          }}
+                          placeholder={lang === 'es' ? 'Pegar ID o URL del Google Sheet' : 'Paste ID or full Google Sheets URL'}
+                          className="wo-settings-url"
+                        />
+                      </label>
+                      <label className="wo-settings-label" style={{ marginTop: 8 }}>
+                        {t(lang, 'oauthClientId')}
+                        <input
+                          type="text"
+                          value={clientId}
+                          onChange={e => setClientIdState(e.target.value)}
+                          placeholder="xxxx.apps.googleusercontent.com"
+                          className="wo-settings-url"
+                        />
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Sign in with Google */}
+            {settingsRole && step2Done && (
+              <div className={`wo-setup-step ${step3Done ? 'wo-setup-done' : 'wo-setup-active'}`}>
+                <div className="wo-setup-step-num">{step3Done ? '\u2714' : '3'}</div>
+                <div className="wo-setup-step-content">
+                  <h3>{lang === 'es' ? 'Iniciar sesion con Google' : 'Sign in with Google'}</h3>
+                  <p className="wo-settings-desc">
+                    {lang === 'es'
+                      ? 'Solo necesitas hacer esto una vez. Conecta tu cuenta de Google para crear y editar ordenes.'
+                      : 'You only need to do this once. Connect your Google account to create and edit orders.'}
+                  </p>
+                  {step3Done ? (
+                    <div style={{ color: '#34a853', fontWeight: 600, fontSize: '0.9rem' }}>
+                      &#x2714; {lang === 'es' ? 'Conectado — listo!' : 'Connected — ready!'}
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        className="wo-google-signin-btn"
+                        onClick={handleSetupSignIn}
+                        disabled={setupSigningIn}
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" style={{ marginRight: 8 }}>
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        {setupSigningIn
+                          ? (lang === 'es' ? 'Conectando...' : 'Connecting...')
+                          : (lang === 'es' ? 'Iniciar sesion con Google' : 'Sign in with Google')}
+                      </button>
+                      {setupSignInError && (
+                        <div style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: 6 }}>{setupSignInError}</div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Language toggle at bottom */}
+            <button
+              className="wo-lang-toggle"
+              style={{ marginTop: 20 }}
+              onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+            >
+              <span className="wo-lang-flag">
+                {language === 'en' ? (
+                  <svg viewBox="0 0 60 40" width="28" height="19">
+                    <rect width="60" height="13.3" fill="#D52B1E"/>
+                    <rect y="13.3" width="60" height="13.4" fill="#F9E300"/>
+                    <rect y="26.7" width="60" height="13.3" fill="#007934"/>
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 60 40" width="28" height="19">
+                    <rect width="60" height="40" fill="#fff"/>
+                    <rect width="60" height="5.7" fill="#B22234"/>
+                    <rect y="7.7" width="60" height="5.7" fill="#B22234"/>
+                    <rect y="15.4" width="60" height="5.7" fill="#B22234"/>
+                    <rect y="23.1" width="60" height="5.7" fill="#B22234"/>
+                    <rect y="30.8" width="60" height="5.7" fill="#B22234"/>
+                    <rect y="3.1" width="60" height="1.5" fill="#fff" opacity="0"/>
+                    <rect width="24" height="21.5" fill="#3C3B6E"/>
+                    <g fill="#fff">{[...Array(5)].map((_,r)=>[...Array(6)].map((_,c)=><circle key={`${r}${c}`} cx={2+c*4} cy={2+r*4.3} r="1"/>))}{[...Array(4)].map((_,r)=>[...Array(5)].map((_,c)=><circle key={`s${r}${c}`} cx={4+c*4} cy={4.15+r*4.3} r="1"/>))}</g>
+                  </svg>
+                )}
+              </span>
+              <span className="wo-lang-label">{language === 'en' ? 'Español' : 'English'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="wo-page">
       <div className="wo-header">
-        <h2>{t(lang, 'warehouseOrders')}</h2>
-        <button
-          className="wo-lang-toggle"
-          onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
-          title={language === 'en' ? 'Cambiar a Español' : 'Switch to English'}
-        >
-          <span className="wo-lang-flag">
-            {language === 'en' ? (
-              <svg viewBox="0 0 60 40" width="28" height="19">
-                <rect width="60" height="13.3" fill="#D52B1E"/>
-                <rect y="13.3" width="60" height="13.4" fill="#F9E300"/>
-                <rect y="26.7" width="60" height="13.3" fill="#007934"/>
-              </svg>
-            ) : (
-              <svg viewBox="0 0 60 40" width="28" height="19">
-                <rect width="60" height="40" fill="#fff"/>
-                <rect width="60" height="5.7" fill="#B22234"/>
-                <rect y="7.7" width="60" height="5.7" fill="#B22234"/>
-                <rect y="15.4" width="60" height="5.7" fill="#B22234"/>
-                <rect y="23.1" width="60" height="5.7" fill="#B22234"/>
-                <rect y="30.8" width="60" height="5.7" fill="#B22234"/>
-                <rect y="3.1" width="60" height="1.5" fill="#fff" opacity="0"/>
-                <rect width="24" height="21.5" fill="#3C3B6E"/>
-                <g fill="#fff">{[...Array(5)].map((_,r)=>[...Array(6)].map((_,c)=><circle key={`${r}${c}`} cx={2+c*4} cy={2+r*4.3} r="1"/>))}{[...Array(4)].map((_,r)=>[...Array(5)].map((_,c)=><circle key={`s${r}${c}`} cx={4+c*4} cy={4.15+r*4.3} r="1"/>))}</g>
-              </svg>
-            )}
-          </span>
-          <span className="wo-lang-label">{language === 'en' ? 'Español' : 'English'}</span>
-        </button>
-        <div className="wo-tabs">
-          <button className={`wo-tab ${tab === 'entry' ? 'active' : ''}`} onClick={() => setTab('entry')}>{t(lang, 'orderEntry')}</button>
-          <button className={`wo-tab ${tab === 'queue' ? 'active' : ''}`} onClick={() => setTab('queue')}>{t(lang, 'orderQueue')} ({orders.length})</button>
-          <button className={`wo-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => { setTab('history'); if (isGoogleSheetsConfigured()) loadHistoryTabs(); }}>{t(lang, 'driverHistory')}</button>
-          <button
-            className={`wo-tab wo-tab-settings ${showSettings ? 'active' : ''}`}
-            onClick={() => setShowSettings(!showSettings)}
-            title="Google Sheets Settings"
-          >
-            {sheetsConfigured ? `\u2601 ${t(lang, 'sheets')}` : `\u2699 ${t(lang, 'setup')}`}
+        <div className="wo-header-top">
+          <h2>{t(lang, 'warehouseOrders')}</h2>
+          <div className="wo-header-right">
+            <button
+              className="wo-lang-toggle"
+              onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+              title={language === 'en' ? 'Cambiar a Español' : 'Switch to English'}
+            >
+              <span className="wo-lang-flag">
+                {language === 'en' ? (
+                  <svg viewBox="0 0 60 40" width="24" height="16">
+                    <rect width="60" height="13.3" fill="#D52B1E"/>
+                    <rect y="13.3" width="60" height="13.4" fill="#F9E300"/>
+                    <rect y="26.7" width="60" height="13.3" fill="#007934"/>
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 60 40" width="24" height="16">
+                    <rect width="60" height="40" fill="#fff"/>
+                    <rect width="60" height="5.7" fill="#B22234"/>
+                    <rect y="7.7" width="60" height="5.7" fill="#B22234"/>
+                    <rect y="15.4" width="60" height="5.7" fill="#B22234"/>
+                    <rect y="23.1" width="60" height="5.7" fill="#B22234"/>
+                    <rect y="30.8" width="60" height="5.7" fill="#B22234"/>
+                    <rect width="24" height="21.5" fill="#3C3B6E"/>
+                    <g fill="#fff">{[...Array(5)].map((_,r)=>[...Array(6)].map((_,c)=><circle key={`${r}${c}`} cx={2+c*4} cy={2+r*4.3} r="1"/>))}{[...Array(4)].map((_,r)=>[...Array(5)].map((_,c)=><circle key={`s${r}${c}`} cx={4+c*4} cy={4.15+r*4.3} r="1"/>))}</g>
+                  </svg>
+                )}
+              </span>
+              <span className="wo-lang-label">{language === 'en' ? 'ES' : 'EN'}</span>
+            </button>
+            <button
+              className={`wo-header-btn ${showSettings ? 'active' : ''}`}
+              onClick={() => setShowSettings(!showSettings)}
+              title="Google Sheets Settings"
+            >
+              {sheetsConfigured ? '\u2601' : '\u2699'}
+            </button>
+            <button
+              className={`wo-header-btn ${isAdmin ? 'wo-header-btn-admin' : ''}`}
+              onClick={() => {
+                if (isAdmin) {
+                  setIsAdmin(false);
+                } else {
+                  const pwd = window.prompt('Enter admin password:');
+                  if (pwd === '1234') setIsAdmin(true);
+                  else if (pwd !== null) alert('Incorrect password');
+                }
+              }}
+              title={isAdmin ? 'Admin mode active — click to lock' : 'Unlock admin mode'}
+            >
+              {isAdmin ? '\uD83D\uDD13' : '\uD83D\uDD12'}
+            </button>
+          </div>
+        </div>
+        <div className="wo-nav">
+          <button className={`wo-nav-btn ${tab === 'entry' ? 'active' : ''}`} onClick={() => setTab('entry')}>
+            <span className="wo-nav-icon">{'\u{1F4CB}'}</span> {t(lang, 'orderEntry')}
           </button>
-          <button
-            className={`wo-tab ${isAdmin ? 'wo-tab-admin-active' : ''}`}
-            onClick={() => {
-              if (isAdmin) {
-                setIsAdmin(false);
-              } else {
-                const pwd = window.prompt('Enter admin password:');
-                if (pwd === '1234') setIsAdmin(true);
-                else if (pwd !== null) alert('Incorrect password');
-              }
-            }}
-            title={isAdmin ? 'Admin mode active — click to lock' : 'Unlock admin mode'}
-          >
-            {isAdmin ? '\uD83D\uDD13 Admin' : '\uD83D\uDD12 Admin'}
+          <button className={`wo-nav-btn ${tab === 'queue' ? 'active' : ''}`} onClick={() => setTab('queue')}>
+            <span className="wo-nav-icon">{'\u{1F4E6}'}</span> {t(lang, 'orderQueue')} <span className="wo-nav-badge">{orders.length}</span>
+          </button>
+          <button className={`wo-nav-btn ${tab === 'history' ? 'active' : ''}`} onClick={() => { setTab('history'); if (isGoogleSheetsConfigured()) loadHistoryTabs(); }}>
+            <span className="wo-nav-icon">{'\u{1F4C5}'}</span> {t(lang, 'driverHistory')}
+          </button>
+          <button className={`wo-nav-btn ${tab === 'stats' ? 'active' : ''}`} onClick={() => setTab('stats')}>
+            <span className="wo-nav-icon">{'\u{1F4CA}'}</span> {t(lang, 'stats')}
           </button>
         </div>
       </div>
@@ -723,7 +1347,7 @@ export default function WarehouseOrders() {
                 <button className="wo-role-btn wo-role-worker" onClick={() => { setSettingsRole('worker'); localStorage.setItem('wo_role', 'worker'); }}>
                   <span className="wo-role-icon">&#x1F477;</span>
                   <span className="wo-role-name">{lang === 'es' ? 'Trabajador' : 'Worker'}</span>
-                  <span className="wo-role-desc">{lang === 'es' ? 'Solo ver ordenes' : 'View orders only'}</span>
+                  <span className="wo-role-desc">{lang === 'es' ? 'Crear y editar ordenes' : 'Create & edit orders'}</span>
                 </button>
                 <button className="wo-role-btn wo-role-admin" onClick={() => { setSettingsRole('admin'); localStorage.setItem('wo_role', 'admin'); }}>
                   <span className="wo-role-icon">&#x1F4BC;</span>
@@ -900,7 +1524,7 @@ export default function WarehouseOrders() {
             >
               {saving ? t(lang, 'saving') : existingOrder ? t(lang, 'updateOrder') : t(lang, 'saveOrder')}
             </button>
-            {existingOrder && <span className="wo-existing-badge">{t(lang, 'editingExisting')}</span>}
+            {lastAutoSaved && <span className="wo-autosave-badge">{lang === 'es' ? 'Guardado' : 'Saved'} {lastAutoSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
             {sheetsConfigured && (
               <label className="wo-recent-label">
                 {lang === 'es' ? 'Ordenes recientes' : 'Recent Orders'}:
@@ -913,7 +1537,6 @@ export default function WarehouseOrders() {
                     if (!tabName) return;
                     const parsed = parseTabName(tabName);
                     if (parsed) {
-                      // Set route, driver, date from tab name
                       setSelectedRoute(parsed.route);
                       setOrderName(parsed.driver);
                       const dp = parsed.date.split('/');
@@ -922,7 +1545,6 @@ export default function WarehouseOrders() {
                         const fullYr = yr < 100 ? 2000 + yr : yr;
                         setOrderDate(`${fullYr}-${String(dp[0]).padStart(2,'0')}-${String(dp[1]).padStart(2,'0')}`);
                       }
-                      // Pull data from sheet
                       handlePullTab(tabName);
                     }
                   }}
@@ -973,7 +1595,7 @@ export default function WarehouseOrders() {
             );
           })()}
 
-          {/* Sync action bar */}
+          {/* Sync action bar — admin: push/pull API buttons, worker: open in browser */}
           {sheetsConfigured && (
             <div className="wo-sync-bar">
               <span className="wo-sync-label">{t(lang, 'googleSheets')}:</span>
@@ -999,6 +1621,23 @@ export default function WarehouseOrders() {
               )}
             </div>
           )}
+          {!sheetsConfigured && hasSpreadsheetId() && selectedRoute && (
+            <div className="wo-sync-bar">
+              <a
+                href={getSpreadsheetUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="wo-open-sheet-btn"
+              >
+                {lang === 'es' ? 'Editar en Google Sheets' : 'Edit in Google Sheets'} &#x2197;
+              </a>
+              {orderName && (
+                <span className="wo-sync-tab-preview">
+                  {lang === 'es' ? 'Busca la pestana' : 'Look for tab'}: {buildTabName(selectedRoute, orderName, orderDate)}
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="wo-search">
             <input
@@ -1009,6 +1648,33 @@ export default function WarehouseOrders() {
             />
             {search && <button id="btn-clear-search" className="wo-clear-search" onClick={() => setSearch('')}>{t(lang, 'clear')}</button>}
           </div>
+          <div className="wo-quick-filters">
+            {PRODUCT_CATEGORIES.map(cat => {
+              const catProducts = PRODUCT_CATALOG.filter(p => p.category === cat);
+              const hasItems = catProducts.some(p => (cases[p.sku] || 0) > 0 || (units[p.sku] || 0) > 0);
+              const isOpen = collapsed[cat] !== undefined ? !collapsed[cat] : hasItems;
+              const shortName = cat.replace(' Products', '').replace(' Small', ' Sm').replace(' Large', ' Lg');
+              return (
+                <button
+                  key={cat}
+                  className={`wo-quick-filter${hasItems ? ' wo-qf-active' : ''}${isOpen ? ' wo-qf-open' : ' wo-qf-collapsed'}`}
+                  onClick={() => toggleCat(cat)}
+                  title={cat}
+                >
+                  {shortName}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedRoute && (
+            <div className="wo-current-order">
+              <span className="wo-current-order-dot"></span>
+              <strong>{selectedRoute}</strong> &mdash; {orderName || (lang === 'es' ? 'Sin chofer' : 'No driver')} &mdash; {orderDate}
+              {existingOrder && <span className="wo-current-order-status">{existingOrder.status === 'synced' ? (lang === 'es' ? 'Sincronizado' : 'Synced') : (lang === 'es' ? 'Pendiente' : 'Pending')}</span>}
+              {lastAutoSaved && <span className="wo-current-order-saved">{lang === 'es' ? 'Guardado' : 'Saved'} {lastAutoSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+            </div>
+          )}
 
           <div className="wo-grid-wrapper">
             <table className="wo-grid">
@@ -1027,7 +1693,7 @@ export default function WarehouseOrders() {
                 <tr className="wo-totals-row">
                   <td className="wo-totals-label"></td>
                   <td colSpan="4" className="wo-totals-label">{t(lang, 'totals')}</td>
-                  <td className="wo-totals-val">{totals.totalUnits > 0 ? `$${(totals.totalGross / totals.totalUnits).toFixed(2)}` : ''}</td>
+                  <td className="wo-totals-val">{totals.totalCost > 0 ? `$${totals.totalCost.toFixed(2)}` : ''}</td>
                   <td className="wo-totals-val">{totals.totalCases || ''}</td>
                   <td className="wo-totals-val">{totals.totalUnits || ''}</td>
                   <td className="wo-totals-val">{totals.totalGross > 0 ? `$${totals.totalGross.toFixed(2)}` : ''}</td>
@@ -1038,8 +1704,11 @@ export default function WarehouseOrders() {
                   return PRODUCT_CATEGORIES.map(cat => {
                   const products = grouped[cat] || [];
                   if (products.length === 0) return null;
-                  const isCollapsed = collapsed[cat];
                   const catCases = products.reduce((sum, p) => sum + (cases[p.sku] || 0), 0);
+                  const catUnits = products.reduce((sum, p) => sum + (units[p.sku] || 0), 0);
+                  const hasAnyItems = catCases > 0 || catUnits > 0;
+                  // When searching, force-expand sections with matches; otherwise default collapse empty sections
+                  const isCollapsed = search ? false : (collapsed[cat] !== undefined ? collapsed[cat] : !hasAnyItems);
                   return (
                     <tbody key={cat}>
                       <tr className="wo-cat-row" onClick={() => toggleCat(cat)}>
@@ -1056,6 +1725,7 @@ export default function WarehouseOrders() {
                         const unitQty = units[p.sku] || 0;
                         const allUnits = (qty * p.upc) + unitQty;
                         const total = allUnits * p.price;
+                        const retailTotal = allUnits * (p.retail || p.price);
                         const hasQty = qty > 0 || unitQty > 0;
                         return (
                           <tr key={p.sku} className={`wo-product-row ${hasQty ? 'wo-has-qty' : ''}`}>
@@ -1064,7 +1734,7 @@ export default function WarehouseOrders() {
                             <td className="wo-col-desc">{p.desc}</td>
                             <td className="wo-col-type">{p.type}</td>
                             <td className="wo-col-upc">{p.upc}</td>
-                            <td className="wo-col-price">${p.price.toFixed(2)}</td>
+                            <td className="wo-col-price" title={`$${p.price.toFixed(2)}/unit`}>{total > 0 ? `$${total.toFixed(2)}` : ''}</td>
                             <td className="wo-col-cases">
                               <input
                                 type="number"
@@ -1087,7 +1757,7 @@ export default function WarehouseOrders() {
                                 tabIndex={0}
                               />
                             </td>
-                            <td className="wo-col-total">{hasQty ? `$${total.toFixed(2)}` : ''}</td>
+                            <td className="wo-col-total">{hasQty ? `$${retailTotal.toFixed(2)}` : ''}</td>
                           </tr>
                         );
                       })}
@@ -1101,6 +1771,7 @@ export default function WarehouseOrders() {
           <div className="wo-summary">
             <span><strong>{totals.totalCases}</strong> {t(lang, 'cases').toLowerCase()}</span>
             <span><strong>{totals.totalUnits}</strong> {lang === 'es' ? 'unidades' : 'units'}</span>
+            <span><strong>${totals.totalCost.toFixed(2)}</strong> {t(lang, 'cost').toLowerCase()}</span>
             <span><strong>${totals.totalGross.toFixed(2)}</strong> {t(lang, 'gross')}</span>
             <button
               id="btn-save-order-bottom"
@@ -1192,6 +1863,144 @@ export default function WarehouseOrders() {
               </tbody>
             </table>
           )}
+
+          {/* ── WhatsApp Inbox ────────────────────────────────────── */}
+          <div className="wa-inbox">
+            <div className="wa-inbox-header">
+              <h3>WhatsApp Inbox</h3>
+              <div className="wa-inbox-controls">
+                <span className={`wa-status-dot wa-status-${waStatus}`} title={waStatus} />
+                <span className="wa-status-label">{waStatus === 'connected' ? 'Connected' : waStatus === 'qr-pending' ? 'Scan QR' : 'Offline'}</span>
+                {waMessages.length > 0 && (
+                  <button className="wa-dismiss-all" onClick={() => handleDismiss(waMessages.map(m => m.id))}>
+                    Clear All ({waMessages.length})
+                  </button>
+                )}
+                <button className="wa-setup-btn" onClick={() => setWaShowSetup(prev => !prev)}>
+                  {waShowSetup ? 'Close' : 'Setup'}
+                </button>
+              </div>
+            </div>
+
+            {/* Setup panel — pick order group + manage contacts */}
+            {waShowSetup && (
+              <div className="wa-setup-panel">
+                <div className="wa-setup-row">
+                  <label>
+                    Order Group:
+                    <select
+                      value={waOrderGroupId || ''}
+                      onChange={async (e) => {
+                        const gid = e.target.value;
+                        if (gid) {
+                          await setOrderGroup(gid);
+                          setWaOrderGroupId(gid);
+                        }
+                      }}
+                    >
+                      <option value="">Select group...</option>
+                      {waGroups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {Object.keys(waContacts).length > 0 && (
+                  <div className="wa-contacts-list">
+                    <strong>Contacts:</strong>
+                    {Object.entries(waContacts).map(([phone, info]) => (
+                      <span key={phone} className="wa-contact-chip">
+                        {info.name || phone}{info.route ? ` (R${info.route})` : ''}
+                        <button onClick={async () => { await removeWaContact(phone); setWaContacts(prev => { const n = { ...prev }; delete n[phone]; return n; }); }}>x</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Messages grouped by phone */}
+            {Object.keys(waGrouped).length === 0 ? (
+              <div className="wa-empty">
+                {waStatus === 'connected'
+                  ? (waOrderGroupId ? 'No messages yet. Waiting for orders...' : 'Set up an order group above to start capturing messages.')
+                  : 'WhatsApp service is offline. Start the service to receive messages.'}
+              </div>
+            ) : (
+              <div className="wa-phone-groups">
+                {Object.entries(waGrouped).map(([phone, msgs]) => {
+                  const contact = waContacts[phone];
+                  const displayName = contact?.name || msgs[0]?.contactName || phone;
+                  const routeNum = contact?.route || msgs[0]?.contactRoute || null;
+                  return (
+                    <div key={phone} className="wa-phone-group">
+                      <div className="wa-phone-header">
+                        <div className="wa-phone-info">
+                          <strong className="wa-phone-name">{displayName}</strong>
+                          {routeNum && <span className="wa-phone-route">Route {routeNum}</span>}
+                          <span className="wa-phone-number">{phone}</span>
+                          <span className="wa-msg-count">{msgs.length} msg{msgs.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="wa-phone-actions">
+                          {!contact && (
+                            <button
+                              className="wa-assign-btn"
+                              onClick={() => setWaEditContact({ phone, name: msgs[0]?.pushName || '', route: '' })}
+                            >
+                              Assign
+                            </button>
+                          )}
+                          <button className="wa-dismiss-group" onClick={() => handleDismiss(msgs.map(m => m.id))}>
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Assign contact modal inline */}
+                      {waEditContact && waEditContact.phone === phone && (
+                        <div className="wa-assign-form">
+                          <input
+                            type="text"
+                            placeholder="Name"
+                            value={waEditContact.name}
+                            onChange={e => setWaEditContact(prev => ({ ...prev, name: e.target.value }))}
+                          />
+                          <select
+                            value={waEditContact.route}
+                            onChange={e => setWaEditContact(prev => ({ ...prev, route: e.target.value }))}
+                          >
+                            <option value="">Route...</option>
+                            {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
+                          </select>
+                          <button className="wa-assign-save" onClick={() => handleAssignContact(phone)}>Save</button>
+                          <button className="wa-assign-cancel" onClick={() => setWaEditContact(null)}>Cancel</button>
+                        </div>
+                      )}
+
+                      {/* Message cards */}
+                      <div className="wa-messages">
+                        {msgs.map(m => (
+                          <div key={m.id} className="wa-msg-card">
+                            {m.mediaBase64 && m.mediaType?.startsWith('image/') && (
+                              <div className="wa-msg-image">
+                                <img src={`data:${m.mediaType};base64,${m.mediaBase64}`} alt="Order" />
+                              </div>
+                            )}
+                            {m.body && <div className="wa-msg-body">{m.body}</div>}
+                            <div className="wa-msg-time">
+                              {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {' '}
+                              {new Date(m.timestamp).toLocaleDateString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1245,6 +2054,9 @@ export default function WarehouseOrders() {
                   <tbody>
                     {group.tabs.map(entry => {
                       const localOrder = orders.find(o => o.sheetTab === entry.tabName || (o.routeNumber === group.route && o.name === group.driver && o.date && entry.date.includes(o.date.split('-').slice(1).map(s => parseInt(s,10)).join('/'))));
+                      const needsFix = !isStandardFormat(entry.tabName);
+                      const parsed = parseTabName(entry.tabName);
+                      const suggestedName = needsFix ? buildStandardName(parsed) : null;
                       return (
                         <tr key={entry.tabName}>
                           <td>{entry.date}</td>
@@ -1261,6 +2073,15 @@ export default function WarehouseOrders() {
                               </a>
                             ) : (
                               <span className="wo-match-badge">{entry.tabName}</span>
+                            )}
+                            {needsFix && suggestedName && (
+                              <button
+                                className="wo-fix-name-btn"
+                                onClick={() => handleFixTabName(entry, parsed)}
+                                title={`Rename to "${suggestedName}"`}
+                              >
+                                &#x2192; {suggestedName}
+                              </button>
                             )}
                           </td>
                           <td>
@@ -1381,6 +2202,375 @@ export default function WarehouseOrders() {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* Stats tab */}
+      {tab === 'stats' && (
+        <div className="wo-stats">
+          <div className="wo-stats-header">
+            <h3>{t(lang, 'stats')}</h3>
+            <select className="wo-stats-range" value={statsRange} onChange={e => setStatsRange(e.target.value)}>
+              <option value="all">{t(lang, 'allTime')}</option>
+              <option value="7">{t(lang, 'last7Days')}</option>
+              <option value="30">{t(lang, 'last30Days')}</option>
+              <option value="90">{t(lang, 'last90Days')}</option>
+            </select>
+          </div>
+
+          {!statsData ? (
+            <div className="wo-not-connected">
+              <div className="wo-not-connected-icon">{'\u{1F4CA}'}</div>
+              <h3>{t(lang, 'noStatsData')}</h3>
+            </div>
+          ) : (
+            <>
+              {/* Restock Planner */}
+              {statsData.restock && (
+                <div className="wo-stats-section">
+                  <h4>{lang === 'es' ? 'Plan de Reabastecimiento' : 'Restock Planner'}</h4>
+
+                  {/* Summary cards */}
+                  <div className="wo-restock-summary">
+                    <div className="wo-restock-card">
+                      <span className="wo-restock-label">{lang === 'es' ? 'Ordenes esta semana' : 'Orders This Week'}</span>
+                      <span className="wo-restock-value">{statsData.restock.thisWeekOrderCount}</span>
+                    </div>
+                    <div className="wo-restock-card">
+                      <span className="wo-restock-label">{lang === 'es' ? 'Cajas usadas' : 'Cases Used'}</span>
+                      <span className="wo-restock-value">{statsData.restock.totalThisWeek}</span>
+                    </div>
+                    <div className="wo-restock-card wo-restock-card-primary">
+                      <span className="wo-restock-label">{lang === 'es' ? 'Reorden sugerida (+10%)' : 'Suggested Reorder (+10%)'}</span>
+                      <span className="wo-restock-value">{statsData.restock.totalReorder} {lang === 'es' ? 'cajas' : 'cases'}</span>
+                    </div>
+                  </div>
+
+                  {/* Category breakdown */}
+                  {statsData.restock.categories.length > 0 && (
+                    <div className="wo-restock-categories">
+                      <h5>{lang === 'es' ? 'Por Categoria' : 'By Category'}</h5>
+                      <div className="wo-restock-cat-grid">
+                        {statsData.restock.categories.map(cat => (
+                          <div key={cat.category} className="wo-restock-cat-card">
+                            <span className="wo-restock-cat-name">{cat.category}</span>
+                            <div className="wo-restock-cat-stats">
+                              <span>{lang === 'es' ? 'Usado' : 'Used'}: <strong>{cat.thisWeek}</strong></span>
+                              <span>{lang === 'es' ? 'Reorden' : 'Reorder'}: <strong>{cat.reorder}</strong></span>
+                              <span>{cat.items} {lang === 'es' ? 'productos' : 'items'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detailed product table */}
+                  <table className="wo-stats-table wo-restock-table">
+                    <thead>
+                      <tr>
+                        <th>{t(lang, 'product')}</th>
+                        <th>{lang === 'es' ? 'Categoria' : 'Category'}</th>
+                        <th>{lang === 'es' ? 'Esta Semana' : 'This Week'}</th>
+                        <th>{lang === 'es' ? 'Semana Pasada' : 'Last Week'}</th>
+                        <th>{lang === 'es' ? 'Prom. Semanal' : 'Avg/Week'}</th>
+                        <th>{lang === 'es' ? 'Tendencia' : 'Trend'}</th>
+                        <th>{lang === 'es' ? 'Reorden (+10%)' : 'Reorder (+10%)'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statsData.restock.items.map(item => (
+                        <tr key={item.sku}>
+                          <td>{item.desc}</td>
+                          <td className="wo-stats-date">{item.category}</td>
+                          <td className="wo-stats-num">{item.thisWeek}</td>
+                          <td className="wo-stats-num">{item.lastWeek}</td>
+                          <td className="wo-stats-num">{item.projected}</td>
+                          <td className="wo-stats-num">
+                            <span className={`wo-restock-trend wo-trend-${item.trend}`}>
+                              {item.trend === 'up' ? '▲' : item.trend === 'down' ? '▼' : '—'}
+                            </span>
+                          </td>
+                          <td className="wo-stats-num wo-restock-reorder">{item.reorder}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan="2"><strong>{lang === 'es' ? 'TOTAL' : 'TOTAL'}</strong></td>
+                        <td className="wo-stats-num"><strong>{statsData.restock.totalThisWeek}</strong></td>
+                        <td className="wo-stats-num"><strong>{statsData.restock.items.reduce((s, p) => s + p.lastWeek, 0)}</strong></td>
+                        <td className="wo-stats-num"><strong>{statsData.restock.items.reduce((s, p) => s + p.projected, 0).toFixed(1)}</strong></td>
+                        <td></td>
+                        <td className="wo-stats-num wo-restock-reorder"><strong>{statsData.restock.totalReorder}</strong></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+
+              {/* Overview Cards */}
+              <div className="wo-stats-cards">
+                <div className="wo-stat-card">
+                  <div className="wo-stat-value">{statsData.overview.totalOrders}</div>
+                  <div className="wo-stat-label">{t(lang, 'totalOrders')}</div>
+                </div>
+                <div className="wo-stat-card">
+                  <div className="wo-stat-value">{statsData.overview.totalCases}</div>
+                  <div className="wo-stat-label">{t(lang, 'totalCases')}</div>
+                </div>
+                <div className="wo-stat-card">
+                  <div className="wo-stat-value">{statsData.overview.avgCasesPerOrder}</div>
+                  <div className="wo-stat-label">{t(lang, 'avgOrderSize')}</div>
+                </div>
+                <div className="wo-stat-card">
+                  <div className="wo-stat-value">${statsData.overview.totalCost.toFixed(2)}</div>
+                  <div className="wo-stat-label">{t(lang, 'totalCost')}</div>
+                </div>
+                <div className="wo-stat-card">
+                  <div className="wo-stat-value">${statsData.overview.totalRevenue.toFixed(2)}</div>
+                  <div className="wo-stat-label">{t(lang, 'totalRevenue')}</div>
+                </div>
+                <div className="wo-stat-card wo-stat-card-profit">
+                  <div className="wo-stat-value">${statsData.overview.grossProfit.toFixed(2)}</div>
+                  <div className="wo-stat-label">{t(lang, 'grossProfit')}</div>
+                </div>
+              </div>
+
+              {/* Top Products */}
+              <div className="wo-stats-section">
+                <h4>{t(lang, 'topProducts')}</h4>
+                <table className="wo-stats-table">
+                  <thead>
+                    <tr>
+                      <th>{t(lang, 'rank')}</th>
+                      <th>{t(lang, 'sku')}</th>
+                      <th>{t(lang, 'product')}</th>
+                      <th>{t(lang, 'cases')}</th>
+                      <th>{lang === 'es' ? 'Unidades' : 'Units'}</th>
+                      <th>{t(lang, 'cost')}</th>
+                      <th>{t(lang, 'revenue')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(showAllProducts ? statsData.topProducts : statsData.topProducts.slice(0, 15)).map((p, i) => (
+                      <tr key={p.sku}>
+                        <td className="wo-stats-rank">{i + 1}</td>
+                        <td className="wo-stats-sku">{p.sku}</td>
+                        <td>{p.desc}</td>
+                        <td className="wo-stats-num">{p.cases}</td>
+                        <td className="wo-stats-num">{p.units}</td>
+                        <td className="wo-stats-num">${p.cost.toFixed(2)}</td>
+                        <td className="wo-stats-num">${p.revenue.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {statsData.topProducts.length > 15 && (
+                  <button className="wo-stats-toggle" onClick={() => setShowAllProducts(!showAllProducts)}>
+                    {showAllProducts ? t(lang, 'showLess') : `${t(lang, 'showAll')} (${statsData.topProducts.length})`}
+                  </button>
+                )}
+              </div>
+
+              {/* Route Breakdown */}
+              <div className="wo-stats-section">
+                <h4>{t(lang, 'routeBreakdown')}</h4>
+                <table className="wo-stats-table">
+                  <thead>
+                    <tr>
+                      <th>{t(lang, 'route')}</th>
+                      <th>{t(lang, 'driver')}</th>
+                      <th>{t(lang, 'numOrders')}</th>
+                      <th>{t(lang, 'cases')}</th>
+                      <th>{t(lang, 'avgCases')}</th>
+                      <th>{t(lang, 'revenue')}</th>
+                      <th>{t(lang, 'lastOrder')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statsData.routeBreakdown.map(r => (
+                      <tr key={r.route}>
+                        <td className="wo-stats-route">{r.route}</td>
+                        <td>{r.driver}</td>
+                        <td className="wo-stats-num">{r.orders}</td>
+                        <td className="wo-stats-num">{r.cases}</td>
+                        <td className="wo-stats-num">{r.avgCases}</td>
+                        <td className="wo-stats-num">${r.revenue.toFixed(2)}</td>
+                        <td className="wo-stats-date">{r.lastOrder}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Category Mix */}
+              <div className="wo-stats-section">
+                <h4>{t(lang, 'categoryMix')}</h4>
+                <div className="wo-cat-mix">
+                  {statsData.categoryMix.map(c => (
+                    <div key={c.category} className="wo-cat-mix-row">
+                      <div className="wo-cat-mix-name">{c.category}</div>
+                      <div className="wo-cat-mix-bar-wrap">
+                        <div className="wo-cat-mix-bar" style={{ width: `${Math.max(c.pct, 2)}%` }}></div>
+                      </div>
+                      <div className="wo-cat-mix-pct">{c.pct.toFixed(1)}%</div>
+                      <div className="wo-cat-mix-cases">{c.cases} {t(lang, 'cases').toLowerCase()}</div>
+                      <div className="wo-cat-mix-rev">${c.revenue.toFixed(2)}</div>
+                      <div className="wo-cat-mix-margin">{c.margin.toFixed(1)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Route Favorites */}
+              <div className="wo-stats-section">
+                <h4>{t(lang, 'routeFavorites')}</h4>
+                <div className="wo-route-favs">
+                  {statsData.routeFavorites.map(r => (
+                    <div key={r.route} className="wo-route-fav-card">
+                      <div className="wo-route-fav-header">
+                        <span className="wo-route-fav-num">{r.route}</span>
+                        <span className="wo-route-fav-driver">{r.driver}</span>
+                      </div>
+                      <div className="wo-route-fav-list">
+                        {r.top5.map((p, i) => (
+                          <div key={p.sku} className="wo-route-fav-item">
+                            <span className="wo-route-fav-rank">{i + 1}.</span>
+                            <span className="wo-route-fav-name">{p.desc}</span>
+                            <span className="wo-route-fav-cases">{p.cases}cs</span>
+                          </div>
+                        ))}
+                        {r.top5.length === 0 && <div className="wo-route-fav-item" style={{ color: '#9ca3af' }}>No data</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Order Frequency */}
+              <div className="wo-stats-section">
+                <h4>{t(lang, 'orderFrequency')}</h4>
+                <table className="wo-stats-table">
+                  <thead>
+                    <tr>
+                      <th>{t(lang, 'route')}</th>
+                      <th>{t(lang, 'driver')}</th>
+                      <th>{t(lang, 'numOrders')}</th>
+                      <th>{t(lang, 'avgDaysBetween')}</th>
+                      <th>{t(lang, 'lastOrder')}</th>
+                      <th>{t(lang, 'daysSinceLast')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statsData.orderFrequency.map(r => (
+                      <tr key={r.route} className={r.daysSince !== null && r.avgDays > 0 && r.daysSince > r.avgDays * 1.5 ? 'wo-freq-overdue' : ''}>
+                        <td className="wo-stats-route">{r.route}</td>
+                        <td>{r.driver}</td>
+                        <td className="wo-stats-num">{r.orders}</td>
+                        <td className="wo-stats-num">{r.avgDays > 0 ? `${r.avgDays}d` : '-'}</td>
+                        <td className="wo-stats-date">{r.lastOrder}</td>
+                        <td className="wo-stats-num">
+                          {r.daysSince !== null ? (
+                            <span className={r.avgDays > 0 && r.daysSince > r.avgDays * 1.5 ? 'wo-freq-alert' : ''}>
+                              {r.daysSince}d
+                            </span>
+                          ) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Order Forecasting */}
+              {statsData.forecast && (
+                <div className="wo-stats-section">
+                  <h4>{lang === 'es' ? 'Pronostico de Ordenes' : 'Order Forecast'}</h4>
+
+                  {/* Upcoming orders timeline */}
+                  <div className="wo-forecast-timeline">
+                    {statsData.forecast.routeForecasts.map(rf => (
+                      <div key={rf.route} className={`wo-forecast-card ${rf.isOverdue ? 'wo-fc-overdue' : rf.isDueSoon ? 'wo-fc-due-soon' : ''}`}>
+                        <div className="wo-fc-header">
+                          <span className="wo-fc-route">{rf.route}</span>
+                          <span className="wo-fc-driver">{rf.driver}</span>
+                          {rf.isOverdue && <span className="wo-fc-badge wo-fc-badge-overdue">{lang === 'es' ? 'ATRASADO' : 'OVERDUE'}</span>}
+                          {rf.isDueSoon && <span className="wo-fc-badge wo-fc-badge-soon">{lang === 'es' ? 'PRONTO' : 'DUE SOON'}</span>}
+                        </div>
+                        <div className="wo-fc-body">
+                          <div className="wo-fc-stat">
+                            <span className="wo-fc-stat-label">{lang === 'es' ? 'Cada' : 'Every'}</span>
+                            <span className="wo-fc-stat-value">{rf.avgDays > 0 ? `${rf.avgDays}d` : '-'}</span>
+                          </div>
+                          <div className="wo-fc-stat">
+                            <span className="wo-fc-stat-label">{lang === 'es' ? 'Ultima' : 'Last'}</span>
+                            <span className="wo-fc-stat-value">{rf.daysSince !== null ? `${rf.daysSince}d ${lang === 'es' ? 'atras' : 'ago'}` : '-'}</span>
+                          </div>
+                          <div className="wo-fc-stat">
+                            <span className="wo-fc-stat-label">{lang === 'es' ? 'Siguiente' : 'Next'}</span>
+                            <span className="wo-fc-stat-value">
+                              {rf.daysUntil !== null
+                                ? rf.daysUntil <= 0
+                                  ? (lang === 'es' ? 'Hoy' : 'Today')
+                                  : `${rf.daysUntil}d`
+                                : '-'}
+                            </span>
+                          </div>
+                          <div className="wo-fc-stat">
+                            <span className="wo-fc-stat-label">{lang === 'es' ? 'Est. Cajas' : 'Est. Cases'}</span>
+                            <span className="wo-fc-stat-value wo-fc-cases">{rf.suggestedTotalCases || '-'}</span>
+                          </div>
+                        </div>
+                        {rf.suggestedItems.length > 0 && (
+                          <details className="wo-fc-details">
+                            <summary>{lang === 'es' ? 'Orden sugerida' : 'Suggested order'} ({rf.suggestedItems.length} {lang === 'es' ? 'productos' : 'items'})</summary>
+                            <div className="wo-fc-items">
+                              {rf.suggestedItems.slice(0, 10).map(item => (
+                                <div key={item.sku} className="wo-fc-item">
+                                  <span className="wo-fc-item-name">{item.desc}</span>
+                                  <span className="wo-fc-item-cases">{item.avgCases}cs</span>
+                                  <span className="wo-fc-item-freq">{item.frequency}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Weekly demand forecast */}
+                  {statsData.forecast.weeklyItems.length > 0 && (
+                    <div className="wo-forecast-weekly">
+                      <h5>{lang === 'es' ? 'Demanda proximos 7 dias' : 'Next 7 Days Demand'} — <strong>{statsData.forecast.weeklyTotalCases}</strong> {lang === 'es' ? 'cajas estimadas' : 'estimated cases'}</h5>
+                      <table className="wo-stats-table">
+                        <thead>
+                          <tr>
+                            <th>{t(lang, 'product')}</th>
+                            <th>{lang === 'es' ? 'Categoria' : 'Category'}</th>
+                            <th>{lang === 'es' ? 'Cajas Est.' : 'Est. Cases'}</th>
+                            <th>{lang === 'es' ? 'Rutas' : 'Routes'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {statsData.forecast.weeklyItems.map(item => (
+                            <tr key={item.sku}>
+                              <td>{item.desc}</td>
+                              <td className="wo-stats-date">{item.category}</td>
+                              <td className="wo-stats-num">{item.cases}</td>
+                              <td className="wo-stats-date">{item.routes.join(', ')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </>
+          )}
         </div>
       )}
 

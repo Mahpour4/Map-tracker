@@ -5,6 +5,19 @@ let client = null;
 let status = 'disconnected'; // disconnected | qr-pending | connected
 let qrCode = null;
 
+// Order message buffer — incoming messages from the order group
+let orderGroupId = null; // set via API
+let orderMessages = []; // { id, from, pushName, body, timestamp, hasMedia, mediaBase64, mediaType }
+const MAX_MESSAGES = 200;
+
+// Phone number → driver/route mapping (persisted to file)
+const fs2 = require('fs');
+const path = require('path');
+const CONTACTS_FILE = path.join(__dirname, 'order-contacts.json');
+let contactMap = {}; // { phoneNumber: { name, route } }
+try { contactMap = JSON.parse(fs2.readFileSync(CONTACTS_FILE, 'utf8')); } catch { }
+function saveContacts() { fs2.writeFileSync(CONTACTS_FILE, JSON.stringify(contactMap, null, 2)); }
+
 function getStatus() {
   return { status, qrCode: status === 'qr-pending' ? qrCode : null };
 }
@@ -55,6 +68,52 @@ function initialize() {
   client.on('disconnected', (reason) => {
     status = 'disconnected';
     console.log('🔌 WhatsApp disconnected:', reason);
+  });
+
+  // Listen for incoming messages — capture order group messages
+  client.on('message', async (msg) => {
+    try {
+      // Only capture if an order group is configured
+      if (!orderGroupId) return;
+      // Only capture messages from the configured order group
+      if (msg.from !== orderGroupId) return;
+
+      const contact = await msg.getContact();
+      const phone = contact.number || msg.author || msg.from;
+      const entry = {
+        id: msg.id._serialized,
+        from: phone,
+        pushName: contact.pushname || contact.name || phone,
+        body: msg.body || '',
+        timestamp: msg.timestamp * 1000, // convert to ms
+        hasMedia: msg.hasMedia,
+        mediaBase64: null,
+        mediaType: null,
+      };
+
+      // Download media (images, etc.)
+      if (msg.hasMedia) {
+        try {
+          const media = await msg.downloadMedia();
+          if (media) {
+            entry.mediaBase64 = media.data; // base64 string
+            entry.mediaType = media.mimetype; // e.g. image/jpeg
+          }
+        } catch (mediaErr) {
+          console.log('Could not download media:', mediaErr.message);
+        }
+      }
+
+      orderMessages.push(entry);
+      // Trim buffer
+      if (orderMessages.length > MAX_MESSAGES) {
+        orderMessages = orderMessages.slice(-MAX_MESSAGES);
+      }
+
+      console.log(`📩 Order msg from ${entry.pushName} (${phone}): ${entry.body.substring(0, 60)}${entry.body.length > 60 ? '...' : ''}${entry.hasMedia ? ' [+media]' : ''}`);
+    } catch (err) {
+      console.error('Message listener error:', err.message);
+    }
   });
 
   client.initialize().catch(err => {
@@ -127,6 +186,51 @@ async function sendReportToGroup(groupId, routeNumber, stats) {
   return sendToGroup(groupId, lines.join('\n'));
 }
 
+// Set which group to listen to for orders
+function setOrderGroup(groupId) {
+  orderGroupId = groupId;
+  console.log(`📋 Order group set to: ${groupId}`);
+}
+
+function getOrderGroup() {
+  return orderGroupId;
+}
+
+// Get buffered order messages, optionally since a timestamp
+function getOrderMessages(since = 0) {
+  const msgs = since ? orderMessages.filter(m => m.timestamp > since) : orderMessages;
+  // Enrich with contact mapping
+  return msgs.map(m => ({
+    ...m,
+    contactName: contactMap[m.from]?.name || m.pushName || m.from,
+    contactRoute: contactMap[m.from]?.route || null,
+  }));
+}
+
+// Dismiss/clear messages (by IDs or all)
+function dismissMessages(ids) {
+  if (!ids || ids.length === 0) {
+    orderMessages = [];
+  } else {
+    orderMessages = orderMessages.filter(m => !ids.includes(m.id));
+  }
+}
+
+// Contact mapping
+function setContact(phone, name, route) {
+  contactMap[phone] = { name, route };
+  saveContacts();
+}
+
+function getContacts() {
+  return contactMap;
+}
+
+function removeContact(phone) {
+  delete contactMap[phone];
+  saveContacts();
+}
+
 module.exports = {
   initialize,
   getStatus,
@@ -134,4 +238,11 @@ module.exports = {
   sendToGroup,
   sendAlertToGroup,
   sendReportToGroup,
+  setOrderGroup,
+  getOrderGroup,
+  getOrderMessages,
+  dismissMessages,
+  setContact,
+  getContacts,
+  removeContact,
 };

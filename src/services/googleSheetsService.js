@@ -22,6 +22,12 @@ const STORAGE_KEYS = {
   legacyUrl: 'google_sheets_webapp_url',
 };
 
+// Defaults so workers don't need to enter these manually
+const DEFAULTS = {
+  clientId: '187494534953-bld1lk3dg5280fu0g11d8qjtup2culnu.apps.googleusercontent.com',
+  spreadsheetId: '1p1Wxrx9DvH1TReUiri_NG5lM5z4xArQFOnJa5YJtnBk',
+};
+
 let gapiInited = false;
 let gisInited = false;
 let tokenClient = null;
@@ -31,13 +37,13 @@ let currentReject = null;
 // ---- Config helpers ----
 
 export function getGoogleClientId() {
-  return localStorage.getItem(STORAGE_KEYS.clientId) || '';
+  return localStorage.getItem(STORAGE_KEYS.clientId) || DEFAULTS.clientId;
 }
 export function setGoogleClientId(val) {
   localStorage.setItem(STORAGE_KEYS.clientId, val.trim());
 }
 export function getSpreadsheetId() {
-  return localStorage.getItem(STORAGE_KEYS.spreadsheetId) || '';
+  return localStorage.getItem(STORAGE_KEYS.spreadsheetId) || DEFAULTS.spreadsheetId;
 }
 export function setSpreadsheetId(val) {
   localStorage.setItem(STORAGE_KEYS.spreadsheetId, val.trim());
@@ -98,6 +104,15 @@ async function initGis() {
       if (resp.error) {
         if (currentReject) currentReject(new Error(resp.error));
       } else {
+        // Persist token to localStorage so it survives page refresh
+        const tokenData = {
+          access_token: resp.access_token,
+          token_type: resp.token_type,
+          expires_in: resp.expires_in,
+          scope: resp.scope,
+          saved_at: Date.now(),
+        };
+        localStorage.setItem('google_oauth_token', JSON.stringify(tokenData));
         if (currentResolve) currentResolve(resp);
       }
       currentResolve = null;
@@ -107,18 +122,53 @@ async function initGis() {
   gisInited = true;
 }
 
+/** Restore a saved token from localStorage if still valid */
+function restoreSavedToken() {
+  try {
+    const saved = localStorage.getItem('google_oauth_token');
+    if (!saved) return false;
+    const tokenData = JSON.parse(saved);
+    const elapsed = (Date.now() - tokenData.saved_at) / 1000;
+    // Token typically expires in 3600s, allow 5 min buffer
+    if (elapsed < (tokenData.expires_in || 3600) - 300) {
+      window.gapi.client.setToken({
+        access_token: tokenData.access_token,
+        token_type: tokenData.token_type,
+      });
+      return true;
+    }
+    // Token expired — don't remove, ensureAuth will silently refresh
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 /** Ensure we have a valid access token (prompts consent if needed) */
 async function ensureAuth() {
   await initGapi();
+  // Try restoring saved token first
+  if (restoreSavedToken()) return;
   await initGis();
-  // Check if we already have a valid token
+  // Check if we already have a valid token in memory
   const token = window.gapi.client.getToken();
   if (token && token.access_token) return;
-  // Request token — will show Google consent popup
+  // Request token — try silent first, then consent popup
   return new Promise((resolve, reject) => {
     currentResolve = resolve;
     currentReject = reject;
     tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+/** Explicit sign-in (for setup flow — shows consent popup) */
+export async function authenticate() {
+  await initGapi();
+  await initGis();
+  return new Promise((resolve, reject) => {
+    currentResolve = resolve;
+    currentReject = reject;
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   });
 }
 
@@ -129,13 +179,16 @@ export function signOut() {
     window.google.accounts.oauth2.revoke(token.access_token);
     window.gapi.client.setToken(null);
   }
+  localStorage.removeItem('google_oauth_token');
   gisInited = false;
   tokenClient = null;
 }
 
-/** Check if user is currently signed in */
+/** Check if user has ever signed in (has a token saved, even if expired — ensureAuth will refresh it) */
 export function isSignedIn() {
-  return !!(window.gapi?.client?.getToken()?.access_token);
+  if (window.gapi?.client?.getToken()?.access_token) return true;
+  // Check localStorage — if they ever signed in, we can silently refresh
+  return !!localStorage.getItem('google_oauth_token');
 }
 
 // ---- Tab name builder ----
@@ -187,6 +240,26 @@ export async function listSheetTabs() {
 
   console.log('[Sheets] Found tabs:', tabs);
   return { success: true, tabs, tabsWithIds };
+}
+
+/** Rename a sheet tab */
+export async function renameSheetTab(sheetId, newName) {
+  await ensureAuth();
+  const spreadsheetId = getSpreadsheetId();
+  if (!spreadsheetId) throw new Error('Spreadsheet ID not configured');
+
+  await window.gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    resource: {
+      requests: [{
+        updateSheetProperties: {
+          properties: { sheetId, title: newName },
+          fields: 'title',
+        },
+      }],
+    },
+  });
+  return { success: true, newName };
 }
 
 /** Build a URL to open the Google Sheet at a specific tab */
@@ -445,8 +518,3 @@ export async function pushOrderToSheet(order) {
   return { success: true, tab: tabName, written, notFound, total: items.length };
 }
 
-/** Authenticate (call this when user clicks "Sign In") */
-export async function authenticate() {
-  await ensureAuth();
-  return { success: true };
-}
