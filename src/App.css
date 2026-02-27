@@ -10573,3 +10573,39 @@ textarea {
 .wo-modal-tab-btn:hover { background: #eff6ff; border-color: #93c5fd; }
 .wo-modal-tab-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* Load/Invoice fields */
+.wo-controls-row2 {
+  padding-top: 0;
+  border-top: 1px dashed var(--border);
+  margin-top: -4px;
+}
+.wo-input-sm {
+  width: 140px;
+}
+.wo-mismatch-badge {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.wo-match-badge {
+  background: #d1fae5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.wo-invoice-cell {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.wo-mismatch-dot {
+  color: #dc2626;
+  font-weight: 700;
+  cursor: help;
+}

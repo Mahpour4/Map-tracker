@@ -6,6 +6,20 @@ import {
   pushOrderToSheet, getOrderFromSheet, listSheetTabs, buildTabName,
 } from '../services/googleSheetsService';
 
+const ROUTE_DRIVERS = {
+  '200': 'jose',
+  '201': 'Ryan',
+  '203': 'Jay',
+  '204': 'Cindy',
+  '206': 'eastern shore',
+  '207': 'Andre',
+  '208': 'Draco',
+  '209': 'damian',
+  '210': 'eastern shore',
+  '211': 'Jhonny',
+  '214': 'Randy',
+};
+
 export default function WarehouseOrders() {
   const { state, addWarehouseOrder, updateWarehouseOrder, deleteWarehouseOrder } = useApp();
   const { warehouseOrders, stores } = state;
@@ -21,6 +35,9 @@ export default function WarehouseOrders() {
   const [collapsed, setCollapsed] = useState({});
   const [cases, setCases] = useState({}); // { sku: number }
   const [orderName, setOrderName] = useState('');
+  const [loadNumber, setLoadNumber] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceAmount, setInvoiceAmount] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Google Sheets sync state
@@ -51,6 +68,9 @@ export default function WarehouseOrders() {
     });
     setCases(c);
     setOrderName(order.name || '');
+    setLoadNumber(order.loadNumber || '');
+    setInvoiceNumber(order.invoiceNumber || '');
+    setInvoiceAmount(order.invoiceAmount || '');
   }, []);
 
   // Copy last order for this route
@@ -68,14 +88,14 @@ export default function WarehouseOrders() {
     setSelectedRoute(r);
     const existing = orders.find(o => o.routeNumber === r && o.date === orderDate);
     if (existing) loadExistingOrder(existing);
-    else { setCases({}); setOrderName(''); }
+    else { setCases({}); setOrderName(ROUTE_DRIVERS[r] || ''); setLoadNumber(''); setInvoiceNumber(''); setInvoiceAmount(''); }
   }, [orders, orderDate, loadExistingOrder]);
 
   const handleDateChange = useCallback((d) => {
     setOrderDate(d);
     const existing = orders.find(o => o.routeNumber === selectedRoute && o.date === d);
     if (existing) loadExistingOrder(existing);
-    else { setCases({}); setOrderName(''); }
+    else { setCases({}); setOrderName(''); setLoadNumber(''); setInvoiceNumber(''); setInvoiceAmount(''); }
   }, [orders, selectedRoute, loadExistingOrder]);
 
   // Filter products by search
@@ -140,6 +160,9 @@ export default function WarehouseOrders() {
       routeNumber: selectedRoute,
       date: orderDate,
       name: orderName,
+      loadNumber,
+      invoiceNumber,
+      invoiceAmount,
       status: 'pending',
       source: 'app',
       items,
@@ -152,7 +175,7 @@ export default function WarehouseOrders() {
       addWarehouseOrder(orderData);
     }
     setTimeout(() => setSaving(false), 500);
-  }, [selectedRoute, orderDate, orderName, cases, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder]);
+  }, [selectedRoute, orderDate, orderName, loadNumber, invoiceNumber, invoiceAmount, cases, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder]);
 
   // Toggle category collapse
   const toggleCat = (cat) => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -359,11 +382,39 @@ export default function WarehouseOrders() {
               <input type="date" value={orderDate} onChange={e => handleDateChange(e.target.value)} />
             </label>
             <label>
-              Name/Note:
-              <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Driver name or note..." />
+              Driver:
+              <select value={orderName} onChange={e => setOrderName(e.target.value)}>
+                <option value="">Select driver...</option>
+                {[...new Set(Object.values(ROUTE_DRIVERS))].map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </label>
             <button className="wo-copy-btn" onClick={copyLastOrder} disabled={!selectedRoute} title="Copy last order for this route">Copy Last Order</button>
             {existingOrder && <span className="wo-existing-badge">Editing existing order</span>}
+          </div>
+
+          <div className="wo-controls wo-controls-row2">
+            <label>
+              Load #:
+              <input type="text" value={loadNumber} onChange={e => setLoadNumber(e.target.value)} placeholder="Driver load ticket #" className="wo-input-sm" />
+            </label>
+            <label>
+              Invoice #:
+              <input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="Warehouse invoice #" className="wo-input-sm" />
+            </label>
+            <label>
+              Invoice $:
+              <input type="number" step="0.01" value={invoiceAmount} onChange={e => setInvoiceAmount(e.target.value)} placeholder="0.00" className="wo-input-sm" />
+            </label>
+            {invoiceAmount && totals.totalGross > 0 && Math.abs(parseFloat(invoiceAmount) - totals.totalGross) > 0.01 && (
+              <span className="wo-mismatch-badge">
+                Mismatch: ${Math.abs(parseFloat(invoiceAmount) - totals.totalGross).toFixed(2)} difference
+              </span>
+            )}
+            {invoiceAmount && totals.totalGross > 0 && Math.abs(parseFloat(invoiceAmount) - totals.totalGross) <= 0.01 && (
+              <span className="wo-match-badge">Amounts match</span>
+            )}
           </div>
 
           {/* Sync action bar */}
@@ -494,6 +545,8 @@ export default function WarehouseOrders() {
                   <th>Items</th>
                   <th>Cases</th>
                   <th>Gross $</th>
+                  <th>Load #</th>
+                  <th>Invoice</th>
                   <th>Status</th>
                   <th></th>
                 </tr>
@@ -507,6 +560,14 @@ export default function WarehouseOrders() {
                     <td>{order.items?.length || 0}</td>
                     <td>{order.totals?.totalCases || 0}</td>
                     <td>${(order.totals?.totalGross || 0).toFixed(2)}</td>
+                    <td>{order.loadNumber || '-'}</td>
+                    <td className="wo-invoice-cell">
+                      {order.invoiceNumber ? `#${order.invoiceNumber}` : '-'}
+                      {order.invoiceAmount ? ` $${parseFloat(order.invoiceAmount).toFixed(2)}` : ''}
+                      {order.invoiceAmount && order.totals?.totalGross > 0 && Math.abs(parseFloat(order.invoiceAmount) - order.totals.totalGross) > 0.01 && (
+                        <span className="wo-mismatch-dot" title={`Mismatch: $${Math.abs(parseFloat(order.invoiceAmount) - order.totals.totalGross).toFixed(2)}`}> !</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`wo-status wo-status-${order.status}`}>{order.status}</span>
                     </td>
