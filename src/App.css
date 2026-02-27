@@ -10411,3 +10411,165 @@ textarea {
   font-size: 0.9rem;
 }
 
+/* Google Sheets sync UI */
+.wo-tab-settings {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+.wo-sync-msg {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  animation: wo-slide-in 0.2s ease;
+}
+@keyframes wo-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.wo-sync-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.wo-sync-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.wo-sync-msg-close {
+  background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0 4px;
+  color: inherit; opacity: 0.6;
+}
+.wo-sync-msg-close:hover { opacity: 1; }
+
+.wo-settings {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.wo-settings h3 { margin: 0 0 8px; font-size: 1rem; }
+.wo-settings-desc { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 12px; }
+.wo-settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.wo-settings-url {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+.wo-settings-status {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #059669;
+  font-weight: 500;
+}
+
+.wo-sync-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.wo-sync-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+.wo-sync-btn {
+  padding: 6px 14px;
+  border: 1px solid #93c5fd;
+  border-radius: var(--radius);
+  background: white;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.wo-sync-push { color: #1d4ed8; }
+.wo-sync-push:hover { background: #dbeafe; }
+.wo-sync-pull { color: #7c3aed; border-color: #c4b5fd; }
+.wo-sync-pull:hover { background: #ede9fe; }
+.wo-sync-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wo-sync-tab-preview {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-style: italic;
+}
+.wo-sync-btn-sm {
+  padding: 4px 10px;
+  border: 1px solid #93c5fd;
+  border-radius: var(--radius);
+  background: white;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.wo-sync-btn-sm:hover { background: #dbeafe; }
+.wo-sync-btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Pull from Sheet modal */
+.wo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.wo-modal {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.wo-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.wo-modal-header h3 { margin: 0; font-size: 1.1rem; }
+.wo-modal-close {
+  background: none; border: none; font-size: 1.4rem; cursor: pointer;
+  color: var(--text-muted); padding: 0;
+}
+.wo-modal-close:hover { color: var(--text-primary); }
+.wo-modal-desc { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 16px; }
+.wo-modal-loading {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.wo-modal-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wo-modal-tab-btn {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.wo-modal-tab-btn:hover { background: #eff6ff; border-color: #93c5fd; }
+.wo-modal-tab-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+

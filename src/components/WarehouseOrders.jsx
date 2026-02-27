@@ -1,6 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { PRODUCT_CATALOG, PRODUCT_CATEGORIES } from '../data/productCatalog';
+import {
+  getGoogleSheetsUrl, setGoogleSheetsUrl, isGoogleSheetsConfigured,
+  pushOrderToSheet, getOrderFromSheet, listSheetTabs, buildTabName,
+} from '../services/googleSheetsService';
 
 export default function WarehouseOrders() {
   const { state, addWarehouseOrder, updateWarehouseOrder, deleteWarehouseOrder } = useApp();
@@ -18,6 +22,15 @@ export default function WarehouseOrders() {
   const [cases, setCases] = useState({}); // { sku: number }
   const [orderName, setOrderName] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Google Sheets sync state
+  const [showSettings, setShowSettings] = useState(false);
+  const [sheetsUrl, setSheetsUrl] = useState(() => getGoogleSheetsUrl());
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null); // { type: 'success'|'error', text }
+  const [sheetTabs, setSheetTabs] = useState([]);
+  const [showPullModal, setShowPullModal] = useState(false);
+  const [loadingTabs, setLoadingTabs] = useState(false);
 
   // Get unique routes from stores
   const routes = useMemo(() => {
@@ -155,10 +168,130 @@ export default function WarehouseOrders() {
     });
   };
 
-  // Orders for the queue view, grouped by date
+  // Orders for the queue view
   const queueOrders = useMemo(() => {
     return [...orders].sort((a, b) => b.date.localeCompare(a.date) || a.routeNumber?.localeCompare(b.routeNumber));
   }, [orders]);
+
+  // --- Google Sheets sync handlers ---
+
+  const handleSaveUrl = useCallback(() => {
+    setGoogleSheetsUrl(sheetsUrl);
+    setSyncMsg({ type: 'success', text: 'Google Sheets URL saved' });
+    setTimeout(() => setSyncMsg(null), 3000);
+  }, [sheetsUrl]);
+
+  // Push current order to Google Sheet
+  const handlePushToSheet = useCallback(async () => {
+    if (!selectedRoute || totals.totalCases === 0) return;
+    if (!isGoogleSheetsConfigured()) {
+      setSyncMsg({ type: 'error', text: 'Set up Google Sheets URL in settings first' });
+      return;
+    }
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const items = Object.entries(cases)
+        .filter(([, qty]) => qty > 0)
+        .map(([sku, qty]) => ({ sku, cases: qty }));
+
+      const result = await pushOrderToSheet({
+        routeNumber: selectedRoute,
+        date: orderDate,
+        name: orderName,
+        items,
+      });
+
+      if (result.success) {
+        const msg = `Pushed to "${result.tab}" — ${result.written}/${result.total} items written`;
+        const extra = result.notFound?.length > 0 ? ` (${result.notFound.length} SKUs not found in sheet)` : '';
+        setSyncMsg({ type: 'success', text: msg + extra });
+        // Update order status to synced
+        if (existingOrder) {
+          updateWarehouseOrder({ ...existingOrder, status: 'synced', sheetTab: result.tab });
+        }
+      } else {
+        setSyncMsg({ type: 'error', text: result.error || 'Push failed' });
+      }
+    } catch (err) {
+      setSyncMsg({ type: 'error', text: err.message });
+    }
+    setSyncing(false);
+  }, [selectedRoute, orderDate, orderName, cases, totals, existingOrder, updateWarehouseOrder]);
+
+  // Push a queue order to Google Sheet
+  const handlePushQueueOrder = useCallback(async (order) => {
+    if (!isGoogleSheetsConfigured()) {
+      setSyncMsg({ type: 'error', text: 'Set up Google Sheets URL in settings first' });
+      return;
+    }
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const result = await pushOrderToSheet({
+        routeNumber: order.routeNumber,
+        date: order.date,
+        name: order.name,
+        items: (order.items || []).map(i => ({ sku: i.sku, cases: i.cases })),
+      });
+      if (result.success) {
+        setSyncMsg({ type: 'success', text: `Pushed "${result.tab}" — ${result.written} items` });
+        updateWarehouseOrder({ ...order, status: 'synced', sheetTab: result.tab });
+      } else {
+        setSyncMsg({ type: 'error', text: result.error || 'Push failed' });
+      }
+    } catch (err) {
+      setSyncMsg({ type: 'error', text: err.message });
+    }
+    setSyncing(false);
+  }, [updateWarehouseOrder]);
+
+  // Open the pull-from-sheet modal and load tab list
+  const handleOpenPull = useCallback(async () => {
+    if (!isGoogleSheetsConfigured()) {
+      setSyncMsg({ type: 'error', text: 'Set up Google Sheets URL in settings first' });
+      return;
+    }
+    setLoadingTabs(true);
+    setShowPullModal(true);
+    setSyncMsg(null);
+    try {
+      const result = await listSheetTabs();
+      if (result.success) {
+        setSheetTabs(result.tabs || []);
+      } else {
+        setSyncMsg({ type: 'error', text: result.error });
+      }
+    } catch (err) {
+      setSyncMsg({ type: 'error', text: err.message });
+    }
+    setLoadingTabs(false);
+  }, []);
+
+  // Pull order from a specific sheet tab
+  const handlePullTab = useCallback(async (tabName) => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const result = await getOrderFromSheet(tabName);
+      if (result.success) {
+        const c = {};
+        (result.items || []).forEach(item => {
+          if (item.cases > 0) c[item.sku] = item.cases;
+        });
+        setCases(c);
+        setSyncMsg({ type: 'success', text: `Pulled ${result.items?.length || 0} items from "${tabName}"` });
+        setShowPullModal(false);
+      } else {
+        setSyncMsg({ type: 'error', text: result.error });
+      }
+    } catch (err) {
+      setSyncMsg({ type: 'error', text: err.message });
+    }
+    setSyncing(false);
+  }, []);
+
+  const sheetsConfigured = isGoogleSheetsConfigured();
 
   return (
     <div className="wo-page">
@@ -167,8 +300,49 @@ export default function WarehouseOrders() {
         <div className="wo-tabs">
           <button className={`wo-tab ${tab === 'entry' ? 'active' : ''}`} onClick={() => setTab('entry')}>Order Entry</button>
           <button className={`wo-tab ${tab === 'queue' ? 'active' : ''}`} onClick={() => setTab('queue')}>Order Queue ({orders.length})</button>
+          <button
+            className={`wo-tab wo-tab-settings ${showSettings ? 'active' : ''}`}
+            onClick={() => setShowSettings(!showSettings)}
+            title="Google Sheets Settings"
+          >
+            {sheetsConfigured ? '\u2601 Sheets' : '\u2699 Setup'}
+          </button>
         </div>
       </div>
+
+      {/* Sync status message */}
+      {syncMsg && (
+        <div className={`wo-sync-msg wo-sync-${syncMsg.type}`}>
+          {syncMsg.text}
+          <button className="wo-sync-msg-close" onClick={() => setSyncMsg(null)}>&times;</button>
+        </div>
+      )}
+
+      {/* Google Sheets settings panel */}
+      {showSettings && (
+        <div className="wo-settings">
+          <h3>Google Sheets Connection</h3>
+          <p className="wo-settings-desc">
+            Paste the Apps Script Web App URL from your warehouse order spreadsheet.
+            Deploy the script via Extensions &rarr; Apps Script &rarr; Deploy &rarr; Web App.
+          </p>
+          <div className="wo-settings-row">
+            <input
+              type="text"
+              value={sheetsUrl}
+              onChange={e => setSheetsUrl(e.target.value)}
+              placeholder="https://script.google.com/macros/s/.../exec"
+              className="wo-settings-url"
+            />
+            <button className="wo-save-btn" onClick={handleSaveUrl}>Save URL</button>
+          </div>
+          {sheetsConfigured && (
+            <div className="wo-settings-status">
+              Connected &mdash; ready to sync
+            </div>
+          )}
+        </div>
+      )}
 
       {tab === 'entry' && (
         <div className="wo-entry">
@@ -192,6 +366,33 @@ export default function WarehouseOrders() {
             {existingOrder && <span className="wo-existing-badge">Editing existing order</span>}
           </div>
 
+          {/* Sync action bar */}
+          {sheetsConfigured && (
+            <div className="wo-sync-bar">
+              <span className="wo-sync-label">Google Sheets:</span>
+              <button
+                className="wo-sync-btn wo-sync-push"
+                onClick={handlePushToSheet}
+                disabled={syncing || !selectedRoute || totals.totalCases === 0}
+                title={`Push to sheet tab: "${buildTabName(selectedRoute, orderName, orderDate)}"`}
+              >
+                {syncing ? 'Syncing...' : '\u2191 Push to Sheet'}
+              </button>
+              <button
+                className="wo-sync-btn wo-sync-pull"
+                onClick={handleOpenPull}
+                disabled={syncing}
+              >
+                {'\u2193 Pull from Sheet'}
+              </button>
+              {selectedRoute && orderName && (
+                <span className="wo-sync-tab-preview">
+                  Tab: {buildTabName(selectedRoute, orderName, orderDate)}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="wo-search">
             <input
               type="text"
@@ -209,10 +410,10 @@ export default function WarehouseOrders() {
                   <th className="wo-col-sku">SKU</th>
                   <th className="wo-col-desc">Product</th>
                   <th className="wo-col-type">Type</th>
-                  <th className="wo-col-upc">Per Case</th>
+                  <th className="wo-col-upc">UIC</th>
                   <th className="wo-col-price">Cost</th>
                   <th className="wo-col-cases">Cases</th>
-                  <th className="wo-col-units">Units</th>
+                  <th className="wo-col-units">Order Units</th>
                   <th className="wo-col-total">Total $</th>
                 </tr>
               </thead>
@@ -316,6 +517,15 @@ export default function WarehouseOrders() {
                         loadExistingOrder(order);
                         setTab('entry');
                       }}>Edit</button>
+                      {sheetsConfigured && order.status !== 'synced' && (
+                        <button
+                          className="wo-sync-btn-sm"
+                          onClick={() => handlePushQueueOrder(order)}
+                          disabled={syncing}
+                        >
+                          {syncing ? '...' : '\u2191 Sheet'}
+                        </button>
+                      )}
                       <button className="wo-del-btn" onClick={() => {
                         if (window.confirm(`Delete order for route ${order.routeNumber} on ${order.date}?`)) {
                           deleteWarehouseOrder(order.id);
@@ -327,6 +537,37 @@ export default function WarehouseOrders() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* Pull from Sheet modal */}
+      {showPullModal && (
+        <div className="wo-modal-overlay" onClick={() => setShowPullModal(false)}>
+          <div className="wo-modal" onClick={e => e.stopPropagation()}>
+            <div className="wo-modal-header">
+              <h3>Pull from Google Sheet</h3>
+              <button className="wo-modal-close" onClick={() => setShowPullModal(false)}>&times;</button>
+            </div>
+            <p className="wo-modal-desc">Select a sheet tab to import case counts from:</p>
+            {loadingTabs ? (
+              <div className="wo-modal-loading">Loading tabs...</div>
+            ) : sheetTabs.length === 0 ? (
+              <div className="wo-modal-loading">No tabs found</div>
+            ) : (
+              <div className="wo-modal-tabs">
+                {sheetTabs.map(tabName => (
+                  <button
+                    key={tabName}
+                    className="wo-modal-tab-btn"
+                    onClick={() => handlePullTab(tabName)}
+                    disabled={syncing}
+                  >
+                    {tabName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
