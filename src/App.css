@@ -12097,6 +12097,31 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
   font-size: 0.75rem;
   opacity: 0.9;
 }
+.wa-last-poll {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.wa-sync-now-btn {
+  padding: 2px 8px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.wa-sync-now-btn:hover { background: rgba(255,255,255,0.3); }
+.wa-sync-now-btn.spinning { animation: wa-spin 0.7s linear infinite; }
+@keyframes wa-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 .wa-dismiss-all, .wa-setup-btn {
   padding: 4px 12px;
   border: 1px solid rgba(255,255,255,0.4);

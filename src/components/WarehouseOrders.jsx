@@ -79,6 +79,7 @@ export default function WarehouseOrders() {
   const [waOrderGroupId, setWaOrderGroupId] = useState(null);
   const [waStatus, setWaStatus] = useState('offline');
   const [waLastPoll, setWaLastPoll] = useState(0);
+  const [waSyncing, setWaSyncing] = useState(false);
   const [waEditContact, setWaEditContact] = useState(null); // { phone, name, route }
   const [waShowSetup, setWaShowSetup] = useState(false);
   const waPollerRef = useRef(null);
@@ -793,37 +794,43 @@ export default function WarehouseOrders() {
   }, [selectedRoute, totals.totalCases, totals.totalUnits]);
 
   // WhatsApp inbox — always poll every 5s regardless of active tab
+  const pollWaInbox = useCallback(async () => {
+    try {
+      const [statusRes, msgs, contacts, groupId] = await Promise.all([
+        getWhatsAppStatus(),
+        getOrderMessages(0),
+        getWaContacts(),
+        getOrderGroup(),
+      ]);
+      setWaStatus(statusRes.status || 'offline');
+      setWaMessages(prev => {
+        const uiState = {};
+        prev.forEach(m => {
+          const flags = {};
+          Object.keys(m).forEach(k => { if (k.startsWith('_')) flags[k] = m[k]; });
+          if (Object.keys(flags).length) uiState[m.id] = flags;
+        });
+        return msgs.map(m => uiState[m.id] ? { ...m, ...uiState[m.id] } : m);
+      });
+      setWaContacts(contacts);
+      setWaOrderGroupId(groupId);
+      setWaLastPoll(Date.now());
+    } catch { /* service offline */ }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    const poll = async () => {
-      if (cancelled) return;
-      try {
-        const [statusRes, msgs, contacts, groupId] = await Promise.all([
-          getWhatsAppStatus(),
-          getOrderMessages(0),
-          getWaContacts(),
-          getOrderGroup(),
-        ]);
-        if (cancelled) return;
-        setWaStatus(statusRes.status || 'offline');
-        setWaMessages(prev => {
-          const uiState = {};
-          prev.forEach(m => {
-            const flags = {};
-            Object.keys(m).forEach(k => { if (k.startsWith('_')) flags[k] = m[k]; });
-            if (Object.keys(flags).length) uiState[m.id] = flags;
-          });
-          return msgs.map(m => uiState[m.id] ? { ...m, ...uiState[m.id] } : m);
-        });
-        setWaContacts(contacts);
-        setWaOrderGroupId(groupId);
-        setWaLastPoll(Date.now());
-      } catch { /* service offline */ }
-    };
+    const poll = async () => { if (!cancelled) await pollWaInbox(); };
     poll();
     const id = setInterval(poll, 5000);
     return () => { cancelled = true; clearInterval(id); };
-  }, []);
+  }, [pollWaInbox]);
+
+  const handleWaSync = useCallback(async () => {
+    setWaSyncing(true);
+    await pollWaInbox();
+    setWaSyncing(false);
+  }, [pollWaInbox]);
 
   // Load WhatsApp groups when setup is opened
   useEffect(() => {
@@ -2278,6 +2285,19 @@ export default function WarehouseOrders() {
               <div className="wa-inbox-controls">
                 <span className={`wa-status-dot wa-status-${waStatus}`} title={waStatus} />
                 <span className="wa-status-label">{waStatus === 'connected' ? 'Connected' : waStatus === 'qr-pending' ? 'Scan QR' : 'Offline'}</span>
+                {waLastPoll > 0 && (
+                  <span className="wa-last-poll" title="Last checked">
+                    {waSyncing ? 'Checking...' : `Checked ${new Date(waLastPoll).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
+                  </span>
+                )}
+                <button
+                  className={`wa-sync-now-btn${waSyncing ? ' spinning' : ''}`}
+                  onClick={handleWaSync}
+                  disabled={waSyncing}
+                  title="Sync now"
+                >
+                  ↻
+                </button>
                 {waMessages.length > 0 && (
                   <button className="wa-dismiss-all" onClick={() => handleDismiss(waMessages.map(m => m.id))}>
                     Clear All ({waMessages.length})
