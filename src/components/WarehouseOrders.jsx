@@ -2382,9 +2382,9 @@ export default function WarehouseOrders() {
                         </div>
                       )}
 
-                      {/* Message cards */}
+                      {/* Message cards — show 2 most recent */}
                       <div className="wa-messages">
-                        {msgs.map(m => (
+                        {msgs.slice(0, 2).map(m => (
                           <div key={m.id} className="wa-msg-card">
                             <button className="wa-msg-close" onClick={() => handleDismiss([m.id])}>×</button>
                             {m.mediaBase64 && m.mediaType?.startsWith('image/') && (
