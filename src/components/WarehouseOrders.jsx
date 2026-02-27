@@ -221,15 +221,28 @@ export default function WarehouseOrders() {
     });
   };
 
-  // Set individual unit count for a product
+  // Set individual unit count — auto-converts full cases
   const setUnitCount = (sku, val) => {
-    const num = val === '' ? 0 : parseFloat(val) || 0;
-    setUnits(prev => {
-      const next = { ...prev };
-      if (num > 0) next[sku] = num;
-      else delete next[sku];
-      return next;
-    });
+    const num = val === '' ? 0 : parseInt(val, 10) || 0;
+    if (num <= 0) {
+      setUnits(prev => { const next = { ...prev }; delete next[sku]; return next; });
+      return;
+    }
+    const product = PRODUCT_CATALOG.find(p => p.sku === sku);
+    const upc = product?.upc || 1;
+    if (num >= upc) {
+      const fullCases = Math.floor(num / upc);
+      const remainder = num % upc;
+      setCases(prev => ({ ...prev, [sku]: (prev[sku] || 0) + fullCases }));
+      setUnits(prev => {
+        const next = { ...prev };
+        if (remainder > 0) next[sku] = remainder;
+        else delete next[sku];
+        return next;
+      });
+    } else {
+      setUnits(prev => ({ ...prev, [sku]: num }));
+    }
   };
 
   // Orders for the queue view
