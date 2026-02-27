@@ -271,11 +271,64 @@ async function sendReportToGroup(groupId, routeNumber, stats) {
   return sendToGroup(groupId, lines.join('\n'));
 }
 
-// Set which group to listen to for orders
-function setOrderGroup(groupId) {
+// Set which group to listen to for orders — also load recent message history
+async function setOrderGroup(groupId) {
   orderGroupId = groupId;
   saveGroup();
   console.log(`📋 Order group set to: ${groupId}`);
+
+  // Load recent messages from chat history
+  if (client && status === 'connected' && groupId) {
+    try {
+      const chat = await client.getChatById(groupId);
+      const history = await chat.fetchMessages({ limit: 50 });
+      let loaded = 0;
+      for (const msg of history) {
+        // Skip messages we already have
+        const msgId = msg.id._serialized;
+        if (orderMessages.find(m => m.id === msgId)) continue;
+        // Skip messages from the bot itself
+        if (msg.fromMe) continue;
+
+        const contact = await msg.getContact();
+        const phone = contact.number || msg.author || msg.from;
+        const entry = {
+          id: msgId,
+          from: phone,
+          pushName: contact.pushname || contact.name || phone,
+          body: msg.body || '',
+          timestamp: msg.timestamp * 1000,
+          hasMedia: msg.hasMedia,
+          mediaBase64: null,
+          mediaType: null,
+        };
+
+        if (msg.hasMedia) {
+          try {
+            const media = await msg.downloadMedia();
+            if (media) {
+              entry.mediaBase64 = media.data;
+              entry.mediaType = media.mimetype;
+            }
+          } catch { }
+        }
+
+        orderMessages.push(entry);
+        loaded++;
+      }
+      // Sort by timestamp
+      orderMessages.sort((a, b) => a.timestamp - b.timestamp);
+      if (orderMessages.length > MAX_MESSAGES) {
+        orderMessages = orderMessages.slice(-MAX_MESSAGES);
+      }
+      if (loaded > 0) {
+        saveMessages();
+        console.log(`📥 Loaded ${loaded} recent messages from group history`);
+      }
+    } catch (err) {
+      console.error('Failed to load group history:', err.message);
+    }
+  }
 }
 
 function getOrderGroup() {

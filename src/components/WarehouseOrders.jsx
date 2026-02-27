@@ -114,6 +114,10 @@ export default function WarehouseOrders() {
   // Recent orders dropdown (last 8 from Google Sheet)
   const [recentTabs, setRecentTabs] = useState([]);
   const [recentLoaded, setRecentLoaded] = useState(false);
+  // Queue: sheet orders list
+  const [queueSheetTabs, setQueueSheetTabs] = useState(null); // null = not loaded, [] = loaded
+  const [queueSheetLoading, setQueueSheetLoading] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Get unique routes from stores
   const routes = useMemo(() => {
@@ -1416,6 +1420,44 @@ export default function WarehouseOrders() {
   }, [historyTabs, parseTabName]);
 
   const sheetsConfigured = isGoogleSheetsConfigured();
+
+  // Load all sheet tabs for queue display
+  const loadQueueSheetTabs = useCallback(async () => {
+    if (!isGoogleSheetsConfigured()) return;
+    setQueueSheetLoading(true);
+    try {
+      const result = await listSheetTabs();
+      if (result.success) {
+        const allTabs = result.tabs || [];
+        const parsed = allTabs
+          .map(name => parseTabName(name))
+          .filter(Boolean);
+        parsed.sort((a, b) => {
+          const pd = (d) => {
+            const p = d.split('/');
+            if (p.length === 3) {
+              const yr = parseInt(p[2], 10);
+              return new Date(yr < 100 ? 2000 + yr : yr, parseInt(p[0], 10) - 1, parseInt(p[1], 10));
+            }
+            return new Date(0);
+          };
+          return pd(b.date) - pd(a.date);
+        });
+        setQueueSheetTabs(parsed);
+      }
+    } catch (err) {
+      console.error('Failed to load sheet tabs:', err);
+    }
+    setQueueSheetLoading(false);
+  }, [parseTabName]);
+
+  // Auto-load sheet tabs when queue tab is opened
+  useEffect(() => {
+    if (tab === 'queue' && isGoogleSheetsConfigured() && queueSheetTabs === null) {
+      loadQueueSheetTabs();
+    }
+  }, [tab, loadQueueSheetTabs, queueSheetTabs]);
+
   const isSetupComplete = settingsRole && hasSpreadsheetId() && isSignedIn();
 
   // Gate: show setup screen if role or sheet not configured
@@ -2181,9 +2223,76 @@ export default function WarehouseOrders() {
         </div>
       )}
 
-      {tab === 'queue' && (
+      {tab === 'queue' && (() => {
+        // Split local orders into active vs archived
+        const activeOrders = queueOrders.filter(o => !o.archived);
+        const archivedOrders = queueOrders.filter(o => o.archived);
+
+        // Merge active local orders + sheet-only orders into one list
+        const mergedRows = [];
+        const matchedSheetTabs = new Set();
+
+        // Add active local orders first
+        activeOrders.forEach(order => {
+          const tabName = buildTabName(order.routeNumber, order.name, order.date);
+          const onSheet = (queueSheetTabs || []).some(st => st.tabName === tabName);
+          if (onSheet) matchedSheetTabs.add(tabName);
+          mergedRows.push({ type: 'local', order, tabName, onSheet });
+        });
+        // Also mark archived orders' tabs as matched so they don't show as sheet-only
+        archivedOrders.forEach(order => {
+          const tabName = buildTabName(order.routeNumber, order.name, order.date);
+          if ((queueSheetTabs || []).some(st => st.tabName === tabName)) matchedSheetTabs.add(tabName);
+        });
+
+        // Add sheet-only orders (not already local)
+        (queueSheetTabs || []).forEach(st => {
+          if (!matchedSheetTabs.has(st.tabName)) {
+            mergedRows.push({ type: 'sheet', sheet: st, tabName: st.tabName });
+          }
+        });
+
+        // Sort by date descending
+        mergedRows.sort((a, b) => {
+          const getDate = (row) => {
+            if (row.type === 'local') return new Date(row.order.date);
+            const p = row.sheet.date.split('/');
+            if (p.length === 3) {
+              const yr = parseInt(p[2], 10);
+              return new Date(yr < 100 ? 2000 + yr : yr, parseInt(p[0], 10) - 1, parseInt(p[1], 10));
+            }
+            return new Date(0);
+          };
+          return getDate(b) - getDate(a);
+        });
+
+        return (
         <div className="wo-queue">
-          {queueOrders.length === 0 ? (
+          <div className="wo-queue-header">
+            {sheetsConfigured && (
+              <button
+                className="wo-sheet-sync-btn"
+                onClick={loadQueueSheetTabs}
+                disabled={queueSheetLoading}
+              >
+                {queueSheetLoading ? (lang === 'es' ? 'Sincronizando...' : 'Syncing...') : `\u21BB ${lang === 'es' ? 'Sincronizar con Google Sheets' : 'Sync with Google Sheets'}`}
+              </button>
+            )}
+            {queueOrders.length > 0 && (
+              <button
+                className="wo-clear-local-btn"
+                onClick={() => {
+                  if (window.confirm(lang === 'es' ? 'Borrar ordenes locales? Las ordenes en Google Sheets se mantienen.' : 'Clear all local orders? Orders on Google Sheets will remain.')) {
+                    setWarehouseOrders({ orders: [], lastSyncedAt: warehouseOrders?.lastSyncedAt || null });
+                  }
+                }}
+              >
+                {lang === 'es' ? 'Limpiar Ordenes Locales' : 'Clear Local Orders'}
+              </button>
+            )}
+          </div>
+
+          {mergedRows.length === 0 ? (
             <div className="wo-empty">{t(lang, 'noOrdersYet')}</div>
           ) : (
             <table className="wo-queue-table">
@@ -2203,80 +2312,150 @@ export default function WarehouseOrders() {
                 </tr>
               </thead>
               <tbody>
-                {queueOrders.map(order => (
-                  <tr key={order.id} className="wo-queue-row">
-                    <td>{order.date}</td>
-                    <td><strong>{order.routeNumber}</strong></td>
-                    <td>{order.name || '-'}</td>
-                    <td>{order.items?.length || 0}</td>
-                    <td>{order.totals?.totalCases || 0}</td>
-                    <td>${(order.totals?.totalGross || 0).toFixed(2)}</td>
-                    <td className="wo-invoice-cell">
-                      {order.invoiceNumber ? `#${order.invoiceNumber}` : '-'}
-                      {order.invoiceCases ? ` ${order.invoiceCases}cs` : ''}
-                      {order.invoiceAmount ? ` $${parseFloat(order.invoiceAmount).toFixed(2)}` : ''}
-                    </td>
-                    <td className="wo-invoice-cell">
-                      {order.loadNumber ? `#${order.loadNumber}` : '-'}
-                      {order.loadCases ? ` ${order.loadCases}cs` : ''}
-                      {order.loadAmount ? ` $${parseFloat(order.loadAmount).toFixed(2)}` : ''}
-                    </td>
-                    <td>
-                      {order.invoiceAmount && order.loadAmount ? (
-                        Math.abs(parseFloat(order.invoiceAmount) - parseFloat(order.loadAmount)) <= 0.01
-                        && (!order.invoiceCases || !order.loadCases || order.invoiceCases === order.loadCases)
-                          ? <span className="wo-match-badge">OK</span>
-                          : <span className="wo-mismatch-badge">!</span>
-                      ) : '-'}
-                    </td>
-                    <td>
-                      <span className={`wo-status wo-status-${order.status}`}>{order.status}</span>
-                    </td>
-                    <td className="wo-queue-actions">
-                      <button onClick={() => {
-                        setSelectedRoute(order.routeNumber);
-                        setOrderDate(order.date);
-                        loadExistingOrder(order);
-                        setTab('entry');
-                      }}>{t(lang, 'edit')}</button>
-                      {sheetsConfigured && order.status !== 'synced' && (
+                {mergedRows.map(row => {
+                  if (row.type === 'local') {
+                    const order = row.order;
+                    return (
+                      <tr key={order.id} className={`wo-queue-row${row.onSheet ? ' wo-sheet-local' : ''}`}>
+                        <td>{order.date}</td>
+                        <td><strong>{order.routeNumber}</strong></td>
+                        <td>{order.name || '-'}</td>
+                        <td>{order.items?.length || 0}</td>
+                        <td>{order.totals?.totalCases || 0}</td>
+                        <td>${(order.totals?.totalGross || 0).toFixed(2)}</td>
+                        <td className="wo-invoice-cell">
+                          {order.invoiceNumber ? `#${order.invoiceNumber}` : '-'}
+                          {order.invoiceCases ? ` ${order.invoiceCases}cs` : ''}
+                          {order.invoiceAmount ? ` $${parseFloat(order.invoiceAmount).toFixed(2)}` : ''}
+                        </td>
+                        <td className="wo-invoice-cell">
+                          {order.loadNumber ? `#${order.loadNumber}` : '-'}
+                          {order.loadCases ? ` ${order.loadCases}cs` : ''}
+                          {order.loadAmount ? ` $${parseFloat(order.loadAmount).toFixed(2)}` : ''}
+                        </td>
+                        <td>
+                          {order.invoiceAmount && order.loadAmount ? (
+                            Math.abs(parseFloat(order.invoiceAmount) - parseFloat(order.loadAmount)) <= 0.01
+                            && (!order.invoiceCases || !order.loadCases || order.invoiceCases === order.loadCases)
+                              ? <span className="wo-match-badge">OK</span>
+                              : <span className="wo-mismatch-badge">!</span>
+                          ) : '-'}
+                        </td>
+                        <td>
+                          {row.onSheet
+                            ? <span className="wo-status wo-status-synced">{lang === 'es' ? 'Sincronizado' : 'Synced'}</span>
+                            : <span className="wo-status wo-status-pending">{lang === 'es' ? 'Solo Local' : 'Local Only'}</span>}
+                        </td>
+                        <td className="wo-queue-actions">
+                          <button onClick={() => {
+                            setSelectedRoute(order.routeNumber);
+                            setOrderDate(order.date);
+                            loadExistingOrder(order);
+                            setTab('entry');
+                          }}>{t(lang, 'edit')}</button>
+                          <button className="wo-archive-btn" onClick={() => updateWarehouseOrder({ id: order.id, archived: true })}>
+                            {lang === 'es' ? 'Archivar' : 'Archive'}
+                          </button>
+                          <button className="wo-del-btn" onClick={() => {
+                            if (window.confirm(`${lang === 'es' ? 'Borrar orden de ruta' : 'Delete order for route'} ${order.routeNumber}?`)) {
+                              deleteWarehouseOrder(order.id);
+                            }
+                          }}>{t(lang, 'delete')}</button>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  // Sheet-only row
+                  const st = row.sheet;
+                  return (
+                    <tr key={row.tabName} className="wo-queue-row wo-queue-sheet-only">
+                      <td>{st.date}</td>
+                      <td><strong>{st.route}</strong></td>
+                      <td>{st.driver}</td>
+                      <td colSpan="4" className="wo-sheet-tab-name">{st.tabName}</td>
+                      <td></td>
+                      <td></td>
+                      <td><span className="wo-status wo-status-sheet">{lang === 'es' ? 'Google Sheet' : 'On Sheet'}</span></td>
+                      <td className="wo-queue-actions">
                         <button
-                          className="wo-sync-btn-sm"
-                          onClick={() => handlePushQueueOrder(order)}
-                          disabled={syncing}
+                          onClick={() => {
+                            setSelectedRoute(st.route);
+                            setOrderName(st.driver);
+                            const dp = st.date.split('/');
+                            if (dp.length === 3) {
+                              const yr = parseInt(dp[2], 10);
+                              const fullYr = yr < 100 ? 2000 + yr : yr;
+                              setOrderDate(`${fullYr}-${String(dp[0]).padStart(2,'0')}-${String(dp[1]).padStart(2,'0')}`);
+                            }
+                            handlePullTab(st.tabName);
+                            setTab('entry');
+                          }}
                         >
-                          {syncing ? '...' : '\u2191 Sheet'}
+                          {lang === 'es' ? 'Cargar' : 'Load'}
                         </button>
-                      )}
-                      <button className="wo-del-btn" onClick={() => {
-                        if (window.confirm(`Delete order for route ${order.routeNumber} on ${order.date}?`)) {
-                          deleteWarehouseOrder(order.id);
-                        }
-                      }}>{t(lang, 'delete')}</button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
 
-          {queueOrders.length > 0 && (
-            <div className="wo-queue-actions">
-              <button
-                className="wo-clear-local-btn"
-                onClick={() => {
-                  if (window.confirm('Clear all local orders? Orders already pushed to Google Sheets will remain there.')) {
-                    setWarehouseOrders({ orders: [], lastSyncedAt: warehouseOrders?.lastSyncedAt || null });
-                  }
-                }}
-              >
-                Clear All Local Orders
+          {/* ── Archived Orders ────────────────────────────────────────── */}
+          {archivedOrders.length > 0 && (
+            <div className="wo-archived-section">
+              <button className="wo-archived-toggle" onClick={() => setShowArchived(prev => !prev)}>
+                <span className="wo-cat-arrow">{showArchived ? '\u25bc' : '\u25b6'}</span>
+                {lang === 'es' ? 'Archivadas' : 'Archived'} ({archivedOrders.length})
               </button>
+              {showArchived && (
+                <table className="wo-queue-table wo-archived-table">
+                  <thead>
+                    <tr>
+                      <th>{t(lang, 'date')}</th>
+                      <th>{t(lang, 'route')}</th>
+                      <th>{t(lang, 'name')}</th>
+                      <th>{t(lang, 'items')}</th>
+                      <th>{t(lang, 'cases')}</th>
+                      <th>{t(lang, 'grossDollar')}</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archivedOrders.map(order => (
+                      <tr key={order.id} className="wo-queue-row wo-archived-row">
+                        <td>{order.date}</td>
+                        <td><strong>{order.routeNumber}</strong></td>
+                        <td>{order.name || '-'}</td>
+                        <td>{order.items?.length || 0}</td>
+                        <td>{order.totals?.totalCases || 0}</td>
+                        <td>${(order.totals?.totalGross || 0).toFixed(2)}</td>
+                        <td className="wo-queue-actions">
+                          <button onClick={() => {
+                            setSelectedRoute(order.routeNumber);
+                            setOrderDate(order.date);
+                            loadExistingOrder(order);
+                            setTab('entry');
+                          }}>{t(lang, 'edit')}</button>
+                          <button className="wo-unarchive-btn" onClick={() => updateWarehouseOrder({ id: order.id, archived: false })}>
+                            {lang === 'es' ? 'Restaurar' : 'Restore'}
+                          </button>
+                          <button className="wo-del-btn" onClick={() => {
+                            if (window.confirm(`${lang === 'es' ? 'Borrar orden de ruta' : 'Delete order for route'} ${order.routeNumber}?`)) {
+                              deleteWarehouseOrder(order.id);
+                            }
+                          }}>{t(lang, 'delete')}</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
-
         </div>
-      )}
+        );
+      })()}
 
       {/* ── WhatsApp Inbox — always visible ─────────────────────────────── */}
       <div className="wa-inbox">

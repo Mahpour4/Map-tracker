@@ -73,10 +73,10 @@ app.post('/api/whatsapp/send-report', async (req, res) => {
 // ── Order Group Message Endpoints ────────────────────────────────────────────
 
 // Set which WhatsApp group to listen to for orders
-app.post('/api/whatsapp/set-order-group', (req, res) => {
+app.post('/api/whatsapp/set-order-group', async (req, res) => {
   const { groupId } = req.body;
   if (!groupId) return res.status(400).json({ error: 'groupId is required' });
-  whatsapp.setOrderGroup(groupId);
+  await whatsapp.setOrderGroup(groupId);
   res.json({ success: true, groupId });
 });
 

@@ -10825,7 +10825,6 @@ textarea {
 }
 .wo-del-btn { color: #dc2626; }
 .wo-del-btn:hover { background: #fef2f2; }
-.wo-queue-actions { display: flex; justify-content: flex-end; padding: 8px 0; }
 .wo-clear-local-btn {
   padding: 6px 14px;
   border: 1px solid #dc2626;
@@ -10837,6 +10836,73 @@ textarea {
   cursor: pointer;
 }
 .wo-clear-local-btn:hover { background: #fef2f2; }
+/* Queue header bar */
+.wo-queue-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.wo-sheet-sync-btn {
+  padding: 8px 18px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.wo-sheet-sync-btn:hover { opacity: 0.9; }
+.wo-sheet-sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.wo-sheet-tab-name { font-size: 0.78rem; color: var(--text-muted); }
+.wo-sheet-local { background: #f0fdf4; }
+.wo-queue-sheet-only { background: #f8fafc; }
+.wo-status-sheet { background: #dbeafe; color: #1d4ed8; }
+.wo-status-synced { background: #dcfce7; color: #16a34a; }
+.wo-status-pending { background: #fef9c3; color: #a16207; }
+.wo-sheet-local-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #dcfce7;
+  color: #16a34a;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin-left: 4px;
+}
+/* Archive button & section */
+.wo-archive-btn {
+  padding: 3px 10px;
+  border: 1px solid #6b7280;
+  border-radius: var(--radius);
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.wo-archive-btn:hover { background: #f3f4f6; }
+.wo-unarchive-btn {
+  padding: 3px 10px;
+  border: 1px solid #2563eb;
+  border-radius: var(--radius);
+  background: transparent;
+  color: #2563eb;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.wo-unarchive-btn:hover { background: #eff6ff; }
+.wo-archived-section { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+.wo-archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.wo-archived-toggle:hover { color: #374151; }
+.wo-archived-table { opacity: 0.7; }
+.wo-archived-row { background: #f9fafb; }
 .wo-empty {
   text-align: center;
   padding: 48px;
