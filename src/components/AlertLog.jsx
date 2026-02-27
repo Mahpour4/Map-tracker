@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
-import { fetchAlertImage, isGmailConnected } from '../services/gmailAlertService';
+import { fetchAlertImage, isGmailConnected, signInWithGoogle } from '../services/gmailAlertService';
 import { scrapeAlertDetails as gwScrapeDetails, checkAlertStatus as gwCheckStatus } from '../services/globalworxService';
 import { labelAlertsCompleted } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
@@ -756,6 +756,10 @@ export default function AlertLog() {
     if (dateOverride) setAlertDate(dateOverride);
     setFetching(true);
     try {
+      // Auto sign-in if not connected
+      if (!isGmailConnected()) {
+        await signInWithGoogle();
+      }
       await fetchGmailAlerts(dateToFetch);
     } catch (err) {
       console.error('Failed to fetch alerts:', err);
