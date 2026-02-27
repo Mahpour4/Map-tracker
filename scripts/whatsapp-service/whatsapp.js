@@ -57,6 +57,7 @@ function initialize() {
     puppeteer: {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+      protocolTimeout: 120000, // 2 min — default 30s causes getChats() timeouts
       ...(executablePath ? { executablePath } : {}),
     },
   });
@@ -71,6 +72,8 @@ function initialize() {
   client.on('ready', () => {
     status = 'connected';
     qrCode = null;
+    cachedGroups = null; // clear stale cache on reconnect
+    groupsCachedAt = 0;
     console.log('✅ WhatsApp client connected and ready!');
   });
 
@@ -85,6 +88,8 @@ function initialize() {
 
   client.on('disconnected', (reason) => {
     status = 'disconnected';
+    cachedGroups = null;
+    groupsCachedAt = 0;
     console.log('🔌 WhatsApp disconnected:', reason);
   });
 
@@ -180,16 +185,39 @@ function initialize() {
   console.log('⏳ Initializing WhatsApp client (this may take a moment)...');
 }
 
+// Cached group list — avoid hammering WhatsApp Web on every poll
+let cachedGroups = null;
+let groupsCachedAt = 0;
+const GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Get all WhatsApp groups the user is a member of
 async function getGroups() {
   if (status !== 'connected') {
     throw new Error('WhatsApp is not connected');
   }
-  const chats = await client.getChats();
-  return chats
-    .filter(c => c.isGroup)
-    .map(c => ({ id: c.id._serialized, name: c.name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // Return cached list if fresh
+  if (cachedGroups && Date.now() - groupsCachedAt < GROUPS_CACHE_TTL) {
+    return cachedGroups;
+  }
+  // Retry once on timeout / detached-frame errors
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const chats = await client.getChats();
+      const groups = chats
+        .filter(c => c.isGroup)
+        .map(c => ({ id: c.id._serialized, name: c.name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      cachedGroups = groups;
+      groupsCachedAt = Date.now();
+      return groups;
+    } catch (err) {
+      const isRetryable = err.message.includes('timed out') || err.message.includes('detached Frame');
+      console.warn(`[WA] getGroups attempt ${attempt} failed: ${err.message}`);
+      if (attempt === 2 || !isRetryable) throw err;
+      // Wait 3s before retry
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
 }
 
 // Send a message to a group by its group ID (e.g. "120363xxxxx@g.us")
