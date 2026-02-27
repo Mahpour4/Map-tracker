@@ -14,6 +14,7 @@ import {
   getWhatsAppStatus, getWhatsAppGroups, getOrderMessages,
   dismissMessages, setOrderGroup, getOrderGroup,
   getWaContacts, setWaContact, removeWaContact, sendWhatsAppMessage,
+  fetchWhatsAppHistory,
 } from '../services/whatsappService';
 
 const ROUTE_INFO = {
@@ -82,6 +83,8 @@ export default function WarehouseOrders() {
   const [waSyncing, setWaSyncing] = useState(false);
   const [waEditContact, setWaEditContact] = useState(null); // { phone, name, route }
   const [waShowSetup, setWaShowSetup] = useState(false);
+  const [waPeriod, setWaPeriod] = useState('all');
+  const [waRefreshing, setWaRefreshing] = useState(false);
   const waPollerRef = useRef(null);
 
   // Google Sheets sync state
@@ -118,6 +121,9 @@ export default function WarehouseOrders() {
   const [queueSheetTabs, setQueueSheetTabs] = useState(null); // null = not loaded, [] = loaded
   const [queueSheetLoading, setQueueSheetLoading] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [archivedSheetTabs, setArchivedSheetTabs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('archivedSheetTabs') || '[]'); } catch { return []; }
+  });
 
   // Get unique routes from stores
   const routes = useMemo(() => {
@@ -842,17 +848,25 @@ export default function WarehouseOrders() {
     getWhatsAppGroups().then(g => setWaGroups(g)).catch(() => {});
   }, [waShowSetup]);
 
-  // Group messages by phone number
+  // Filter messages by period, then group by phone number
+  const waFiltered = useMemo(() => {
+    if (waPeriod === 'all') return waMessages;
+    const now = Date.now();
+    const ms = { '24h': 24*60*60*1000, '7d': 7*24*60*60*1000, '30d': 30*24*60*60*1000 }[waPeriod] || 0;
+    if (!ms) return waMessages;
+    return waMessages.filter(m => m.timestamp > now - ms);
+  }, [waMessages, waPeriod]);
+
   const waGrouped = useMemo(() => {
     const groups = {};
-    waMessages.forEach(m => {
+    waFiltered.forEach(m => {
       if (!groups[m.from]) groups[m.from] = [];
       groups[m.from].push(m);
     });
     // Sort each group by timestamp desc
     Object.values(groups).forEach(arr => arr.sort((a, b) => b.timestamp - a.timestamp));
     return groups;
-  }, [waMessages]);
+  }, [waFiltered]);
 
   const handleAssignContact = async (phone) => {
     if (!waEditContact) return;
@@ -2239,17 +2253,23 @@ export default function WarehouseOrders() {
           if (onSheet) matchedSheetTabs.add(tabName);
           mergedRows.push({ type: 'local', order, tabName, onSheet });
         });
-        // Also mark archived orders' tabs as matched so they don't show as sheet-only
+        // Also mark archived local orders' tabs as matched
         archivedOrders.forEach(order => {
           const tabName = buildTabName(order.routeNumber, order.name, order.date);
           if ((queueSheetTabs || []).some(st => st.tabName === tabName)) matchedSheetTabs.add(tabName);
         });
 
-        // Add sheet-only orders (not already local)
+        // Archived sheet-only tabs
+        const archivedSheetRows = [];
+
+        // Add sheet-only orders (not already local, not archived)
         (queueSheetTabs || []).forEach(st => {
-          if (!matchedSheetTabs.has(st.tabName)) {
-            mergedRows.push({ type: 'sheet', sheet: st, tabName: st.tabName });
+          if (matchedSheetTabs.has(st.tabName)) return;
+          if (archivedSheetTabs.includes(st.tabName)) {
+            archivedSheetRows.push({ type: 'sheet', sheet: st, tabName: st.tabName });
+            return;
           }
+          mergedRows.push({ type: 'sheet', sheet: st, tabName: st.tabName });
         });
 
         // Sort by date descending
@@ -2393,6 +2413,13 @@ export default function WarehouseOrders() {
                         >
                           {lang === 'es' ? 'Cargar' : 'Load'}
                         </button>
+                        <button className="wo-archive-btn" onClick={() => {
+                          const updated = [...archivedSheetTabs, st.tabName];
+                          setArchivedSheetTabs(updated);
+                          localStorage.setItem('archivedSheetTabs', JSON.stringify(updated));
+                        }}>
+                          {lang === 'es' ? 'Archivar' : 'Archive'}
+                        </button>
                       </td>
                     </tr>
                   );
@@ -2402,11 +2429,11 @@ export default function WarehouseOrders() {
           )}
 
           {/* ── Archived Orders ────────────────────────────────────────── */}
-          {archivedOrders.length > 0 && (
+          {(archivedOrders.length > 0 || archivedSheetRows.length > 0) && (
             <div className="wo-archived-section">
               <button className="wo-archived-toggle" onClick={() => setShowArchived(prev => !prev)}>
                 <span className="wo-cat-arrow">{showArchived ? '\u25bc' : '\u25b6'}</span>
-                {lang === 'es' ? 'Archivadas' : 'Archived'} ({archivedOrders.length})
+                {lang === 'es' ? 'Archivadas' : 'Archived'} ({archivedOrders.length + archivedSheetRows.length})
               </button>
               {showArchived && (
                 <table className="wo-queue-table wo-archived-table">
@@ -2448,6 +2475,26 @@ export default function WarehouseOrders() {
                         </td>
                       </tr>
                     ))}
+                    {archivedSheetRows.map(row => {
+                      const st = row.sheet;
+                      return (
+                        <tr key={row.tabName} className="wo-queue-row wo-archived-row">
+                          <td>{st.date}</td>
+                          <td><strong>{st.route}</strong></td>
+                          <td>{st.driver}</td>
+                          <td colSpan="3" className="wo-sheet-tab-name">{st.tabName}</td>
+                          <td className="wo-queue-actions">
+                            <button className="wo-unarchive-btn" onClick={() => {
+                              const updated = archivedSheetTabs.filter(t => t !== st.tabName);
+                              setArchivedSheetTabs(updated);
+                              localStorage.setItem('archivedSheetTabs', JSON.stringify(updated));
+                            }}>
+                              {lang === 'es' ? 'Restaurar' : 'Restore'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -2469,6 +2516,17 @@ export default function WarehouseOrders() {
                     {waSyncing ? 'Checking...' : `Checked ${new Date(waLastPoll).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
                   </span>
                 )}
+                <select
+                  className="wa-period-select"
+                  value={waPeriod}
+                  onChange={e => setWaPeriod(e.target.value)}
+                  title="Filter messages by time period"
+                >
+                  <option value="24h">Last 24h</option>
+                  <option value="7d">Last 7 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="all">All</option>
+                </select>
                 <button
                   className={`wa-sync-now-btn${waSyncing ? ' spinning' : ''}`}
                   onClick={handleWaSync}
@@ -2476,6 +2534,19 @@ export default function WarehouseOrders() {
                   title="Sync now"
                 >
                   ↻
+                </button>
+                <button
+                  className={`wa-refresh-btn${waRefreshing ? ' spinning' : ''}`}
+                  onClick={async () => {
+                    setWaRefreshing(true);
+                    const result = await fetchWhatsAppHistory(500);
+                    if (result.loaded > 0) await pollWaInbox();
+                    setWaRefreshing(false);
+                  }}
+                  disabled={waRefreshing || waStatus !== 'connected'}
+                  title="Refresh history from WhatsApp (fetch older messages)"
+                >
+                  {waRefreshing ? 'Loading...' : 'Refresh History'}
                 </button>
                 {waMessages.length > 0 && (
                   <button className="wa-dismiss-all" onClick={() => handleDismiss(waMessages.map(m => m.id))}>
@@ -2529,7 +2600,11 @@ export default function WarehouseOrders() {
             {Object.keys(waGrouped).length === 0 ? (
               <div className="wa-empty">
                 {waStatus === 'connected'
-                  ? (waOrderGroupId ? 'No messages yet. Waiting for orders...' : 'Set up an order group above to start capturing messages.')
+                  ? (waOrderGroupId
+                    ? (waMessages.length > 0 && waFiltered.length === 0
+                      ? `No messages in selected period. ${waMessages.length} total in buffer.`
+                      : 'No messages yet. Waiting for orders...')
+                    : 'Set up an order group above to start capturing messages.')
                   : 'WhatsApp service is offline. Start the service to receive messages.'}
               </div>
             ) : (

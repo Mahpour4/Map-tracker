@@ -92,6 +92,18 @@ app.get('/api/whatsapp/order-messages', (req, res) => {
   res.json({ messages });
 });
 
+// Fetch/refresh message history from WhatsApp (on-demand)
+app.post('/api/whatsapp/fetch-history', async (req, res) => {
+  try {
+    const limit = parseInt(req.body.limit) || 500;
+    const result = await whatsapp.loadHistory(limit);
+    res.json(result);
+  } catch (err) {
+    console.error('Fetch history error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Dismiss order messages
 app.post('/api/whatsapp/dismiss-messages', (req, res) => {
   const { ids } = req.body; // array of message IDs, or empty to clear all

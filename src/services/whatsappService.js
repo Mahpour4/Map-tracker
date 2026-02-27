@@ -91,6 +91,19 @@ export async function getOrderMessages(since = 0) {
   }
 }
 
+export async function fetchWhatsAppHistory(limit = 500) {
+  try {
+    const res = await fetch(`${BASE}/fetch-history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit }),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: 'Service unavailable' };
+  }
+}
+
 export async function dismissMessages(ids) {
   const res = await fetch(`${BASE}/dismiss-messages`, {
     method: 'POST',

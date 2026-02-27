@@ -10867,16 +10867,17 @@ textarea {
   margin-left: 4px;
 }
 /* Archive button & section */
-.wo-archive-btn {
-  padding: 3px 10px;
-  border: 1px solid #6b7280;
+.wo-queue-actions .wo-archive-btn {
+  padding: 4px 10px;
+  border: 2px solid #f59e0b;
   border-radius: var(--radius);
-  background: transparent;
-  color: #6b7280;
+  background: #fffbeb;
+  color: #b45309;
   font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
 }
-.wo-archive-btn:hover { background: #f3f4f6; }
+.wo-queue-actions .wo-archive-btn:hover { background: #fef3c7; }
 .wo-unarchive-btn {
   padding: 3px 10px;
   border: 1px solid #2563eb;
@@ -12201,6 +12202,36 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .wa-dismiss-all:hover, .wa-setup-btn:hover {
   background: rgba(255,255,255,0.3);
 }
+
+.wa-period-select {
+  padding: 3px 8px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-period-select option {
+  color: #333;
+  background: #fff;
+}
+
+.wa-refresh-btn {
+  padding: 4px 12px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.wa-refresh-btn:hover { background: rgba(255,255,255,0.3); }
+.wa-refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.wa-refresh-btn.spinning { animation: wa-spin 0.7s linear infinite; }
 
 /* Setup panel */
 .wa-setup-panel {

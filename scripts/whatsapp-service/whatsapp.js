@@ -5,14 +5,14 @@ let client = null;
 let status = 'disconnected'; // disconnected | qr-pending | connected
 let qrCode = null;
 
-// Order message buffer — incoming messages from the order group
+// Order message buffer -- incoming messages from the order group
 const fs2 = require('fs');
 const path = require('path');
 
 const MESSAGES_FILE = path.join(__dirname, 'order-messages.json');
 const CONTACTS_FILE = path.join(__dirname, 'order-contacts.json');
 const GROUP_FILE = path.join(__dirname, 'order-group.json');
-const MAX_MESSAGES = 200;
+const MAX_MESSAGES = 1000;
 
 // Load persisted state
 let orderGroupId = null;
@@ -57,7 +57,7 @@ function initialize() {
     puppeteer: {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
-      protocolTimeout: 120000, // 2 min — default 30s causes getChats() timeouts
+      protocolTimeout: 120000, // 2 min
       ...(executablePath ? { executablePath } : {}),
     },
   });
@@ -65,35 +65,41 @@ function initialize() {
   client.on('qr', (qr) => {
     status = 'qr-pending';
     qrCode = qr;
-    console.log('\n📱 Scan this QR code with WhatsApp:\n');
+    console.log('\n\uD83D\uDCF1 Scan this QR code with WhatsApp:\n');
     qrcode.generate(qr, { small: true });
   });
 
-  client.on('ready', () => {
+  client.on('ready', async () => {
     status = 'connected';
     qrCode = null;
     cachedGroups = null; // clear stale cache on reconnect
     groupsCachedAt = 0;
-    console.log('✅ WhatsApp client connected and ready!');
+    console.log('\u2705 WhatsApp client connected and ready!');
+
+    // Auto-fetch message history on startup if a group is configured
+    if (orderGroupId) {
+      console.log('\uD83D\uDCE5 Auto-loading message history on startup...');
+      await loadHistory(500);
+    }
   });
 
   client.on('authenticated', () => {
-    console.log('🔐 WhatsApp authenticated (session restored)');
+    console.log('\uD83D\uDD10 WhatsApp authenticated (session restored)');
   });
 
   client.on('auth_failure', (msg) => {
     status = 'disconnected';
-    console.error('❌ WhatsApp auth failure:', msg);
+    console.error('\u274C WhatsApp auth failure:', msg);
   });
 
   client.on('disconnected', (reason) => {
     status = 'disconnected';
     cachedGroups = null;
     groupsCachedAt = 0;
-    console.log('🔌 WhatsApp disconnected:', reason);
+    console.log('\uD83D\uDD0C WhatsApp disconnected:', reason);
   });
 
-  // Listen for incoming messages — capture order group messages
+  // Listen for incoming messages -- capture order group messages
   client.on('message', async (msg) => {
     try {
       // Only capture if an order group is configured
@@ -134,13 +140,13 @@ function initialize() {
       }
       saveMessages();
 
-      console.log(`📩 Order msg from ${entry.pushName} (${phone}): ${entry.body.substring(0, 60)}${entry.body.length > 60 ? '...' : ''}${entry.hasMedia ? ' [+media]' : ''}`);
+      console.log(`\uD83D\uDCE9 Order msg from ${entry.pushName} (${phone}): ${entry.body.substring(0, 60)}${entry.body.length > 60 ? '...' : ''}${entry.hasMedia ? ' [+media]' : ''}`);
     } catch (err) {
       console.error('Message listener error:', err.message);
     }
   });
 
-  // Listen for edited messages — update the buffer (WhatsApp allows edits up to 15 min)
+  // Listen for edited messages -- update the buffer (WhatsApp allows edits up to 15 min)
   client.on('message_edit', (msg, newBody, prevBody) => {
     try {
       if (!orderGroupId) return;
@@ -155,14 +161,14 @@ function initialize() {
         orderMessages[idx].body = newBody;
         orderMessages[idx].edited = true;
         saveMessages();
-        console.log(`📝 Order msg edited by ${orderMessages[idx].pushName}: "${prevBody.substring(0, 30)}..." → "${newBody.substring(0, 30)}..."`);
+        console.log(`\uD83D\uDCDD Order msg edited by ${orderMessages[idx].pushName}: "${prevBody.substring(0, 30)}..." \u2192 "${newBody.substring(0, 30)}..."`);
       }
     } catch (err) {
       console.error('Message edit listener error:', err.message);
     }
   });
 
-  // Listen for deleted messages — remove from buffer
+  // Listen for deleted messages -- remove from buffer
   client.on('message_revoke_everyone', (after, before) => {
     try {
       if (!orderGroupId) return;
@@ -171,7 +177,7 @@ function initialize() {
       if (idx !== -1) {
         const removed = orderMessages.splice(idx, 1)[0];
         saveMessages();
-        console.log(`🗑️ Order msg deleted by ${removed.pushName}: "${(removed.body || '').substring(0, 40)}..."`);
+        console.log(`\uD83D\uDDD1\uFE0F Order msg deleted by ${removed.pushName}: "${(removed.body || '').substring(0, 40)}..."`);
       }
     } catch (err) {
       console.error('Message revoke listener error:', err.message);
@@ -179,13 +185,13 @@ function initialize() {
   });
 
   client.initialize().catch(err => {
-    console.error('❌ Failed to initialize WhatsApp client:', err.message);
+    console.error('\u274C Failed to initialize WhatsApp client:', err.message);
     status = 'disconnected';
   });
-  console.log('⏳ Initializing WhatsApp client (this may take a moment)...');
+  console.log('\u23F3 Initializing WhatsApp client (this may take a moment)...');
 }
 
-// Cached group list — avoid hammering WhatsApp Web on every poll
+// Cached group list -- avoid hammering WhatsApp Web on every poll
 let cachedGroups = null;
 let groupsCachedAt = 0;
 const GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -232,7 +238,7 @@ async function sendToGroup(groupId, message) {
 // Send formatted alert to a group
 async function sendAlertToGroup(groupId, alert) {
   const lines = [
-    '🚨 *Map Tracker Alert*',
+    '\uD83D\uDEA8 *Map Tracker Alert*',
     '',
     `*Route:* ${alert.route || 'N/A'}`,
     `*Type:* ${alert.type || 'Alert'}`,
@@ -246,89 +252,94 @@ async function sendAlertToGroup(groupId, alert) {
 // Send route report summary to a group
 async function sendReportToGroup(groupId, routeNumber, stats) {
   const lines = [
-    `📊 *Route ${routeNumber} — Weekly Report*`,
+    `\uD83D\uDCCA *Route ${routeNumber} \u2014 Weekly Report*`,
     '',
-    `📅 *Period:* ${stats.period || 'Last 7 days'}`,
-    `🏪 *Stores Visited:* ${stats.storesVisited ?? 'N/A'}`,
-    `📍 *Total Stops:* ${stats.totalStops ?? 'N/A'}`,
-    `🛣️ *Miles Driven:* ${stats.milesDriven ? stats.milesDriven.toFixed(1) : 'N/A'}`,
-    `⛽ *Fuel Cost:* ${stats.fuelCost ? '$' + stats.fuelCost.toFixed(2) : 'N/A'}`,
-    `⛽ *Gallons:* ${stats.gallons ? stats.gallons.toFixed(1) : 'N/A'}`,
-    `📈 *MPG:* ${stats.mpg ? stats.mpg.toFixed(1) : 'N/A'}`,
+    `\uD83D\uDCC5 *Period:* ${stats.period || 'Last 7 days'}`,
+    `\uD83C\uDFEA *Stores Visited:* ${stats.storesVisited ?? 'N/A'}`,
+    `\uD83D\uDCCD *Total Stops:* ${stats.totalStops ?? 'N/A'}`,
+    `\uD83D\uDEE3\uFE0F *Miles Driven:* ${stats.milesDriven ? stats.milesDriven.toFixed(1) : 'N/A'}`,
+    `\u26FD *Fuel Cost:* ${stats.fuelCost ? '$' + stats.fuelCost.toFixed(2) : 'N/A'}`,
+    `\u26FD *Gallons:* ${stats.gallons ? stats.gallons.toFixed(1) : 'N/A'}`,
+    `\uD83D\uDCC8 *MPG:* ${stats.mpg ? stats.mpg.toFixed(1) : 'N/A'}`,
   ];
 
   if (stats.overdueStores && stats.overdueStores.length > 0) {
-    lines.push('', '⚠️ *Overdue Stores:*');
+    lines.push('', '\u26A0\uFE0F *Overdue Stores:*');
     stats.overdueStores.forEach((s) => {
-      lines.push(`  • ${s.name} — ${s.severity || 'overdue'} (${s.daysSince} days)`);
+      lines.push(`  \u2022 ${s.name} \u2014 ${s.severity || 'overdue'} (${s.daysSince} days)`);
     });
   }
 
   if (stats.alerts && stats.alerts > 0) {
-    lines.push('', `🔔 *Open Alerts:* ${stats.alerts}`);
+    lines.push('', `\uD83D\uDD14 *Open Alerts:* ${stats.alerts}`);
   }
 
   return sendToGroup(groupId, lines.join('\n'));
 }
 
-// Set which group to listen to for orders — also load recent message history
+// Load message history from WhatsApp -- reusable for startup + on-demand refresh
+async function loadHistory(limit = 500) {
+  if (!client || status !== 'connected' || !orderGroupId) {
+    return { success: false, loaded: 0, total: orderMessages.length, error: 'Not connected or no group set' };
+  }
+  try {
+    const chat = await client.getChatById(orderGroupId);
+    const history = await chat.fetchMessages({ limit });
+    let loaded = 0;
+    for (const msg of history) {
+      const msgId = msg.id._serialized;
+      if (orderMessages.find(m => m.id === msgId)) continue;
+      if (msg.fromMe) continue;
+
+      const contact = await msg.getContact();
+      const phone = contact.number || msg.author || msg.from;
+      const entry = {
+        id: msgId,
+        from: phone,
+        pushName: contact.pushname || contact.name || phone,
+        body: msg.body || '',
+        timestamp: msg.timestamp * 1000,
+        hasMedia: msg.hasMedia,
+        mediaBase64: null,
+        mediaType: null,
+      };
+
+      if (msg.hasMedia) {
+        try {
+          const media = await msg.downloadMedia();
+          if (media) {
+            entry.mediaBase64 = media.data;
+            entry.mediaType = media.mimetype;
+          }
+        } catch { }
+      }
+
+      orderMessages.push(entry);
+      loaded++;
+    }
+    orderMessages.sort((a, b) => a.timestamp - b.timestamp);
+    if (orderMessages.length > MAX_MESSAGES) {
+      orderMessages = orderMessages.slice(-MAX_MESSAGES);
+    }
+    if (loaded > 0) {
+      saveMessages();
+      console.log(`\uD83D\uDCE5 Loaded ${loaded} messages from group history (limit: ${limit}, total: ${orderMessages.length})`);
+    } else {
+      console.log(`\uD83D\uDCE5 No new messages to load (buffer has ${orderMessages.length})`);
+    }
+    return { success: true, loaded, total: orderMessages.length };
+  } catch (err) {
+    console.error('Failed to load group history:', err.message);
+    return { success: false, loaded: 0, total: orderMessages.length, error: err.message };
+  }
+}
+
+// Set which group to listen to for orders -- also load recent message history
 async function setOrderGroup(groupId) {
   orderGroupId = groupId;
   saveGroup();
-  console.log(`📋 Order group set to: ${groupId}`);
-
-  // Load recent messages from chat history
-  if (client && status === 'connected' && groupId) {
-    try {
-      const chat = await client.getChatById(groupId);
-      const history = await chat.fetchMessages({ limit: 50 });
-      let loaded = 0;
-      for (const msg of history) {
-        // Skip messages we already have
-        const msgId = msg.id._serialized;
-        if (orderMessages.find(m => m.id === msgId)) continue;
-        // Skip messages from the bot itself
-        if (msg.fromMe) continue;
-
-        const contact = await msg.getContact();
-        const phone = contact.number || msg.author || msg.from;
-        const entry = {
-          id: msgId,
-          from: phone,
-          pushName: contact.pushname || contact.name || phone,
-          body: msg.body || '',
-          timestamp: msg.timestamp * 1000,
-          hasMedia: msg.hasMedia,
-          mediaBase64: null,
-          mediaType: null,
-        };
-
-        if (msg.hasMedia) {
-          try {
-            const media = await msg.downloadMedia();
-            if (media) {
-              entry.mediaBase64 = media.data;
-              entry.mediaType = media.mimetype;
-            }
-          } catch { }
-        }
-
-        orderMessages.push(entry);
-        loaded++;
-      }
-      // Sort by timestamp
-      orderMessages.sort((a, b) => a.timestamp - b.timestamp);
-      if (orderMessages.length > MAX_MESSAGES) {
-        orderMessages = orderMessages.slice(-MAX_MESSAGES);
-      }
-      if (loaded > 0) {
-        saveMessages();
-        console.log(`📥 Loaded ${loaded} recent messages from group history`);
-      }
-    } catch (err) {
-      console.error('Failed to load group history:', err.message);
-    }
-  }
+  console.log(`\uD83D\uDCCB Order group set to: ${groupId}`);
+  await loadHistory(500);
 }
 
 function getOrderGroup() {
@@ -381,6 +392,7 @@ module.exports = {
   setOrderGroup,
   getOrderGroup,
   getOrderMessages,
+  loadHistory,
   dismissMessages,
   setContact,
   getContacts,
