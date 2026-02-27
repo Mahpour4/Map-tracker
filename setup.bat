@@ -2,29 +2,54 @@
 title Map Tracker - First Time Setup
 color 0A
 
+:: Keep window open if double-clicked directly
+if not defined SETUP_RUNNING (
+    set SETUP_RUNNING=1
+    cmd /k "%~f0"
+    exit
+)
+
 echo ============================================
 echo   Map Tracker - First Time Setup
 echo ============================================
 echo.
 
+:: Make sure we're in the right folder
+cd /d "%~dp0"
+
 :: ── Step 1: Check for Node.js ──────────────────────────────────────────────
 echo [1/4] Checking for Node.js...
 where node >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo Node.js not found. Downloading installer...
+    echo Node.js not found. Attempting to install via winget...
     echo.
 
-    :: Download Node.js LTS installer using PowerShell
-    powershell -Command "& { $url = 'https://nodejs.org/dist/lts/node-lts-latest-x64.msi'; $out = '$env:TEMP\node-lts.msi'; Write-Host 'Downloading from nodejs.org...'; Invoke-WebRequest -Uri $url -OutFile $out; Start-Process msiexec.exe -Wait -ArgumentList '/I', $out, '/quiet', '/norestart'; Remove-Item $out }"
+    winget install OpenJS.NodeJS.LTS --silent --accept-source-agreements --accept-package-agreements
+    if %ERRORLEVEL% NEQ 0 (
+        echo.
+        echo winget install failed. Trying PowerShell download...
+        powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+            "$out = Join-Path $env:TEMP 'node-lts.msi';" ^
+            "Write-Host 'Downloading Node.js LTS...';" ^
+            "$url = 'https://nodejs.org/dist/v22.14.0/node-v22.14.0-x64.msi';" ^
+            "Invoke-WebRequest -Uri $url -OutFile $out;" ^
+            "Write-Host 'Installing...';" ^
+            "Start-Process msiexec.exe -Wait -ArgumentList '/I', $out, '/quiet', '/norestart';" ^
+            "Remove-Item $out -Force"
+    )
 
-    :: Refresh PATH so node is available in this session
-    for /f "tokens=*" %%i in ('powershell -Command "[System.Environment]::GetEnvironmentVariable(\"PATH\", \"Machine\")"') do set PATH=%%i;%PATH%
+    :: Refresh PATH
+    for /f "usebackq tokens=*" %%i in (`powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('PATH','Machine')"`) do set "PATH=%%i;%PATH%"
 
     where node >nul 2>&1
     if %ERRORLEVEL% NEQ 0 (
         echo.
-        echo ERROR: Node.js install may require a restart.
-        echo Please restart your computer and run setup.bat again.
+        echo ============================================
+        echo   Node.js installed but needs a restart.
+        echo   Please restart your computer, then
+        echo   run setup.bat again.
+        echo ============================================
+        echo.
         pause
         exit /b 1
     )
@@ -38,7 +63,10 @@ echo.
 echo [2/4] Installing main app dependencies...
 call npm install
 if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: npm install failed. Check your internet connection and try again.
+    echo.
+    echo ERROR: npm install failed.
+    echo Check your internet connection and try again.
+    echo.
     pause
     exit /b 1
 )
@@ -51,8 +79,7 @@ if exist "scripts\whatsapp-service\package.json" (
     pushd scripts\whatsapp-service
     call npm install
     if %ERRORLEVEL% NEQ 0 (
-        echo WARNING: WhatsApp service dependencies failed to install.
-        echo The main app will still work without it.
+        echo WARNING: WhatsApp service install failed. Main app will still work.
     ) else (
         echo Done.
     )
