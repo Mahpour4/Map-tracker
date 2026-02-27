@@ -1406,12 +1406,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 3px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.page-nav-links::-webkit-scrollbar {
-  display: none;
+  /* overflow must stay visible so floating dropdowns aren't clipped */
 }
 
 .page-nav-btn {
