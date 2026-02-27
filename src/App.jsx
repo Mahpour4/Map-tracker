@@ -1,4 +1,4 @@
-import { useState, Component, useEffect } from 'react';
+import { useState, Component, useEffect, useRef } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { version } from '../package.json';
 import Sidebar from './components/Sidebar';
@@ -118,6 +118,17 @@ function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [openGroup, setOpenGroup] = useState(() => getActiveGroup(state.currentPage));
+  const navRef = useRef(null);
+
+  // Close dropdown when clicking outside the nav
+  useEffect(() => {
+    if (!openGroup) return;
+    const onOutside = (e) => {
+      if (navRef.current && !navRef.current.contains(e.target)) setOpenGroup(null);
+    };
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [openGroup]);
 
   const nav = (target) => {
     setPage(target);
@@ -142,7 +153,7 @@ function AppContent() {
           </div>
 
           {/* Nav links — center */}
-          <nav className={`page-nav-links${menuOpen ? ' open' : ''}`} aria-label="Main navigation">
+          <nav ref={navRef} className={`page-nav-links${menuOpen ? ' open' : ''}`} aria-label="Main navigation">
             {/* Pinned top-level tabs */}
             <button className={`page-nav-btn${page === 'map' ? ' active' : ''}`} onClick={() => nav('map')}>Map</button>
             <button className={`page-nav-btn${page === 'warehouseOrders' ? ' active' : ''}`} onClick={() => nav('warehouseOrders')}>Orders</button>
@@ -153,35 +164,35 @@ function AppContent() {
               const isGroupActive = group.items.some(i => i.id === page || (page === 'alertAnalytics' && i.id === 'alerts'));
               const isOpen = openGroup === group.id;
               return (
-                <button
-                  key={group.id}
-                  className={`page-nav-btn page-nav-group-btn${isGroupActive ? ' active' : ''}${isOpen ? ' open' : ''}`}
-                  onClick={() => toggleGroup(group.id)}
-                  aria-expanded={isOpen}
-                >
-                  {group.label}
-                  <svg className="page-nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <polyline points="2 4 6 8 10 4" />
-                  </svg>
-                </button>
+                <div key={group.id} className="page-nav-group-wrap">
+                  <button
+                    className={`page-nav-btn page-nav-group-btn${isGroupActive ? ' active' : ''}${isOpen ? ' open' : ''}`}
+                    onClick={() => toggleGroup(group.id)}
+                    aria-expanded={isOpen}
+                  >
+                    {group.label}
+                    <svg className="page-nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="2 4 6 8 10 4" />
+                    </svg>
+                  </button>
+                  {isOpen && (
+                    <div className="page-nav-dropdown" role="menu">
+                      {group.items.map(item => (
+                        <button
+                          key={item.id}
+                          role="menuitem"
+                          className={`page-nav-dropdown-item${(page === item.id || (page === 'alertAnalytics' && item.id === 'alerts')) ? ' active' : ''}`}
+                          onClick={() => { nav(item.id); setOpenGroup(null); }}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
-
-          {/* Sub-nav row — slides down when a group is open */}
-          {NAV_GROUPS.map(group => (
-            <div key={group.id} className={`page-nav-subnav${openGroup === group.id ? ' open' : ''}`} aria-hidden={openGroup !== group.id}>
-              {group.items.map(item => (
-                <button
-                  key={item.id}
-                  className={`page-nav-subnav-btn${(page === item.id || (page === 'alertAnalytics' && item.id === 'alerts')) ? ' active' : ''}`}
-                  onClick={() => { nav(item.id); setOpenGroup(null); }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          ))}
 
           {/* Actions — far right */}
           <div className="page-nav-actions">

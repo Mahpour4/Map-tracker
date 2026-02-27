@@ -1368,35 +1368,33 @@ textarea {
 .page-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
   flex-shrink: 0;
   z-index: 100;
-  padding: 0 12px;
-  min-height: 48px;
+  padding: 0 16px;
+  height: 56px;
   position: relative;
 }
 
-/* Brand — left */
+/* Brand — left, flex:1 so links sit truly centered */
 .page-nav-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 10px;
+  flex: 1;
 }
 
 .page-nav-logo-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   color: var(--primary);
   flex-shrink: 0;
 }
 
 .page-nav-brand-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
@@ -1407,10 +1405,9 @@ textarea {
 .page-nav-links {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 6px 0;
 }
 
 .page-nav-links::-webkit-scrollbar {
@@ -1418,15 +1415,15 @@ textarea {
 }
 
 .page-nav-btn {
-  padding: 5px 13px;
+  padding: 8px 16px;
   border: none;
   background: transparent;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  border-radius: 6px;
+  border-radius: 8px;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1439,16 +1436,21 @@ textarea {
 .page-nav-btn.active {
   background: var(--primary);
   color: #fff;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* Divider between pinned tabs and group dropdowns */
 .page-nav-divider {
   width: 1px;
-  height: 20px;
+  height: 22px;
   background: var(--border, #e5e7eb);
-  margin: 0 6px;
+  margin: 0 8px;
   flex-shrink: 0;
+}
+
+/* Group button wrapper — needed for absolute dropdown positioning */
+.page-nav-group-wrap {
+  position: relative;
 }
 
 /* Group button chevron */
@@ -1459,8 +1461,8 @@ textarea {
 }
 
 .page-nav-group-chevron {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   flex-shrink: 0;
   transition: transform 0.2s ease;
 }
@@ -1469,60 +1471,60 @@ textarea {
   transform: rotate(180deg);
 }
 
-/* Sub-nav row */
-.page-nav-subnav {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px 12px 10px;
-  background: var(--bg);
-  border-top: 1px solid var(--border, #e5e7eb);
-  animation: subnav-slide-down 0.18s ease;
-  overflow: hidden;
-  flex-wrap: wrap;
-}
-
-.page-nav-subnav.open {
+/* Floating dropdown card */
+.page-nav-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.13);
+  z-index: 500;
+  min-width: 170px;
+  padding: 6px;
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: dropdown-pop 0.15s ease;
 }
 
-@keyframes subnav-slide-down {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes dropdown-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-.page-nav-subnav-btn {
-  padding: 7px 20px;
+.page-nav-dropdown-item {
+  padding: 10px 16px;
   border: none;
   background: transparent;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text-muted);
-  cursor: pointer;
   border-radius: 6px;
-  white-space: nowrap;
-  letter-spacing: 0.01em;
-  transition: background 0.15s, color 0.15s;
-}
-
-.page-nav-subnav-btn:hover {
-  background: #f1f5f9;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
 }
 
-.page-nav-subnav-btn.active {
+.page-nav-dropdown-item:hover {
+  background: #f1f5f9;
+}
+
+.page-nav-dropdown-item.active {
   background: var(--primary);
   color: #fff;
 }
 
-/* Actions — right */
+/* Actions — right, flex:1 + justify-end keeps links centered */
 .page-nav-actions {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 /* Language toggle — WarehouseOrders page */
