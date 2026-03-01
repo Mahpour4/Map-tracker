@@ -11,8 +11,9 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// ── Local file persistence (src/data/*.json on disk) ─────────────────────────
-const DATA_DIR = path.join(__dirname, '../../src/data');
+// ── Local file persistence (saved outside src/ so Vite HMR doesn't trigger) ──
+// Files go to project-root/local-data/ — not watched by Vite, not committed.
+const DATA_DIR = path.join(__dirname, '../../local-data');
 
 const LOCAL_FILES = {
   'warehouseOrders': path.join(DATA_DIR, 'warehouseOrders.json'),

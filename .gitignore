@@ -19,6 +19,9 @@ dist-ssr
 scripts/whatsapp-service/.wwebjs_auth/
 scripts/whatsapp-service/.wwebjs_cache/
 
+# Local disk cache (written by WhatsApp service, outside src/ to avoid Vite HMR)
+local-data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
