@@ -83,7 +83,7 @@ function getRecencyTier(lastVisited) {
   return recencyTiers[recencyTiers.length - 1];
 }
 
-function createStoreIcon(type, isSelected, visitMode, lastVisited, hasAlert) {
+function createStoreIcon(type, isSelected, visitMode, lastVisited) {
   const baseColor = visitMode
     ? getRecencyTier(lastVisited).color
     : (typeColors[type] || typeColors.other);
@@ -104,9 +104,6 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited, hasAlert) {
         pointer-events: none;
       "></div>`
     : '';
-  const alertBadge = hasAlert
-    ? `<div class="map-alert-badge">!</div>`
-    : '';
 
   return L.divIcon({
     className: `custom-marker ${blinkClass}`,
@@ -122,12 +119,18 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited, hasAlert) {
         position: relative;
         z-index: 2;
       "></div>
-      ${alertBadge}
     </div>`,
     iconSize: [size + 20, size + 20],
     iconAnchor: [(size + 20) / 2, (size + 20) / 2],
   });
 }
+
+const alertExclaimIcon = L.divIcon({
+  className: 'alert-exclaim-marker',
+  html: '<div class="map-alert-exclaim">!</div>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 28], // anchored below so it floats above the store dot
+});
 
 // Truck icon for fleet vehicle overlay (diamond shape to distinguish from store circles)
 function createTruckOverlayIcon(engineStatus) {
@@ -795,7 +798,7 @@ export default function MapView() {
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
-          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store), storesWithOpenAlerts.has(store.id))}
+          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store))}
           eventHandlers={{
             click: () => {
               if (selectedStore === store.id) {
@@ -950,6 +953,18 @@ export default function MapView() {
               </div>
             </Popup>
           </Marker>
+        ))}
+      {/* Alert exclamation markers — one per store with an open alert */}
+      {filteredStores
+        .filter(store => storesWithOpenAlerts.has(store.id))
+        .map(store => (
+          <Marker
+            key={`alert-${store.id}`}
+            position={[store.lat, store.lng]}
+            icon={alertExclaimIcon}
+            interactive={false}
+            zIndexOffset={1000}
+          />
         ))}
     </MapContainer>
     </div>

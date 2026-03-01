@@ -606,31 +606,26 @@ textarea {
   100% { opacity: 0.25; transform: scale(1.6); }
 }
 
-/* ============ Alert badge on store markers ============ */
-.map-alert-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 14px;
-  height: 14px;
+/* ============ Alert exclamation marker (standalone Leaflet marker) ============ */
+.map-alert-exclaim {
+  width: 18px;
+  height: 18px;
   background: #ef4444;
   color: #fff;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid #fff;
-  z-index: 10;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
   pointer-events: none;
-  animation: alert-badge-flash 0.9s ease-in-out infinite;
+  animation: alert-exclaim-flash 0.9s ease-in-out infinite;
 }
 
-@keyframes alert-badge-flash {
+@keyframes alert-exclaim-flash {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.15; transform: scale(0.75); }
+  50% { opacity: 0.2; transform: scale(0.7); }
 }
 
 .zone-meta {
