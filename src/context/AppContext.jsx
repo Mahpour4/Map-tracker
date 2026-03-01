@@ -1379,6 +1379,7 @@ export function AppProvider({ children }) {
 
     // 2. Save to local disk via WhatsApp service (instant, persists across browsers/machines)
     saveLocalData('warehouseOrders', state.warehouseOrders)
+      .then(ok => { if (ok) localStorage.setItem('wo_last_local_saved', new Date().toISOString()); })
       .catch((err) => console.error('[WO] Local disk save failed:', err));
 
     // 3. Save to GitHub (debounced 2s — remote backup)
@@ -1386,6 +1387,7 @@ export function AppProvider({ children }) {
     if (warehouseOrdersSaveTimer.current) clearTimeout(warehouseOrdersSaveTimer.current);
     warehouseOrdersSaveTimer.current = setTimeout(() => {
       saveWarehouseOrdersJson(JSON.stringify(state.warehouseOrders))
+        .then(() => localStorage.setItem('wo_last_github_saved', new Date().toISOString()))
         .catch((err) => console.error('[WO] GitHub save failed:', err));
     }, 2000);
 

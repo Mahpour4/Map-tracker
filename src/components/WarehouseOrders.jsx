@@ -73,6 +73,11 @@ export default function WarehouseOrders() {
   const [lastAutoSaved, setLastAutoSaved] = useState(null);
   const autoSaveRef = useRef(null);
 
+  // Sync time indicators
+  const [lastLocalSaved, setLastLocalSaved] = useState(() => localStorage.getItem('wo_last_local_saved'));
+  const [lastGithubSaved, setLastGithubSaved] = useState(() => localStorage.getItem('wo_last_github_saved'));
+  const [lastSheetsPushed, setLastSheetsPushed] = useState(null);
+
   // WhatsApp inbox state
   const [waMessages, setWaMessages] = useState([]);
   const [waContacts, setWaContacts] = useState({});
@@ -803,6 +808,15 @@ export default function WarehouseOrders() {
     return () => clearInterval(interval);
   }, [selectedRoute, totals.totalCases, totals.totalUnits]);
 
+  // Poll localStorage for local/GitHub save timestamps every 5s
+  useEffect(() => {
+    const poll = setInterval(() => {
+      setLastLocalSaved(localStorage.getItem('wo_last_local_saved'));
+      setLastGithubSaved(localStorage.getItem('wo_last_github_saved'));
+    }, 5000);
+    return () => clearInterval(poll);
+  }, []);
+
   // WhatsApp inbox — always poll every 5s regardless of active tab
   const pollWaInbox = useCallback(async () => {
     try {
@@ -1136,6 +1150,7 @@ export default function WarehouseOrders() {
       });
 
       if (result.success) {
+        setLastSheetsPushed(new Date().toISOString());
         const msg = `Pushed to "${result.tab}" — ${result.written}/${result.total} items written`;
         const extra = result.notFound?.length > 0 ? ` (${result.notFound.length} SKUs not found in sheet)` : '';
         setSyncMsg({ type: 'success', text: msg + extra });
@@ -1826,6 +1841,35 @@ export default function WarehouseOrders() {
           </button>
         </div>
       </div>
+
+      {/* Persistent sync status bar */}
+      {(() => {
+        const fmtTime = (iso) => {
+          if (!iso) return 'Never';
+          try {
+            const d = new Date(iso);
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          } catch { return 'Never'; }
+        };
+        return (
+          <div className="wo-sync-bar">
+            <span className="wo-sync-bar-item">
+              <span className="wo-sync-bar-label">Local:</span>
+              <span className={`wo-sync-bar-time ${lastLocalSaved ? 'ok' : 'never'}`}>{fmtTime(lastLocalSaved)}</span>
+            </span>
+            <span className="wo-sync-bar-sep">|</span>
+            <span className="wo-sync-bar-item">
+              <span className="wo-sync-bar-label">GitHub:</span>
+              <span className={`wo-sync-bar-time ${lastGithubSaved ? 'ok' : 'never'}`}>{fmtTime(lastGithubSaved)}</span>
+            </span>
+            <span className="wo-sync-bar-sep">|</span>
+            <span className="wo-sync-bar-item">
+              <span className="wo-sync-bar-label">Sheets:</span>
+              <span className={`wo-sync-bar-time ${lastSheetsPushed ? 'ok' : 'never'}`}>{fmtTime(lastSheetsPushed)}</span>
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Sync status message */}
       {syncMsg && (
