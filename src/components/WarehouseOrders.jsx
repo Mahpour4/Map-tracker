@@ -1863,14 +1863,12 @@ export default function WarehouseOrders() {
         </div>
       </div>
 
-      {/* Persistent sync status bar */}
+      {/* Combined sync bar: timestamps left, latest message right */}
       {(() => {
         const fmtTime = (iso) => {
           if (!iso) return 'Never';
-          try {
-            const d = new Date(iso);
-            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          } catch { return 'Never'; }
+          try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+          catch { return 'Never'; }
         };
         return (
           <div className="wo-sync-bar">
@@ -1888,17 +1886,18 @@ export default function WarehouseOrders() {
               <span className="wo-sync-bar-label">Sheets:</span>
               <span className={`wo-sync-bar-time ${lastSheetsPushed ? 'ok' : 'never'}`}>{fmtTime(lastSheetsPushed)}</span>
             </span>
+            {syncMsg && (
+              <>
+                <span className="wo-sync-bar-sep">|</span>
+                <span className={`wo-sync-bar-msg wo-sync-bar-msg-${syncMsg.type}`}>
+                  {syncMsg.text}
+                </span>
+                <button className="wo-sync-bar-close" onClick={() => setSyncMsg(null)}>&times;</button>
+              </>
+            )}
           </div>
         );
       })()}
-
-      {/* Sync status message */}
-      {syncMsg && (
-        <div className={`wo-sync-msg wo-sync-${syncMsg.type}`}>
-          {syncMsg.text}
-          <button className="wo-sync-msg-close" onClick={() => setSyncMsg(null)}>&times;</button>
-        </div>
-      )}
 
       {/* Google Sheets settings panel */}
       {showSettings && (
@@ -2093,7 +2092,6 @@ export default function WarehouseOrders() {
             >
               {saving ? t(lang, 'saving') : t(lang, 'saveOrder')}
             </button>
-            {lastAutoSaved && <span className="wo-autosave-badge">{lang === 'es' ? 'Guardado' : 'Saved'} {lastAutoSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
             {sheetsConfigured && (
               <label className="wo-recent-label">
                 {lang === 'es' ? 'Ordenes recientes' : 'Recent Orders'}:
@@ -2252,7 +2250,6 @@ export default function WarehouseOrders() {
               <span className="wo-current-order-dot"></span>
               <strong>{selectedRoute}</strong> &mdash; {orderName || (lang === 'es' ? 'Sin chofer' : 'No driver')} &mdash; {orderDate}
               {existingOrder && <span className="wo-current-order-status">{existingOrder.status === 'synced' ? (lang === 'es' ? 'Sincronizado' : 'Synced') : (lang === 'es' ? 'Pendiente' : 'Pending')}</span>}
-              {lastAutoSaved && <span className="wo-current-order-saved">{lang === 'es' ? 'Guardado' : 'Saved'} {lastAutoSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
             </div>
           )}
 

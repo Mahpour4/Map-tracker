@@ -11106,28 +11106,14 @@ textarea {
 .wo-sync-bar-time.ok { color: #16a34a; font-weight: 500; }
 .wo-sync-bar-time.never { color: #94a3b8; }
 .wo-sync-bar-sep { color: #cbd5e1; }
-
-.wo-sync-msg {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  margin-bottom: 8px;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  animation: wo-slide-in 0.2s ease;
+.wo-sync-bar-msg { font-weight: 500; }
+.wo-sync-bar-msg-success { color: #16a34a; }
+.wo-sync-bar-msg-error { color: #dc2626; }
+.wo-sync-bar-close {
+  background: none; border: none; font-size: 1rem; cursor: pointer; padding: 0 2px;
+  color: #94a3b8; line-height: 1;
 }
-@keyframes wo-slide-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.wo-sync-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-.wo-sync-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-.wo-sync-msg-close {
-  background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0 4px;
-  color: inherit; opacity: 0.6;
-}
-.wo-sync-msg-close:hover { opacity: 1; }
+.wo-sync-bar-close:hover { color: #475569; }
 
 .wo-settings {
   background: var(--bg-card);
