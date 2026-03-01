@@ -979,14 +979,14 @@ export default function WarehouseOrders() {
       return { ...p, words };
     });
 
-    // Detect category headers like "Order 50.cent", "4.79:", "2.49 Products", "50 cent"
-    // These set the active category context for subsequent lines
+    // Category detection patterns
     let activeCategory = null;
     const categoryPatterns = [
-      { pattern: /50[\s.]*cent/i, category: '.50 Cents' },
-      { pattern: /\.50/i, category: '.50 Cents' },
-      { pattern: /2[\s.]*49/i, category: '2.49 Products' },
-      { pattern: /4[\s.]*79/i, category: '4.79 Products' },
+      { pattern: /50[\s.]*cent|50\s*¢/i, category: '.50 Cents' },
+      { pattern: /^\.50\b/i, category: '.50 Cents' },
+      { pattern: /\b1[\s.]*49\b/i, category: '2.49 Products' }, // 1.49 = Deep River pricing, same tier
+      { pattern: /\b2[\s.]*49\b/i, category: '2.49 Products' },
+      { pattern: /\b4[\s.]*79\b/i, category: '4.79 Products' },
       { pattern: /deep\s*river\s*small/i, category: 'Deep River Small' },
       { pattern: /deep\s*river\s*large/i, category: 'Deep River Large' },
       { pattern: /crunch\s*time/i, category: 'Crunch Time' },
@@ -997,35 +997,69 @@ export default function WarehouseOrders() {
       { pattern: /variety/i, category: 'Variety Packs' },
     ];
 
+    // Inline price prefix: ".50 honey bbq 4", "1.49 deep river mesquite BBQ 3", ".50 golden original1"
+    // Matches: ".50 ...", "1.49 ...", "4.79 ..." — price then product text, optional trailing qty (with or without space)
+    const inlinePriceRe = /^(\.\d{2}|\d+\.\d{2})\s+([a-zA-Z].+?)(?:\s+(\d+)|(\d+))?\s*$/;
+
     for (const line of lines) {
-      // Check if this line is a category header (no leading number, or "Order 50.cent", "4.79:")
-      const isHeader = /^(order\s+)?[\d.]+\s*(cent|product|:)/i.test(line) ||
-                       /^(order|deep river|crunch time|candy|snacks?|smoothie|salsa|variety)/i.test(line);
-      if (isHeader) {
-        const matched = categoryPatterns.find(cp => cp.pattern.test(line));
-        if (matched) {
-          activeCategory = matched.category;
-          continue; // Skip header lines, don't parse as product
+      // 1) Try inline price format FIRST: ".50 honey bbq 4", "1.49 mesquite BBQ 3"
+      const inlineMatch = line.match(inlinePriceRe);
+      if (inlineMatch) {
+        const priceStr = inlineMatch[1]; // ".50" or "1.49" or "4.79"
+        const inlineCat = categoryPatterns.find(cp => cp.pattern.test(priceStr));
+        const productText = inlineMatch[2].trim();
+        // Handle "total 4" at end — strip "total" and grab the number
+        const totalMatch = productText.match(/^(.+?)\s+total\s*$/i);
+        const cleanText = totalMatch ? totalMatch[1].trim() : productText;
+        const inlineQty = parseInt(inlineMatch[3] || inlineMatch[4]) || 1;
+        if (cleanText) {
+          const terms = inlineCat
+            ? searchTerms.filter(p => p.category === inlineCat.category)
+            : searchTerms;
+          let scored = scoreCatalog(cleanText, terms);
+          if (scored.length === 0 && inlineCat) scored = scoreCatalog(cleanText, searchTerms);
+          if (scored.length === 1) { scored[0].qty = inlineQty; scored[0].checked = true; }
+          else if (scored.length > 1 && scored[0].score >= scored[1].score * 1.5) { scored[0].qty = inlineQty; scored[0].checked = true; }
+          results.push({ qty: inlineQty, text: cleanText, matches: scored, loadAll: false, category: inlineCat?.category || null });
+          continue;
         }
       }
 
-      // Try to extract quantity and product text
-      // Patterns: "25 onion ring", "4 each deep river large", "15 butter popcorn"
-      const match = line.match(/^(\d+)\s*(?:each|ea|x|cs|cases?)?\s+(.+)$/i);
+      // 2) Check if this line is a category header (standalone, not a product line)
+      //    e.g. "Order 50.cent", "2.49", "4.79:", ".50 Cents", "Snack"
+      const qtyMatch = line.match(/^(\d+)\s*(?:each|ea|x|cs|cases?)?\s+(.+)$/i);
+      const catMatch = categoryPatterns.find(cp => cp.pattern.test(line));
+      if (catMatch && (!qtyMatch || qtyMatch[2].trim().length <= 8)) {
+        activeCategory = catMatch.category;
+        continue;
+      }
+
+      // 3) Try standard qty format: "25 onion ring", "4 each deep river large"
+      const match = qtyMatch;
       if (!match) continue;
 
       const qty = parseInt(match[1]);
-      const text = match[2].trim();
+      let text = match[2].trim();
       if (qty <= 0 || !text) continue;
 
+      // Check for price suffix like "BBQ DIPSY 50¢" or "PUFF 50 cent" — strip and use as category
+      let lineCategory = activeCategory;
+      const suffixMatch = text.match(/\s+(\d*\.?\d+\s*¢)\s*$/i) || text.match(/\s+(\d*\.?\d+\s*cents?)\s*$/i);
+      if (suffixMatch) {
+        text = text.slice(0, suffixMatch.index).trim();
+        const priceSuffix = suffixMatch[1]; // "50¢" or "50 cent"
+        const suffixCat = categoryPatterns.find(cp => cp.pattern.test(priceSuffix));
+        if (suffixCat) lineCategory = suffixCat.category;
+      }
+
       // When a category header is active, prefer products in that category
-      const terms = activeCategory
-        ? searchTerms.filter(p => p.category === activeCategory)
+      const terms = lineCategory
+        ? searchTerms.filter(p => p.category === lineCategory)
         : searchTerms;
       // Fallback to all terms if category filter yields no matches
       const scoreFn = (t) => {
         const catResults = scoreCatalog(t, terms);
-        return catResults.length > 0 ? catResults : (activeCategory ? scoreCatalog(t, searchTerms) : []);
+        return catResults.length > 0 ? catResults : (lineCategory ? scoreCatalog(t, searchTerms) : []);
       };
 
       // Split on "and" to handle "deep river large and small bags"
@@ -1072,7 +1106,7 @@ export default function WarehouseOrders() {
         }
       }
 
-      results.push({ qty, text, matches, loadAll, category: activeCategory });
+      results.push({ qty, text, matches, loadAll, category: lineCategory });
     }
 
     setWaGuessResult({ msgId: msg.id, items: results });
@@ -3014,6 +3048,7 @@ export default function WarehouseOrders() {
                                             <span className="wa-guess-expand">{isExpanded ? '▾' : '▸'}</span>
                                             <span className="wa-guess-qty-badge">{item.qty}</span>
                                             <span className="wa-guess-text">{item.text}</span>
+                                            {item.category && <span className="wa-guess-cat-badge">{item.category}</span>}
                                             <span className="wa-guess-count">
                                               {checkedCount > 0 ? `${checkedCount} selected` : `${item.matches.length} match${item.matches.length !== 1 ? 'es' : ''}`}
                                             </span>
