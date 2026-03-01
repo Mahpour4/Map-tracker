@@ -8,7 +8,7 @@ import {
   getGoogleClientId, setGoogleClientId,
   getSpreadsheetId, setSpreadsheetId,
   isGoogleSheetsConfigured, isSignedIn, signOut, authenticate,
-  pushOrderToSheet, getOrderFromSheet, listSheetTabs, buildTabName, readSheetCases, getSheetTabUrl, getSpreadsheetUrl, hasSpreadsheetId, createTemplateCopy, renameSheetTab,
+  pushOrderToSheet, getOrderFromSheet, listSheetTabs, buildTabName, readSheetCases, getSheetTabUrl, getSpreadsheetUrl, hasSpreadsheetId, createTemplateCopy, renameSheetTab, updateRouteSummarySheet,
 } from '../services/googleSheetsService';
 import {
   getWhatsAppStatus, getWhatsAppGroups, getOrderMessages,
@@ -1126,6 +1126,12 @@ export default function WarehouseOrders() {
         routeNumber: selectedRoute,
         date: orderDate,
         name: orderName,
+        invoiceNumber,
+        invoiceCases,
+        invoiceAmount,
+        loadNumber,
+        loadCases,
+        loadAmount,
         items: itemsToWrite,
       });
 
@@ -1136,6 +1142,18 @@ export default function WarehouseOrders() {
         if (existingOrder) {
           updateWarehouseOrder({ ...existingOrder, status: 'synced', sheetTab: result.tab });
         }
+        // Update route summary sheet — merge current state in case order wasn't saved yet
+        try {
+          const driverName = orderName || ROUTE_DRIVERS[selectedRoute] || '';
+          const routeOrders = orders.filter(o => o.routeNumber === selectedRoute);
+          const currentData = { date: orderDate, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount };
+          const mergedOrders = routeOrders.some(o => o.date === orderDate)
+            ? routeOrders.map(o => o.date === orderDate ? { ...o, ...currentData } : o)
+            : [...routeOrders, currentData];
+          await updateRouteSummarySheet(selectedRoute, driverName, mergedOrders);
+        } catch (summaryErr) {
+          console.warn('[Summary Sheet] Failed to update:', summaryErr.message);
+        }
       } else {
         setSyncMsg({ type: 'error', text: result.error || 'Push failed' });
       }
@@ -1143,7 +1161,7 @@ export default function WarehouseOrders() {
       setSyncMsg({ type: 'error', text: err.message });
     }
     setSyncing(false);
-  }, [selectedRoute, orderDate, orderName, existingOrder, updateWarehouseOrder]);
+  }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, existingOrder, updateWarehouseOrder, orders]);
 
   // Push current order to Google Sheet (checks for conflicts first)
   const handlePushToSheet = useCallback(async () => {
@@ -1214,11 +1232,25 @@ export default function WarehouseOrders() {
         routeNumber: order.routeNumber,
         date: order.date,
         name: order.name,
+        invoiceNumber: order.invoiceNumber,
+        invoiceCases: order.invoiceCases,
+        invoiceAmount: order.invoiceAmount,
+        loadNumber: order.loadNumber,
+        loadCases: order.loadCases,
+        loadAmount: order.loadAmount,
         items: (order.items || []).map(i => ({ sku: i.sku, cases: i.cases })),
       });
       if (result.success) {
         setSyncMsg({ type: 'success', text: `Pushed "${result.tab}" — ${result.written} items` });
         updateWarehouseOrder({ ...order, status: 'synced', sheetTab: result.tab });
+        // Update route summary sheet
+        try {
+          const driverName = order.name || ROUTE_DRIVERS[order.routeNumber] || '';
+          const routeOrders = orders.filter(o => o.routeNumber === order.routeNumber);
+          await updateRouteSummarySheet(order.routeNumber, driverName, routeOrders);
+        } catch (summaryErr) {
+          console.warn('[Summary Sheet] Failed to update:', summaryErr.message);
+        }
       } else {
         setSyncMsg({ type: 'error', text: result.error || 'Push failed' });
       }
@@ -1226,7 +1258,7 @@ export default function WarehouseOrders() {
       setSyncMsg({ type: 'error', text: err.message });
     }
     setSyncing(false);
-  }, [updateWarehouseOrder]);
+  }, [updateWarehouseOrder, orders]);
 
   const [pullError, setPullError] = useState(null);
 

@@ -492,7 +492,7 @@ export async function pushOrderToSheet(order) {
     });
   }
 
-  // Write header: C1 = "route# - driver name", E1 = date
+  // Write header: C1 = "route# - driver name", E1 = date, A2 = invoice info, A3 = load info
   const headerUpdates = [];
   const driverLabel = [order.routeNumber, order.name].filter(Boolean).join(' - ');
   if (driverLabel) {
@@ -505,6 +505,25 @@ export async function pushOrderToSheet(order) {
       headerUpdates.push({ range: `'${tabName}'!E1`, values: [[dateFmt]] });
     }
   }
+
+  // Invoice line — row 2
+  const invParts = [];
+  if (order.invoiceNumber) invParts.push(`Invoice # ${order.invoiceNumber}`);
+  if (order.invoiceCases) invParts.push(`Cases: ${order.invoiceCases}`);
+  if (order.invoiceAmount) invParts.push(`Amt: $${parseFloat(order.invoiceAmount).toFixed(2)}`);
+  if (invParts.length > 0) {
+    headerUpdates.push({ range: `'${tabName}'!A2`, values: [[invParts.join('  |  ')]] });
+  }
+
+  // Load line — row 3
+  const ldParts = [];
+  if (order.loadNumber) ldParts.push(`Load # ${order.loadNumber}`);
+  if (order.loadCases) ldParts.push(`Cases: ${order.loadCases}`);
+  if (order.loadAmount) ldParts.push(`Amt: $${parseFloat(order.loadAmount).toFixed(2)}`);
+  if (ldParts.length > 0) {
+    headerUpdates.push({ range: `'${tabName}'!A3`, values: [[ldParts.join('  |  ')]] });
+  }
+
   if (headerUpdates.length > 0) {
     await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
@@ -516,5 +535,91 @@ export async function pushOrderToSheet(order) {
   }
 
   return { success: true, tab: tabName, written, notFound, total: items.length };
+}
+
+/**
+ * Create or overwrite a "Route {N} Summary" sheet tab with one row per order for that route.
+ * Columns: Date | Invoice # | WH Cases | WH Amount | Load # | DRV Cases | DRV Amount
+ * Ends with a totals row.
+ */
+export async function updateRouteSummarySheet(routeNumber, driverName, routeOrders) {
+  await ensureAuth();
+  const spreadsheetId = getSpreadsheetId();
+  if (!spreadsheetId) throw new Error('Spreadsheet ID not configured');
+
+  const summaryTabName = `Route ${routeNumber} Summary`;
+
+  // Ensure the tab exists (create blank if not)
+  const meta = await window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties',
+  });
+  const existing = (meta.result.sheets || []).find(s => s.properties.title === summaryTabName);
+  if (!existing) {
+    await window.gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      resource: {
+        requests: [{ addSheet: { properties: { title: summaryTabName } } }],
+      },
+    });
+  }
+
+  // Sort orders by date ascending
+  const sorted = [...routeOrders].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  const fmtDate = (iso) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y ? y.slice(-2) : ''}`;
+  };
+  const fmtMoney = (v) => (v != null && v !== '') ? `$${parseFloat(v).toFixed(2)}` : '';
+
+  // Build rows: title, blank, header, data rows, blank, totals
+  const rows = [
+    [`Route ${routeNumber}${driverName ? ` — ${driverName}` : ''} | Order History`],
+    [],
+    ['Date', 'Invoice #', 'WH Cases', 'WH Amount', 'Load #', 'DRV Cases', 'DRV Amount'],
+  ];
+
+  sorted.forEach(o => {
+    rows.push([
+      fmtDate(o.date),
+      o.invoiceNumber || '',
+      (o.invoiceCases != null && o.invoiceCases !== '') ? String(o.invoiceCases) : '',
+      fmtMoney(o.invoiceAmount),
+      o.loadNumber || '',
+      (o.loadCases != null && o.loadCases !== '') ? String(o.loadCases) : '',
+      fmtMoney(o.loadAmount),
+    ]);
+  });
+
+  const totalInvCases = sorted.reduce((s, o) => s + (parseFloat(o.invoiceCases) || 0), 0);
+  const totalInvAmt   = sorted.reduce((s, o) => s + (parseFloat(o.invoiceAmount) || 0), 0);
+  const totalLdCases  = sorted.reduce((s, o) => s + (parseFloat(o.loadCases) || 0), 0);
+  const totalLdAmt    = sorted.reduce((s, o) => s + (parseFloat(o.loadAmount) || 0), 0);
+
+  rows.push([]);
+  rows.push([
+    'TOTAL', '',
+    totalInvCases > 0 ? String(totalInvCases) : '',
+    totalInvAmt   > 0 ? fmtMoney(totalInvAmt) : '',
+    '',
+    totalLdCases  > 0 ? String(totalLdCases) : '',
+    totalLdAmt    > 0 ? fmtMoney(totalLdAmt) : '',
+  ]);
+
+  // Clear then write
+  await window.gapi.client.sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: `'${summaryTabName}'`,
+  });
+  await window.gapi.client.sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${summaryTabName}'!A1`,
+    valueInputOption: 'USER_ENTERED',
+    resource: { values: rows },
+  });
+
+  return { success: true, tabName: summaryTabName, orderCount: sorted.length };
 }
 
