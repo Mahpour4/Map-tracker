@@ -44,8 +44,8 @@ Object.entries(ROUTE_DRIVERS).forEach(([route, name]) => {
 });
 
 export default function WarehouseOrders() {
-  const { state, addWarehouseOrder, updateWarehouseOrder, deleteWarehouseOrder, setWarehouseOrders, setLanguage } = useApp();
-  const { warehouseOrders, stores, language } = state;
+  const { state, addWarehouseOrder, updateWarehouseOrder, deleteWarehouseOrder, setWarehouseOrders, setLanguage, setInventory } = useApp();
+  const { warehouseOrders, stores, language, inventory } = state;
   const lang = language || 'en';
   const orders = warehouseOrders?.orders || [];
 
@@ -790,6 +790,25 @@ export default function WarehouseOrders() {
       updateWarehouseOrder({ ...orderData, id: existingOrder.id });
     } else {
       addWarehouseOrder(orderData);
+      // Deduct from inventory for new orders only
+      if (inventory?.items) {
+        const invItems = { ...inventory.items };
+        let changed = false;
+        items.forEach(({ sku, cases: caseQty }) => {
+          if (!caseQty) return;
+          // Match: catalog SKUs may be zero-padded (e.g. "028136") — inventory uses raw ("28136")
+          const rawSku = sku.replace(/^0+/, '');
+          const invItem = invItems[rawSku] || invItems[sku];
+          if (!invItem) return;
+          const key = invItems[rawSku] ? rawSku : sku;
+          const unitsToDeduct = caseQty * (invItem.caseCount || 1);
+          invItems[key] = { ...invItem, sold: (invItem.sold || 0) + unitsToDeduct };
+          changed = true;
+        });
+        if (changed) {
+          setInventory({ ...inventory, items: invItems, lastUpdated: orderDate });
+        }
+      }
     }
 
     // Optimistically update local/GitHub timestamps (AppContext will do the actual saves momentarily)
@@ -809,7 +828,7 @@ export default function WarehouseOrders() {
     }
 
     setSaving(false);
-  }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder]);
+  }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder, inventory, setInventory]);
 
   // Auto-save every 30 seconds when there are unsaved changes
   useEffect(() => {
@@ -1363,6 +1382,12 @@ export default function WarehouseOrders() {
             conflicts,
             onOverwrite: () => {
               setCases(sheetItems);
+              if (result.invoiceNumber) setInvoiceNumber(result.invoiceNumber);
+              if (result.invoiceCases)  setInvoiceCases(result.invoiceCases);
+              if (result.invoiceAmount) setInvoiceAmount(result.invoiceAmount);
+              if (result.loadNumber)    setLoadNumber(result.loadNumber);
+              if (result.loadCases)     setLoadCases(result.loadCases);
+              if (result.loadAmount)    setLoadAmount(result.loadAmount);
               setShowConfirm(null);
               setShowPullModal(false);
               setSyncMsg({ type: 'success', text: `Pulled ${result.items?.length || 0} items from "${tabName}"` });
@@ -1374,6 +1399,12 @@ export default function WarehouseOrders() {
                 if (!merged[sku] || merged[sku] === 0) merged[sku] = val;
               }
               setCases(merged);
+              if (result.invoiceNumber) setInvoiceNumber(result.invoiceNumber);
+              if (result.invoiceCases)  setInvoiceCases(result.invoiceCases);
+              if (result.invoiceAmount) setInvoiceAmount(result.invoiceAmount);
+              if (result.loadNumber)    setLoadNumber(result.loadNumber);
+              if (result.loadCases)     setLoadCases(result.loadCases);
+              if (result.loadAmount)    setLoadAmount(result.loadAmount);
               setShowConfirm(null);
               setShowPullModal(false);
               setSyncMsg({ type: 'success', text: `Merged ${result.items?.length || 0} items from "${tabName}" (kept existing)` });
@@ -1386,6 +1417,12 @@ export default function WarehouseOrders() {
 
       // No conflicts — apply directly
       setCases(sheetItems);
+      if (result.invoiceNumber) setInvoiceNumber(result.invoiceNumber);
+      if (result.invoiceCases)  setInvoiceCases(result.invoiceCases);
+      if (result.invoiceAmount) setInvoiceAmount(result.invoiceAmount);
+      if (result.loadNumber)    setLoadNumber(result.loadNumber);
+      if (result.loadCases)     setLoadCases(result.loadCases);
+      if (result.loadAmount)    setLoadAmount(result.loadAmount);
       setSyncMsg({ type: 'success', text: `Pulled ${result.items?.length || 0} items from "${tabName}"` });
       setShowPullModal(false);
     } catch (err) {
@@ -2092,6 +2129,25 @@ export default function WarehouseOrders() {
             >
               {saving ? t(lang, 'saving') : t(lang, 'saveOrder')}
             </button>
+            <button
+              className="wo-print-btn"
+              onClick={printPickSheet}
+              disabled={!selectedRoute || (totals.totalCases === 0 && totals.totalUnits === 0)}
+              title={t(lang, 'printPickSheet')}
+            >
+              {t(lang, 'printPickSheet')}
+            </button>
+            {hasSpreadsheetId() && (
+              <a
+                href={getSpreadsheetUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="wo-open-sheet-btn wo-open-sheet-toolbar"
+                title="Open spreadsheet in Google Sheets"
+              >
+                {lang === 'es' ? 'Abrir Sheet' : 'Open Sheet'} &#x2197;
+              </a>
+            )}
             {sheetsConfigured && (
               <label className="wo-recent-label">
                 {lang === 'es' ? 'Ordenes recientes' : 'Recent Orders'}:
@@ -2163,59 +2219,6 @@ export default function WarehouseOrders() {
           })()}
 
           {/* Sync action bar — admin: push/pull API buttons, worker: open in browser */}
-          {sheetsConfigured && (
-            <div className="wo-sync-bar">
-              <span className="wo-sync-label">{t(lang, 'googleSheets')}:</span>
-              <button
-                className="wo-sync-btn wo-sync-push"
-                onClick={handlePushToSheet}
-                disabled={syncing || !selectedRoute || totals.totalCases === 0}
-                title={`Push to sheet tab: "${buildTabName(selectedRoute, orderName, orderDate)}"`}
-              >
-                {syncing ? t(lang, 'syncing') : `\u2191 ${t(lang, 'pushToSheet')}`}
-              </button>
-              <button
-                className="wo-sync-btn wo-sync-pull"
-                onClick={handleOpenPull}
-                disabled={syncing}
-              >
-                {`\u2193 ${t(lang, 'pullFromSheet')}`}
-              </button>
-              {selectedRoute && orderName && (
-                <span className="wo-sync-tab-preview">
-                  {t(lang, 'tab')}: {buildTabName(selectedRoute, orderName, orderDate)}
-                </span>
-              )}
-              {hasSpreadsheetId() && (
-                <a
-                  href={getSpreadsheetUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="wo-open-sheet-btn"
-                  title="Open spreadsheet in Google Sheets"
-                >
-                  {lang === 'es' ? 'Abrir Sheet' : 'Open Sheet'} &#x2197;
-                </a>
-              )}
-            </div>
-          )}
-          {!sheetsConfigured && hasSpreadsheetId() && selectedRoute && (
-            <div className="wo-sync-bar">
-              <a
-                href={getSpreadsheetUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="wo-open-sheet-btn"
-              >
-                {lang === 'es' ? 'Editar en Google Sheets' : 'Edit in Google Sheets'} &#x2197;
-              </a>
-              {orderName && (
-                <span className="wo-sync-tab-preview">
-                  {lang === 'es' ? 'Busca la pestana' : 'Look for tab'}: {buildTabName(selectedRoute, orderName, orderDate)}
-                </span>
-              )}
-            </div>
-          )}
 
           <div className="wo-search">
             <input
@@ -2249,7 +2252,15 @@ export default function WarehouseOrders() {
             <div className="wo-current-order">
               <span className="wo-current-order-dot"></span>
               <strong>{selectedRoute}</strong> &mdash; {orderName || (lang === 'es' ? 'Sin chofer' : 'No driver')} &mdash; {orderDate}
-              {existingOrder && <span className="wo-current-order-status">{existingOrder.status === 'synced' ? (lang === 'es' ? 'Sincronizado' : 'Synced') : (lang === 'es' ? 'Pendiente' : 'Pending')}</span>}
+              {sheetsConfigured && (
+                <button
+                  className="wo-current-order-status wo-current-order-pull-btn"
+                  onClick={handleOpenPull}
+                  disabled={syncing}
+                >
+                  {`\u2193 ${t(lang, 'pullFromSheet')}`}
+                </button>
+              )}
             </div>
           )}
 
@@ -2350,22 +2361,6 @@ export default function WarehouseOrders() {
             <span><strong>{totals.totalUnits}</strong> {lang === 'es' ? 'unidades' : 'units'}</span>
             <span><strong>${totals.totalCost.toFixed(2)}</strong> {t(lang, 'cost').toLowerCase()}</span>
             <span><strong>${totals.totalGross.toFixed(2)}</strong> {t(lang, 'gross')}</span>
-            <button
-              id="btn-save-order-bottom"
-              className="wo-save-btn"
-              onClick={handleSave}
-              disabled={!selectedRoute || totals.totalCases === 0 || saving}
-            >
-              {saving ? t(lang, 'saving') : t(lang, 'saveOrder')}
-            </button>
-            <button
-              className="wo-print-btn"
-              onClick={printPickSheet}
-              disabled={!selectedRoute || totals.totalCases === 0}
-              title={t(lang, 'printPickSheet')}
-            >
-              {t(lang, 'printPickSheet')}
-            </button>
           </div>
         </div>
       )}

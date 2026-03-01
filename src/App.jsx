@@ -17,6 +17,7 @@ import WarehouseSettings from './components/WarehouseSettings';
 import CustomLocations from './components/CustomLocations';
 import Transactions from './components/Transactions';
 import WarehouseOrders from './components/WarehouseOrders';
+import Inventory from './components/Inventory';
 import './App.css';
 
 // ── Global error boundary ─────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ const NAV_GROUPS = [
     label: 'Operations',
     items: [
       { id: 'warehouseOrders', label: 'Orders' },
+      { id: 'inventory', label: 'Inventory' },
       { id: 'transactions', label: 'Transactions' },
       { id: 'import', label: 'Data Import' },
       { id: 'alerts', label: 'Alert Log' },
@@ -244,6 +246,7 @@ function AppContent() {
         {page === 'fuel' && <FuelTracker />}
         {page === 'transactions' && <Transactions />}
         {page === 'warehouseOrders' && <WarehouseOrders />}
+        {page === 'inventory' && <Inventory />}
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
         {page === 'customLocations' && <CustomLocations />}

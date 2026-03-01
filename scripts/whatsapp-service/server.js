@@ -17,6 +17,7 @@ const DATA_DIR = path.join(__dirname, '../../local-data');
 
 const LOCAL_FILES = {
   'warehouseOrders': path.join(DATA_DIR, 'warehouseOrders.json'),
+  'inventory': path.join(DATA_DIR, 'inventory.json'),
 };
 
 app.get('/api/local/:key', (req, res) => {

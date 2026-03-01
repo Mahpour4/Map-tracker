@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, fetchWarehouseOrdersJson, saveWarehouseOrdersJson, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, fetchWarehouseOrdersJson, saveWarehouseOrdersJson, fetchInventoryJson, saveInventoryJson, getToken } from '../services/githubService';
 import { loadLocalData, saveLocalData } from '../services/localDataService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, labelAlertsError, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
@@ -14,6 +14,7 @@ import localAddressOverrides from '../data/addressOverrides.json';
 import localCustomLocations from '../data/customLocations.json';
 import localTransactions from '../data/transactions.json';
 import localWarehouseOrders from '../data/warehouseOrders.json';
+import localInventoryData from '../data/inventoryData.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -66,6 +67,13 @@ const initialState = {
     } catch { /* ignore */ }
     return localWarehouseOrders;
   })(), // { orders: [], lastSyncedAt: null }
+  inventory: (() => {
+    try {
+      const saved = localStorage.getItem('inventoryData');
+      if (saved) { const parsed = JSON.parse(saved); if (parsed && parsed.items) return parsed; }
+    } catch { /* ignore */ }
+    return localInventoryData;
+  })(), // { items: { sku: { incoming, sold, caseCount, ... } }, lastUpdated }
   autoVisitEnabled: true,
   language: localStorage.getItem('app_language') || 'en',
 };
@@ -484,6 +492,19 @@ function reducer(state, action) {
     }
     case 'DELETE_WAREHOUSE_ORDER':
       return { ...state, warehouseOrders: { ...state.warehouseOrders, orders: state.warehouseOrders.orders.filter(o => o.id !== action.payload) } };
+    // Inventory
+    case 'LOAD_INVENTORY':
+      return { ...state, inventory: action.payload };
+    case 'SET_INVENTORY':
+      return { ...state, inventory: action.payload };
+    case 'DEDUCT_INVENTORY': {
+      // payload: { sku, units } — deduct sold units from inventory item
+      const { sku, units } = action.payload;
+      const existing = state.inventory.items[sku];
+      if (!existing) return state;
+      const updated = { ...existing, sold: (existing.sold || 0) + units };
+      return { ...state, inventory: { ...state.inventory, items: { ...state.inventory.items, [sku]: updated }, lastUpdated: new Date().toISOString().split('T')[0] } };
+    }
     // Language
     case 'SET_LANGUAGE':
       localStorage.setItem('app_language', action.payload);
@@ -1394,6 +1415,41 @@ export function AppProvider({ children }) {
     return () => { if (warehouseOrdersSaveTimer.current) clearTimeout(warehouseOrdersSaveTimer.current); };
   }, [state.warehouseOrders]);
 
+  // Load inventory — local disk first, then GitHub
+  useEffect(() => {
+    loadLocalData('inventory').then(localData => {
+      if (localData && localData.items) dispatch({ type: 'LOAD_INVENTORY', payload: localData });
+    });
+    if (!getToken()) return;
+    fetchInventoryJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (data && data.items) {
+            dispatch({ type: 'LOAD_INVENTORY', payload: data });
+            saveLocalData('inventory', data);
+          }
+        } catch { /* empty */ }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Auto-save inventory
+  const prevInventoryRef = useRef(state.inventory);
+  const inventorySaveTimer = useRef(null);
+  useEffect(() => {
+    if (prevInventoryRef.current === state.inventory) return;
+    prevInventoryRef.current = state.inventory;
+    try { localStorage.setItem('inventoryData', JSON.stringify(state.inventory)); } catch { /* quota */ }
+    saveLocalData('inventory', state.inventory).catch(() => {});
+    if (!getToken()) return;
+    if (inventorySaveTimer.current) clearTimeout(inventorySaveTimer.current);
+    inventorySaveTimer.current = setTimeout(() => {
+      saveInventoryJson(JSON.stringify(state.inventory)).catch(() => {});
+    }, 2000);
+    return () => { if (inventorySaveTimer.current) clearTimeout(inventorySaveTimer.current); };
+  }, [state.inventory]);
+
   const actions = {
     addStore: useCallback(
       (store) => dispatch({ type: 'ADD_STORE', payload: store }),
@@ -1580,6 +1636,14 @@ export function AppProvider({ children }) {
     ),
     setLanguage: useCallback(
       (lang) => dispatch({ type: 'SET_LANGUAGE', payload: lang }),
+      []
+    ),
+    setInventory: useCallback(
+      (inv) => dispatch({ type: 'SET_INVENTORY', payload: inv }),
+      []
+    ),
+    deductInventory: useCallback(
+      (sku, units) => dispatch({ type: 'DEDUCT_INVENTORY', payload: { sku, units } }),
       []
     ),
   };

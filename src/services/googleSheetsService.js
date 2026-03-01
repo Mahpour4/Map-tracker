@@ -296,6 +296,21 @@ export async function getOrderFromSheet(tabName) {
   const rows = response.result.values || [];
   const items = [];
 
+  // Parse invoice/load metadata from column P (index 15), rows 3-8 (0-indexed 2-7)
+  const P_COL = 15;
+  const parsePCell = (val) => {
+    if (val == null) return '';
+    const s = String(val).trim();
+    const match = s.match(/:\s*(.*)$/);
+    return match ? match[1].trim() : '';
+  };
+  const invoiceNumber = rows[2] ? parsePCell(rows[2][P_COL]) : '';
+  const invoiceCases  = rows[3] ? parsePCell(rows[3][P_COL]) : '';
+  const invoiceAmount = rows[4] ? parsePCell(rows[4][P_COL]).replace(/^\$/, '') : '';
+  const loadNumber    = rows[5] ? parsePCell(rows[5][P_COL]) : '';
+  const loadCases     = rows[6] ? parsePCell(rows[6][P_COL]) : '';
+  const loadAmount    = rows[7] ? parsePCell(rows[7][P_COL]).replace(/^\$/, '') : '';
+
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     const desc = String(row[DESC_COL] || '').trim();
@@ -316,7 +331,7 @@ export async function getOrderFromSheet(tabName) {
     }
   }
 
-  return { success: true, tab: tabName, items };
+  return { success: true, tab: tabName, items, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount };
 }
 
 /** Read ALL SKUs with current case values from a sheet tab (including empty/zero) */
