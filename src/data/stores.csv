@@ -9,9 +9,9 @@ WGW00007,WGW00007,Wegmans 07,45131 COLUMBIA PLACE,STERLING,VA,20166,,Wegmans Rou
 SFW07540,SFW07540,Shoppers 7540,5457 BALTIMORE NATIONAL PIKE,BALTIMORE,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2897973,-76.7184422,,,Yes
 FLW01668,01668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1305901,-76.5571402,2026-02-23,2026-02-23,No
 GBW00001,GBW00001,Geresbecks G-1,7931 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.135998,-76.585533,,2025-10-30 10:55:44,Yes
-WGW00053,WGW00053,Wegmans 53,21 Wegmans Blvd,Abingdon,MD,21009,214,Route 204 Driver,Harford County,Harford County,Harford County,39.4661496,-76.3094519,,2025-10-22 21:10:04,Yes
+WGW00053,WGW00053,Wegmans 53,21 Wegmans Blvd,Abingdon,MD,21009,214,Route 204 Driver,Harford County,Harford County,Harford County,39.4661496,-76.3094519,2026-01-09,2025-10-22 21:10:04,No
 FLW01547,FLW01547,Food Lion 1547,2250 HANSON RD,EDGEWOOD,MD,21040,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4282968,-76.2981246,2026-02-24,2026-02-13,No
-RDW00040,RDW00040,Redners 40,1002 JOPPA FARM RD,Joppa,MD,21085,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4091028,-76.3321916,2026-02-24,2026-02-16,No
+RDW00040,RDW00040,Redners 40,1002 JOPPA FARM RD,Joppa,MD,21085,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4091028,-76.3321916,2026-02-27,2026-02-16,No
 SRW00542,SRW00542,ShopRite 542,37 W AYLESBURY RD,TIMONIUM,MD,21093,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.4400178,-76.6280107,2026-02-24,2026-02-24,No
 FLW01664,01664,Food Lion 1664,122 CRANBROOK RD,COCKEYSVILLE,MD,21030,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.465737,-76.6344906,2026-02-18,2026-02-25,No
 WAW00108,WAW00108,Walmart Cockeysville,1 Frankel Wy,Cockeysville,MD,21030,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.4706719,-76.6432641,,,Yes
@@ -22,15 +22,15 @@ IND00201,IND00201,Lucky 7 EZ Mart,4419 York Rd,Baltimore,MD,21212,204,Route 204 
 CASH0343,CASH0343,Royal Star,1152 E North Ave,Baltimore,MD,21202,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3120053,-76.6030708,2026-02-19,2026-02-10,No
 IND00202,IND00202,Almonte Market,2332 E Hoffman St,Baltimore,MD,21213,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3069801,-76.584376,,2025-09-03 12:57:24,Yes
 IND00203,IND00203,H&P,3859 Elmley Ave,Baltimore,MD,21213,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3177292,-76.5637471,,,Yes
-MTW06425,MTW06425,Giant Martin 116,24 Rising Sun Town Ctr,Rising Sun,MD,21911,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.697,-76.0629,2026-02-10,2026-02-10,No
-FLW01363,FLW01363,Food Lion 1363,2500 W Pulasky HWY,North East,MD,21901,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.6001,-75.9414,2026-02-17,2026-02-17,No
-FLW02630,02630,Food Lion 2630,5301 Pulasky HWY,Perryville,MD,21903,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.5601,-76.0714,2026-02-16,2026-02-16,No
-SRW00548,SRW00548,ShopRite 548,949 Beards Hill Rd,Aberdeen,MD,21001,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5253041,-76.1812916,2026-02-17,2026-02-17,No
-SRW00551,SRW00551,ShopRite 551,1321 RIVERSIDE PKWY,Belcamp,MD,21017,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4800776,-76.2477325,,2025-03-27,Yes
+MTW06425,MTW06425,Giant Martin 116,24 Rising Sun Town Ctr,Rising Sun,MD,21911,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.697,-76.0629,2026-02-27,2026-02-10,No
+FLW01363,FLW01363,Food Lion 1363,2500 W Pulasky HWY,North East,MD,21901,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.6001,-75.9414,2026-02-26,2026-02-17,No
+FLW02630,02630,Food Lion 2630,5301 Pulasky HWY,Perryville,MD,21903,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.5601,-76.0714,2026-02-25,2026-02-16,No
+SRW00548,SRW00548,ShopRite 548,949 Beards Hill Rd,Aberdeen,MD,21001,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5253041,-76.1812916,2026-02-26,2026-02-17,No
+SRW00551,SRW00551,ShopRite 551,1321 RIVERSIDE PKWY,Belcamp,MD,21017,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4800776,-76.2477325,2025-03-27,2025-03-27,Yes
 SRW00549,SRW00549,ShopRite 549,5 BEL AIR SOUTH PKWY,Bel Air,MD,21015,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4931409,-76.3260095,2025-12-04,2025-12-04,No
 SRW00547,SRW00547,ShopRite 547,223 N Main St,Bel Air,MD,21014,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5395229,-76.3532338,2025-12-04,2025-12-04,No
 SRW00545,SRW00545,ShopRite 545,2101 ROCK SPRING RD,Forest Hill,MD,21050,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5751065,-76.3850329,2025-12-04,2025-12-04,No
-SRW00555,SRW00555,ShopRite 555,1606 DOOLEY RD,Cardiff,MD,21160,214,Route 214 Driver,Harford County,Harford County,Harford County,39.7203296,-76.3426538,,2026-02-17,No
+SRW00555,SRW00555,ShopRite 555,1606 DOOLEY RD,Cardiff,MD,21160,214,Route 214 Driver,Harford County,Harford County,Harford County,39.7203296,-76.3426538,2026-02-17,2026-02-17,No
 FLW02587,FLW02587,Food Lion 2587,140 ENGLAR RD,WESTMINSTER,MD,21157,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.5818146,-76.9904303,2026-02-19,2026-02-13,No
 GTW00132,GTW00132,Giant 132,1320 Londontown Blvd,Eldersburg,MD,21784,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4111027,-76.9487664,,2026-02-24,No
 WAW02551,WAW02551,Walmart 2551,209 E Ridgeville Blvd,Mt Airy,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3670092,-77.1624096,,2026-02-20,No
@@ -132,7 +132,7 @@ FLW01528,01528,Food Lion 1528,2004 MIDWAY DR,Milford,DE,19963,206,Route 210 Driv
 WGW00016,WGW00016,Wegmans 16,11620 MONUMENT DRIVE,FAIRFAX,VA,22030,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,38.8508683,-77.3476231,,,Yes
 WGW00042,WGW00042,Wegmans 42,8297 STONEWALL SHOPS SQUARE,GAINESVILLE,VA,20155,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.7842598,-77.6533128,,,Yes
 WGW00044,WGW00044,Wegmans 44,101 CROSSTRAIL BLVD SE,LEESBURG,VA,20175,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.1157,-77.5636,,,Yes
-SRW00563,SRW00563,ShopRite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.5201387,-76.5601869,,2025-09-12,Yes
+SRW00563,SRW00563,ShopRite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.5201387,-76.5601869,2025-09-12,2025-09-12,Yes
 SRW00567,00567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,204,Route 204 Driver,Baltimore County,Unassigned,Unassigned,39.3723579,-76.5640499,2026-02-24,2026-02-24,No
 FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-02-19,2026-02-25,No
 FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-02-19,2026-02-25,No
@@ -205,8 +205,8 @@ SFW02674,SFW02674,Shoppers Food Whse 2674,4174 Fortuna Ctr Plaza,Dumfries,VA,220
 WMW00081,WMW00081,Weis Markets 081,31 Eastern Blvd N,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6341622,-77.6979267,,,Yes
 WMW00100,WMW00100,Weis Markets 100,2 Old Camp Rd,Frederick,MD,21702,201,Route 201 Driver,Maryland Central,Maryland Central,Maryland Central,39.422232,-77.466165,,,Yes
 WMW00108,WMW00108,Weis Markets 108,1102 S Queen St,Martinsburg,WV,25401,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.444963,-77.9675667,,,Yes
-WMW00172,WMW00172,Weis Markets 172,550 W Macphail Rd,Bel Air,MD,21014,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5231735,-76.3457186,,,Yes
-WMW00193,WMW00193,Weis Markets 193,943 Pulaski Hwy,Havre De Grace,MD,21078,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5481848,-76.1067638,,,Yes
+WMW00172,WMW00172,Weis Markets 172,550 W Macphail Rd,Bel Air,MD,21014,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5231735,-76.3457186,2025-04-02,,Yes
+WMW00193,WMW00193,Weis Markets 193,943 Pulaski Hwy,Havre De Grace,MD,21078,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5481848,-76.1067638,2025-04-19,,Yes
 7EL00001,7EL00001,7-Eleven Hooks Lane,1801 Reisterstown Rd,Pikesville,MD,21208,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3868036,-76.7353542,,2025-10-03,Yes
 BGW00025,BGW00025,B GREEN CASH & CARRY 25,1300 S MONROE ST & WASHINGTO,Baltimore,MD,21230,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2904,-76.6122,2026-02-23,2026-02-26,No
 CASH0003,CASH0003,50 Star Deli & Grocery,2300 E Monument St,Baltimore,MD,21205,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2988469,-76.5849466,2026-02-24,2026-02-24,No
@@ -371,7 +371,7 @@ FLW01162,FLW01162,FOOD LION 1162,2060 YELLOW SPRING RD,FREDERICK,MD,21702,204,Ro
 FLW01216,FLW01216,FOOD LION 1216,231 TIPPIN DR,THURMONT,MD,21788,204,Route 204 Driver,Unassigned,Unassigned,Unassigned,39.6167968,-77.4201931,2026-02-19,2026-02-06,No
 FLW01238,FLW01238,FOOD LION 1238,11800 OLD NATIONAL PIKE,NEW MARKET,MD,21774,204,Route 204 Driver,Frederick County,Frederick County,Frederick County,39.3835253,-77.2544029,2026-02-20,2026-02-20,No
 FLW01413,FLW01413,FOOD LION 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.3887957,-76.5074782,2026-02-18,2026-02-25,No
-FLW01423,FLW01423,FOOD LION 1423,2458 CHURCHVILLE RD,BEL AIR,MD,21015,214,Route 204 Driver,Harford County,Harford County,Harford County,39.5568664,-76.2718674,2026-02-13,2026-02-13,No
+FLW01423,FLW01423,FOOD LION 1423,2458 CHURCHVILLE RD,BEL AIR,MD,21015,214,Route 204 Driver,Harford County,Harford County,Harford County,39.5568664,-76.2718674,2026-02-26,2026-02-13,No
 FLW01465,FLW01465,FOOD LION 1465,1312 S MAIN ST STE 4,MOUNT AIRY,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,2026-02-20,2026-02-20,No
 FLW02193,FLW02193,FOOD LION 2193,3000 GAMBER RD,FINKSBURG,MD,21048,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4941814,-76.8942659,2026-02-19,2026-02-19,No
 FLW02559,FLW02559,FOOD LION 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1997303,-76.6399835,2026-02-23,2026-02-23,No
@@ -719,3 +719,4 @@ MISC0210,MISC0210,Misc Cash 210,,,,,210,Route 210 Driver,Unassigned,Unassigned,U
 CASH0541,CASH0541,Blades BP,50 S. Market St,Blades,DE,19973,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.6321368,-75.6092274,,,Yes
 CASH3026,CASH3026,Nothing Better LLC,"14882 Hardscrabble Rd,",Seaford,MD,19973,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,,,2025-12-12,,No
 MISC0206,MISC0206,Misc Cash 206,,,,,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,,,,,Yes
+MISC0214,MISC0214,Misc Cash 214,,,,,214,Route 214 Driver,Unassigned,Unassigned,Unassigned,,,2026-02-13,,No
