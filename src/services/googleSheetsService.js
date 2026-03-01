@@ -406,7 +406,7 @@ export async function createTemplateCopy(routeNumber, driverName, dateStr) {
 
   await copyTemplateTab(spreadsheetId, tabName);
 
-  // Write header: C1 = "route - driver", E1 = date
+  // Write header: C1 = "route - driver", E1 = date, P3-P8 = invoice/load labels
   const headerUpdates = [];
   const driverLabel = [routeNumber, driverName].filter(Boolean).join(' - ');
   if (driverLabel) {
@@ -417,12 +417,17 @@ export async function createTemplateCopy(routeNumber, driverName, dateStr) {
     const formatted = parts.length === 3 ? `${parseInt(parts[1],10)}/${parts[2]}/${parts[0].slice(-2)}` : dateStr;
     headerUpdates.push({ range: `'${tabName}'!E1`, values: [[formatted]] });
   }
-  if (headerUpdates.length > 0) {
-    await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      resource: { valueInputOption: 'RAW', data: headerUpdates },
-    });
-  }
+  // Always write labels so they're visible immediately after template copy
+  headerUpdates.push({ range: `'${tabName}'!P3`, values: [['Invoice #:  ']] });
+  headerUpdates.push({ range: `'${tabName}'!P4`, values: [['WH Cases:  ']] });
+  headerUpdates.push({ range: `'${tabName}'!P5`, values: [['WH Amount:  ']] });
+  headerUpdates.push({ range: `'${tabName}'!P6`, values: [['Load #:  ']] });
+  headerUpdates.push({ range: `'${tabName}'!P7`, values: [['DRV Cases:  ']] });
+  headerUpdates.push({ range: `'${tabName}'!P8`, values: [['DRV Amount:  ']] });
+  await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    resource: { valueInputOption: 'RAW', data: headerUpdates },
+  });
 
   return { success: true, tabName, alreadyExists: false };
 }
@@ -506,14 +511,14 @@ export async function pushOrderToSheet(order) {
     }
   }
 
-  // Invoice / Load metadata — column P starting at row 3 (available space in template)
-  // P3: Invoice #, P4: WH Cases, P5: WH Amount, P6: Load #, P7: DRV Cases, P8: DRV Amount
-  if (order.invoiceNumber) headerUpdates.push({ range: `'${tabName}'!P3`, values: [[`Invoice #: ${order.invoiceNumber}`]] });
-  if (order.invoiceCases)  headerUpdates.push({ range: `'${tabName}'!P4`, values: [[`WH Cases: ${order.invoiceCases}`]] });
-  if (order.invoiceAmount) headerUpdates.push({ range: `'${tabName}'!P5`, values: [[`WH Amount: $${parseFloat(order.invoiceAmount).toFixed(2)}`]] });
-  if (order.loadNumber)    headerUpdates.push({ range: `'${tabName}'!P6`, values: [[`Load #: ${order.loadNumber}`]] });
-  if (order.loadCases)     headerUpdates.push({ range: `'${tabName}'!P7`, values: [[`DRV Cases: ${order.loadCases}`]] });
-  if (order.loadAmount)    headerUpdates.push({ range: `'${tabName}'!P8`, values: [[`DRV Amount: $${parseFloat(order.loadAmount).toFixed(2)}`]] });
+  // Invoice / Load metadata — column P rows 3-8, always written so labels are visible
+  const fmtAmt = (v) => v ? `$${parseFloat(v).toFixed(2)}` : '';
+  headerUpdates.push({ range: `'${tabName}'!P3`, values: [[`Invoice #:  ${order.invoiceNumber || ''}`]] });
+  headerUpdates.push({ range: `'${tabName}'!P4`, values: [[`WH Cases:  ${order.invoiceCases || ''}`]] });
+  headerUpdates.push({ range: `'${tabName}'!P5`, values: [[`WH Amount:  ${fmtAmt(order.invoiceAmount)}`]] });
+  headerUpdates.push({ range: `'${tabName}'!P6`, values: [[`Load #:  ${order.loadNumber || ''}`]] });
+  headerUpdates.push({ range: `'${tabName}'!P7`, values: [[`DRV Cases:  ${order.loadCases || ''}`]] });
+  headerUpdates.push({ range: `'${tabName}'!P8`, values: [[`DRV Amount:  ${fmtAmt(order.loadAmount)}`]] });
 
   if (headerUpdates.length > 0) {
     await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
