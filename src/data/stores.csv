@@ -179,7 +179,7 @@ FLW01161,01161,Food Lion 1161,46081 BRIARCROFT PLZ,Sterling,VA,20164,209,Route 2
 FLW01185,01185,Food Lion 1185,720 S KING ST,Leesburg,VA,20175,209,Route 209 Driver,Northern Virginia,Leesburg,Leesburg,39.1048288,-77.5683365,2026-02-20,2026-02-25,No
 FLW01208,01208,Food Lion 1208,13490 DUMFRIES RD,Manassas,VA,20112,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.6598391,-77.4413949,2026-02-24,2026-02-24,No
 FLW01226,01226,Food Lion 1226,14641 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.6582,-77.2497,2026-02-23,2026-02-23,No
-FLW01249,01249,Food Lion 1249,5227 WATERWAY DR,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.5685,-77.3281,2026-02-06,2026-02-18,No
+FLW01249,01249,Food Lion 1249,5227 WATERWAY DR,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.5685,-77.3281,2026-02-06,2026-03-27,No
 FLW01261,01261,Food Lion 1261,13414 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.65846146722824,-77.25268858409427,2026-02-23,2026-02-13,No
 FLW01322,01322,Food Lion 1322,3059 CENTERVILLE RD,Herndon,VA,20171,209,Route 209 Driver,Northern Virginia,Herndon,Herndon,38.9696,-77.3861,2026-02-20,2026-02-16,No
 FLW01337,01337,Food Lion 1337,20789 GREAT FALLS PLZ,Sterling,VA,20165,209,Route 209 Driver,Northern Virginia,Sterling,Sterling,39.040721,-77.3580689,2026-02-20,2026-02-25,No
@@ -216,7 +216,7 @@ CASH0021,CASH0021,All Brothers Carryout,1039 East Curry St,Baltimore,MD,,203,Rou
 CASH0027,CASH0027,Apple One Mini Mart,1388 Taylor Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3831727,-76.5710038,2026-02-04,2026-02-25,No
 CASH0034,CASH0034,B&B Convenience,336 S Monroe St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2835144,-76.6467874,2026-02-11,2026-02-26,No
 CASH0050,CASH0050,BP Slade,524 Reisterstown Rd,Pikesville,MD,21208,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3681255,-76.7175643,,2025-07-25,Yes
-CASH0061,CASH0061,Carol Food Mart,3333 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2803933,-76.6730622,,2025-12-01,No
+CASH0061,CASH0061,Carol Food Mart,3333 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2803933,-76.6730622,,2025-12-01,Yes
 CASH0094,CASH0094,Dollar Plus Sper Marquet,2004 W Pratt St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2852493,-76.6488,,2026-01-09,No
 CASH0095,CASH0095,Dollar Plus,108 Broadway St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3011779,-76.5945794,,2026-02-04,No
 CASH0098,CASH0098,Dr Grocery Store,1100 N Sticker St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.299421173985124,-76.58358849147756,2026-02-16,2026-02-03,No
