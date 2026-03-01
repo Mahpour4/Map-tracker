@@ -97,6 +97,8 @@ function initialize() {
     cachedGroups = null;
     groupsCachedAt = 0;
     console.log('\uD83D\uDD0C WhatsApp disconnected:', reason);
+    // Auto-reconnect after 10s (longer delay to let WhatsApp settle)
+    scheduleReinitialize(10000);
   });
 
   // Listen for incoming messages -- capture order group messages
@@ -196,6 +198,21 @@ let cachedGroups = null;
 let groupsCachedAt = 0;
 const GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Auto-reconnect scheduler -- avoids rapid reinit loops
+let reinitTimer = null;
+function scheduleReinitialize(delay = 8000) {
+  if (reinitTimer) return; // already scheduled
+  reinitTimer = setTimeout(() => {
+    reinitTimer = null;
+    if (status === 'disconnected') {
+      console.log('[WA] Auto-reconnecting after detached frame / disconnect...');
+      try { if (client) client.destroy().catch(() => {}); } catch { }
+      client = null;
+      initialize();
+    }
+  }, delay);
+}
+
 // Get all WhatsApp groups the user is a member of
 async function getGroups() {
   if (status !== 'connected') {
@@ -217,9 +234,20 @@ async function getGroups() {
       groupsCachedAt = Date.now();
       return groups;
     } catch (err) {
-      const isRetryable = err.message.includes('timed out') || err.message.includes('detached Frame');
+      const isDetached = err.message.includes('detached Frame');
+      const isRetryable = err.message.includes('timed out') || isDetached;
       console.warn(`[WA] getGroups attempt ${attempt} failed: ${err.message}`);
-      if (attempt === 2 || !isRetryable) throw err;
+      if (attempt === 2 || !isRetryable) {
+        // Detached frame persisted after both retries -- client is broken, force reconnect
+        if (isDetached) {
+          console.warn('[WA] Detached frame persists -- forcing reconnect in 8s');
+          status = 'disconnected';
+          cachedGroups = null;
+          groupsCachedAt = 0;
+          scheduleReinitialize();
+        }
+        throw err;
+      }
       // Wait 3s before retry
       await new Promise(r => setTimeout(r, 3000));
     }
