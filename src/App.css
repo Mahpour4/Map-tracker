@@ -13064,3 +13064,22 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .inv-dg-stat-avail { margin-top: auto; padding-top: 8px; border-top: 1px solid #e2e8f0; }
 .inv-dg-available { color: #15803d; }
 .inv-dg-pending { color: #d97706; }
+
+/* Stock Summary Panel (right sidebar) */
+.inv-content-layout { display: flex; gap: 16px; }
+.inv-main-content { flex: 1; min-width: 0; overflow-x: auto; }
+.inv-stock-panel { width: 200px; flex-shrink: 0; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; position: sticky; top: 0; align-self: flex-start; }
+.inv-stock-section { margin-bottom: 4px; }
+.inv-stock-section-title { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.inv-stock-big { font-size: 1.4rem; font-weight: 800; color: #1e3a5f; font-variant-numeric: tabular-nums; }
+.inv-stock-sub { font-size: 0.72rem; color: #94a3b8; }
+.inv-stock-future-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.8rem; border-bottom: 1px solid #f1f5f9; }
+.inv-stock-future-date { color: #64748b; font-weight: 600; }
+.inv-stock-future-qty { color: #1e3a5f; font-weight: 700; font-variant-numeric: tabular-nums; }
+.inv-stock-divider { border: none; border-top: 1px solid #e2e8f0; margin: 8px 0; }
+.inv-stock-pipeline-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 0.78rem; }
+.inv-stock-pipeline-label { color: #64748b; font-weight: 600; }
+.inv-stock-pipeline-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.inv-stock-sold-val { color: #dc2626; }
+.inv-stock-avail-val { color: #16a34a; }
+@media (max-width: 900px) { .inv-stock-panel { display: none; } .inv-content-layout { flex-direction: column; } }

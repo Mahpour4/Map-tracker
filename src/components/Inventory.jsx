@@ -124,6 +124,31 @@ export default function Inventory() {
     }, { incoming: 0, filteredIncoming: 0, sold: 0, remaining: 0 });
   }, [rows]);
 
+  // Stock summary: what's here now vs what's coming
+  const stockSummary = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    let inStockUnits = 0, totalSold = 0;
+    const futureByDate = {};
+
+    rows.forEach(item => {
+      totalSold += item.sold || 0;
+      (item.deliveries || []).forEach(d => {
+        if (d.date <= today) {
+          inStockUnits += d.qty;
+        } else {
+          if (!futureByDate[d.date]) futureByDate[d.date] = { date: d.date, qty: 0, po: d.po };
+          futureByDate[d.date].qty += d.qty;
+        }
+      });
+    });
+
+    const futureEntries = Object.values(futureByDate).sort((a, b) => a.date.localeCompare(b.date));
+    const futureTotal = futureEntries.reduce((s, e) => s + e.qty, 0);
+    const pipeline = inStockUnits + futureTotal;
+
+    return { inStockUnits, inStockAvail: inStockUnits - totalSold, totalSold, futureEntries, futureTotal, pipeline };
+  }, [rows]);
+
   // Group items by delivery date for the date-grouped view
   const dateGroups = useMemo(() => {
     const groups = {};
@@ -432,19 +457,19 @@ export default function Inventory() {
         {/* Summary cards */}
         <div className="inv-cards">
           <div className="inv-card">
-            <div className="inv-card-label">{dateFilter !== 'all' ? `Incoming (${formatDate(dateFilter)})` : 'Total Incoming'}</div>
+            <div className="inv-card-label">{dateFilter !== 'all' ? `Ordered (${formatDate(dateFilter)})` : 'Total Ordered'}</div>
             <div className="inv-card-val">{(dateFilter !== 'all' ? totals.filteredIncoming : totals.incoming).toLocaleString()}</div>
           </div>
           <div className="inv-card inv-card-sold">
-            <div className="inv-card-label">Total Sold</div>
+            <div className="inv-card-label">Sold</div>
             <div className="inv-card-val">{totals.sold.toLocaleString()}</div>
           </div>
           <div className="inv-card inv-card-remaining">
-            <div className="inv-card-label">Remaining</div>
+            <div className="inv-card-label">In Stock</div>
             <div className="inv-card-val">{totals.remaining.toLocaleString()}</div>
           </div>
           <div className="inv-card inv-card-pct">
-            <div className="inv-card-label">SKUs</div>
+            <div className="inv-card-label">Products</div>
             <div className="inv-card-val">{rows.length}{dateFilter !== 'all' ? ` / ${Object.keys(items).length}` : ''}</div>
           </div>
         </div>
@@ -478,6 +503,9 @@ export default function Inventory() {
         />
         {search && <button className="inv-clear-search" onClick={() => setSearch('')}>Clear</button>}
       </div>
+
+      <div className="inv-content-layout">
+        <div className="inv-main-content">
 
       {/* Date-grouped collapsible view */}
       {viewMode === 'dates' && (
@@ -602,16 +630,16 @@ export default function Inventory() {
         <table className="inv-table">
           <thead>
             <tr>
-              <th className="inv-th-sku" onClick={() => toggleSort('sku')}>SKU{sortIcon('sku')}</th>
-              <th className="inv-th-desc" onClick={() => toggleSort('description')}>Description{sortIcon('description')}</th>
+              <th className="inv-th-sku" onClick={() => toggleSort('sku')}>Item #{sortIcon('sku')}</th>
+              <th className="inv-th-desc" onClick={() => toggleSort('description')}>Product{sortIcon('description')}</th>
               <th className="inv-th-num" onClick={() => toggleSort('incoming')}>
-                {dateFilter !== 'all' ? formatDate(dateFilter) : 'Incoming'}{sortIcon('incoming')}
+                {dateFilter !== 'all' ? `${formatDate(dateFilter)} Order` : 'Total Ordered'}{sortIcon('incoming')}
               </th>
-              {dateFilter !== 'all' && <th className="inv-th-num">Total</th>}
+              {dateFilter !== 'all' && <th className="inv-th-num">All Orders</th>}
               <th className="inv-th-num" onClick={() => toggleSort('sold')}>Sold{sortIcon('sold')}</th>
-              <th className="inv-th-num" onClick={() => toggleSort('remaining')}>Remaining{sortIcon('remaining')}</th>
-              <th className="inv-th-pct">%</th>
-              <th className="inv-th-deliveries">Deliveries</th>
+              <th className="inv-th-num" onClick={() => toggleSort('remaining')}>In Stock{sortIcon('remaining')}</th>
+              <th className="inv-th-pct"></th>
+              <th className="inv-th-deliveries">Arriving</th>
               <th className="inv-th-actions"></th>
             </tr>
           </thead>
@@ -725,7 +753,7 @@ export default function Inventory() {
                       {dateFilter !== 'all' ? item.filteredIncoming.toLocaleString() : item.incoming.toLocaleString()}
                     </td>
                     {dateFilter !== 'all' && <td className="inv-td-num" style={{ color: '#94a3b8' }}>{item.incoming.toLocaleString()}</td>}
-                    <td className="inv-td-num inv-sold">{item.sold > 0 ? item.sold.toLocaleString() : '\u2014'}</td>
+                    <td className="inv-td-num inv-sold">{item.sold.toLocaleString()}</td>
                     <td className={`inv-td-num inv-remaining ${item.remaining <= 0 ? 'inv-zero' : ''}`}>
                       {item.remaining.toLocaleString()}
                     </td>
@@ -767,7 +795,7 @@ export default function Inventory() {
           </tbody>
           <tfoot>
             <tr className="inv-totals-row">
-              <td colSpan="2" className="inv-totals-label">TOTALS ({rows.length} items)</td>
+              <td colSpan="2" className="inv-totals-label">TOTALS ({rows.length} products)</td>
               <td className="inv-td-num">{(dateFilter !== 'all' ? totals.filteredIncoming : totals.incoming).toLocaleString()}</td>
               {dateFilter !== 'all' && <td className="inv-td-num" style={{ color: '#94a3b8' }}>{totals.incoming.toLocaleString()}</td>}
               <td className="inv-td-num inv-sold">{totals.sold.toLocaleString()}</td>
@@ -777,6 +805,60 @@ export default function Inventory() {
           </tfoot>
         </table>
       </div>}
+
+        </div>{/* end inv-main-content */}
+
+        {/* Stock Summary Panel */}
+        <div className="inv-stock-panel">
+          <div className="inv-stock-section">
+            <div className="inv-stock-section-title">In Stock Now</div>
+            <div className="inv-stock-big">{stockSummary.inStockAvail.toLocaleString()}</div>
+            <div className="inv-stock-sub">units available</div>
+            {stockSummary.totalSold > 0 && (
+              <div className="inv-stock-sub">{stockSummary.inStockUnits.toLocaleString()} received &minus; {stockSummary.totalSold.toLocaleString()} sold</div>
+            )}
+          </div>
+
+          <hr className="inv-stock-divider" />
+
+          <div className="inv-stock-section">
+            <div className="inv-stock-section-title">Coming Soon</div>
+            {stockSummary.futureEntries.length > 0 ? (
+              stockSummary.futureEntries.map(e => (
+                <div key={e.date} className="inv-stock-future-row">
+                  <span className="inv-stock-future-date">{formatDate(e.date)}</span>
+                  <span className="inv-stock-future-qty">{e.qty.toLocaleString()}</span>
+                </div>
+              ))
+            ) : (
+              <div className="inv-stock-sub">No upcoming deliveries</div>
+            )}
+            {stockSummary.futureEntries.length > 0 && (
+              <div className="inv-stock-future-row" style={{ borderTop: '1px solid #cbd5e1', marginTop: 4, paddingTop: 4 }}>
+                <span className="inv-stock-future-date" style={{ fontWeight: 700 }}>Total</span>
+                <span className="inv-stock-future-qty">{stockSummary.futureTotal.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+
+          <hr className="inv-stock-divider" />
+
+          <div className="inv-stock-section">
+            <div className="inv-stock-section-title">Total Pipeline</div>
+            <div className="inv-stock-big">{stockSummary.pipeline.toLocaleString()}</div>
+            <div className="inv-stock-sub">total ordered</div>
+            <div className="inv-stock-pipeline-row">
+              <span className="inv-stock-pipeline-label">Sold</span>
+              <span className="inv-stock-pipeline-val inv-stock-sold-val">{stockSummary.totalSold.toLocaleString()}</span>
+            </div>
+            <div className="inv-stock-pipeline-row">
+              <span className="inv-stock-pipeline-label">Available</span>
+              <span className="inv-stock-pipeline-val inv-stock-avail-val">{(stockSummary.pipeline - stockSummary.totalSold).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>{/* end inv-content-layout */}
 
       {/* Import modal */}
       {showImport && (
