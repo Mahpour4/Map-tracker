@@ -72,6 +72,7 @@ export default function WarehouseOrders() {
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [lastAutoSaved, setLastAutoSaved] = useState(null);
   const autoSaveRef = useRef(null);
+  const executePushRef = useRef(null); // avoids forward-reference issue (executePush defined after handleSave)
 
   // Sync time indicators
   const [lastLocalSaved, setLastLocalSaved] = useState(() => localStorage.getItem('wo_last_local_saved'));
@@ -744,7 +745,7 @@ export default function WarehouseOrders() {
   }, [selectedRoute, orderName, orderDate, cases, units, totals, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, warehouseOrders]);
 
   // Save order
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!selectedRoute) return;
     setSaving(true);
     const allSkus = new Set([...Object.keys(cases), ...Object.keys(units)]);
@@ -790,7 +791,24 @@ export default function WarehouseOrders() {
     } else {
       addWarehouseOrder(orderData);
     }
-    setTimeout(() => setSaving(false), 500);
+
+    // Optimistically update local/GitHub timestamps (AppContext will do the actual saves momentarily)
+    const now = new Date().toISOString();
+    localStorage.setItem('wo_last_local_saved', now);
+    localStorage.setItem('wo_last_github_saved', now);
+    setLastLocalSaved(now);
+    setLastGithubSaved(now);
+
+    // Push to Google Sheets if configured and signed in
+    if (isGoogleSheetsConfigured() && isSignedIn() && executePushRef.current) {
+      try {
+        await executePushRef.current(items);
+      } catch (err) {
+        console.error('[Save] Sheets push failed:', err.message);
+      }
+    }
+
+    setSaving(false);
   }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder]);
 
   // Auto-save every 30 seconds when there are unsaved changes
@@ -1177,6 +1195,9 @@ export default function WarehouseOrders() {
     }
     setSyncing(false);
   }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, existingOrder, updateWarehouseOrder, orders]);
+
+  // Keep executePushRef current so handleSave can call it without a forward-reference
+  useEffect(() => { executePushRef.current = executePush; }, [executePush]);
 
   // Push current order to Google Sheet (checks for conflicts first)
   const handlePushToSheet = useCallback(async () => {
