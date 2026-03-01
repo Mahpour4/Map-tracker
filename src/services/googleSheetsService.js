@@ -506,23 +506,14 @@ export async function pushOrderToSheet(order) {
     }
   }
 
-  // Invoice line — row 2
-  const invParts = [];
-  if (order.invoiceNumber) invParts.push(`Invoice # ${order.invoiceNumber}`);
-  if (order.invoiceCases) invParts.push(`Cases: ${order.invoiceCases}`);
-  if (order.invoiceAmount) invParts.push(`Amt: $${parseFloat(order.invoiceAmount).toFixed(2)}`);
-  if (invParts.length > 0) {
-    headerUpdates.push({ range: `'${tabName}'!A2`, values: [[invParts.join('  |  ')]] });
-  }
-
-  // Load line — row 3
-  const ldParts = [];
-  if (order.loadNumber) ldParts.push(`Load # ${order.loadNumber}`);
-  if (order.loadCases) ldParts.push(`Cases: ${order.loadCases}`);
-  if (order.loadAmount) ldParts.push(`Amt: $${parseFloat(order.loadAmount).toFixed(2)}`);
-  if (ldParts.length > 0) {
-    headerUpdates.push({ range: `'${tabName}'!A3`, values: [[ldParts.join('  |  ')]] });
-  }
+  // Invoice / Load metadata — column P starting at row 3 (available space in template)
+  // P3: Invoice #, P4: WH Cases, P5: WH Amount, P6: Load #, P7: DRV Cases, P8: DRV Amount
+  if (order.invoiceNumber) headerUpdates.push({ range: `'${tabName}'!P3`, values: [[`Invoice #: ${order.invoiceNumber}`]] });
+  if (order.invoiceCases)  headerUpdates.push({ range: `'${tabName}'!P4`, values: [[`WH Cases: ${order.invoiceCases}`]] });
+  if (order.invoiceAmount) headerUpdates.push({ range: `'${tabName}'!P5`, values: [[`WH Amount: $${parseFloat(order.invoiceAmount).toFixed(2)}`]] });
+  if (order.loadNumber)    headerUpdates.push({ range: `'${tabName}'!P6`, values: [[`Load #: ${order.loadNumber}`]] });
+  if (order.loadCases)     headerUpdates.push({ range: `'${tabName}'!P7`, values: [[`DRV Cases: ${order.loadCases}`]] });
+  if (order.loadAmount)    headerUpdates.push({ range: `'${tabName}'!P8`, values: [[`DRV Amount: $${parseFloat(order.loadAmount).toFixed(2)}`]] });
 
   if (headerUpdates.length > 0) {
     await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
