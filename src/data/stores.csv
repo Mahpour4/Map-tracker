@@ -220,14 +220,14 @@ CASH0061,CASH0061,Carol Food Mart,3333 Frederick Ave,Baltimore,MD,,203,Route 203
 CASH0094,CASH0094,Dollar Plus Sper Marquet,2004 W Pratt St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2852493,-76.6488,,2026-01-09,No
 CASH0095,CASH0095,Dollar Plus,108 Broadway St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3011779,-76.5945794,,2026-02-04,No
 CASH0098,CASH0098,Dr Grocery Store,1100 N Sticker St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.299421173985124,-76.58358849147756,2026-02-16,2026-02-03,No
-CASH0107,CASH0107,Edmondson Liquors & Food,2000 Edmondson Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.295259,-76.6492518,2026-02-18,2026-02-05,No
+CASH0107,CASH0107,Edmondson Liquors & Food,2000 Edmondson Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.295259,-76.6492518,2026-02-18,2026-02-27,No
 CASH0137,CASH0137,Falls Deli And Grocery,4300 Falls Rd,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.341081,-76.6397795,2026-02-17,2026-02-24,No
 CASH0149,CASH0149,Five Brothers,801 North Glover St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3003199,-76.5801042,2026-02-13,2026-02-24,No
-CASH0154,CASH0154,Food City Mart,1733 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3042716,-76.6351937,2026-02-04,2026-02-04,No
+CASH0154,CASH0154,Food City Mart,1733 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3042716,-76.6351937,2026-02-04,2026-02-27,No
 CASH0162,CASH0162,Frederick Store,4110 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2819023,-76.6836883,2026-02-19,2026-02-19,No
 CASH0170,CASH0170,Garrison Deli And Grocery,2109 Garrison Blvd,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3114491,-76.6748017,2026-02-12,2026-02-12,No
-CASH0195,CASH0195,Harlem Grocery Store,901 Harlem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.296797,-76.633411,,2026-02-13,No
-CASH0196,CASH0196,Harlem Mini Mart,1133 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2994831,-76.6293123,2026-02-20,2026-02-20,No
+CASH0195,CASH0195,Harlem Grocery Store,901 Harlem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.296797,-76.633411,,2026-02-27,No
+CASH0196,CASH0196,Harlem Mini Mart,1133 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2994831,-76.6293123,2026-02-20,2026-02-27,No
 CASH0217,CASH0217,Just Market,1813 Baker St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3064595,-76.6472693,,2026-01-09,No
 CASH0225,CASH0225,KK Grocery Store,1300 Poplar Grove St,Baltimore,MD,21216,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3021976,-76.6655087,,2025-12-19,No
 CASH0234,CASH0234,Liberty Deli Grocery LLC,3834 Liberty Heights Ave,Baltimore,MD,21215,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3271929,-76.6815816,2026-02-17,2026-02-24,No
@@ -257,14 +257,14 @@ CASH3025,CASH3025,Tiger Supermarket,2495 FREDERICK AVENUE,Baltimore,MD,21224,203
 CASH3033,CASH3033,Two Time Mini Mart,300 N Carey ST,Baltimore,MD,21223,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2923738,-76.6385782,,2025-12-31,No
 FDW0072,FDW0072,FOOD DEPOT 72,2401 BELAIR RD,Baltimore,MD,21213,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3179903,-76.5756068,,2025-10-29,Yes
 FDW0073,FDW0073,FOOD DEPOT 73,2495 FREDERICK AVENUE,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2831303,-76.6561937,,2025-08-18,Yes
-HF00001,HF00001,Harvest Fare Store 1,2905 Hamilton Avenue,Baltimore,MD,21214,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3528997,-76.5628423,2026-02-13,2026-02-25,No
+HF00001,HF00001,Harvest Fare Store 1,2905 Hamilton Avenue,Baltimore,MD,21214,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3528997,-76.5628423,2026-02-13,2026-02-27,No
 HF00002,HF00002,Harvest Fare Store 2,5708 Wabash Avenue,Baltimore,MD,21215,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3445225,-76.6956206,2026-02-17,2026-02-10,No
 IND0025,IND0025,Cococcios,2831 Smith Ave,Baltimore,MD,21209,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3745415,-76.6909559,,2025-12-31,No
 IND00028,IND00028,Croustille Caf,1206 Reisterstown Rd,Pikesville,MD,21208,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3745992,-76.723374,,2024-10-11,Yes
 IND00030,IND00030,Goldberg's Pikesville,1500 Reisterstown Rd #211,Pikesville,MD,21208,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.36543673022289,-76.72406283359899,,2026-01-15,No
 IND00039,IND00039,Kosher Pastry Oven,1372 Lamberton Dr,Silver Spring,MD,20902,203,Route 203 Driver,Montgomery County,Montgomery County,Montgomery County,39.0024,-77.0189,,2025-10-23,Yes
 IND00041,IND00041,Lenny's Deli,9107 Reisterstown Rd,Owings Mills,MD,21117,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3967176,-76.7475652,,2025-05-14,Yes
-IND00043,IND00043,DD Cafe,1550 Orleans St,Baltimore,MD,21287,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2949405,-76.5972165,2026-02-04,2026-02-04,No
+IND00043,IND00043,DD Cafe,1550 Orleans St,Baltimore,MD,21287,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2949405,-76.5972165,2026-02-04,2026-02-27,No
 IND00044,IND00044,Milk And Honey,1777 Reisterstown Rd #120,Pikesville,MD,,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3870213,-76.7332201,,2025-08-15,Yes
 KFW02682,KFW02682,KEY FOOD 02682 OUT OF USE,1205 W PRATT STREET,Baltimore,MD,21223,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.284449,-76.6353965,,2025-08-20,Yes
 CASH0084,CASH0084,N&K Grocery,1641 Pennsylvania Ave,Baltimore,MD,,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.303516,-76.6343349,,2026-02-11,No
