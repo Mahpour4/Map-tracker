@@ -606,6 +606,33 @@ textarea {
   100% { opacity: 0.25; transform: scale(1.6); }
 }
 
+/* ============ Alert badge on store markers ============ */
+.map-alert-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #fff;
+  z-index: 10;
+  pointer-events: none;
+  animation: alert-badge-flash 0.9s ease-in-out infinite;
+}
+
+@keyframes alert-badge-flash {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.15; transform: scale(0.75); }
+}
+
 .zone-meta {
   display: flex;
   gap: 6px;

@@ -83,7 +83,7 @@ function getRecencyTier(lastVisited) {
   return recencyTiers[recencyTiers.length - 1];
 }
 
-function createStoreIcon(type, isSelected, visitMode, lastVisited) {
+function createStoreIcon(type, isSelected, visitMode, lastVisited, hasAlert) {
   const baseColor = visitMode
     ? getRecencyTier(lastVisited).color
     : (typeColors[type] || typeColors.other);
@@ -104,6 +104,9 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited) {
         pointer-events: none;
       "></div>`
     : '';
+  const alertBadge = hasAlert
+    ? `<div class="map-alert-badge">!</div>`
+    : '';
 
   return L.divIcon({
     className: `custom-marker ${blinkClass}`,
@@ -119,6 +122,7 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited) {
         position: relative;
         z-index: 2;
       "></div>
+      ${alertBadge}
     </div>`,
     iconSize: [size + 20, size + 20],
     iconAnchor: [(size + 20) / 2, (size + 20) / 2],
@@ -170,7 +174,23 @@ function formatDate(dateStr) {
 
 export default function MapView() {
   const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore, recordVisit, toggleVehiclesOnMap } = useApp();
-  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute, vehicleLocations, showVehiclesOnMap } = state;
+  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute, vehicleLocations, showVehiclesOnMap, alerts } = state;
+
+  // Build set of store IDs that have at least one open (unresolved) alert
+  const storesWithOpenAlerts = useMemo(() => {
+    const set = new Set();
+    if (!alerts || alerts.length === 0) return set;
+    alerts.forEach(a => {
+      if (!a.storeNumber || !a.dateReceived) return;
+      const store = stores.find(s => s.storeNumber === a.storeNumber);
+      if (!store) return;
+      const lastVisited = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
+      if (!lastVisited) { set.add(store.id); return; }
+      const visitDate = lastVisited.split('T')[0].split(' ')[0];
+      if (visitDate < a.dateReceived) set.add(store.id);
+    });
+    return set;
+  }, [alerts, stores]);
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(true);
@@ -775,7 +795,7 @@ export default function MapView() {
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
-          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store))}
+          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store), storesWithOpenAlerts.has(store.id))}
           eventHandlers={{
             click: () => {
               if (selectedStore === store.id) {
