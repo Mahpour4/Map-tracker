@@ -183,9 +183,15 @@ export default function MapView() {
   const storesWithOpenAlerts = useMemo(() => {
     const set = new Set();
     if (!alerts || alerts.length === 0) return set;
+    // Index stores by id for fast lookup (same approach as AlertPanel)
+    const storeById = {};
+    stores.forEach(s => { storeById[s.id] = s; });
     alerts.forEach(a => {
-      if (!a.storeNumber || !a.dateReceived) return;
-      const store = stores.find(s => s.storeNumber === a.storeNumber);
+      if (!a.dateReceived) return;
+      // Use storeId (already matched) — fall back to storeNumber scan
+      const store = a.storeId
+        ? storeById[a.storeId]
+        : stores.find(s => s.storeNumber === a.storeNumber);
       if (!store) return;
       const lastVisited = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
       if (!lastVisited) { set.add(store.id); return; }
