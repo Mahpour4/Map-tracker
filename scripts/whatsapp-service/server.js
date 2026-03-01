@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const whatsapp = require('./whatsapp');
 const globalworx = require('./globalworx');
 
@@ -7,7 +9,38 @@ const app = express();
 const PORT = 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+// ── Local file persistence (src/data/*.json on disk) ─────────────────────────
+const DATA_DIR = path.join(__dirname, '../../src/data');
+
+const LOCAL_FILES = {
+  'warehouseOrders': path.join(DATA_DIR, 'warehouseOrders.json'),
+};
+
+app.get('/api/local/:key', (req, res) => {
+  const filePath = LOCAL_FILES[req.params.key];
+  if (!filePath) return res.status(404).json({ error: 'Unknown key' });
+  try {
+    if (!fs.existsSync(filePath)) return res.json(null);
+    const content = fs.readFileSync(filePath, 'utf8');
+    res.json(JSON.parse(content));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/local/:key', (req, res) => {
+  const filePath = LOCAL_FILES[req.params.key];
+  if (!filePath) return res.status(404).json({ error: 'Unknown key' });
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(req.body, null, 2), 'utf8');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Health check / status
 app.get('/api/whatsapp/status', (req, res) => {

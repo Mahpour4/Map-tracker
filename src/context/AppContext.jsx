@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, fetchWarehouseOrdersJson, saveWarehouseOrdersJson, getToken } from '../services/githubService';
+import { loadLocalData, saveLocalData } from '../services/localDataService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, labelAlertsError, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
@@ -1337,39 +1338,55 @@ export function AppProvider({ children }) {
     return () => { if (transactionsSaveTimer.current) clearTimeout(transactionsSaveTimer.current); };
   }, [state.transactions]);
 
-  // Load warehouse orders from GitHub on mount
+  // Load warehouse orders — local disk first (instant), then GitHub (authoritative)
   useEffect(() => {
+    // 1. Try local disk via WhatsApp service (fast, works offline)
+    loadLocalData('warehouseOrders').then(localData => {
+      if (localData && localData.orders) {
+        console.log('[WO] Loaded from local disk:', localData.orders.length, 'orders');
+        dispatch({ type: 'LOAD_WAREHOUSE_ORDERS', payload: localData });
+      }
+    });
+
+    // 2. Also load from GitHub if token available (may overwrite with newer remote data)
     if (!getToken()) return;
     fetchWarehouseOrdersJson()
       .then(({ content }) => {
         try {
           const data = JSON.parse(content);
           if (data && data.orders) {
+            console.log('[WO] Loaded from GitHub:', data.orders.length, 'orders');
             dispatch({ type: 'LOAD_WAREHOUSE_ORDERS', payload: data });
+            // Mirror to local disk so next load is instant
+            saveLocalData('warehouseOrders', data);
           }
         } catch { /* empty or invalid */ }
       })
       .catch((err) => {
-        console.error('Failed to load warehouse orders:', err);
+        console.error('[WO] Failed to load from GitHub:', err);
       });
   }, []);
 
-  // Auto-save warehouse orders to localStorage + GitHub when they change
+  // Auto-save warehouse orders to localStorage + local disk + GitHub when they change
   const prevWarehouseOrdersRef = useRef(state.warehouseOrders);
   const warehouseOrdersSaveTimer = useRef(null);
   useEffect(() => {
     if (prevWarehouseOrdersRef.current === state.warehouseOrders) return;
     prevWarehouseOrdersRef.current = state.warehouseOrders;
 
-    // Always save to localStorage (instant persistence)
+    // 1. Save to localStorage (instant, browser-specific)
     try { localStorage.setItem('warehouseOrders', JSON.stringify(state.warehouseOrders)); } catch { /* quota */ }
 
-    // Save to GitHub if token available
+    // 2. Save to local disk via WhatsApp service (instant, persists across browsers/machines)
+    saveLocalData('warehouseOrders', state.warehouseOrders)
+      .catch((err) => console.error('[WO] Local disk save failed:', err));
+
+    // 3. Save to GitHub (debounced 2s — remote backup)
     if (!getToken()) return;
     if (warehouseOrdersSaveTimer.current) clearTimeout(warehouseOrdersSaveTimer.current);
     warehouseOrdersSaveTimer.current = setTimeout(() => {
       saveWarehouseOrdersJson(JSON.stringify(state.warehouseOrders))
-        .catch((err) => console.error('Failed to save warehouse orders:', err));
+        .catch((err) => console.error('[WO] GitHub save failed:', err));
     }, 2000);
 
     return () => { if (warehouseOrdersSaveTimer.current) clearTimeout(warehouseOrdersSaveTimer.current); };

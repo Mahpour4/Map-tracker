@@ -1,0 +1,28 @@
+// Local disk persistence via the WhatsApp service (port 3001)
+// Falls back gracefully when the service is not running.
+
+const LOCAL_API = 'http://localhost:3001/api/local';
+
+export async function loadLocalData(key) {
+  try {
+    const res = await fetch(`${LOCAL_API}/${key}`, { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLocalData(key, data) {
+  try {
+    const res = await fetch(`${LOCAL_API}/${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(3000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
