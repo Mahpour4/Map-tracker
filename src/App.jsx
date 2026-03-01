@@ -118,9 +118,31 @@ function AppContent() {
   const { state, setPage } = useApp();
   const page = state.currentPage;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 1200);
   const [openGroup, setOpenGroup] = useState(() => getActiveGroup(state.currentPage));
   const navRef = useRef(null);
+  const layoutRef = useRef(null);
+
+  // Auto-collapse sidebar when window shrinks below 1200px
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1200px)');
+    const onChange = (e) => { if (e.matches) setSidebarCollapsed(true); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Close sidebar overlay when clicking the backdrop (the ::before pseudo-element)
+  useEffect(() => {
+    if (sidebarCollapsed || window.innerWidth >= 1200) return;
+    const onBackdropClick = (e) => {
+      // The backdrop is the ::before of .app-layout; clicks on it hit the layout div directly
+      if (e.target === layoutRef.current) {
+        setSidebarCollapsed(true);
+      }
+    };
+    document.addEventListener('mousedown', onBackdropClick);
+    return () => document.removeEventListener('mousedown', onBackdropClick);
+  }, [sidebarCollapsed]);
 
   // Close dropdown when clicking outside the nav
   useEffect(() => {
@@ -142,7 +164,7 @@ function AppContent() {
   };
 
   return (
-    <div className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+    <div ref={layoutRef} className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar />
       <main className="map-wrapper">
         <header className="page-nav">

@@ -49,6 +49,16 @@ export default function WarehouseOrders() {
   const lang = language || 'en';
   const orders = warehouseOrders?.orders || [];
 
+  // Merge static catalog with custom entries from inventory
+  const FULL_CATALOG = useMemo(() => {
+    const custom = inventory?.customCatalog || [];
+    if (custom.length === 0) return PRODUCT_CATALOG;
+    // Dedupe: custom entries override static ones with same SKU
+    const staticSkus = new Set(PRODUCT_CATALOG.map(p => p.sku));
+    const newItems = custom.filter(c => !staticSkus.has(c.sku));
+    return [...PRODUCT_CATALOG, ...newItems];
+  }, [inventory?.customCatalog]);
+
   const [tab, setTab] = useState('entry'); // entry | queue
   const [selectedRoute, setSelectedRoute] = useState('');
   const [orderDate, setOrderDate] = useState(() => {
@@ -207,9 +217,9 @@ export default function WarehouseOrders() {
 
   // Filter products by search
   const filteredProducts = useMemo(() => {
-    if (!search.trim()) return PRODUCT_CATALOG;
+    if (!search.trim()) return FULL_CATALOG;
     const q = search.toLowerCase();
-    return PRODUCT_CATALOG.filter(p =>
+    return FULL_CATALOG.filter(p =>
       p.desc.toLowerCase().includes(q) ||
       p.sku.toLowerCase().includes(q) ||
       p.type.toLowerCase().includes(q) ||
@@ -233,7 +243,7 @@ export default function WarehouseOrders() {
     // Get all SKUs that have cases or units
     const allSkus = new Set([...Object.keys(cases), ...Object.keys(units)]);
     allSkus.forEach(sku => {
-      const product = PRODUCT_CATALOG.find(p => p.sku === sku);
+      const product = FULL_CATALOG.find(p => p.sku === sku);
       if (product) {
         const caseQty = cases[sku] || 0;
         const unitQty = units[sku] || 0;
@@ -288,7 +298,7 @@ export default function WarehouseOrders() {
         prodMap[item.sku].cases += item.cases || 0;
         prodMap[item.sku].units += item.units || 0;
         prodMap[item.sku].cost += (item.units || 0) * (item.price || 0);
-        const cat = PRODUCT_CATALOG.find(p => p.sku === item.sku);
+        const cat = FULL_CATALOG.find(p => p.sku === item.sku);
         prodMap[item.sku].revenue += (item.units || 0) * (cat?.retail || item.price || 0);
         prodMap[item.sku].orderCount += 1;
       });
@@ -322,7 +332,7 @@ export default function WarehouseOrders() {
         catMap[c].cases += item.cases || 0;
         catMap[c].units += item.units || 0;
         catMap[c].cost += (item.units || 0) * (item.price || 0);
-        const cat = PRODUCT_CATALOG.find(p => p.sku === item.sku);
+        const cat = FULL_CATALOG.find(p => p.sku === item.sku);
         catMap[c].revenue += (item.units || 0) * (cat?.retail || item.price || 0);
       });
     });
@@ -644,7 +654,7 @@ export default function WarehouseOrders() {
     const tableBody = [];
     let globalIdx = 0;
     PRODUCT_CATEGORIES.forEach(cat => {
-      const products = PRODUCT_CATALOG.filter(p => p.category === cat);
+      const products = FULL_CATALOG.filter(p => p.category === cat);
       const catItems = products.filter(p => (cases[p.sku] || 0) > 0 || (units[p.sku] || 0) > 0);
       if (catItems.length === 0) return;
 
@@ -754,7 +764,7 @@ export default function WarehouseOrders() {
       .map(sku => {
         const qty = cases[sku] || 0;
         const unitQty = units[sku] || 0;
-        const p = PRODUCT_CATALOG.find(pr => pr.sku === sku);
+        const p = FULL_CATALOG.find(pr => pr.sku === sku);
         const caseUnits = qty * (p?.upc || 0);
         const allUnits = caseUnits + unitQty;
         return {
@@ -974,7 +984,7 @@ export default function WarehouseOrders() {
     const results = [];
 
     // Build search index from catalog
-    const searchTerms = PRODUCT_CATALOG.map(p => {
+    const searchTerms = FULL_CATALOG.map(p => {
       const words = (p.desc + ' ' + p.category + ' ' + p.type).toLowerCase();
       return { ...p, words };
     });
@@ -1151,7 +1161,7 @@ export default function WarehouseOrders() {
       setUnits(prev => { const next = { ...prev }; delete next[sku]; return next; });
       return;
     }
-    const product = PRODUCT_CATALOG.find(p => p.sku === sku);
+    const product = FULL_CATALOG.find(p => p.sku === sku);
     const upc = product?.upc || 1;
     if (num >= upc) {
       const fullCases = Math.floor(num / upc);
@@ -1276,7 +1286,7 @@ export default function WarehouseOrders() {
         const sheetVal = sheetCases[item.sku] || 0;
         if (sheetVal > 0 && sheetVal !== item.cases) {
           const skuPad = item.sku.padStart(6, '0');
-          const prod = PRODUCT_CATALOG.find(p => p.sku === item.sku || p.sku === skuPad);
+          const prod = FULL_CATALOG.find(p => p.sku === item.sku || p.sku === skuPad);
           conflicts.push({ sku: item.sku, desc: prod?.desc || item.sku, category: prod?.category || '', price: prod?.price || 0, sheetVal, appVal: item.cases });
         }
       }
@@ -1404,7 +1414,7 @@ export default function WarehouseOrders() {
           const sheetVal = sheetItems[sku] || 0;
           if (formVal > 0 && sheetVal > 0 && formVal !== sheetVal) {
             const skuPad = sku.padStart(6, '0');
-            const prod = PRODUCT_CATALOG.find(p => p.sku === sku || p.sku === skuPad);
+            const prod = FULL_CATALOG.find(p => p.sku === sku || p.sku === skuPad);
             conflicts.push({ sku, desc: prod?.desc || sku, category: prod?.category || '', price: prod?.price || 0, sheetVal, appVal: formVal });
           }
         }
@@ -2265,7 +2275,7 @@ export default function WarehouseOrders() {
           </div>
           <div className="wo-quick-filters">
             {PRODUCT_CATEGORIES.map(cat => {
-              const catProducts = PRODUCT_CATALOG.filter(p => p.category === cat);
+              const catProducts = FULL_CATALOG.filter(p => p.category === cat);
               const hasItems = catProducts.some(p => (cases[p.sku] || 0) > 0 || (units[p.sku] || 0) > 0);
               const isOpen = collapsed[cat] !== undefined ? !collapsed[cat] : hasItems;
               const shortName = cat.replace(' Products', '').replace(' Small', ' Sm').replace(' Large', ' Lg');
@@ -2879,7 +2889,7 @@ export default function WarehouseOrders() {
                                   const items = Object.entries(orderCases)
                                     .filter(([, qty]) => qty > 0)
                                     .map(([sku, qty]) => {
-                                      const p = PRODUCT_CATALOG.find(pr => pr.sku === sku);
+                                      const p = FULL_CATALOG.find(pr => pr.sku === sku);
                                       const caseUnits = qty * (p?.upc || 0);
                                       return {
                                         sku, category: p?.category || '', desc: p?.desc || '',

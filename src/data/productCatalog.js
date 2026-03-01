@@ -10,6 +10,7 @@
 
 export const PRODUCT_CATEGORIES = [
   'Deep River Small',
+  'Deep River Grab & Go',
   'Deep River Large',
   '.50 Cents',
   '2.49 Products',
@@ -30,6 +31,12 @@ export const PRODUCT_CATALOG = [
   { sku: '000043', category: 'Deep River Small', type: 'D/RIV/S', desc: 'DR Jalapeno Chips',          price: 1.05, retail: 1.49, upc: 24 },
   { sku: '000045', category: 'Deep River Small', type: 'D/RIV/S', desc: 'DR BBQ Chips',               price: 1.05, retail: 1.49, upc: 24 },
   { sku: '000049', category: 'Deep River Small', type: 'D/RIV/S', desc: 'DR Sour Cream & Onion',      price: 1.05, retail: 1.49, upc: 24 },
+  { sku: '000046', category: 'Deep River Small', type: 'D/RIV/S', desc: 'DR Rosemary & Olive Oil',    price: 1.05, retail: 1.49, upc: 24 },
+  { sku: '000041', category: 'Deep River Small', type: 'D/RIV/S', desc: 'DR Cracked Pepper & Sea Salt', price: 1.05, retail: 1.49, upc: 24 },
+
+  // ── DEEP RIVER GRAB & GO ($1.15 retail, $0.62 cost) ──
+  { sku: '020251', category: 'Deep River Grab & Go', type: 'D/RIV/GG', desc: 'DR Mesquite BBQ 1.3oz',       price: 0.62, retail: 1.15, upc: 24 },
+  { sku: '020281', category: 'Deep River Grab & Go', type: 'D/RIV/GG', desc: 'DR Zesty Jalapeno 1.3oz',     price: 0.62, retail: 1.15, upc: 24 },
 
   // ── DEEP RIVER LARGE ($5.49 retail, $3.70 cost) ──
   { sku: '010008', category: 'Deep River Large', type: 'D/RIV/L', desc: 'DR Orig Salted Kettle',      price: 3.70, retail: 5.49, upc: 12 },
