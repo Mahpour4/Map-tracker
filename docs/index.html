@@ -3,157 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Map Tracker</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    #header {
-      background: #1e293b; color: #fff; padding: 10px 16px;
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 14px; z-index: 1000; position: relative;
-    }
-    #header h1 { font-size: 18px; font-weight: 700; }
-    #header .updated { color: #94a3b8; font-size: 12px; }
-    #map { height: calc(100vh - 44px); width: 100%; }
-    .legend {
-      background: #fff; padding: 10px 14px; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 12px; line-height: 1.8;
-    }
-    .legend h4 { margin: 0 0 4px; font-size: 13px; }
-    .legend-row { display: flex; align-items: center; gap: 6px; }
-    .legend-dot {
-      width: 12px; height: 12px; border-radius: 50%; border: 2px solid #000;
-      flex-shrink: 0;
-    }
-    .loading {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      z-index: 1001; background: #fff; padding: 24px 32px; border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-size: 16px; text-align: center;
-    }
-    .loading.error { color: #ef4444; }
-    .route-badge {
-      display: inline-block; padding: 2px 8px; border-radius: 4px;
-      font-weight: 700; font-size: 12px; color: #fff;
-    }
-    .store-popup { font-size: 13px; line-height: 1.5; min-width: 180px; }
-    .store-popup strong { font-size: 14px; }
-    .store-popup .detail { color: #64748b; font-size: 12px; }
-  </style>
+  <title>Map Tracker Viewer</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="header">
-    <h1>Map Tracker</h1>
-    <span class="updated" id="updated"></span>
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-container">
+    <div class="login-box">
+      <h1>Map Tracker</h1>
+      <p>Enter your PIN to continue</p>
+      <input type="password" id="pin-input" class="pin-input" placeholder="PIN" maxlength="10"
+             inputmode="numeric" autocomplete="off">
+      <button id="login-btn" class="login-btn">Sign In</button>
+      <div id="login-error" class="login-error">Invalid PIN. Please try again.</div>
+    </div>
   </div>
-  <div id="map"></div>
-  <div class="loading" id="loading">Loading map data...</div>
 
+  <!-- Dashboard (shown after login) -->
+  <div id="dashboard-screen" style="display:none;">
+    <div class="dashboard">
+      <h2 id="welcome-msg">Welcome</h2>
+      <div class="dash-grid" id="dash-grid"></div>
+      <div style="text-align:center; margin-top:32px;">
+        <button onclick="logout()" class="nav-logout" style="padding:8px 24px; font-size:14px;">
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/users.js"></script>
+  <script src="js/shared.js"></script>
   <script>
-    var map = L.map('map').setView([39.0, -76.7], 9);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
-
-    var gradeColors = {
-      A: '#22c55e', B: '#3b82f6', C: '#eab308', D: '#f97316', F: '#ef4444'
-    };
-    var gradeLabels = {
-      A: 'A (90%+)', B: 'B (75-89%)', C: 'C (55-74%)', D: 'D (30-54%)', F: 'F (<30%)'
+    const pageInfo = {
+      orders:    { icon: "📦", label: "Orders",    desc: "Warehouse orders & invoices" },
+      inventory: { icon: "📊", label: "Inventory", desc: "Stock levels & deliveries" },
+      schedule:  { icon: "📅", label: "Schedule",  desc: "Weekly route schedules" },
+      visits:    { icon: "🏪", label: "Visits",    desc: "Store visit history & grades" },
+      map:       { icon: "🗺️", label: "Map",       desc: "Store locations & routes" },
     };
 
-    function createIcon(color, size) {
-      return L.divIcon({
-        className: 'custom-marker',
-        html: '<div style="width:' + size + 'px;height:' + size + 'px;background:' + color +
-          ';border-radius:50%;border:2px solid #000;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
-        iconSize: [size + 4, size + 4],
-        iconAnchor: [(size + 4) / 2, (size + 4) / 2],
-      });
+    // Check if already logged in
+    const session = getSession();
+    if (session) {
+      showDashboard(session);
     }
 
-    fetch('data/map-snapshot.json?t=' + Date.now())
-      .then(function(r) {
-        if (!r.ok) throw new Error('No map data published yet. Ask admin to click "Publish Map" in the app.');
-        return r.json();
-      })
-      .then(function(data) {
-        document.getElementById('loading').remove();
+    // Login handler
+    document.getElementById("login-btn").addEventListener("click", doLogin);
+    document.getElementById("pin-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doLogin();
+    });
 
-        // Show last updated
-        if (data.publishedAt) {
-          var d = new Date(data.publishedAt);
-          document.getElementById('updated').textContent = 'Updated: ' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
-        }
+    async function doLogin() {
+      const pin = document.getElementById("pin-input").value.trim();
+      if (!pin) return;
+      const user = await authenticate(pin);
+      if (user) {
+        showDashboard({ name: user.name, pages: user.pages });
+      } else {
+        const err = document.getElementById("login-error");
+        err.style.display = "block";
+        document.getElementById("pin-input").value = "";
+        document.getElementById("pin-input").focus();
+        setTimeout(() => { err.style.display = "none"; }, 3000);
+      }
+    }
 
-        // Build route grade lookup
-        var routeGrades = {};
-        (data.routes || []).forEach(function(r) {
-          routeGrades[r.number] = r;
-        });
-
-        // Draw zone polygons
-        (data.zones || []).forEach(function(zone) {
-          if (zone.bounds && zone.bounds.length > 2) {
-            L.polygon(zone.bounds, {
-              color: zone.color, fillColor: zone.color,
-              fillOpacity: 0.15, weight: 2, dashArray: '6,4'
-            }).addTo(map).bindTooltip(zone.name, { sticky: true, className: 'zone-tooltip' });
-          }
-        });
-
-        // Draw sub-zone polygons
-        (data.subZones || []).forEach(function(sz) {
-          if (sz.bounds && sz.bounds.length > 2) {
-            L.polygon(sz.bounds, {
-              color: sz.color, fillColor: sz.color,
-              fillOpacity: 0.12, weight: 1.5
-            }).addTo(map).bindTooltip(sz.name, { sticky: true });
-          }
-        });
-
-        // Draw store markers
-        (data.stores || []).forEach(function(store) {
-          if (!store.lat || !store.lng) return;
-          var routeInfo = routeGrades[store.routeNumber];
-          var color = routeInfo ? routeInfo.color : '#6b7280';
-          var grade = routeInfo ? routeInfo.grade : '?';
-          var coverage = routeInfo ? routeInfo.coverage : 0;
-
-          var marker = L.marker([store.lat, store.lng], { icon: createIcon(color, 10) }).addTo(map);
-
-          var badgeBg = routeInfo ? routeInfo.color : '#6b7280';
-          var popupHtml = '<div class="store-popup">' +
-            '<strong>' + (store.name || store.id) + '</strong><br>' +
-            '<span class="detail">' + (store.address || '') + (store.city ? ', ' + store.city : '') + '</span><br>' +
-            'Route: <b>' + (store.routeNumber || 'Unassigned') + '</b> ' +
-            '<span class="route-badge" style="background:' + badgeBg + '">' + grade + '</span><br>' +
-            '<span class="detail">Coverage: ' + Math.round(coverage) + '%</span>' +
-            '</div>';
-          marker.bindPopup(popupHtml);
-        });
-
-        // Add legend
-        var legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function() {
-          var div = L.DomUtil.create('div', 'legend');
-          div.innerHTML = '<h4>Route Grade</h4>';
-          ['A', 'B', 'C', 'D', 'F'].forEach(function(g) {
-            div.innerHTML += '<div class="legend-row"><div class="legend-dot" style="background:' +
-              gradeColors[g] + '"></div> ' + gradeLabels[g] + '</div>';
-          });
-          div.innerHTML += '<div class="legend-row" style="margin-top:4px"><div class="legend-dot" style="background:#6b7280"></div> Unassigned</div>';
-          return div;
-        };
-        legend.addTo(map);
-      })
-      .catch(function(err) {
-        var el = document.getElementById('loading');
-        el.className = 'loading error';
-        el.textContent = err.message;
+    function showDashboard(session) {
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("dashboard-screen").style.display = "block";
+      document.getElementById("welcome-msg").textContent = `Welcome, ${session.name}`;
+      const grid = document.getElementById("dash-grid");
+      grid.innerHTML = "";
+      session.pages.forEach(pageId => {
+        const info = pageInfo[pageId];
+        if (!info) return;
+        grid.innerHTML += `
+          <a href="${pageId}.html" class="dash-card">
+            <div class="icon">${info.icon}</div>
+            <div class="label">${info.label}</div>
+            <div class="desc">${info.desc}</div>
+          </a>`;
       });
+    }
   </script>
 </body>
 </html>

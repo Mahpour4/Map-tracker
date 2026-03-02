@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory — Map Tracker Viewer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .stock-bar { height: 6px; border-radius: 3px; background: #334155; overflow: hidden; min-width: 60px; }
+    .stock-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <h1>Inventory</h1>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="last-updated" id="last-updated"></span>
+        <button class="refresh-btn" onclick="loadData(true)">Refresh</button>
+      </div>
+    </div>
+    <div class="summary-row" id="summary"></div>
+    <div class="filters" id="filters"></div>
+    <div class="table-wrap" id="table-container">
+      <div class="loading-spinner">Loading inventory...</div>
+    </div>
+  </div>
+
+  <script src="js/users.js"></script>
+  <script src="js/shared.js"></script>
+  <script>
+    const session = requireAuth("inventory");
+    if (session) { injectNav("inventory"); loadData(); }
+
+    let allItems = [];
+    let filterCategory = "";
+    let searchText = "";
+
+    async function loadData(forceRefresh) {
+      if (forceRefresh) {
+        sessionStorage.removeItem("cache_src/data/inventoryData.json");
+        sessionStorage.removeItem("cache_ts_src/data/inventoryData.json");
+      }
+      try {
+        const data = await fetchData("src/data/inventoryData.json");
+        if (data.lastUpdated) {
+          document.getElementById("last-updated").textContent = "Updated: " + formatDate(data.lastUpdated);
+        }
+        // Convert items object to array
+        allItems = Object.values(data.items || {}).map(item => {
+          const totalOrdered = item.caseCount || 0;
+          const sold = item.sold || 0;
+          const incoming = item.incoming || 0;
+          const inStock = totalOrdered - sold;
+          const cat = item.catalogEntry?.category || "—";
+          const price = item.catalogEntry?.price || 0;
+          // Upcoming deliveries
+          const now = new Date();
+          const upcoming = (item.deliveries || []).filter(d => new Date(d.date) >= now);
+          const arrivingQty = upcoming.reduce((s, d) => s + (d.qty || 0), 0);
+          return {
+            sku: item.sku,
+            description: item.description || item.catalogEntry?.desc || "—",
+            category: cat,
+            price: price,
+            totalOrdered: totalOrdered,
+            sold: sold,
+            inStock: inStock,
+            incoming: arrivingQty,
+            stockPct: totalOrdered > 0 ? Math.round((inStock / totalOrdered) * 100) : 0,
+            deliveries: item.deliveries || [],
+            orderDeductions: item.orderDeductions || {},
+          };
+        });
+        allItems.sort((a, b) => a.description.localeCompare(b.description));
+        buildFilters();
+        render();
+      } catch (err) {
+        showError("table-container", "Failed to load inventory: " + err.message);
+      }
+    }
+
+    function buildFilters() {
+      const cats = [...new Set(allItems.map(i => i.category).filter(c => c && c !== "—"))].sort();
+      document.getElementById("filters").innerHTML = `
+        <select class="filter-select" onchange="filterCategory=this.value;render()">
+          <option value="">All Categories</option>
+          ${cats.map(c => `<option value="${c}">${c}</option>`).join("")}
+        </select>
+        <input class="filter-input" type="text" placeholder="Search by product or SKU..."
+               oninput="searchText=this.value.toLowerCase();render()">
+      `;
+    }
+
+    function getFiltered() {
+      return allItems.filter(i => {
+        if (filterCategory && i.category !== filterCategory) return false;
+        if (searchText) {
+          const hay = [i.sku, i.description, i.category].join(" ").toLowerCase();
+          if (!hay.includes(searchText)) return false;
+        }
+        return true;
+      });
+    }
+
+    function stockColor(pct) {
+      if (pct <= 0) return "#ef4444";
+      if (pct <= 25) return "#f97316";
+      if (pct <= 50) return "#eab308";
+      return "#22c55e";
+    }
+
+    function render() {
+      const items = getFiltered();
+      const totalProducts = items.length;
+      const totalInStock = items.reduce((s, i) => s + Math.max(0, i.inStock), 0);
+      const totalSold = items.reduce((s, i) => s + i.sold, 0);
+      const lowStock = items.filter(i => i.stockPct <= 25 && i.totalOrdered > 0).length;
+
+      document.getElementById("summary").innerHTML =
+        summaryCard("Products", totalProducts, "#60a5fa") +
+        summaryCard("In Stock", totalInStock.toLocaleString(), "#4ade80") +
+        summaryCard("Sold", totalSold.toLocaleString(), "#facc15") +
+        summaryCard("Low Stock", lowStock, "#f87171");
+
+      if (items.length === 0) {
+        document.getElementById("table-container").innerHTML =
+          '<div class="loading-spinner">No items found</div>';
+        return;
+      }
+
+      let html = `<table>
+        <thead><tr>
+          <th>SKU</th><th>Product</th><th>Category</th>
+          <th class="text-right">Price</th>
+          <th class="text-right">Ordered</th>
+          <th class="text-right">Sold</th>
+          <th class="text-right">In Stock</th>
+          <th style="min-width:80px">Stock %</th>
+          <th class="text-right">Arriving</th>
+        </tr></thead><tbody>`;
+
+      items.forEach(item => {
+        const color = stockColor(item.stockPct);
+        const pct = Math.max(0, Math.min(100, item.stockPct));
+        html += `<tr>
+          <td style="font-family:monospace;color:#94a3b8">${item.sku}</td>
+          <td>${item.description}</td>
+          <td><span class="badge badge-gray">${item.category}</span></td>
+          <td class="text-right">${formatCurrency(item.price)}</td>
+          <td class="text-right">${item.totalOrdered}</td>
+          <td class="text-right">${item.sold}</td>
+          <td class="text-right" style="color:${color};font-weight:600">${Math.max(0, item.inStock)}</td>
+          <td>
+            <div class="stock-bar">
+              <div class="stock-fill" style="width:${pct}%;background:${color}"></div>
+            </div>
+            <span style="font-size:11px;color:${color}">${item.stockPct}%</span>
+          </td>
+          <td class="text-right" style="color:${item.incoming > 0 ? '#60a5fa' : '#475569'}">${item.incoming || "—"}</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById("table-container").innerHTML = html;
+    }
+  </script>
+</body>
+</html>

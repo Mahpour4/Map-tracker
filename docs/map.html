@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map — Map Tracker Viewer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    #map-container { height: calc(100vh - 48px); width: 100%; }
+    .loading-overlay {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 1001; background: #1e293b; padding: 24px 32px; border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4); font-size: 16px; text-align: center;
+      color: #e2e8f0;
+    }
+    .loading-overlay.error { color: #ef4444; }
+    .route-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-weight: 700; font-size: 12px; color: #fff;
+    }
+    .store-popup { font-size: 13px; line-height: 1.5; min-width: 180px; }
+    .store-popup strong { font-size: 14px; }
+    .store-popup .detail { color: #64748b; font-size: 12px; }
+    .legend {
+      background: #1e293b; color: #e2e8f0; padding: 10px 14px; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 12px; line-height: 1.8;
+    }
+    .legend h4 { margin: 0 0 4px; font-size: 13px; color: #fff; }
+    .legend-row { display: flex; align-items: center; gap: 6px; }
+    .legend-dot {
+      width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="map-container"></div>
+  <div class="loading-overlay" id="loading">Loading map data...</div>
+
+  <script src="js/users.js"></script>
+  <script src="js/shared.js"></script>
+  <script>
+    const session = requireAuth("map");
+    if (session) {
+      injectNav("map");
+      initMap();
+    }
+
+    function initMap() {
+      var map = L.map('map-container').setView([39.0, -76.7], 9);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+      }).addTo(map);
+
+      var gradeColors = { A: '#22c55e', B: '#3b82f6', C: '#eab308', D: '#f97316', F: '#ef4444' };
+      var gradeLabels = { A: 'A (90%+)', B: 'B (75-89%)', C: 'C (55-74%)', D: 'D (30-54%)', F: 'F (<30%)' };
+
+      function createIcon(color, size) {
+        return L.divIcon({
+          className: 'custom-marker',
+          html: '<div style="width:' + size + 'px;height:' + size + 'px;background:' + color +
+            ';border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
+          iconSize: [size + 4, size + 4],
+          iconAnchor: [(size + 4) / 2, (size + 4) / 2],
+        });
+      }
+
+      // Try map-snapshot first, fall back to building from raw data
+      fetch('data/map-snapshot.json?t=' + Date.now())
+        .then(function(r) {
+          if (!r.ok) throw new Error('No snapshot');
+          return r.json();
+        })
+        .then(renderSnapshot)
+        .catch(function() {
+          // Fall back: build map from stores.csv
+          fetchData('src/data/stores.csv')
+            .then(function(csv) {
+              var stores = parseCSV(csv);
+              document.getElementById('loading').remove();
+              stores.forEach(function(s) {
+                if (!s.Latitude || !s.Longitude) return;
+                var marker = L.marker([parseFloat(s.Latitude), parseFloat(s.Longitude)], {
+                  icon: createIcon('#3b82f6', 10)
+                }).addTo(map);
+                marker.bindPopup(
+                  '<div class="store-popup"><strong>' + (s['Store Name'] || s.ID) + '</strong><br>' +
+                  '<span class="detail">' + (s.Address || '') + ', ' + (s.City || '') + '</span><br>' +
+                  'Route: <b>' + (s['Route Number'] || 'Unassigned') + '</b></div>'
+                );
+              });
+            })
+            .catch(function(err) {
+              var el = document.getElementById('loading');
+              el.className = 'loading-overlay error';
+              el.textContent = 'Failed to load map data: ' + err.message;
+            });
+        });
+
+      function renderSnapshot(data) {
+        document.getElementById('loading').remove();
+        var routeGrades = {};
+        (data.routes || []).forEach(function(r) { routeGrades[r.number] = r; });
+
+        (data.zones || []).forEach(function(zone) {
+          if (zone.bounds && zone.bounds.length > 2) {
+            L.polygon(zone.bounds, {
+              color: zone.color, fillColor: zone.color, fillOpacity: 0.15, weight: 2, dashArray: '6,4'
+            }).addTo(map).bindTooltip(zone.name, { sticky: true });
+          }
+        });
+
+        (data.subZones || []).forEach(function(sz) {
+          if (sz.bounds && sz.bounds.length > 2) {
+            L.polygon(sz.bounds, {
+              color: sz.color, fillColor: sz.color, fillOpacity: 0.12, weight: 1.5
+            }).addTo(map).bindTooltip(sz.name, { sticky: true });
+          }
+        });
+
+        (data.stores || []).forEach(function(store) {
+          if (!store.lat || !store.lng) return;
+          var routeInfo = routeGrades[store.routeNumber];
+          var color = routeInfo ? routeInfo.color : '#6b7280';
+          var grade = routeInfo ? routeInfo.grade : '?';
+          var coverage = routeInfo ? routeInfo.coverage : 0;
+          var marker = L.marker([store.lat, store.lng], { icon: createIcon(color, 10) }).addTo(map);
+          var badgeBg = routeInfo ? routeInfo.color : '#6b7280';
+          marker.bindPopup(
+            '<div class="store-popup"><strong>' + (store.name || store.id) + '</strong><br>' +
+            '<span class="detail">' + (store.address || '') + (store.city ? ', ' + store.city : '') + '</span><br>' +
+            'Route: <b>' + (store.routeNumber || 'Unassigned') + '</b> ' +
+            '<span class="route-badge" style="background:' + badgeBg + '">' + grade + '</span><br>' +
+            '<span class="detail">Coverage: ' + Math.round(coverage) + '%</span></div>'
+          );
+        });
+
+        var legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function() {
+          var div = L.DomUtil.create('div', 'legend');
+          div.innerHTML = '<h4>Route Grade</h4>';
+          ['A', 'B', 'C', 'D', 'F'].forEach(function(g) {
+            div.innerHTML += '<div class="legend-row"><div class="legend-dot" style="background:' +
+              gradeColors[g] + '"></div> ' + gradeLabels[g] + '</div>';
+          });
+          div.innerHTML += '<div class="legend-row" style="margin-top:4px"><div class="legend-dot" style="background:#6b7280"></div> Unassigned</div>';
+          return div;
+        };
+        legend.addTo(map);
+      }
+    }
+  </script>
+</body>
+</html>

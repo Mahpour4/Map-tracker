@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders — Map Tracker Viewer</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <h1>Warehouse Orders</h1>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="last-updated" id="last-updated"></span>
+        <button class="refresh-btn" onclick="loadData(true)">Refresh</button>
+      </div>
+    </div>
+    <div class="summary-row" id="summary"></div>
+    <div class="filters" id="filters"></div>
+    <div class="table-wrap" id="table-container">
+      <div class="loading-spinner">Loading orders...</div>
+    </div>
+  </div>
+
+  <script src="js/users.js"></script>
+  <script src="js/shared.js"></script>
+  <script>
+    const session = requireAuth("orders");
+    if (session) { injectNav("orders"); loadData(); }
+
+    let allOrders = [];
+    let filterRoute = "";
+    let filterStatus = "";
+    let searchText = "";
+
+    async function loadData(forceRefresh) {
+      if (forceRefresh) {
+        sessionStorage.removeItem("cache_src/data/warehouseOrders.json");
+        sessionStorage.removeItem("cache_ts_src/data/warehouseOrders.json");
+      }
+      try {
+        const data = await fetchData("src/data/warehouseOrders.json");
+        allOrders = (data.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        if (data.lastSyncedAt) {
+          document.getElementById("last-updated").textContent = "Synced: " + formatDate(data.lastSyncedAt);
+        }
+        buildFilters();
+        render();
+      } catch (err) {
+        showError("table-container", "Failed to load orders: " + err.message);
+      }
+    }
+
+    function buildFilters() {
+      const routes = [...new Set(allOrders.map(o => o.routeNumber).filter(Boolean))].sort();
+      document.getElementById("filters").innerHTML = `
+        <select class="filter-select" id="f-route" onchange="filterRoute=this.value;render()">
+          <option value="">All Routes</option>
+          ${routes.map(r => `<option value="${r}">${r}</option>`).join("")}
+        </select>
+        <select class="filter-select" id="f-status" onchange="filterStatus=this.value;render()">
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+        </select>
+        <input class="filter-input" type="text" placeholder="Search by name, invoice..."
+               oninput="searchText=this.value.toLowerCase();render()">
+      `;
+    }
+
+    function getFiltered() {
+      return allOrders.filter(o => {
+        if (filterRoute && o.routeNumber !== filterRoute) return false;
+        if (filterStatus && o.status !== filterStatus) return false;
+        if (searchText) {
+          const hay = [o.name, o.invoiceNumber, o.routeNumber, o.loadNumber].join(" ").toLowerCase();
+          if (!hay.includes(searchText)) return false;
+        }
+        return true;
+      });
+    }
+
+    function render() {
+      const orders = getFiltered();
+      const totalCases = orders.reduce((s, o) => s + (o.totals?.totalCases || 0), 0);
+      const totalGross = orders.reduce((s, o) => s + (o.totals?.totalGross || 0), 0);
+
+      document.getElementById("summary").innerHTML =
+        summaryCard("Orders", orders.length, "#60a5fa") +
+        summaryCard("Total Cases", totalCases.toLocaleString(), "#4ade80") +
+        summaryCard("Total Gross", formatCurrency(totalGross), "#facc15") +
+        summaryCard("Pending", orders.filter(o => o.status === "pending").length, "#fb923c");
+
+      if (orders.length === 0) {
+        document.getElementById("table-container").innerHTML =
+          '<div class="loading-spinner">No orders found</div>';
+        return;
+      }
+
+      let html = `<table>
+        <thead><tr>
+          <th></th><th>Date</th><th>Route</th><th>Name</th>
+          <th class="text-right">Items</th><th class="text-right">Cases</th>
+          <th class="text-right">Gross $</th><th>Invoice #</th>
+          <th>Load #</th><th>Status</th>
+        </tr></thead><tbody>`;
+
+      orders.forEach((o, idx) => {
+        const itemCount = o.items ? o.items.length : 0;
+        const statusClass = o.status === "completed" ? "badge-green" : "badge-orange";
+        html += `<tr>
+          <td><button class="expand-btn" onclick="toggleRow(${idx})">▶</button></td>
+          <td>${formatDate(o.date)}</td>
+          <td><b>${o.routeNumber || "—"}</b></td>
+          <td>${o.name || "—"}</td>
+          <td class="text-right">${itemCount}</td>
+          <td class="text-right">${o.totals?.totalCases || 0}</td>
+          <td class="text-right">${formatCurrency(o.totals?.totalGross)}</td>
+          <td>${o.invoiceNumber || "—"}</td>
+          <td>${o.loadNumber || "—"}</td>
+          <td><span class="badge ${statusClass}">${o.status || "—"}</span></td>
+        </tr>`;
+        // Expandable line items row
+        html += `<tr class="expand-row" id="expand-${idx}"><td colspan="10">
+          <div class="expand-content">`;
+        if (o.items && o.items.length > 0) {
+          html += `<table><thead><tr>
+            <th>SKU</th><th>Description</th><th>Category</th>
+            <th class="text-right">Cases</th><th class="text-right">Units</th>
+            <th class="text-right">Price</th><th class="text-right">Gross</th>
+          </tr></thead><tbody>`;
+          o.items.forEach(item => {
+            html += `<tr>
+              <td>${item.sku || "—"}</td>
+              <td>${item.desc || "—"}</td>
+              <td>${item.category || "—"}</td>
+              <td class="text-right">${item.cases || 0}</td>
+              <td class="text-right">${item.orderUnits || item.units || 0}</td>
+              <td class="text-right">${formatCurrency(item.price)}</td>
+              <td class="text-right">${formatCurrency(item.gross)}</td>
+            </tr>`;
+          });
+          html += `</tbody></table>`;
+        } else {
+          html += `<span style="color:#475569">No line items</span>`;
+        }
+        // Invoice / Load summary
+        if (o.invoiceNumber || o.loadNumber) {
+          html += `<div style="margin-top:10px;font-size:12px;color:#94a3b8;">
+            Invoice: ${o.invoiceNumber || "—"} (${o.invoiceCases || 0} cases, ${o.invoiceAmount || "—"})
+            &nbsp;|&nbsp;
+            Load: ${o.loadNumber || "—"} (${o.loadCases || 0} cases, ${o.loadAmount || "—"})
+          </div>`;
+        }
+        html += `</div></td></tr>`;
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById("table-container").innerHTML = html;
+    }
+
+    function toggleRow(idx) {
+      const row = document.getElementById("expand-" + idx);
+      if (!row) return;
+      const btn = row.previousElementSibling.querySelector(".expand-btn");
+      if (row.classList.contains("open")) {
+        row.classList.remove("open");
+        btn.textContent = "▶";
+      } else {
+        row.classList.add("open");
+        btn.textContent = "▼";
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visits — Map Tracker Viewer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .status-dot {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;
+    }
+    .grade-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px; font-weight: 700; font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <h1>Visit History</h1>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="refresh-btn" onclick="loadData(true)">Refresh</button>
+      </div>
+    </div>
+    <div class="summary-row" id="summary"></div>
+    <div class="filters" id="filters"></div>
+    <div class="table-wrap" id="table-container">
+      <div class="loading-spinner">Loading visit history...</div>
+    </div>
+  </div>
+
+  <script src="js/users.js"></script>
+  <script src="js/shared.js"></script>
+  <script>
+    const session = requireAuth("visits");
+    if (session) { injectNav("visits"); loadData(); }
+
+    let allStores = [];
+    let filterRoute = "";
+    let filterStatus = "";
+    let filterType = "";
+    let searchText = "";
+
+    async function loadData(forceRefresh) {
+      if (forceRefresh) {
+        ["visitHistory.json", "stores.csv"].forEach(f => {
+          sessionStorage.removeItem("cache_src/data/" + f);
+          sessionStorage.removeItem("cache_ts_src/data/" + f);
+        });
+      }
+      try {
+        const [visitData, storesCsv] = await Promise.all([
+          fetchData("src/data/visitHistory.json"),
+          fetchData("src/data/stores.csv")
+        ]);
+        const stores = parseCSV(storesCsv);
+        const now = new Date();
+
+        allStores = stores.map(s => {
+          const visits = visitData[s.ID] || [];
+          // Sort visits descending
+          const sorted = visits.map(v => new Date(v)).filter(d => !isNaN(d)).sort((a, b) => b - a);
+          const lastVisit = sorted[0] || null;
+          const prevVisit = sorted[1] || null;
+          const thirdVisit = sorted[2] || null;
+          const days = lastVisit ? Math.floor((now - lastVisit) / (1000 * 60 * 60 * 24)) : Infinity;
+
+          // Determine store type prefix
+          const id = s.ID || "";
+          let type = "OTHER";
+          if (id.startsWith("FLW")) type = "FLW";
+          else if (id.startsWith("SFW") || id.startsWith("SRW")) type = id.substring(0, 3);
+          else if (id.startsWith("WEG")) type = "WEG";
+          else if (id.startsWith("WMT")) type = "WMT";
+          else if (id.startsWith("GMF") || id.startsWith("GMN")) type = id.substring(0, 3);
+          else if (id.startsWith("WEI")) type = "WEI";
+          else if (id.startsWith("RED")) type = "RED";
+          else if (id.startsWith("ACM")) type = "ACM";
+          else if (id.startsWith("GER")) type = "GER";
+          else if (id.startsWith("MIL")) type = "MIL";
+
+          // Target days (CASH/independent = 14, chain = 7)
+          const isCash = id.startsWith("CASH") || id.startsWith("IND");
+          const target = isCash ? 14 : 7;
+
+          // Status
+          let status, statusColor;
+          if (lastVisit === null) { status = "never"; statusColor = "#9ca3af"; }
+          else if (days <= target) { status = "ontrack"; statusColor = "#22c55e"; }
+          else if (days <= target + 7) { status = "missed"; statusColor = "#f97316"; }
+          else { status = "overdue"; statusColor = "#ef4444"; }
+
+          // Grade
+          const grade = calcGrade(sorted, target);
+
+          return {
+            id: s.ID,
+            name: s["Store Name"] || s.ID,
+            city: s.City || "",
+            route: s["Route Number"] || "",
+            type,
+            lastVisit,
+            prevVisit,
+            thirdVisit,
+            days,
+            status,
+            statusColor,
+            grade,
+            target,
+          };
+        });
+
+        allStores.sort((a, b) => a.days === b.days ? 0 : a.days < b.days ? -1 : 1);
+        buildFilters();
+        render();
+      } catch (err) {
+        showError("table-container", "Failed to load visit data: " + err.message);
+      }
+    }
+
+    function calcGrade(sortedVisits, target) {
+      // Grade based on visit consistency over last 90 days
+      if (sortedVisits.length === 0) return { letter: "F", score: 0, color: "#ef4444" };
+      const now = new Date();
+      const cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - 90);
+      const recent = sortedVisits.filter(d => d >= cutoff);
+      const expectedVisits = Math.floor(90 / target);
+      const score = expectedVisits > 0 ? Math.min(100, Math.round((recent.length / expectedVisits) * 100)) : 0;
+      let letter, color;
+      if (score >= 90) { letter = "A"; color = "#22c55e"; }
+      else if (score >= 75) { letter = "B"; color = "#3b82f6"; }
+      else if (score >= 55) { letter = "C"; color = "#eab308"; }
+      else if (score >= 30) { letter = "D"; color = "#f97316"; }
+      else { letter = "F"; color = "#ef4444"; }
+      return { letter, score, color };
+    }
+
+    function buildFilters() {
+      const routes = [...new Set(allStores.map(s => s.route).filter(Boolean))].sort();
+      const types = [...new Set(allStores.map(s => s.type))].sort();
+
+      document.getElementById("filters").innerHTML = `
+        <select class="filter-select" onchange="filterRoute=this.value;render()">
+          <option value="">All Routes</option>
+          ${routes.map(r => `<option value="${r}">Route ${r}</option>`).join("")}
+        </select>
+        <select class="filter-select" onchange="filterStatus=this.value;render()">
+          <option value="">All Status</option>
+          <option value="ontrack">On Track</option>
+          <option value="missed">Missed</option>
+          <option value="overdue">Overdue</option>
+          <option value="never">Never Visited</option>
+        </select>
+        <select class="filter-select" onchange="filterType=this.value;render()">
+          <option value="">All Types</option>
+          ${types.map(t => `<option value="${t}">${t}</option>`).join("")}
+        </select>
+        <input class="filter-input" type="text" placeholder="Search by name, city, ID..."
+               oninput="searchText=this.value.toLowerCase();render()">
+      `;
+    }
+
+    function getFiltered() {
+      return allStores.filter(s => {
+        if (filterRoute && s.route !== filterRoute) return false;
+        if (filterStatus && s.status !== filterStatus) return false;
+        if (filterType && s.type !== filterType) return false;
+        if (searchText) {
+          const hay = [s.id, s.name, s.city, s.route].join(" ").toLowerCase();
+          if (!hay.includes(searchText)) return false;
+        }
+        return true;
+      });
+    }
+
+    function render() {
+      const stores = getFiltered();
+      const onTrack = stores.filter(s => s.status === "ontrack").length;
+      const missed = stores.filter(s => s.status === "missed").length;
+      const overdue = stores.filter(s => s.status === "overdue").length;
+      const never = stores.filter(s => s.status === "never").length;
+
+      document.getElementById("summary").innerHTML =
+        summaryCard("Total Stores", stores.length, "#60a5fa") +
+        summaryCard("On Track", onTrack, "#4ade80") +
+        summaryCard("Missed", missed, "#fb923c") +
+        summaryCard("Overdue", overdue, "#f87171") +
+        summaryCard("Never Visited", never, "#94a3b8");
+
+      if (stores.length === 0) {
+        document.getElementById("table-container").innerHTML =
+          '<div class="loading-spinner">No stores found</div>';
+        return;
+      }
+
+      let html = `<table>
+        <thead><tr>
+          <th>Status</th><th>Store</th><th>City</th><th>Route</th>
+          <th>Type</th><th>Last Visit</th><th class="text-right">Days</th>
+          <th>Prev Visit</th><th>3rd Visit</th><th>Grade</th>
+        </tr></thead><tbody>`;
+
+      stores.forEach(s => {
+        html += `<tr>
+          <td><span class="status-dot" style="background:${s.statusColor}"></span></td>
+          <td style="font-weight:600">${s.name}</td>
+          <td style="color:#94a3b8">${s.city}</td>
+          <td>${s.route || "—"}</td>
+          <td><span class="badge badge-gray">${s.type}</span></td>
+          <td>${s.lastVisit ? formatDate(s.lastVisit) : "Never"}</td>
+          <td class="text-right" style="color:${s.statusColor};font-weight:600">
+            ${s.days === Infinity ? "—" : s.days}
+          </td>
+          <td style="color:#64748b">${s.prevVisit ? formatDate(s.prevVisit) : "—"}</td>
+          <td style="color:#64748b">${s.thirdVisit ? formatDate(s.thirdVisit) : "—"}</td>
+          <td>
+            <span class="grade-badge" style="background:${s.grade.color}20;color:${s.grade.color}">
+              ${s.grade.letter}
+            </span>
+          </td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById("table-container").innerHTML = html;
+    }
+  </script>
+</body>
+</html>

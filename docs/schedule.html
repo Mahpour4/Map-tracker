@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule — Map Tracker Viewer</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <h1>Route Schedule</h1>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="refresh-btn" onclick="loadData(true)">Refresh</button>
+      </div>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div id="schedule-container">
+      <div class="loading-spinner">Loading schedule...</div>
+    </div>
+  </div>
+
+  <script src="js/users.js"></script>
+  <script src="js/shared.js"></script>
+  <script>
+    const session = requireAuth("schedule");
+    if (session) { injectNav("schedule"); loadData(); }
+
+    let scheduleData = {};
+    let storesMap = {};
+    let selectedRoute = "";
+    let weekOffset = 0;
+
+    function getMonday(offset) {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1) + (offset * 7);
+      const mon = new Date(d.setDate(diff));
+      mon.setHours(0, 0, 0, 0);
+      return mon;
+    }
+
+    function fmtDate(d) {
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    async function loadData(forceRefresh) {
+      if (forceRefresh) {
+        sessionStorage.removeItem("cache_src/data/schedules.json");
+        sessionStorage.removeItem("cache_ts_src/data/schedules.json");
+        sessionStorage.removeItem("cache_src/data/stores.csv");
+        sessionStorage.removeItem("cache_ts_src/data/stores.csv");
+      }
+      try {
+        const [sched, storesCsv] = await Promise.all([
+          fetchData("src/data/schedules.json"),
+          fetchData("src/data/stores.csv")
+        ]);
+        scheduleData = sched || {};
+        // Build store lookup
+        const stores = parseCSV(storesCsv);
+        stores.forEach(s => {
+          storesMap[s.ID] = s;
+        });
+        buildFilters();
+        render();
+      } catch (err) {
+        showError("schedule-container", "Failed to load schedule: " + err.message);
+      }
+    }
+
+    function buildFilters() {
+      // Extract route numbers from schedule keys: "207_2026-02-24" → "207"
+      const routes = [...new Set(Object.keys(scheduleData).map(k => k.split("_")[0]))].sort();
+      if (!selectedRoute && routes.length > 0) selectedRoute = routes[0];
+
+      document.getElementById("filters").innerHTML = `
+        <select class="filter-select" id="f-route" onchange="selectedRoute=this.value;render()">
+          ${routes.map(r => `<option value="${r}" ${r === selectedRoute ? "selected" : ""}>Route ${r}</option>`).join("")}
+        </select>
+        <button class="refresh-btn" onclick="weekOffset--;render()">← Prev Week</button>
+        <span id="week-label" style="font-size:14px;color:#fff;padding:0 8px;"></span>
+        <button class="refresh-btn" onclick="weekOffset++;render()">Next Week →</button>
+        <button class="refresh-btn" onclick="weekOffset=0;render()">This Week</button>
+      `;
+    }
+
+    function render() {
+      const monday = getMonday(weekOffset);
+      const weekKey = selectedRoute + "_" + fmtDate(monday);
+      const weekData = scheduleData[weekKey] || {};
+
+      // Update week label
+      const friday = new Date(monday);
+      friday.setDate(friday.getDate() + 4);
+      const lbl = document.getElementById("week-label");
+      if (lbl) {
+        lbl.textContent = formatDate(monday) + " — " + formatDate(friday);
+      }
+
+      const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+      const dayLabels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+      let html = '<div class="schedule-grid">';
+      days.forEach((day, di) => {
+        const stops = weekData[day] || [];
+        html += `<div class="schedule-day">
+          <div class="day-header">
+            ${dayLabels[di]}
+            <span class="count">${stops.length} stop${stops.length !== 1 ? "s" : ""}</span>
+          </div>`;
+
+        if (stops.length === 0) {
+          html += `<div class="empty-day">No stops scheduled</div>`;
+        } else {
+          stops.forEach(stop => {
+            const store = storesMap[stop.storeId] || {};
+            const name = store["Store Name"] || stop.storeId;
+            const city = store.City || "";
+            html += `<div class="stop-card">
+              <span class="stop-num">${stop.stopNumber || "?"}</span>
+              <span class="stop-name">${name}</span>
+              <div class="stop-city">${city}</div>
+              ${stop.notes ? `<div class="stop-notes">${stop.notes}</div>` : ""}
+            </div>`;
+          });
+        }
+        html += `</div>`;
+      });
+      html += `</div>`;
+
+      // Summary below grid
+      const totalStops = days.reduce((s, d) => s + (weekData[d] || []).length, 0);
+      html += `<div style="margin-top:16px;font-size:13px;color:#64748b;">
+        Route ${selectedRoute} — ${totalStops} total stops this week
+      </div>`;
+
+      document.getElementById("schedule-container").innerHTML = html;
+    }
+  </script>
+</body>
+</html>
