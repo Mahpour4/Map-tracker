@@ -10,6 +10,7 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import { useApp } from '../context/AppContext';
+import { sendWhatsAppAlert, sendWhatsAppAlertWithImage, getWhatsAppStatus } from '../services/whatsappService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -176,8 +177,8 @@ function formatDate(dateStr) {
 }
 
 export default function MapView() {
-  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore, recordVisit, toggleVehiclesOnMap } = useApp();
-  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute, vehicleLocations, showVehiclesOnMap, alerts } = state;
+  const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore, recordVisit, toggleVehiclesOnMap, loadAlertImage } = useApp();
+  const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute, vehicleLocations, showVehiclesOnMap, alerts, alertImages } = state;
 
   // Build set of store IDs that have at least one open (unresolved) alert
   const storesWithOpenAlerts = useMemo(() => {
@@ -205,6 +206,7 @@ export default function MapView() {
   const [visitMode, setVisitMode] = useState(true);
   const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
   const [zonesOff, setZonesOff] = useState(true); // default: zones hidden
+  const [showAlerts, setShowAlerts] = useState(true); // toggle alert markers on map
   const [hideCash, setHideCash] = useState(true);
   const [hideChain, setHideChain] = useState(false);
   const zonesInitialized = useRef(false);
@@ -215,6 +217,21 @@ export default function MapView() {
   const [popupEditId, setPopupEditId] = useState(null);
   const [popupEditDate, setPopupEditDate] = useState('');
   const popupDateRef = useRef(null);
+  const [waSending, setWaSending] = useState(null); // store.id while sending
+  const [waSent, setWaSent] = useState(null); // store.id after sent
+  const [waSentTo, setWaSentTo] = useState(null); // group name after sent
+
+  // Check WhatsApp status on mount
+  const waStatusRef = useRef('offline');
+  useEffect(() => {
+    getWhatsAppStatus().then(r => { waStatusRef.current = r.status; }).catch(() => {});
+  }, []);
+
+  // Get alerts for a specific store
+  const getStoreAlerts = useCallback((storeId) => {
+    if (!alerts || alerts.length === 0) return [];
+    return alerts.filter(a => a.storeId === storeId);
+  }, [alerts]);
 
   // Hide all zones on first load (zones default off)
   useEffect(() => {
@@ -484,6 +501,67 @@ export default function MapView() {
     });
   }, []);
 
+  // Send alert to route's WhatsApp group
+  const sendStoreAlert = useCallback(async (store) => {
+    const storeAlerts = getStoreAlerts(store.id);
+    if (storeAlerts.length === 0) return;
+    const routeNum = store.routeNumber;
+    const groupMap = JSON.parse(localStorage.getItem('wa_route_group_map') || '{}');
+    const groupId = groupMap[routeNum];
+    if (!groupId) {
+      copyStoreAlert(store);
+      return;
+    }
+    setWaSending(store.id);
+    try {
+      const alert = storeAlerts[0];
+      const sale = store.lastSaleDate ? formatDate(store.lastSaleDate).split(' (')[0] : null;
+      const visit = store.lastVisited ? formatDate(store.lastVisited).split(' (')[0] : null;
+      const lastService = [sale ? `Sale: ${sale}` : null, visit ? `Visit: ${visit}` : null].filter(Boolean).join(' / ') || 'Never';
+      const alertData = {
+        route: routeNum || 'N/A',
+        type: alert.vendor || 'Alert',
+        store: `${store.name} #${store.id}`,
+        message: `${store.city} — Last Service: ${lastService}`,
+        timestamp: alert.dateReceived || new Date().toISOString().split('T')[0],
+      };
+
+      // Try to fetch and send with image
+      let sentWithImage = false;
+      if (alert.emailId) {
+        try {
+          // Fetch image if not already cached
+          if (!alertImages[alert.emailId]?.dataUri) {
+            await loadAlertImage(alert.emailId);
+          }
+          // Wait briefly for state to update, then check cache
+          await new Promise(r => setTimeout(r, 500));
+        } catch (_) {}
+      }
+      const img = alertImages[alert.emailId];
+      if (img?.dataUri && !img.error) {
+        try {
+          await sendWhatsAppAlertWithImage(groupId, alertData, img.dataUri, img.mimeType || 'image/jpeg');
+          sentWithImage = true;
+        } catch (_) {}
+      }
+      // Fallback to text-only
+      if (!sentWithImage) {
+        await sendWhatsAppAlert(groupId, alertData);
+      }
+      // Look up group name for the "sent to" popup
+      const nameMap = JSON.parse(localStorage.getItem('wa_route_group_names') || '{}');
+      const groupName = nameMap[routeNum] || `Route ${routeNum} group`;
+      setWaSent(store.id);
+      setWaSentTo(groupName);
+      setTimeout(() => { setWaSent(null); setWaSentTo(null); }, 3500);
+    } catch (e) {
+      copyStoreAlert(store);
+    } finally {
+      setWaSending(null);
+    }
+  }, [getStoreAlerts, copyStoreAlert, alertImages, loadAlertImage]);
+
   const openPopupEdit = useCallback((storeId) => {
     setPopupEditId(storeId);
     setPopupEditDate(new Date().toISOString().split('T')[0]);
@@ -690,6 +768,20 @@ export default function MapView() {
                 </label>
               );
             })}
+            <hr className="legend-divider" />
+            <label
+              className={`legend-item legend-item-clickable${showAlerts ? ' legend-item-active' : ''}`}
+              title={showAlerts ? 'Click to hide alert markers' : 'Click to show alert markers'}
+            >
+              <input
+                type="checkbox"
+                className="legend-checkbox"
+                checked={showAlerts}
+                onChange={() => setShowAlerts(prev => !prev)}
+              />
+              <span className="legend-alert-icon">!</span>
+              <span>Alerts</span>
+            </label>
           </>
         ) : (
           <>
@@ -882,10 +974,11 @@ export default function MapView() {
               <div className="popup-actions">
                 <button
                   className="btn btn-xs store-alert-btn"
-                  onClick={() => copyStoreAlert(store)}
-                  title="Copy WhatsApp alert to clipboard"
+                  onClick={() => sendStoreAlert(store)}
+                  disabled={waSending === store.id}
+                  title="Send alert to route's WhatsApp group"
                 >
-                  {copiedPopupId === store.id ? 'Copied!' : 'Alert'}
+                  {waSent === store.id ? `Sent to ${waSentTo}` : waSending === store.id ? 'Sending...' : 'Alert'}
                 </button>
                 {store.routeNumber && store.routeNumber !== '0' ? (
                   <button
@@ -961,7 +1054,7 @@ export default function MapView() {
           </Marker>
         ))}
       {/* Alert exclamation markers — one per store with an open alert */}
-      {filteredStores
+      {showAlerts && filteredStores
         .filter(store => storesWithOpenAlerts.has(store.id))
         .map(store => (
           <Marker

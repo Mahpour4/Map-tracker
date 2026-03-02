@@ -90,6 +90,21 @@ app.post('/api/whatsapp/send-alert', async (req, res) => {
   }
 });
 
+// Send formatted alert with image to a group
+app.post('/api/whatsapp/send-alert-image', async (req, res) => {
+  try {
+    const { groupId, alert, imageBase64, mimeType } = req.body;
+    if (!groupId || !alert || !imageBase64) {
+      return res.status(400).json({ error: 'groupId, alert, and imageBase64 are required' });
+    }
+    const result = await whatsapp.sendAlertWithImage(groupId, alert, imageBase64, mimeType);
+    res.json(result);
+  } catch (err) {
+    console.error('Send alert image error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Send route report summary to a group
 app.post('/api/whatsapp/send-report', async (req, res) => {
   try {

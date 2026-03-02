@@ -793,13 +793,6 @@ export function AppProvider({ children }) {
         }
       }
 
-      // Condition 2: Accepted and 48hr resolution window expired
-      if (a.globalworxAccepted) {
-        const alertDate = new Date(a.dateReceived + 'T00:00:00');
-        const hoursSince = (now - alertDate) / (1000 * 60 * 60);
-        if (hoursSince >= 48) return true;
-      }
-
       return false;
     });
 
@@ -952,9 +945,9 @@ export function AppProvider({ children }) {
         d.setDate(d.getDate() - 1);
         afterDate = localDateStr(d);
       } else {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        afterDate = localDateStr(weekAgo);
+        const monthAgo = new Date();
+        monthAgo.setDate(monthAgo.getDate() - 30);
+        afterDate = localDateStr(monthAgo);
       }
 
       const { alerts: newAlerts, rawMessages } = await fetchAlertEmails(afterDate);

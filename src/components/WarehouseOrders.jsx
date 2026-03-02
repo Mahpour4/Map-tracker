@@ -30,6 +30,9 @@ const ROUTE_INFO = {
   '210': { driver: 'Eastern Shore', custNum: '', whRouteCode: '', drvRouteCode: '' },
   '211': { driver: 'Jhonny', custNum: '', whRouteCode: '', drvRouteCode: '' },
   '214': { driver: 'Randy', custNum: '', whRouteCode: '', drvRouteCode: '' },
+  // Driver/Customer
+  'NI': { driver: 'Ner Israel', custNum: '', whRouteCode: '', drvRouteCode: '' },
+  'SM': { driver: 'Seven Mile', custNum: '', whRouteCode: '', drvRouteCode: '' },
 };
 
 // Legacy compat — flat route→name map
@@ -177,8 +180,10 @@ export default function WarehouseOrders() {
 
   // Get unique routes from stores
   const routes = useMemo(() => {
-    const r = [...new Set(stores.map(s => s.routeNumber).filter(Boolean))].sort((a, b) => a - b);
-    return r;
+    const storeRoutes = [...new Set(stores.map(s => s.routeNumber).filter(Boolean))].sort((a, b) => a - b);
+    // Add driver/customer routes that aren't in store data
+    const extraRoutes = Object.keys(ROUTE_INFO).filter(r => isNaN(r));
+    return [...storeRoutes, ...extraRoutes];
   }, [stores]);
 
   // Find existing order for this route + date
@@ -996,7 +1001,7 @@ export default function WarehouseOrders() {
     const categoryPatterns = [
       { pattern: /50[\s.]*cent|50\s*¢/i, category: '.50 Cents' },
       { pattern: /^\.50\b/i, category: '.50 Cents' },
-      { pattern: /\b1[\s.]*49\b/i, category: '2.49 Products' }, // 1.49 = Deep River pricing, same tier
+      { pattern: /\b1[\s.]*49\b/i, category: 'Deep River Small' },
       { pattern: /\b2[\s.]*49\b/i, category: '2.49 Products' },
       { pattern: /\b4[\s.]*79\b/i, category: '4.79 Products' },
       { pattern: /deep\s*river\s*small/i, category: 'Deep River Small' },
@@ -1025,11 +1030,21 @@ export default function WarehouseOrders() {
         const cleanText = totalMatch ? totalMatch[1].trim() : productText;
         const inlineQty = parseInt(inlineMatch[3] || inlineMatch[4]) || 1;
         if (cleanText) {
-          const terms = inlineCat
-            ? searchTerms.filter(p => p.category === inlineCat.category)
-            : searchTerms;
-          let scored = scoreCatalog(cleanText, terms);
-          if (scored.length === 0 && inlineCat) scored = scoreCatalog(cleanText, searchTerms);
+          // Use same merge logic as standard path: boost category matches but keep all results
+          const allResults = scoreCatalog(cleanText, searchTerms);
+          let scored;
+          if (inlineCat) {
+            const catResults = scoreCatalog(cleanText, searchTerms.filter(p => p.category === inlineCat.category));
+            catResults.forEach(cr => { cr.score += 50; });
+            const merged = new Map();
+            [...allResults, ...catResults].forEach(m => {
+              const existing = merged.get(m.sku);
+              if (!existing || m.score > existing.score) merged.set(m.sku, m);
+            });
+            scored = [...merged.values()].sort((a, b) => b.score - a.score);
+          } else {
+            scored = allResults;
+          }
           if (scored.length === 1) { scored[0].qty = inlineQty; scored[0].checked = true; }
           else if (scored.length > 1 && scored[0].score >= scored[1].score * 1.5) { scored[0].qty = inlineQty; scored[0].checked = true; }
           results.push({ qty: inlineQty, text: cleanText, matches: scored, loadAll: false, category: inlineCat?.category || null });

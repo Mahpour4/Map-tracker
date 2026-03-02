@@ -125,13 +125,33 @@ function getStopCompliance(storeId, scheduledDay, weekOf, lastVisited, visitHist
     }
   }
 
-  // No visits at all (shouldn't reach here since visits.length > 0, but safety)
+  // No visit attributed to this week's slot — check most recent visit overall
+  const lastVisitAny = [...visits].sort().pop();
+
   if (expectedDate > todayStr) {
     return { status: 'future', label: 'Upcoming', color: '#9ca3af', visitDate: null, tooltip: `Due: ${fmtDateDay(expectedDate)}` };
   }
 
+  // If the store was visited recently (within 7 days), treat as covered
+  if (lastVisitAny) {
+    const daysSinceVisit = daysDiff(todayStr, lastVisitAny);
+    if (daysSinceVisit <= 7) {
+      const diff = daysDiff(lastVisitAny, expectedDate);
+      const dueLine = `Due: ${fmtDateDay(expectedDate)}`;
+      const visitLine = `Visited: ${fmtDateDay(lastVisitAny)}`;
+      if (diff === 0) {
+        return { status: 'exact', label: 'On time', color: '#22c55e', visitDate: lastVisitAny, tooltip: `${dueLine} | ${visitLine} | On time` };
+      } else if (diff > 0) {
+        return { status: 'sameWeek', label: `${diff}d late`, color: diff <= 1 ? '#f59e0b' : '#f97316', visitDate: lastVisitAny, tooltip: `${dueLine} | ${visitLine}` };
+      } else {
+        const early = Math.abs(diff);
+        return { status: 'sameWeek', label: `${early}d early`, color: '#3b82f6', visitDate: lastVisitAny, tooltip: `${dueLine} | ${visitLine}` };
+      }
+    }
+  }
+
+  // Truly overdue — no recent visit within 7 days
   const daysOverdue = daysDiff(todayStr, expectedDate);
-  const lastVisitAny = [...visits].sort().pop();
   let label, color;
   if (daysOverdue <= 7) { label = `Late (${daysOverdue}d)`; color = '#eab308'; }
   else if (daysOverdue <= 14) { label = `Overdue (${daysOverdue}d)`; color = '#f97316'; }

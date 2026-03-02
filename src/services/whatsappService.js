@@ -46,6 +46,19 @@ export async function sendWhatsAppAlert(groupId, alert) {
   return res.json();
 }
 
+export async function sendWhatsAppAlertWithImage(groupId, alert, imageBase64, mimeType) {
+  const res = await fetch(`${BASE}/send-alert-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId, alert, imageBase64, mimeType }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to send alert with image');
+  }
+  return res.json();
+}
+
 export async function sendWhatsAppReport(groupId, routeNumber, stats) {
   const res = await fetch(`${BASE}/send-report`, {
     method: 'POST',

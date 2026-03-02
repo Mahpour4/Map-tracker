@@ -53,11 +53,23 @@ export default function AlertLog() {
   // This week: Monday through today
   const weekDates = useMemo(() => {
     const now = new Date();
-    const day = now.getDay(); // 0=Sun,1=Mon,...
+    const day = now.getDay();
     const mondayOffset = day === 0 ? 6 : day - 1;
     const dates = new Set();
     for (let i = mondayOffset; i >= 0; i--) {
       const d = new Date(); d.setDate(now.getDate() - i);
+      dates.add(localDateStr(d));
+    }
+    return dates;
+  }, []);
+  // Last week: previous Monday through Sunday
+  const lastWeekDates = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? 6 : day - 1;
+    const dates = new Set();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setDate(now.getDate() - mondayOffset - 7 + i);
       dates.add(localDateStr(d));
     }
     return dates;
@@ -115,8 +127,9 @@ export default function AlertLog() {
   }, []);
 
   // Auto-fetch Gmail alerts on mount to pick up label flags (Accepted/Done/Completed)
+  // Also fetch when no alerts are loaded (CSV may have failed)
   useEffect(() => {
-    if (isGmailConnected() && state.alerts.length > 0) {
+    if (isGmailConnected()) {
       fetchGmailAlerts().catch(() => {});
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -218,7 +231,8 @@ export default function AlertLog() {
   // Apply filters
   const filteredAlerts = useMemo(() => {
     let result = enrichedAlerts;
-    if (!showCompleted) {
+    // When user is searching or using a date filter, show all alerts (don't hide completed/done)
+    if (!showCompleted && !searchTerm && !filterDate) {
       const now = new Date();
       result = result.filter(a => {
         if (a.globalworxCompleted) return false;
@@ -226,13 +240,15 @@ export default function AlertLog() {
         // But keep them visible when a specific status filter is active
         if (filterStatus === 'all' && a.globalworxDone && a.dateReceived) {
           const alertDate = new Date(a.dateReceived + 'T00:00:00');
-          if ((now - alertDate) / (1000 * 60 * 60) >= 48) return false;
+          if ((now - alertDate) / (1000 * 60 * 60) >= 79) return false;
         }
         return true;
       });
     }
     if (filterDate === 'this-week') {
       result = result.filter(a => weekDates.has(a.dateReceived));
+    } else if (filterDate === 'last-week') {
+      result = result.filter(a => lastWeekDates.has(a.dateReceived));
     } else if (filterDate) {
       result = result.filter(a => a.dateReceived === filterDate);
     }
@@ -248,14 +264,15 @@ export default function AlertLog() {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(a =>
-        a.storeName.toLowerCase().includes(term) ||
-        a.storeNumber.includes(term) ||
-        a.city.toLowerCase().includes(term) ||
-        a.refNumber.toLowerCase().includes(term)
+        (a.storeName || '').toLowerCase().includes(term) ||
+        (a.storeNumber || '').includes(term) ||
+        (a.city || '').toLowerCase().includes(term) ||
+        (a.refNumber || '').toLowerCase().includes(term) ||
+        (a.vendor || '').toLowerCase().includes(term)
       );
     }
     return result;
-  }, [enrichedAlerts, showCompleted, filterDate, weekDates, filterStatus, filterRoute, filterVendor, searchTerm]);
+  }, [enrichedAlerts, showCompleted, filterDate, weekDates, lastWeekDates, filterStatus, filterRoute, filterVendor, searchTerm]);
 
   // Group by route
   const alertsByRoute = useMemo(() => {
@@ -277,24 +294,25 @@ export default function AlertLog() {
   // Summary stats (reflect active date/route/vendor filters so counts match visible results)
   const stats = useMemo(() => {
     let base = enrichedAlerts;
-    if (!showCompleted) {
+    if (!showCompleted && !searchTerm && !filterDate) {
       const now = new Date();
       base = base.filter(a => {
         if (a.globalworxCompleted) return false;
         if (filterStatus === 'all' && a.globalworxDone && a.dateReceived) {
           const alertDate = new Date(a.dateReceived + 'T00:00:00');
-          if ((now - alertDate) / (1000 * 60 * 60) >= 48) return false;
+          if ((now - alertDate) / (1000 * 60 * 60) >= 79) return false;
         }
         return true;
       });
     }
     if (filterDate === 'this-week') base = base.filter(a => weekDates.has(a.dateReceived));
+    else if (filterDate === 'last-week') base = base.filter(a => lastWeekDates.has(a.dateReceived));
     else if (filterDate) base = base.filter(a => a.dateReceived === filterDate);
     if (filterRoute !== 'all') base = base.filter(a => a.routeNumber === filterRoute);
     if (filterVendor !== 'all') base = base.filter(a => a.vendor === filterVendor);
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      base = base.filter(a => a.storeName.toLowerCase().includes(term) || a.storeNumber.includes(term) || a.city.toLowerCase().includes(term) || a.refNumber.toLowerCase().includes(term));
+      base = base.filter(a => (a.storeName || '').toLowerCase().includes(term) || (a.storeNumber || '').includes(term) || (a.city || '').toLowerCase().includes(term) || (a.refNumber || '').toLowerCase().includes(term) || (a.vendor || '').toLowerCase().includes(term));
     }
     const total = base.length;
     const open = base.filter(a => a.status === 'unresolved').length;
@@ -308,7 +326,7 @@ export default function AlertLog() {
       ? Math.round(resolvedWithDays.reduce((sum, a) => sum + a.days, 0) / resolvedWithDays.length)
       : null;
     return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
-  }, [enrichedAlerts, showCompleted, filterStatus, filterDate, weekDates, filterRoute, filterVendor, searchTerm]);
+  }, [enrichedAlerts, showCompleted, filterStatus, filterDate, weekDates, lastWeekDates, filterRoute, filterVendor, searchTerm]);
 
   // Count alerts eligible for auto-clear (Done + has acceptance URL + not yet completed)
   const autoClearCount = useMemo(() => {
@@ -514,6 +532,12 @@ export default function AlertLog() {
     const updated = { ...waGroupMap, [routeNumber]: groupId };
     setWaGroupMap(updated);
     localStorage.setItem(WA_GROUP_MAP_KEY, JSON.stringify(updated));
+    // Also save group name map so MapView can show "sent to [name]"
+    const nameMap = JSON.parse(localStorage.getItem('wa_route_group_names') || '{}');
+    const group = waGroups.find(g => g.id === groupId);
+    if (group) nameMap[routeNumber] = group.name;
+    else delete nameMap[routeNumber];
+    localStorage.setItem('wa_route_group_names', JSON.stringify(nameMap));
   }
 
   async function handleSendToDriver(e, alert) {
@@ -752,11 +776,31 @@ export default function AlertLog() {
   }
 
   async function handleFetchByDate(dateOverride) {
-    const dateToFetch = dateOverride || alertDate;
+    // Use the active quick filter to determine fetch date range
+    let dateToFetch = dateOverride || alertDate;
+    if (!dateOverride && filterDate) {
+      if (filterDate === 'this-week') {
+        const now = new Date();
+        const day = now.getDay();
+        const mondayOffset = day === 0 ? 6 : day - 1;
+        const monday = new Date(); monday.setDate(now.getDate() - mondayOffset);
+        dateToFetch = localDateStr(monday);
+      } else if (filterDate === 'last-week') {
+        const now = new Date();
+        const day = now.getDay();
+        const mondayOffset = day === 0 ? 6 : day - 1;
+        const lastMonday = new Date(); lastMonday.setDate(now.getDate() - mondayOffset - 7);
+        dateToFetch = localDateStr(lastMonday);
+      } else {
+        dateToFetch = filterDate; // today, yesterday, dayBefore
+      }
+    } else if (!dateOverride && filterDate === null) {
+      // "All" — fetch last 30 days
+      dateToFetch = null;
+    }
     if (dateOverride) setAlertDate(dateOverride);
     setFetching(true);
     try {
-      // Auto sign-in if not connected
       if (!isGmailConnected()) {
         await signInWithGoogle();
       }
@@ -1571,6 +1615,10 @@ export default function AlertLog() {
               className={`al-quick-btn ${filterDate === 'this-week' ? 'active' : ''}`}
               onClick={() => setFilterDate('this-week')}
             >This Week</button>
+            <button
+              className={`al-quick-btn ${filterDate === 'last-week' ? 'active' : ''}`}
+              onClick={() => setFilterDate('last-week')}
+            >Last Week</button>
           </div>
           <div className="al-date-picker">
             <input
@@ -2226,12 +2274,11 @@ export default function AlertLog() {
                         <th style={{ width: 36 }}></th>
                         <th>Store</th>
                         <th>City</th>
-                        <th>Last Sale</th>
+                        <th>Alert Date</th>
                         <th>Last Visit</th>
+                        <th>Last Sale</th>
                         <th>Since Service</th>
                         <th>Ref #</th>
-                        <th>Alert Date</th>
-                        <th>Time</th>
                         <th>Days to Serve</th>
                         <th>GW</th>
                         <th>Email</th>
@@ -2300,16 +2347,15 @@ export default function AlertLog() {
                                 }
                               </td>
                               <td>{a.city}</td>
-                              <td className="al-cell-date">{a.lastSaleDate ? formatDate(a.lastSaleDate) : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                              <td>{formatDate(a.dateReceived)}{a.timeReceived ? ` ${a.timeReceived}` : ''}</td>
                               <td className="al-cell-date">{a.lastVisitDate ? formatDate(a.lastVisitDate) : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                              <td className="al-cell-date">{a.lastSaleDate ? formatDate(a.lastSaleDate) : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                               <td className="al-cell-service">
                                 {a.daysSinceService !== null
                                   ? <span style={{ color: a.daysSinceService > 14 ? '#ef4444' : a.daysSinceService > 7 ? '#f97316' : '#16a34a', fontWeight: 600 }}>{a.daysSinceService}d</span>
                                   : <span style={{ color: '#9ca3af' }}>—</span>}
                               </td>
                               <td className="al-cell-ref">{a.refNumber}</td>
-                              <td>{formatDate(a.dateReceived)}</td>
-                              <td className="al-cell-time">{a.timeReceived || '—'}</td>
                               <td style={{ color: a.color, fontWeight: 600 }} title={a.status === 'resolved' ? 'Days between alert and next store visit' : 'Days since alert with no visit'}>
                                 {a.status === 'resolved'
                                   ? `${a.days}d`

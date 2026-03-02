@@ -1,4 +1,4 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
 let client = null;
@@ -277,6 +277,29 @@ async function sendAlertToGroup(groupId, alert) {
   return sendToGroup(groupId, lines.join('\n'));
 }
 
+// Send formatted alert with image to a group
+async function sendAlertWithImage(groupId, alert, imageBase64, mimeType) {
+  if (!client || client.info === undefined) {
+    throw new Error('WhatsApp is not connected');
+  }
+  const caption = [
+    '\uD83D\uDEA8 *Map Tracker Alert*',
+    '',
+    `*Route:* ${alert.route || 'N/A'}`,
+    `*Type:* ${alert.type || 'Alert'}`,
+    `*Store:* ${alert.store || 'N/A'}`,
+    `*Message:* ${alert.message || ''}`,
+    `*Time:* ${alert.timestamp || new Date().toLocaleString()}`,
+  ].join('\n');
+
+  // Strip data URI prefix if present (e.g. "data:image/jpeg;base64,...")
+  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+  const media = new MessageMedia(mimeType || 'image/jpeg', base64Data);
+  const chat = await client.getChatById(groupId);
+  const result = await chat.sendMessage(media, { caption });
+  return { success: true, messageId: result.id._serialized };
+}
+
 // Send route report summary to a group
 async function sendReportToGroup(groupId, routeNumber, stats) {
   const lines = [
@@ -416,6 +439,7 @@ module.exports = {
   getGroups,
   sendToGroup,
   sendAlertToGroup,
+  sendAlertWithImage,
   sendReportToGroup,
   setOrderGroup,
   getOrderGroup,
