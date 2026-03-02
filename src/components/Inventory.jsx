@@ -11,20 +11,32 @@ const catalogByNormSku = Object.fromEntries(PRODUCT_CATALOG.map(p => [normSku(p.
 
 export default function Inventory() {
   const { state, setInventory } = useApp();
-  const { inventory } = state;
+  const { inventory, warehouseOrders } = state;
   const items = inventory?.items || {};
   const migrated = useRef(false);
+  const lastReconciledOrders = useRef(null);
+  const lastReconciledItems = useRef(null);
 
   // Migrate: if items lack deliveries OR seed data has been updated, re-merge from seed
   useEffect(() => {
     if (migrated.current || !inventory?.items) return;
     const entries = Object.values(inventory.items);
-    if (entries.length === 0) return;
-    const missingDeliveries = entries.some(it => !it.deliveries || it.deliveries.length === 0);
-    const seedOutdated = (inventory.seedVersion || 0) < (seedInventory.seedVersion || 0);
-    if (!missingDeliveries && !seedOutdated) return;
-    migrated.current = true;
     const seedItems = seedInventory.items || {};
+    const seedHasItems = Object.keys(seedItems).length > 0;
+    const localEmpty = entries.length === 0;
+    const seedOutdated = (inventory.seedVersion || 0) < (seedInventory.seedVersion || 0);
+    // Populate from seed when: local is empty but seed has data, OR seed version bumped, OR deliveries missing
+    if (localEmpty && !seedHasItems) return;
+    if (!localEmpty && !seedOutdated) {
+      const missingDeliveries = entries.some(it => !it.deliveries || it.deliveries.length === 0);
+      if (!missingDeliveries) return;
+    }
+    migrated.current = true;
+    // If seed is empty, do a full reset (clear all items)
+    if (!seedHasItems) {
+      setInventory({ ...inventory, items: {}, seedVersion: seedInventory.seedVersion || 0, customCatalog: seedInventory.customCatalog || [] });
+      return;
+    }
     const merged = {};
     // Start with all seed items (they have deliveries)
     for (const [sku, seedItem] of Object.entries(seedItems)) {
@@ -46,6 +58,79 @@ export default function Inventory() {
     setInventory({ ...inventory, items: merged, seedVersion: seedInventory.seedVersion || 0 });
   }, [inventory, setInventory]);
 
+  // Reconcile: compute sold from all warehouse orders and sync with inventory
+  const ordersRef = warehouseOrders?.orders;
+  useEffect(() => {
+    if (!inventory?.items || !ordersRef) return;
+
+    // Build a fingerprint of linked SKUs so we re-reconcile when links change
+    const linkFingerprint = Object.entries(inventory.items)
+      .map(([k, v]) => `${k}:${v.linkedSku || ''}:${v.catalogEntry?.sku || ''}`)
+      .join('|');
+
+    // Skip if we already reconciled this exact orders array + link state (same render cycle)
+    const ordersFingerprint = JSON.stringify((ordersRef || []).map(o => o.id + ':' + (o.updatedAt || o.createdAt)));
+    if (lastReconciledOrders.current === ordersFingerprint && lastReconciledItems.current === linkFingerprint) return;
+    lastReconciledOrders.current = ordersFingerprint;
+    lastReconciledItems.current = linkFingerprint;
+
+    const orders = ordersRef || [];
+
+    // Build reverse lookup: catalog/linked SKU → inventory SKU
+    // So order SKU "028441" can find inventory item "9928441" if it has linkedSku "028441"
+    const linkedSkuMap = {}; // normalized linked/catalog SKU → inventory key
+    for (const [invSku, item] of Object.entries(inventory.items)) {
+      if (item.linkedSku) {
+        linkedSkuMap[normSku(item.linkedSku)] = invSku;
+      }
+      if (item.catalogEntry?.sku) {
+        linkedSkuMap[normSku(item.catalogEntry.sku)] = invSku;
+      }
+    }
+
+    // Compute total cases sold per inventory SKU from all orders, tracking per line-item deductions
+    const soldBySku = {};       // sku -> total cases
+    const deductionsBySku = {}; // sku -> { "orderId:lineId": { orderId, lineId, sku, desc, cases, orderName, orderDate } }
+    orders.forEach(order => {
+      if (!order.id) return;
+      (order.items || []).forEach(item => {
+        const rawSku = item.sku.replace(/^0+/, '');
+        // Match: direct SKU → linked/catalog SKU → null
+        const key = inventory.items[rawSku] ? rawSku
+          : (inventory.items[item.sku] ? item.sku
+          : (linkedSkuMap[rawSku] || linkedSkuMap[normSku(item.sku)] || null));
+        if (!key) return;
+        const cases = item.cases || 0;
+        soldBySku[key] = (soldBySku[key] || 0) + cases;
+        if (!deductionsBySku[key]) deductionsBySku[key] = {};
+        const deductKey = item.lineId ? `${order.id}:${item.lineId}` : order.id;
+        deductionsBySku[key][deductKey] = {
+          orderId: order.id,
+          lineId: item.lineId || null,
+          sku: item.sku,
+          desc: item.desc || '',
+          cases,
+          orderName: order.name || '',
+          orderDate: order.date || '',
+          routeNumber: order.routeNumber || '',
+        };
+      });
+    });
+
+    // Update sold and orderDeductions for each inventory item — always rewrite to clear stale data
+    const updatedItems = {};
+    for (const [sku, item] of Object.entries(inventory.items)) {
+      const computedSold = soldBySku[sku] || 0;
+      const computedDeductions = deductionsBySku[sku] || {};
+      updatedItems[sku] = { ...item, sold: computedSold, orderDeductions: computedDeductions };
+    }
+    const changed = JSON.stringify(updatedItems) !== JSON.stringify(inventory.items);
+
+    if (changed) {
+      setInventory({ ...inventory, items: updatedItems, lastUpdated: new Date().toISOString().split('T')[0] });
+    }
+  }, [inventory, ordersRef, setInventory]);
+
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('remaining');
   const [sortDir, setSortDir] = useState('asc');
@@ -60,6 +145,44 @@ export default function Inventory() {
   const [importResult, setImportResult] = useState('');
   const [viewMode, setViewMode] = useState('dates'); // 'table' or 'dates'
   const [collapsedDates, setCollapsedDates] = useState({});
+  const [stockExpanded, setStockExpanded] = useState({}); // which stock panel sections are expanded
+  const [trailSku, setTrailSku] = useState(null); // which SKU's deduction trail is expanded
+  const [collapsedSections, setCollapsedSections] = useState({}); // which table sections are collapsed
+  const [categoryFilter, setCategoryFilter] = useState('all'); // price tier filter
+  const [warningEditSku, setWarningEditSku] = useState(null); // which warning item is being edited
+  const [warningEditQty, setWarningEditQty] = useState('');
+  const [warningCollapsed, setWarningCollapsed] = useState(false);
+
+  // Extract price tier from description — keyword checks first, then price fallback
+  function getPriceTier(desc) {
+    const dl = (desc || '').toLowerCase();
+    // Keyword-based categories take priority over price
+    if (dl.includes('kettle chip') && dl.includes('2.0 oz')) return 'Deep River Small';
+    if (dl.includes('kettle chip') && dl.includes('1.3 oz')) return 'Deep River Grab & Go';
+    if (dl.includes('kettle chip') && dl.includes('8 oz')) return 'Deep River Large';
+    if (dl.includes('variety pack')) return 'Variety';
+    if (/\bdips?\b/.test(dl) || dl.includes('nacho cheese')) return 'Dips';
+    // Price-based categories
+    const m = (desc || '').match(/^\$?([\d.]+)/);
+    if (m) {
+      const price = parseFloat(m[1]);
+      if (!isNaN(price) && price > 0 && price < 100) return `$${price.toFixed(2)}`;
+    }
+    return 'Other';
+  }
+
+  // Collect all unique categories across items
+  const allCategories = useMemo(() => {
+    const catSet = new Set();
+    Object.values(items).forEach(item => catSet.add(getPriceTier(item.description)));
+    // Sort: dollar amounts first (numerically), then text categories
+    return [...catSet].sort((a, b) => {
+      const aNum = a.startsWith('$') ? parseFloat(a.slice(1)) : Infinity;
+      const bNum = b.startsWith('$') ? parseFloat(b.slice(1)) : Infinity;
+      if (aNum !== bNum) return aNum - bNum;
+      return a.localeCompare(b);
+    });
+  }, [items]);
 
   // Collect all unique delivery dates across all items
   const allDates = useMemo(() => {
@@ -70,12 +193,20 @@ export default function Inventory() {
     return [...dateSet].sort();
   }, [items]);
 
+  const todayStr = useMemo(() => {
+    const d = new Date(); d.setHours(0,0,0,0);
+    return d.toISOString().split('T')[0];
+  }, []);
+
   const rows = useMemo(() => {
     return Object.values(items)
       .map(item => {
         const deliveries = item.deliveries || [];
         const totalIncoming = item.incoming || deliveries.reduce((s, d) => s + d.qty, 0);
         const sold = item.sold || 0;
+
+        // Only count units from deliveries that have arrived (date <= today)
+        const arrivedUnits = deliveries.reduce((s, d) => d.date <= todayStr ? s + d.qty : s, 0);
 
         // When a date filter is active, show only that date's qty as "incoming"
         let filteredIncoming = totalIncoming;
@@ -84,14 +215,16 @@ export default function Inventory() {
           filteredIncoming = match ? match.qty : 0;
         }
 
-        const remaining = totalIncoming - sold;
-        const pct = totalIncoming > 0 ? Math.round((remaining / totalIncoming) * 100) : 0;
+        // Remaining = arrived stock minus what's been sold (not total pipeline)
+        const remaining = arrivedUnits - sold;
+        const pct = arrivedUnits > 0 ? Math.round((remaining / arrivedUnits) * 100) : 0;
         // Check: custom catalog entry > linked SKU > direct match
         const catalogMatch = item.catalogEntry
           || (item.linkedSku && catalogByNormSku[normSku(item.linkedSku)])
           || catalogByNormSku[normSku(item.sku)]
           || null;
-        return { ...item, incoming: totalIncoming, filteredIncoming, remaining, pct, sold, deliveries, catalogMatch };
+        const priceTier = getPriceTier(item.description);
+        return { ...item, incoming: totalIncoming, arrivedUnits, filteredIncoming, remaining, pct, sold, deliveries, catalogMatch, priceTier };
       })
       .filter(item => {
         // Date filter: hide items that have no delivery on the selected date
@@ -99,6 +232,8 @@ export default function Inventory() {
           const hasDate = item.deliveries.some(d => d.date === dateFilter);
           if (!hasDate) return false;
         }
+        // Category filter
+        if (categoryFilter !== 'all' && item.priceTier !== categoryFilter) return false;
         // Search filter
         if (!search) return true;
         const q = search.toLowerCase();
@@ -112,7 +247,12 @@ export default function Inventory() {
         if (av > bv) return sortDir === 'asc' ? 1 : -1;
         return 0;
       });
-  }, [items, search, sortBy, sortDir, dateFilter]);
+  }, [items, search, sortBy, sortDir, dateFilter, categoryFilter, todayStr]);
+
+  // Items with zero or negative stock — inventory numbers need updating
+  const problemItems = useMemo(() => {
+    return rows.filter(r => r.remaining <= 0 && r.pct === 0).sort((a, b) => a.remaining - b.remaining);
+  }, [rows]);
 
   const totals = useMemo(() => {
     return rows.reduce((acc, r) => {
@@ -124,29 +264,94 @@ export default function Inventory() {
     }, { incoming: 0, filteredIncoming: 0, sold: 0, remaining: 0 });
   }, [rows]);
 
+  // Group rows by price tier for sectioned table view
+  const rowsByTier = useMemo(() => {
+    const groups = {};
+    rows.forEach(item => {
+      const tier = item.priceTier;
+      if (!groups[tier]) groups[tier] = [];
+      groups[tier].push(item);
+    });
+    // Sort: Deep River first (Small → Grab & Go → Large), then dollar amounts, then text
+    const drOrder = { 'Deep River Small': 0, 'Deep River Grab & Go': 1, 'Deep River Large': 2 };
+    return Object.entries(groups).sort(([a], [b]) => {
+      const aDR = a.startsWith('Deep River');
+      const bDR = b.startsWith('Deep River');
+      if (aDR && bDR) return (drOrder[a] ?? 9) - (drOrder[b] ?? 9);
+      if (aDR) return -1;
+      if (bDR) return 1;
+      const aNum = a.startsWith('$') ? parseFloat(a.slice(1)) : Infinity;
+      const bNum = b.startsWith('$') ? parseFloat(b.slice(1)) : Infinity;
+      if (aNum !== bNum) return aNum - bNum;
+      return a.localeCompare(b);
+    });
+  }, [rows]);
+
   // Stock summary: what's here now vs what's coming
   const stockSummary = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const today = todayDate.toISOString().split('T')[0];
+    // 1.5 weeks = 10.5 days, round to 11
+    const forecastDate = new Date(todayDate.getTime() + 11 * 24 * 60 * 60 * 1000);
+    const forecastStr = forecastDate.toISOString().split('T')[0];
+
     let inStockUnits = 0, totalSold = 0;
+    let soldCost = 0, soldRetail = 0, soldCases = 0;
     const futureByDate = {};
+    const inStockItems = []; // per-item breakdown
+    const predictedItems = {}; // sku -> { desc, qty } predicted stock in 1.5 weeks
+    let predictedTotal = 0;
 
     rows.forEach(item => {
-      totalSold += item.sold || 0;
+      const sold = item.sold || 0; // sold is in cases
+      totalSold += sold;
+      const unitCost = item.catalogMatch?.price || 0;
+      const unitRetail = item.catalogMatch?.retail || 0;
+      const caseCount = item.caseCount || 1;
+      soldCost += sold * caseCount * unitCost;
+      soldRetail += sold * caseCount * unitRetail;
+      soldCases += sold;
+      let itemInStock = 0;
+      let itemPredicted = 0;
       (item.deliveries || []).forEach(d => {
         if (d.date <= today) {
           inStockUnits += d.qty;
+          itemInStock += d.qty;
+          itemPredicted += d.qty;
         } else {
-          if (!futureByDate[d.date]) futureByDate[d.date] = { date: d.date, qty: 0, po: d.po };
+          if (!futureByDate[d.date]) futureByDate[d.date] = { date: d.date, qty: 0, po: d.po, items: [] };
           futureByDate[d.date].qty += d.qty;
+          futureByDate[d.date].items.push({ sku: item.sku, desc: item.description, qty: d.qty });
+          // Include in prediction if arriving within 1.5 weeks
+          if (d.date <= forecastStr) {
+            itemPredicted += d.qty;
+          }
         }
       });
+      const avail = itemInStock - sold;
+      if (itemInStock > 0) {
+        inStockItems.push({ sku: item.sku, desc: item.description, qty: itemInStock, sold, avail });
+      }
+      const predictedAvail = itemPredicted - sold;
+      if (itemPredicted > 0) {
+        predictedItems[item.sku] = { sku: item.sku, desc: item.description, qty: itemPredicted, avail: predictedAvail };
+        predictedTotal += predictedAvail;
+      }
     });
 
     const futureEntries = Object.values(futureByDate).sort((a, b) => a.date.localeCompare(b.date));
     const futureTotal = futureEntries.reduce((s, e) => s + e.qty, 0);
     const pipeline = inStockUnits + futureTotal;
+    const predictedList = Object.values(predictedItems).sort((a, b) => b.avail - a.avail);
+    const soldProfit = soldRetail - soldCost;
 
-    return { inStockUnits, inStockAvail: inStockUnits - totalSold, totalSold, futureEntries, futureTotal, pipeline };
+    return {
+      inStockUnits, inStockAvail: inStockUnits - totalSold, totalSold,
+      soldCases, soldCost, soldRetail, soldProfit,
+      futureEntries, futureTotal, pipeline, inStockItems,
+      forecastDate: forecastStr, predictedList, predictedTotal,
+    };
   }, [rows]);
 
   // Group items by delivery date for the date-grouped view
@@ -227,7 +432,16 @@ export default function Inventory() {
   function saveEdit(sku) {
     const incoming = parseFloat(editVal.incoming) || 0;
     const sold = parseFloat(editVal.sold) || 0;
+    const prevSold = items[sku]?.sold || 0;
     const updates = { incoming, sold };
+    // Track manual sold adjustments
+    if (sold !== prevSold) {
+      const log = items[sku]?.adjustmentHistory || [];
+      updates.adjustmentHistory = [...log, {
+        type: 'manual', from: prevSold, to: sold, date: new Date().toISOString(),
+        note: `Manual edit: ${prevSold} → ${sold}`,
+      }];
+    }
     let newCustomCatalog = inventory.customCatalog || [];
 
     if (editVal.linkedSku === '__new__') {
@@ -292,11 +506,39 @@ export default function Inventory() {
   }, [linkSearch, editSku, items]);
 
   function resetSold(sku) {
+    const prev = items[sku]?.sold || 0;
+    if (prev === 0) return;
+    const log = items[sku]?.adjustmentHistory || [];
+    const entry = { type: 'reset', from: prev, to: 0, date: new Date().toISOString(), note: 'Manual reset' };
     setInventory({
       ...inventory,
-      items: { ...items, [sku]: { ...items[sku], sold: 0 } },
+      items: { ...items, [sku]: { ...items[sku], sold: 0, adjustmentHistory: [...log, entry] } },
       lastUpdated: new Date().toISOString().split('T')[0],
     });
+  }
+
+  function saveWarningQty(sku) {
+    const qty = parseInt(warningEditQty) || 0;
+    if (qty <= 0) return;
+    const item = items[sku];
+    if (!item) return;
+    const today = new Date().toISOString().split('T')[0];
+    const deliveries = [...(item.deliveries || [])];
+    // Add or update a delivery for today
+    const todayIdx = deliveries.findIndex(d => d.date === today);
+    if (todayIdx >= 0) {
+      deliveries[todayIdx] = { ...deliveries[todayIdx], qty };
+    } else {
+      deliveries.push({ date: today, qty, po: 'Manual update' });
+    }
+    const totalIncoming = deliveries.reduce((s, d) => s + d.qty, 0);
+    setInventory({
+      ...inventory,
+      items: { ...items, [sku]: { ...item, deliveries, incoming: totalIncoming } },
+      lastUpdated: today,
+    });
+    setWarningEditSku(null);
+    setWarningEditQty('');
   }
 
   function deleteItem(sku) {
@@ -475,21 +717,88 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Date filter chips (table view only) */}
-      {viewMode === 'table' && allDates.length > 1 && (
-        <div className="inv-date-filter">
-          <span className="inv-date-filter-label">Delivery:</span>
-          <button
-            className={`inv-date-chip${dateFilter === 'all' ? ' active' : ''}`}
-            onClick={() => setDateFilter('all')}
-          >All</button>
-          {allDates.map(d => (
-            <button
-              key={d}
-              className={`inv-date-chip${dateFilter === d ? ' active' : ''}`}
-              onClick={() => setDateFilter(dateFilter === d ? 'all' : d)}
-            >{formatDate(d)}</button>
-          ))}
+      {/* Warning panel: items with negative stock */}
+      {problemItems.length > 0 && (
+        <div className={`inv-warning-panel${warningCollapsed ? ' inv-warning-collapsed' : ''}`}>
+          <div className="inv-warning-header" onClick={() => setWarningCollapsed(c => !c)} style={{ cursor: 'pointer' }}>
+            <span className="inv-warning-icon">!</span>
+            <span className="inv-warning-title">{problemItems.length} item{problemItems.length > 1 ? 's' : ''} need inventory update</span>
+            <span className="inv-warning-toggle">{warningCollapsed ? '\u25B6' : '\u25BC'}</span>
+          </div>
+          {!warningCollapsed && (
+            <>
+              <div className="inv-warning-desc">Sold more than what's in stock. Update the warehouse inventory count for these items:</div>
+              <div className="inv-warning-list">
+                {problemItems.map(item => (
+                  <div key={item.sku} className={`inv-warning-item${warningEditSku === item.sku ? ' inv-warning-item-editing' : ''}`}
+                    onClick={() => { if (warningEditSku !== item.sku) { setWarningEditSku(item.sku); setWarningEditQty(''); } }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="inv-warning-item-sku">{item.sku}</span>
+                    <span className="inv-warning-item-name">{item.description}</span>
+                    <span className="inv-warning-item-detail">
+                      arrived {item.arrivedUnits} &minus; sold {item.sold} = <strong>{item.remaining}</strong>
+                    </span>
+                    {warningEditSku === item.sku && (
+                      <div className="inv-warning-edit" onClick={e => e.stopPropagation()}>
+                        <label className="inv-warning-edit-label">Cases in stock:</label>
+                        <input
+                          className="inv-warning-edit-input"
+                          type="number"
+                          min="0"
+                          placeholder="Enter qty..."
+                          value={warningEditQty}
+                          onChange={e => setWarningEditQty(e.target.value)}
+                          autoFocus
+                          onKeyDown={e => { if (e.key === 'Enter') saveWarningQty(item.sku); if (e.key === 'Escape') setWarningEditSku(null); }}
+                        />
+                        <button className="inv-warning-edit-save" onClick={() => saveWarningQty(item.sku)}>Save</button>
+                        <button className="inv-warning-edit-cancel" onClick={() => setWarningEditSku(null)}>Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Filter chips (table view only) */}
+      {viewMode === 'table' && (
+        <div className="inv-filter-bar">
+          {allDates.length > 1 && (
+            <div className="inv-date-filter">
+              <span className="inv-date-filter-label">Delivery:</span>
+              <button
+                className={`inv-date-chip${dateFilter === 'all' ? ' active' : ''}`}
+                onClick={() => setDateFilter('all')}
+              >All</button>
+              {allDates.map(d => (
+                <button
+                  key={d}
+                  className={`inv-date-chip${dateFilter === d ? ' active' : ''}`}
+                  onClick={() => setDateFilter(dateFilter === d ? 'all' : d)}
+                >{formatDate(d)}</button>
+              ))}
+            </div>
+          )}
+          {allCategories.length > 1 && (
+            <div className="inv-date-filter">
+              <span className="inv-date-filter-label">Category:</span>
+              <button
+                className={`inv-date-chip${categoryFilter === 'all' ? ' active' : ''}`}
+                onClick={() => setCategoryFilter('all')}
+              >All</button>
+              {allCategories.map(c => (
+                <button
+                  key={c}
+                  className={`inv-date-chip inv-cat-chip${categoryFilter === c ? ' active' : ''}`}
+                  onClick={() => setCategoryFilter(categoryFilter === c ? 'all' : c)}
+                >{c}</button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -630,7 +939,9 @@ export default function Inventory() {
         <table className="inv-table">
           <thead>
             <tr>
-              <th className="inv-th-sku" onClick={() => toggleSort('sku')}>Item #{sortIcon('sku')}</th>
+              <th className="inv-th-alert"></th>
+              <th className="inv-th-sku" onClick={() => toggleSort('sku')}>SKU{sortIcon('sku')}</th>
+              <th className="inv-th-catsku">WH#</th>
               <th className="inv-th-desc" onClick={() => toggleSort('description')}>Product{sortIcon('description')}</th>
               <th className="inv-th-num" onClick={() => toggleSort('incoming')}>
                 {dateFilter !== 'all' ? `${formatDate(dateFilter)} Order` : 'Total Ordered'}{sortIcon('incoming')}
@@ -644,12 +955,43 @@ export default function Inventory() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(item => (
-              <tr key={item.sku} className={`inv-row ${statusClass(item.pct, item.remaining)}`}>
+            {(() => {
+              let drHeaderShown = false;
+              const drTiers = rowsByTier.filter(([t]) => t.startsWith('Deep River'));
+              const drTotalItems = drTiers.reduce((s, [, items]) => s + items.length, 0);
+              const drTotalUnits = drTiers.reduce((s, [, items]) => s + items.reduce((u, i) => u + i.incoming, 0), 0);
+              return rowsByTier.map(([tier, tierItems]) => {
+              const isDR = tier.startsWith('Deep River');
+              const showDRParent = isDR && !drHeaderShown && drTiers.length > 0;
+              if (showDRParent) drHeaderShown = true;
+              return (
+            <React.Fragment key={tier}>
+              {showDRParent && rowsByTier.length > 1 && (
+                <tr className="inv-section-row inv-section-parent" onClick={() => setCollapsedSections(prev => ({ ...prev, '__DR__': !prev['__DR__'] }))} style={{ cursor: 'pointer' }}>
+                  <td colSpan={dateFilter !== 'all' ? 11 : 10} className="inv-section-cell inv-parent-cell">
+                    <span className="inv-section-toggle">{collapsedSections['__DR__'] ? '\u25B6' : '\u25BC'}</span>
+                    <span className="inv-section-label">DEEP RIVER</span>
+                    <span className="inv-section-count">{drTotalItems} items &middot; {drTotalUnits.toLocaleString()} units</span>
+                  </td>
+                </tr>
+              )}
+              {!(isDR && collapsedSections['__DR__']) && rowsByTier.length > 1 && (
+                <tr className={`inv-section-row${isDR ? ' inv-section-sub' : ''}`} onClick={() => setCollapsedSections(prev => ({ ...prev, [tier]: !prev[tier] }))} style={{ cursor: 'pointer' }}>
+                  <td colSpan={dateFilter !== 'all' ? 11 : 10} className={`inv-section-cell${isDR ? ' inv-sub-cell' : ''}`}>
+                    <span className="inv-section-toggle">{collapsedSections[tier] ? '\u25B6' : '\u25BC'}</span>
+                    <span className="inv-section-label">{isDR ? tier.replace('Deep River ', '') : tier}</span>
+                    <span className="inv-section-count">{tierItems.length} items &middot; {tierItems.reduce((s, i) => s + i.incoming, 0).toLocaleString()} units</span>
+                  </td>
+                </tr>
+              )}
+              {!collapsedSections[tier] && !(isDR && collapsedSections['__DR__']) && tierItems.map(item => (
+              <React.Fragment key={item.sku}>
+              <tr className={`inv-row ${statusClass(item.pct, item.remaining)}${trailSku === item.sku ? ' inv-row-open' : ''}`}>
                 {editSku === item.sku ? (
                   <>
+                    <td className="inv-td-alert"></td>
                     <td className="inv-td-sku">{item.sku}</td>
-                    <td className="inv-td-desc" colSpan={dateFilter !== 'all' ? 6 : 5}>
+                    <td className="inv-td-desc" colSpan={dateFilter !== 'all' ? 7 : 6}>
                       <div className="inv-edit-row">
                         <div className="inv-edit-item-name">{item.description}</div>
                         <div className="inv-edit-fields">
@@ -741,19 +1083,25 @@ export default function Inventory() {
                   </>
                 ) : (
                   <>
-                    <td className="inv-td-sku">
+                    <td className="inv-td-alert">{item.remaining <= 30 ? <span className="inv-order-now">ORDER</span> : ''}</td>
+                    <td className="inv-td-sku inv-td-clickable" onClick={() => setTrailSku(trailSku === item.sku ? null : item.sku)}>
                       {item.sku}
+                      <span className="inv-row-expand-icon">{trailSku === item.sku ? '\u25B2' : '\u25BC'}</span>
+                    </td>
+                    <td className="inv-td-catsku">
                       {item.catalogMatch
-                        ? <span className="inv-match-badge matched" title={`Catalog: ${item.catalogMatch.desc} (${item.catalogMatch.category})${item.linkedSku ? ' [linked]' : ''}`}>{item.linkedSku ? 'LNK' : 'WH'}</span>
-                        : <span className="inv-match-badge unmatched" title="Not linked to warehouse catalog">?</span>
+                        ? <span className="inv-catsku-val" title={`${item.catalogMatch.desc} (${item.catalogMatch.category})`}>{item.catalogMatch.sku}</span>
+                        : <span className="inv-catsku-none" title="Not linked to warehouse catalog">—</span>
                       }
                     </td>
-                    <td className="inv-td-desc">{item.description}</td>
+                    <td className="inv-td-desc inv-td-clickable" onClick={() => setTrailSku(trailSku === item.sku ? null : item.sku)}>{item.description}</td>
                     <td className="inv-td-num">
                       {dateFilter !== 'all' ? item.filteredIncoming.toLocaleString() : item.incoming.toLocaleString()}
                     </td>
                     {dateFilter !== 'all' && <td className="inv-td-num" style={{ color: '#94a3b8' }}>{item.incoming.toLocaleString()}</td>}
-                    <td className="inv-td-num inv-sold">{item.sold.toLocaleString()}</td>
+                    <td className={`inv-td-num inv-sold`}>
+                      {item.sold.toLocaleString()}
+                    </td>
                     <td className={`inv-td-num inv-remaining ${item.remaining <= 0 ? 'inv-zero' : ''}`}>
                       {item.remaining.toLocaleString()}
                     </td>
@@ -777,25 +1125,114 @@ export default function Inventory() {
                       </div>
                     </td>
                     <td className="inv-td-actions">
-                      <button className="inv-btn inv-btn-edit" onClick={() => startEdit(item)} title="Edit quantities">Edit</button>
+                      <button className="inv-btn inv-btn-edit" onClick={(e) => { e.stopPropagation(); startEdit(item); }} title="Edit quantities">Edit</button>
                       {item.sold > 0 && (
-                        <button className="inv-btn inv-btn-reset" onClick={() => resetSold(item.sku)} title="Reset sold to 0">Reset</button>
+                        <button className="inv-btn inv-btn-reset" onClick={(e) => { e.stopPropagation(); resetSold(item.sku); }} title="Reset sold to 0">Reset</button>
                       )}
-                      <button className="inv-btn inv-btn-delete" onClick={() => deleteItem(item.sku)} title="Delete item">&times;</button>
+                      <button className="inv-btn inv-btn-delete" onClick={(e) => { e.stopPropagation(); deleteItem(item.sku); }} title="Delete item">&times;</button>
                     </td>
                   </>
                 )}
               </tr>
+              {trailSku === item.sku && (() => {
+                const deductions = item.orderDeductions || {};
+                const adjustments = item.adjustmentHistory || [];
+                const colCount = dateFilter !== 'all' ? 11 : 10;
+                const entries = Object.entries(deductions).map(([key, val]) => {
+                  if (typeof val === 'object' && val.orderId) return val;
+                  return { orderId: key, units: typeof val === 'number' ? val : 0, orderName: '', orderDate: '', routeNumber: '', lineId: null };
+                }).sort((a, b) => (a.orderDate || '').localeCompare(b.orderDate || ''));
+                const deliveries = item.deliveries || [];
+                {/* Build a single chronological activity log */}
+                const activity = [];
+                deliveries.forEach(d => {
+                  const arrived = d.date <= todayStr;
+                  activity.push({ date: d.date, type: arrived ? 'Received' : 'Pending', detail: d.po ? `PO ${d.po}` : '', cases: d.qty });
+                });
+                entries.forEach(e => {
+                  activity.push({ date: e.orderDate || '', type: 'Sold', detail: `${e.routeNumber || ''} ${e.orderName || ''}`.trim(), cases: -(e.cases || 0) });
+                });
+                adjustments.forEach(a => {
+                  activity.push({ date: a.date ? a.date.split('T')[0] : '', type: 'Adjustment', detail: a.note || '', cases: a.qty || 0 });
+                });
+                activity.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+                return (
+                  <tr className="inv-trail-row">
+                    <td colSpan={colCount} className="inv-trail-cell">
+                      <div className="inv-trail-panel">
+                        {activity.length > 0 ? (
+                          <table className="inv-trail-table">
+                            <thead>
+                              <tr>
+                                <th>Date</th><th>Type</th><th>Detail</th><th>Cases</th><th>Balance</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                let balance = 0;
+                                const totalSold = activity.filter(a => a.cases < 0).reduce((s, a) => s + a.cases, 0);
+                                const rows = activity.map((a, i) => {
+                                  balance += a.cases;
+                                  return (
+                                    <tr key={i}>
+                                      <td>{a.date ? formatDate(a.date) : '—'}</td>
+                                      <td><span className={`inv-trail-type inv-trail-type-${a.type.toLowerCase()}`}>{a.type}</span></td>
+                                      <td>{a.detail || '—'}</td>
+                                      <td className={`inv-trail-cases ${a.cases > 0 ? 'inv-trail-add' : 'inv-trail-sub'}`}>
+                                        {a.cases > 0 ? '+' : ''}{a.cases.toLocaleString()}
+                                      </td>
+                                      <td className={`inv-trail-balance ${balance < 0 ? 'inv-trail-negative' : ''}`}>{balance.toLocaleString()}</td>
+                                    </tr>
+                                  );
+                                });
+                                const receivedTotal = activity.filter(a => a.type === 'Received').reduce((s, a) => s + a.cases, 0);
+                                const inStockNow = receivedTotal + totalSold;
+                                const pendingDates = activity.filter(a => a.type === 'Pending').map(a => a.date).sort();
+                                const lastDate = pendingDates.length > 0 ? pendingDates[pendingDates.length - 1] : null;
+                                rows.push(
+                                  <tr key="totals" className="inv-trail-totals">
+                                    <td colSpan="2"></td>
+                                    <td style={{ fontWeight: 700 }}>Total Sold</td>
+                                    <td className="inv-trail-sub" style={{ fontWeight: 700 }}>{totalSold.toLocaleString()}</td>
+                                    <td style={{ fontWeight: 700 }}>In Stock: {inStockNow.toLocaleString()}</td>
+                                  </tr>
+                                );
+                                if (lastDate) {
+                                  rows.push(
+                                    <tr key="expected" className="inv-trail-totals">
+                                      <td colSpan="2"></td>
+                                      <td style={{ fontWeight: 700 }}>Expected by {formatDate(lastDate)}</td>
+                                      <td></td>
+                                      <td style={{ fontWeight: 700, color: '#1976d2' }}>{balance.toLocaleString()}</td>
+                                    </tr>
+                                  );
+                                }
+                                return rows;
+                              })()}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div className="inv-trail-empty">No history available</div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })()}
+            </React.Fragment>
             ))}
+            </React.Fragment>
+            );})})()}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={dateFilter !== 'all' ? 9 : 8} className="inv-empty">No items found.</td>
+                <td colSpan={dateFilter !== 'all' ? 11 : 10} className="inv-empty">No items found.</td>
               </tr>
             )}
           </tbody>
           <tfoot>
             <tr className="inv-totals-row">
-              <td colSpan="2" className="inv-totals-label">TOTALS ({rows.length} products)</td>
+              <td colSpan="3" className="inv-totals-label">TOTALS ({rows.length} products)</td>
               <td className="inv-td-num">{(dateFilter !== 'all' ? totals.filteredIncoming : totals.incoming).toLocaleString()}</td>
               {dateFilter !== 'all' && <td className="inv-td-num" style={{ color: '#94a3b8' }}>{totals.incoming.toLocaleString()}</td>}
               <td className="inv-td-num inv-sold">{totals.sold.toLocaleString()}</td>
@@ -811,11 +1248,24 @@ export default function Inventory() {
         {/* Stock Summary Panel */}
         <div className="inv-stock-panel">
           <div className="inv-stock-section">
-            <div className="inv-stock-section-title">In Stock Now</div>
+            <button className="inv-stock-section-header" onClick={() => setStockExpanded(p => ({ ...p, instock: !p.instock }))}>
+              <span className="inv-stock-section-title">In Stock Now</span>
+              <span className="inv-stock-section-toggle">{stockExpanded.instock ? '\u25BC' : '\u25B6'}</span>
+            </button>
             <div className="inv-stock-big">{stockSummary.inStockAvail.toLocaleString()}</div>
-            <div className="inv-stock-sub">units available</div>
+            <div className="inv-stock-sub">{stockSummary.inStockItems.length} products available</div>
             {stockSummary.totalSold > 0 && (
-              <div className="inv-stock-sub">{stockSummary.inStockUnits.toLocaleString()} received &minus; {stockSummary.totalSold.toLocaleString()} sold</div>
+              <div className="inv-stock-sub">{stockSummary.inStockUnits.toLocaleString()} cases received &minus; {stockSummary.totalSold.toLocaleString()} sold</div>
+            )}
+            {stockExpanded.instock && stockSummary.inStockItems.length > 0 && (
+              <div className="inv-stock-items-list">
+                {stockSummary.inStockItems.map(it => (
+                  <div key={it.sku} className="inv-stock-item-row">
+                    <span className="inv-stock-item-name" title={it.desc}>{it.desc}</span>
+                    <span className="inv-stock-item-qty">{it.avail.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
@@ -825,9 +1275,21 @@ export default function Inventory() {
             <div className="inv-stock-section-title">Coming Soon</div>
             {stockSummary.futureEntries.length > 0 ? (
               stockSummary.futureEntries.map(e => (
-                <div key={e.date} className="inv-stock-future-row">
-                  <span className="inv-stock-future-date">{formatDate(e.date)}</span>
-                  <span className="inv-stock-future-qty">{e.qty.toLocaleString()}</span>
+                <div key={e.date}>
+                  <button className="inv-stock-future-row inv-stock-date-toggle" onClick={() => setStockExpanded(p => ({ ...p, [e.date]: !p[e.date] }))}>
+                    <span className="inv-stock-future-date">{formatDate(e.date)} <span className="inv-stock-section-toggle">{stockExpanded[e.date] ? '\u25BC' : '\u25B6'}</span></span>
+                    <span className="inv-stock-future-qty">{e.qty.toLocaleString()}</span>
+                  </button>
+                  {stockExpanded[e.date] && e.items && (
+                    <div className="inv-stock-items-list">
+                      {e.items.map(it => (
+                        <div key={it.sku} className="inv-stock-item-row">
+                          <span className="inv-stock-item-name" title={it.desc}>{it.desc}</span>
+                          <span className="inv-stock-item-qty">{it.qty.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -844,16 +1306,58 @@ export default function Inventory() {
           <hr className="inv-stock-divider" />
 
           <div className="inv-stock-section">
+            <button className="inv-stock-section-header" onClick={() => setStockExpanded(p => ({ ...p, predicted: !p.predicted }))}>
+              <span className="inv-stock-section-title">Stock in 1.5 Weeks</span>
+              <span className="inv-stock-section-toggle">{stockExpanded.predicted ? '\u25BC' : '\u25B6'}</span>
+            </button>
+            <div className="inv-stock-sub">by {formatDate(stockSummary.forecastDate)}</div>
+            <div className="inv-stock-big">{stockSummary.predictedTotal.toLocaleString()}</div>
+            <div className="inv-stock-sub">{stockSummary.predictedList.length} products expected</div>
+            {stockExpanded.predicted && stockSummary.predictedList.length > 0 && (
+              <div className="inv-stock-items-list">
+                {stockSummary.predictedList.map(it => (
+                  <div key={it.sku} className="inv-stock-item-row">
+                    <span className="inv-stock-item-name" title={it.desc}>{it.desc}</span>
+                    <span className="inv-stock-item-qty">{it.avail.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <hr className="inv-stock-divider" />
+
+          <div className="inv-stock-section">
             <div className="inv-stock-section-title">Total Pipeline</div>
             <div className="inv-stock-big">{stockSummary.pipeline.toLocaleString()}</div>
             <div className="inv-stock-sub">total ordered</div>
             <div className="inv-stock-pipeline-row">
               <span className="inv-stock-pipeline-label">Sold</span>
-              <span className="inv-stock-pipeline-val inv-stock-sold-val">{stockSummary.totalSold.toLocaleString()}</span>
+              <span className="inv-stock-pipeline-val inv-stock-sold-val">{stockSummary.totalSold.toLocaleString()} cases</span>
             </div>
+            {stockSummary.totalSold > 0 && (
+              <>
+                <div className="inv-stock-pipeline-row">
+                  <span className="inv-stock-pipeline-label">Cases</span>
+                  <span className="inv-stock-pipeline-val">{stockSummary.soldCases.toLocaleString()}</span>
+                </div>
+                <div className="inv-stock-pipeline-row">
+                  <span className="inv-stock-pipeline-label">Cost</span>
+                  <span className="inv-stock-pipeline-val">${stockSummary.soldCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="inv-stock-pipeline-row">
+                  <span className="inv-stock-pipeline-label">Retail</span>
+                  <span className="inv-stock-pipeline-val">${stockSummary.soldRetail.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="inv-stock-pipeline-row">
+                  <span className="inv-stock-pipeline-label">Gross Profit</span>
+                  <span className="inv-stock-pipeline-val inv-stock-profit-val">${stockSummary.soldProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </>
+            )}
             <div className="inv-stock-pipeline-row">
               <span className="inv-stock-pipeline-label">Available</span>
-              <span className="inv-stock-pipeline-val inv-stock-avail-val">{(stockSummary.pipeline - stockSummary.totalSold).toLocaleString()}</span>
+              <span className="inv-stock-pipeline-val inv-stock-avail-val">{(stockSummary.pipeline - stockSummary.totalSold).toLocaleString()} cases</span>
             </div>
           </div>
         </div>

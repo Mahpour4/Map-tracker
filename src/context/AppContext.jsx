@@ -483,11 +483,21 @@ function reducer(state, action) {
     case 'SET_WAREHOUSE_ORDERS':
       return { ...state, warehouseOrders: action.payload };
     case 'ADD_WAREHOUSE_ORDER': {
-      const newOrder = { id: uuidv4(), createdAt: new Date().toISOString(), ...action.payload };
+      const orderPayload = { ...action.payload };
+      // Ensure every item has a unique lineId for deduction tracking
+      if (orderPayload.items) {
+        orderPayload.items = orderPayload.items.map(i => i.lineId ? i : { ...i, lineId: uuidv4() });
+      }
+      const newOrder = { id: uuidv4(), createdAt: new Date().toISOString(), ...orderPayload };
       return { ...state, warehouseOrders: { ...state.warehouseOrders, orders: [...state.warehouseOrders.orders, newOrder] } };
     }
     case 'UPDATE_WAREHOUSE_ORDER': {
-      const updOrders = state.warehouseOrders.orders.map(o => o.id === action.payload.id ? { ...o, ...action.payload, updatedAt: new Date().toISOString() } : o);
+      const updPayload = { ...action.payload };
+      // Ensure every item has a unique lineId for deduction tracking
+      if (updPayload.items) {
+        updPayload.items = updPayload.items.map(i => i.lineId ? i : { ...i, lineId: uuidv4() });
+      }
+      const updOrders = state.warehouseOrders.orders.map(o => o.id === updPayload.id ? { ...o, ...updPayload, updatedAt: new Date().toISOString() } : o);
       return { ...state, warehouseOrders: { ...state.warehouseOrders, orders: updOrders } };
     }
     case 'DELETE_WAREHOUSE_ORDER':

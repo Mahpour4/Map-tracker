@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
@@ -49,6 +50,37 @@ export default function WarehouseOrders() {
   const lang = language || 'en';
   const orders = warehouseOrders?.orders || [];
 
+  // Check if an order's items have been deducted from inventory
+  const getOrderInvStatus = useCallback((order) => {
+    if (!inventory?.items || !order?.id || !order?.items?.length) return { applied: false, matched: 0, total: 0, units: 0, details: [] };
+    const invItems = inventory.items;
+    let matched = 0;
+    let units = 0;
+    const details = [];
+    order.items.forEach(item => {
+      const rawSku = item.sku.replace(/^0+/, '');
+      const invItem = invItems[rawSku] || invItems[item.sku];
+      if (!invItem) return;
+      const deductions = invItem.orderDeductions || {};
+      // Check for line-level deduction (orderId:lineId) or legacy order-level (orderId)
+      let itemUnits = 0;
+      const lineKey = item.lineId ? `${order.id}:${item.lineId}` : null;
+      if (lineKey && deductions[lineKey]) {
+        itemUnits = deductions[lineKey].units || deductions[lineKey];
+      } else if (deductions[order.id]) {
+        // Legacy format: orderId → units (number) or orderId → {units}
+        const d = deductions[order.id];
+        itemUnits = typeof d === 'number' ? d : (d.units || 0);
+      }
+      if (itemUnits > 0) {
+        matched++;
+        units += itemUnits;
+        details.push({ sku: item.sku, lineId: item.lineId, desc: item.desc, units: itemUnits });
+      }
+    });
+    return { applied: matched > 0, matched, total: order.items.length, units, details };
+  }, [inventory?.items]);
+
   // Merge static catalog with custom entries from inventory
   const FULL_CATALOG = useMemo(() => {
     const custom = inventory?.customCatalog || [];
@@ -83,6 +115,7 @@ export default function WarehouseOrders() {
   const [lastAutoSaved, setLastAutoSaved] = useState(null);
   const autoSaveRef = useRef(null);
   const executePushRef = useRef(null); // avoids forward-reference issue (executePush defined after handleSave)
+  const pendingWaPush = useRef(null); // items to auto-push to sheets after WhatsApp order creation
 
   // Sync time indicators
   const [lastLocalSaved, setLastLocalSaved] = useState(() => localStorage.getItem('wo_last_local_saved'));
@@ -101,6 +134,7 @@ export default function WarehouseOrders() {
   const [waShowSetup, setWaShowSetup] = useState(false);
   const [waPeriod, setWaPeriod] = useState('all');
   const [waRefreshing, setWaRefreshing] = useState(false);
+  const [waNote, setWaNote] = useState(''); // original WhatsApp message for reference
   const waPollerRef = useRef(null);
 
   // Google Sheets sync state
@@ -177,6 +211,7 @@ export default function WarehouseOrders() {
     setLoadNumber(order.loadNumber || '');
     setLoadCases(order.loadCases || '');
     setLoadAmount(order.loadAmount || '');
+    setWaNote(order.waOriginalMessage || '');
   }, []);
 
   // When route/date changes, load existing order and auto-create template copy
@@ -188,24 +223,7 @@ export default function WarehouseOrders() {
     if (existing) loadExistingOrder(existing);
     else { setCases({}); setUnits({}); setOrderName(driverName); setInvoiceNumber(''); setInvoiceCases(''); setInvoiceAmount(''); setLoadNumber(''); setLoadCases(''); setLoadAmount(''); }
 
-    // Auto-create template copy on Google Sheet when a route with a driver is selected
-    if (r && driverName && isGoogleSheetsConfigured()) {
-      const tabName = buildTabName(r, driverName, orderDate);
-      setSyncMsg({ type: 'success', text: `Creating sheet tab "${tabName}"...` });
-      createTemplateCopy(r, driverName, orderDate)
-        .then(result => {
-          if (result.alreadyExists) {
-            setSyncMsg({ type: 'success', text: `Sheet tab "${result.tabName}" already exists — ready for entry` });
-          } else {
-            setSyncMsg({ type: 'success', text: `Template copied — "${result.tabName}" created and ready for entry` });
-          }
-          setTimeout(() => setSyncMsg(null), 5000);
-        })
-        .catch(err => {
-          console.error('[Template Copy]', err);
-          setSyncMsg({ type: 'error', text: `Template copy failed: ${err.message}` });
-        });
-    }
+    // Template copy on Google Sheet is only triggered by explicit "Push to Sheet" action
   }, [orders, orderDate, loadExistingOrder]);
 
   const handleDateChange = useCallback((d) => {
@@ -661,7 +679,7 @@ export default function WarehouseOrders() {
       // Category header row
       const catCases = catItems.reduce((s, p) => s + (cases[p.sku] || 0), 0);
       tableBody.push({
-        content: [cat.toUpperCase(), '', '', '', String(catCases), '', ''],
+        content: [cat.toUpperCase(), '', '', '', '', String(catCases), '', ''],
         isCatHeader: true,
       });
 
@@ -675,6 +693,7 @@ export default function WarehouseOrders() {
         tableBody.push({
           content: [
             String(globalIdx),
+            p.sku,
             p.desc,
             String(p.upc),
             String(qty),
@@ -697,20 +716,21 @@ export default function WarehouseOrders() {
     // Checkbox column for picking
     autoTable(doc, {
       startY: y,
-      head: [['#', 'Product', 'UPC', 'Cases', 'Units', 'Cost', 'Retail', '\u2610']],
+      head: [['#', 'Item #', 'Product', 'UPC', 'Cases', 'Units', 'Cost', 'Retail', '\u2610']],
       body: tableBody.map(row => [...row.content, '']),
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.2 },
       headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8, halign: 'center' },
       columnStyles: {
         0: { cellWidth: 8, halign: 'center' },    // #
-        1: { cellWidth: 'auto' },                  // Product
-        2: { cellWidth: 14, halign: 'center' },    // UPC
-        3: { cellWidth: 16, halign: 'center' },    // Cases
-        4: { cellWidth: 14, halign: 'center' },    // Units
-        5: { cellWidth: 20, halign: 'right' },     // Cost
-        6: { cellWidth: 20, halign: 'right' },     // Retail
-        7: { cellWidth: 12, halign: 'center' },    // Checkbox
+        1: { cellWidth: 18, halign: 'center' },   // Item #
+        2: { cellWidth: 'auto' },                  // Product
+        3: { cellWidth: 14, halign: 'center' },    // UPC
+        4: { cellWidth: 16, halign: 'center' },    // Cases
+        5: { cellWidth: 14, halign: 'center' },    // Units
+        6: { cellWidth: 20, halign: 'right' },     // Cost
+        7: { cellWidth: 20, halign: 'right' },     // Retail
+        8: { cellWidth: 12, halign: 'center' },    // Checkbox
       },
       didParseCell: (data) => {
         if (data.section !== 'body') return;
@@ -720,9 +740,9 @@ export default function WarehouseOrders() {
           data.cell.styles.fontStyle = 'bold';
           data.cell.styles.fontSize = 8;
           if (data.column.index === 0) {
-            data.cell.colSpan = 3;
+            data.cell.colSpan = 4;
           }
-          if (data.column.index > 0 && data.column.index < 3) {
+          if (data.column.index > 0 && data.column.index < 4) {
             data.cell.text = [];
           }
         }
@@ -759,6 +779,11 @@ export default function WarehouseOrders() {
     if (!selectedRoute) return;
     setSaving(true);
     const allSkus = new Set([...Object.keys(cases), ...Object.keys(units)]);
+    // Build map of existing lineIds by SKU so we preserve them on update
+    const existingLineIds = {};
+    if (existingOrder?.items) {
+      existingOrder.items.forEach(i => { if (i.lineId) existingLineIds[i.sku] = i.lineId; });
+    }
     const items = [...allSkus]
       .filter(sku => (cases[sku] || 0) > 0 || (units[sku] || 0) > 0)
       .map(sku => {
@@ -768,6 +793,7 @@ export default function WarehouseOrders() {
         const caseUnits = qty * (p?.upc || 0);
         const allUnits = caseUnits + unitQty;
         return {
+          lineId: existingLineIds[sku] || uuidv4(),
           sku,
           category: p?.category || '',
           desc: p?.desc || '',
@@ -800,25 +826,7 @@ export default function WarehouseOrders() {
       updateWarehouseOrder({ ...orderData, id: existingOrder.id });
     } else {
       addWarehouseOrder(orderData);
-      // Deduct from inventory for new orders only
-      if (inventory?.items) {
-        const invItems = { ...inventory.items };
-        let changed = false;
-        items.forEach(({ sku, cases: caseQty }) => {
-          if (!caseQty) return;
-          // Match: catalog SKUs may be zero-padded (e.g. "028136") — inventory uses raw ("28136")
-          const rawSku = sku.replace(/^0+/, '');
-          const invItem = invItems[rawSku] || invItems[sku];
-          if (!invItem) return;
-          const key = invItems[rawSku] ? rawSku : sku;
-          const unitsToDeduct = caseQty * (invItem.caseCount || 1);
-          invItems[key] = { ...invItem, sold: (invItem.sold || 0) + unitsToDeduct };
-          changed = true;
-        });
-        if (changed) {
-          setInventory({ ...inventory, items: invItems, lastUpdated: orderDate });
-        }
-      }
+      // Inventory sold is auto-reconciled from all orders in Inventory.jsx
     }
 
     // Optimistically update local/GitHub timestamps (AppContext will do the actual saves momentarily)
@@ -827,15 +835,6 @@ export default function WarehouseOrders() {
     localStorage.setItem('wo_last_github_saved', now);
     setLastLocalSaved(now);
     setLastGithubSaved(now);
-
-    // Push to Google Sheets if configured and signed in
-    if (isGoogleSheetsConfigured() && isSignedIn() && executePushRef.current) {
-      try {
-        await executePushRef.current(items);
-      } catch (err) {
-        console.error('[Save] Sheets push failed:', err.message);
-      }
-    }
 
     setSaving(false);
   }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder, inventory, setInventory]);
@@ -913,7 +912,7 @@ export default function WarehouseOrders() {
   const waFiltered = useMemo(() => {
     if (waPeriod === 'all') return waMessages;
     const now = Date.now();
-    const ms = { '24h': 24*60*60*1000, '7d': 7*24*60*60*1000, '30d': 30*24*60*60*1000 }[waPeriod] || 0;
+    const ms = { '24h': 24*60*60*1000, '2d': 2*24*60*60*1000, '7d': 7*24*60*60*1000, '30d': 30*24*60*60*1000 }[waPeriod] || 0;
     if (!ms) return waMessages;
     return waMessages.filter(m => m.timestamp > now - ms);
   }, [waMessages, waPeriod]);
@@ -961,11 +960,14 @@ export default function WarehouseOrders() {
       if (descLower.includes(textLower)) score += 100;
 
       // Each search word that matches desc, category, or type
+      let descHits = 0;
       textWords.forEach(tw => {
-        if (descLower.includes(tw)) score += 30;
+        if (descLower.includes(tw)) { score += 30; descHits++; }
         if (catLower.includes(tw)) score += 20;
         if (typeLower.includes(tw)) score += 15;
       });
+      // Bonus when ALL search words match the description (strong signal)
+      if (textWords.length > 1 && descHits === textWords.length) score += 50;
 
       // Category size hints
       if (textLower.includes('large') && catLower.includes('large')) score += 25;
@@ -1063,13 +1065,19 @@ export default function WarehouseOrders() {
       }
 
       // When a category header is active, prefer products in that category
-      const terms = lineCategory
-        ? searchTerms.filter(p => p.category === lineCategory)
-        : searchTerms;
-      // Fallback to all terms if category filter yields no matches
+      // but always include strong matches from the full catalog
       const scoreFn = (t) => {
-        const catResults = scoreCatalog(t, terms);
-        return catResults.length > 0 ? catResults : (lineCategory ? scoreCatalog(t, searchTerms) : []);
+        const allResults = scoreCatalog(t, searchTerms);
+        if (!lineCategory) return allResults;
+        // Boost category matches, but keep strong full-catalog matches too
+        const catResults = scoreCatalog(t, searchTerms.filter(p => p.category === lineCategory));
+        catResults.forEach(cr => { cr.score += 50; }); // boost category matches
+        const merged = new Map();
+        [...allResults, ...catResults].forEach(m => {
+          const existing = merged.get(m.sku);
+          if (!existing || m.score > existing.score) merged.set(m.sku, m);
+        });
+        return [...merged.values()].sort((a, b) => b.score - a.score);
       };
 
       // Split on "and" to handle "deep river large and small bags"
@@ -1119,7 +1127,7 @@ export default function WarehouseOrders() {
       results.push({ qty, text, matches, loadAll, category: lineCategory });
     }
 
-    setWaGuessResult({ msgId: msg.id, items: results });
+    setWaGuessResult({ msgId: msg.id, items: results, _msgBody: msg.body || '' });
   }, []);
 
   const loadGuessIntoForm = (contactRoute) => {
@@ -1238,18 +1246,6 @@ export default function WarehouseOrders() {
         if (existingOrder) {
           updateWarehouseOrder({ ...existingOrder, status: 'synced', sheetTab: result.tab });
         }
-        // Update route summary sheet — merge current state in case order wasn't saved yet
-        try {
-          const driverName = orderName || ROUTE_DRIVERS[selectedRoute] || '';
-          const routeOrders = orders.filter(o => o.routeNumber === selectedRoute);
-          const currentData = { date: orderDate, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount };
-          const mergedOrders = routeOrders.some(o => o.date === orderDate)
-            ? routeOrders.map(o => o.date === orderDate ? { ...o, ...currentData } : o)
-            : [...routeOrders, currentData];
-          await updateRouteSummarySheet(selectedRoute, driverName, mergedOrders);
-        } catch (summaryErr) {
-          console.warn('[Summary Sheet] Failed to update:', summaryErr.message);
-        }
       } else {
         setSyncMsg({ type: 'error', text: result.error || 'Push failed' });
       }
@@ -1261,6 +1257,14 @@ export default function WarehouseOrders() {
 
   // Keep executePushRef current so handleSave can call it without a forward-reference
   useEffect(() => { executePushRef.current = executePush; }, [executePush]);
+
+  // Auto-push to Sheets after WhatsApp order creation (once state has settled)
+  useEffect(() => {
+    if (!pendingWaPush.current || !selectedRoute || !executePushRef.current) return;
+    const itemsToWrite = pendingWaPush.current;
+    pendingWaPush.current = null;
+    executePushRef.current(itemsToWrite);
+  }, [selectedRoute, orderName, cases]);
 
   // Push current order to Google Sheet (checks for conflicts first)
   const handlePushToSheet = useCallback(async () => {
@@ -1342,14 +1346,6 @@ export default function WarehouseOrders() {
       if (result.success) {
         setSyncMsg({ type: 'success', text: `Pushed "${result.tab}" — ${result.written} items` });
         updateWarehouseOrder({ ...order, status: 'synced', sheetTab: result.tab });
-        // Update route summary sheet
-        try {
-          const driverName = order.name || ROUTE_DRIVERS[order.routeNumber] || '';
-          const routeOrders = orders.filter(o => o.routeNumber === order.routeNumber);
-          await updateRouteSummarySheet(order.routeNumber, driverName, routeOrders);
-        } catch (summaryErr) {
-          console.warn('[Summary Sheet] Failed to update:', summaryErr.message);
-        }
       } else {
         setSyncMsg({ type: 'error', text: result.error || 'Push failed' });
       }
@@ -1389,6 +1385,16 @@ export default function WarehouseOrders() {
 
   // Pull order from a specific sheet tab (checks for conflicts first)
   const handlePullTab = useCallback(async (tabName) => {
+    // Clear form state before loading new order data
+    setCases({});
+    setUnits({});
+    setInvoiceNumber('');
+    setInvoiceCases('');
+    setInvoiceAmount('');
+    setLoadNumber('');
+    setLoadCases('');
+    setLoadAmount('');
+
     setSyncing(true);
     setSyncMsg(null);
     try {
@@ -1404,62 +1410,7 @@ export default function WarehouseOrders() {
         if (item.cases > 0) sheetItems[item.sku] = item.cases;
       });
 
-      // Check if form has data that would be overwritten
-      const formHasData = Object.values(cases).some(v => v > 0);
-      if (formHasData) {
-        const conflicts = [];
-        const allSkus = new Set([...Object.keys(cases), ...Object.keys(sheetItems)]);
-        for (const sku of allSkus) {
-          const formVal = parseFloat(cases[sku]) || 0;
-          const sheetVal = sheetItems[sku] || 0;
-          if (formVal > 0 && sheetVal > 0 && formVal !== sheetVal) {
-            const skuPad = sku.padStart(6, '0');
-            const prod = FULL_CATALOG.find(p => p.sku === sku || p.sku === skuPad);
-            conflicts.push({ sku, desc: prod?.desc || sku, category: prod?.category || '', price: prod?.price || 0, sheetVal, appVal: formVal });
-          }
-        }
-
-        if (conflicts.length > 0) {
-          setConfirmTab(tabName);
-          setShowConfirm({
-            type: 'pull',
-            conflicts,
-            onOverwrite: () => {
-              setCases(sheetItems);
-              if (result.invoiceNumber) setInvoiceNumber(result.invoiceNumber);
-              if (result.invoiceCases)  setInvoiceCases(result.invoiceCases);
-              if (result.invoiceAmount) setInvoiceAmount(result.invoiceAmount);
-              if (result.loadNumber)    setLoadNumber(result.loadNumber);
-              if (result.loadCases)     setLoadCases(result.loadCases);
-              if (result.loadAmount)    setLoadAmount(result.loadAmount);
-              setShowConfirm(null);
-              setShowPullModal(false);
-              setSyncMsg({ type: 'success', text: `Pulled ${result.items?.length || 0} items from "${tabName}"` });
-            },
-            onMerge: () => {
-              // Only fill in items that are empty in the form
-              const merged = { ...cases };
-              for (const [sku, val] of Object.entries(sheetItems)) {
-                if (!merged[sku] || merged[sku] === 0) merged[sku] = val;
-              }
-              setCases(merged);
-              if (result.invoiceNumber) setInvoiceNumber(result.invoiceNumber);
-              if (result.invoiceCases)  setInvoiceCases(result.invoiceCases);
-              if (result.invoiceAmount) setInvoiceAmount(result.invoiceAmount);
-              if (result.loadNumber)    setLoadNumber(result.loadNumber);
-              if (result.loadCases)     setLoadCases(result.loadCases);
-              if (result.loadAmount)    setLoadAmount(result.loadAmount);
-              setShowConfirm(null);
-              setShowPullModal(false);
-              setSyncMsg({ type: 'success', text: `Merged ${result.items?.length || 0} items from "${tabName}" (kept existing)` });
-            },
-          });
-          setSyncing(false);
-          return;
-        }
-      }
-
-      // No conflicts — apply directly
+      // Apply sheet data (form was already cleared above)
       setCases(sheetItems);
       if (result.invoiceNumber) setInvoiceNumber(result.invoiceNumber);
       if (result.invoiceCases)  setInvoiceCases(result.invoiceCases);
@@ -1473,7 +1424,7 @@ export default function WarehouseOrders() {
       setSyncMsg({ type: 'error', text: err.message });
     }
     setSyncing(false);
-  }, [cases]);
+  }, []);
 
   // Parse a sheet tab name into { route, driver, date, tabName }
   // Supports: "200 Jose Nunez 2/26/26", "200 Jose 2.26.26", "Eastern shore 2.26.26", "Eastern shore 2/26/26"
@@ -2164,6 +2115,7 @@ export default function WarehouseOrders() {
               setOrderDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
               setInvoiceNumber(''); setInvoiceCases(''); setInvoiceAmount('');
               setLoadNumber(''); setLoadCases(''); setLoadAmount('');
+              setWaNote('');
             }}>{t(lang, 'clear')}</button>
             <button
               id="btn-save-order-top"
@@ -2225,6 +2177,17 @@ export default function WarehouseOrders() {
             )}
           </div>
 
+          {waNote && (
+            <div className="wo-wa-note">
+              <div className="wo-wa-note-header">
+                <span className="wo-wa-note-icon">💬</span>
+                <span className="wo-wa-note-title">Original WhatsApp Message</span>
+                <button className="wo-wa-note-close" onClick={() => setWaNote('')}>&times;</button>
+              </div>
+              <div className="wo-wa-note-body">{waNote}</div>
+            </div>
+          )}
+
           {(() => {
             const ri = ROUTE_INFO[selectedRoute] || {};
             return (
@@ -2235,7 +2198,7 @@ export default function WarehouseOrders() {
                   {ri.custNum && <div className="wo-prefill-row">Cust#: <strong>{ri.custNum}</strong> — {ri.driver}</div>}
                   <label>{t(lang, 'invoiceNum')}<input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder={t(lang, 'invoiceNum')} /></label>
                   <label>{t(lang, 'cases')}<input type="number" value={invoiceCases || totals.totalCases || ''} onChange={e => setInvoiceCases(e.target.value)} placeholder="0" /></label>
-                  <label>{t(lang, 'amount')}<input type="number" step="0.01" value={invoiceAmount} onChange={e => setInvoiceAmount(e.target.value)} placeholder="0.00" /></label>
+                  <label>{t(lang, 'amount')}<input type="number" step="0.01" value={invoiceAmount || (totals.totalCost > 0 ? totals.totalCost.toFixed(2) : '')} onChange={e => setInvoiceAmount(e.target.value)} placeholder="0.00" /></label>
                 </div>
                 <div className="wo-confirm-vs">
                   {(() => {
@@ -2500,6 +2463,7 @@ export default function WarehouseOrders() {
                   <th>{t(lang, 'driverLoad')}</th>
                   <th>{t(lang, 'verify')}</th>
                   <th>{t(lang, 'status')}</th>
+                  <th>Inv</th>
                   <th></th>
                 </tr>
               </thead>
@@ -2507,6 +2471,7 @@ export default function WarehouseOrders() {
                 {mergedRows.map(row => {
                   if (row.type === 'local') {
                     const order = row.order;
+                    const invStatus = getOrderInvStatus(order);
                     return (
                       <tr key={order.id} className={`wo-queue-row${row.onSheet ? ' wo-sheet-local' : ''}`}>
                         <td>{order.date}</td>
@@ -2537,6 +2502,11 @@ export default function WarehouseOrders() {
                           {row.onSheet
                             ? <span className="wo-status wo-status-synced">{lang === 'es' ? 'Sincronizado' : 'Synced'}</span>
                             : <span className="wo-status wo-status-pending">{lang === 'es' ? 'Solo Local' : 'Local Only'}</span>}
+                        </td>
+                        <td className="wo-inv-status-cell">
+                          {invStatus.applied
+                            ? <span className="wo-inv-badge wo-inv-applied" title={`${invStatus.units} units deducted from ${invStatus.matched}/${invStatus.total} items`}>{invStatus.matched}/{invStatus.total}</span>
+                            : <span className="wo-inv-badge wo-inv-pending" title="Not yet deducted from inventory">--</span>}
                         </td>
                         <td className="wo-queue-actions">
                           <button onClick={() => {
@@ -2695,6 +2665,7 @@ export default function WarehouseOrders() {
                   title="Filter messages by time period"
                 >
                   <option value="24h">Last 24h</option>
+                  <option value="2d">Last 2 days</option>
                   <option value="7d">Last 7 days</option>
                   <option value="30d">Last 30 days</option>
                   <option value="all">All</option>
@@ -2892,6 +2863,7 @@ export default function WarehouseOrders() {
                                       const p = FULL_CATALOG.find(pr => pr.sku === sku);
                                       const caseUnits = qty * (p?.upc || 0);
                                       return {
+                                        lineId: uuidv4(),
                                         sku, category: p?.category || '', desc: p?.desc || '',
                                         cases: qty, orderUnits: 0, upc: p?.upc || 0,
                                         price: p?.price || 0, units: caseUnits,
@@ -2911,29 +2883,13 @@ export default function WarehouseOrders() {
                                     loadNumber: '', loadCases: '', loadAmount: '',
                                     status: 'pending', source: 'whatsapp', items,
                                     totals: { totalCases, totalUnits, totalGross },
+                                    waOriginalMessage: m.body || '',
                                   };
 
                                   // Save to queue
                                   addWarehouseOrder(orderData);
 
-                                  // Push to Google Sheets
-                                  if (isGoogleSheetsConfigured()) {
-                                    try {
-                                      setSyncing(true);
-                                      const result = await pushOrderToSheet({
-                                        routeNumber: route, date: today, name,
-                                        items: items.map(i => ({ sku: i.sku, cases: i.cases })),
-                                      });
-                                      if (result.success) {
-                                        setSyncMsg({ type: 'success', text: `Pushed "${result.tab}" — ${result.written} items` });
-                                      }
-                                    } catch (err) {
-                                      setSyncMsg({ type: 'error', text: err.message });
-                                    }
-                                    setSyncing(false);
-                                  }
-
-                                  // Also load into form for editing
+                                  // Load into form for editing
                                   setSelectedRoute(route);
                                   setOrderName(name);
                                   setOrderDate(today);
@@ -2944,7 +2900,10 @@ export default function WarehouseOrders() {
                                     });
                                     return merged;
                                   });
+                                  setWaNote(m.body || '');
                                   setWaGuessResult(null);
+                                  // Auto-push to Sheets
+                                  pendingWaPush.current = items;
                                   setTab('entry');
                                 }}
                               >
@@ -3140,8 +3099,9 @@ export default function WarehouseOrders() {
                                             className="wa-create-order-btn wa-create-order-main"
                                             onClick={() => {
                                               if (!guessRoute) { alert('Please select a route'); return; }
+                                              const driverName = ROUTE_DRIVERS[guessRoute] || displayName;
                                               setSelectedRoute(guessRoute);
-                                              setOrderName(displayName);
+                                              setOrderName(driverName);
                                               setOrderDate(new Date().toISOString().split('T')[0]);
                                               // Load checked items
                                               const newCases = {};
@@ -3153,6 +3113,33 @@ export default function WarehouseOrders() {
                                                   }
                                                 });
                                               });
+                                              // Build items for push
+                                              const pushItems = Object.entries(newCases)
+                                                .filter(([, qty]) => qty > 0)
+                                                .map(([sku, qty]) => {
+                                                  const p = FULL_CATALOG.find(pr => pr.sku === sku);
+                                                  const caseUnits = qty * (p?.upc || 0);
+                                                  return {
+                                                    lineId: uuidv4(),
+                                                    sku, category: p?.category || '', desc: p?.desc || '',
+                                                    cases: qty, orderUnits: 0, upc: p?.upc || 0,
+                                                    price: p?.price || 0, units: caseUnits,
+                                                    gross: caseUnits * (p?.price || 0),
+                                                  };
+                                                });
+                                              // Save order
+                                              const today = new Date().toISOString().split('T')[0];
+                                              const totalCases = pushItems.reduce((s, i) => s + i.cases, 0);
+                                              const totalUnits = pushItems.reduce((s, i) => s + i.units, 0);
+                                              const totalGross = pushItems.reduce((s, i) => s + i.gross, 0);
+                                              addWarehouseOrder({
+                                                routeNumber: guessRoute, date: today, name: driverName,
+                                                invoiceNumber: '', invoiceCases: '', invoiceAmount: '',
+                                                loadNumber: '', loadCases: '', loadAmount: '',
+                                                status: 'pending', source: 'whatsapp', items: pushItems,
+                                                totals: { totalCases, totalUnits, totalGross },
+                                                waOriginalMessage: waGuessResult._msgBody || '',
+                                              });
                                               setCases(prev => {
                                                 const merged = { ...prev };
                                                 Object.entries(newCases).forEach(([sku, qty]) => {
@@ -3160,6 +3147,9 @@ export default function WarehouseOrders() {
                                                 });
                                                 return merged;
                                               });
+                                              setWaNote(waGuessResult._msgBody || '');
+                                              // Auto-push to Sheets
+                                              pendingWaPush.current = pushItems;
                                               setWaGuessResult(null);
                                               setTab('entry');
                                             }}
