@@ -138,6 +138,8 @@ export default function WarehouseOrders() {
   const [waPeriod, setWaPeriod] = useState('all');
   const [waRefreshing, setWaRefreshing] = useState(false);
   const [waNote, setWaNote] = useState(''); // original WhatsApp message for reference
+  const [waDraftMsg, setWaDraftMsg] = useState(null); // { id, body, from, name, route } — active WA order being built
+  const [waSelectedPhone, setWaSelectedPhone] = useState(null); // active contact in WA messenger view
   const waPollerRef = useRef(null);
 
   // Google Sheets sync state
@@ -822,9 +824,18 @@ export default function WarehouseOrders() {
       loadCases,
       loadAmount,
       status: 'pending',
-      source: 'app',
       items,
       totals: { ...totals },
+      // Preserve or set WhatsApp source fields
+      ...(waDraftMsg ? {
+        source: 'whatsapp',
+        waOriginalMessage: waDraftMsg.body,
+        waMessageId: waDraftMsg.id,
+      } : existingOrder?.source === 'whatsapp' ? {
+        source: 'whatsapp',
+        waOriginalMessage: existingOrder.waOriginalMessage || waNote,
+        waMessageId: existingOrder.waMessageId,
+      } : { source: 'app' }),
     };
 
     if (existingOrder) {
@@ -842,7 +853,7 @@ export default function WarehouseOrders() {
     setLastGithubSaved(now);
 
     setSaving(false);
-  }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder, inventory, setInventory]);
+  }, [selectedRoute, orderDate, orderName, invoiceNumber, invoiceCases, invoiceAmount, loadNumber, loadCases, loadAmount, cases, units, totals, existingOrder, addWarehouseOrder, updateWarehouseOrder, inventory, setInventory, waDraftMsg, waNote]);
 
   // Auto-save every 30 seconds when there are unsaved changes
   useEffect(() => {
@@ -1047,7 +1058,7 @@ export default function WarehouseOrders() {
           }
           if (scored.length === 1) { scored[0].qty = inlineQty; scored[0].checked = true; }
           else if (scored.length > 1 && scored[0].score >= scored[1].score * 1.5) { scored[0].qty = inlineQty; scored[0].checked = true; }
-          results.push({ qty: inlineQty, text: cleanText, matches: scored, loadAll: false, category: inlineCat?.category || null });
+          results.push({ qty: inlineQty, text: cleanText, matches: scored, loadAll: false, category: inlineCat?.category || null, origLine: line });
           continue;
         }
       }
@@ -1139,10 +1150,11 @@ export default function WarehouseOrders() {
         }
       }
 
-      results.push({ qty, text, matches, loadAll, category: lineCategory });
+      results.push({ qty, text, matches, loadAll, category: lineCategory, origLine: line });
     }
 
-    setWaGuessResult({ msgId: msg.id, items: results, _msgBody: msg.body || '' });
+    const result = { msgId: msg.id, items: results, _msgBody: msg.body || '' };
+    return result;
   }, []);
 
   const loadGuessIntoForm = (contactRoute) => {
@@ -1162,6 +1174,66 @@ export default function WarehouseOrders() {
     setTab('entry');
     setWaGuessResult(null);
   };
+
+  // WA Builder helpers
+  const updateItemQty = useCallback((idx, qty) => {
+    setWaGuessResult(prev => ({
+      ...prev,
+      items: prev.items.map((it, i) => i === idx ? { ...it, selectedQty: Math.max(0, qty) } : it),
+    }));
+  }, []);
+
+  const selectWaOption = useCallback((idx, sku) => {
+    setWaGuessResult(prev => ({
+      ...prev,
+      items: prev.items.map((it, i) =>
+        i === idx ? { ...it, selectedSku: sku, otherSearch: sku !== 'other' ? '' : it.otherSearch } : it),
+    }));
+  }, []);
+
+  const updateOtherSearch = useCallback((idx, query) => {
+    setWaGuessResult(prev => ({
+      ...prev,
+      items: prev.items.map((it, i) => i === idx ? { ...it, otherSearch: query } : it),
+    }));
+  }, []);
+
+  const selectOtherProduct = useCallback((idx, sku) => {
+    setWaGuessResult(prev => ({
+      ...prev,
+      items: prev.items.map((it, i) => i === idx ? { ...it, selectedSku: sku, otherSearch: '' } : it),
+    }));
+  }, []);
+
+  const applyWaSelections = useCallback(() => {
+    if (!waGuessResult) return;
+    const newCases = {};
+    waGuessResult.items.forEach(item => {
+      const sku = item.selectedSku;
+      const qty = item.selectedQty || 0;
+      if (!sku || sku === 'other' || qty === 0) return;
+      newCases[sku] = (newCases[sku] || 0) + qty;
+    });
+    setCases(prev => {
+      const merged = { ...prev };
+      Object.entries(newCases).forEach(([sku, qty]) => { merged[sku] = (merged[sku] || 0) + qty; });
+      return merged;
+    });
+    setWaNote(waDraftMsg?.body || '');
+    setWaGuessResult(null);
+  }, [waGuessResult, waDraftMsg]);
+
+  const applySingleWaItem = useCallback((idx) => {
+    const item = waGuessResult?.items?.[idx];
+    if (!item || item.added) return; // guard: already added or missing
+    if (item.selectedSku && item.selectedSku !== 'other' && (item.selectedQty || 0) > 0) {
+      setCases(c => ({ ...c, [item.selectedSku]: (c[item.selectedSku] || 0) + (item.selectedQty || 1) }));
+    }
+    setWaGuessResult(prev => {
+      if (!prev) return prev;
+      return { ...prev, items: prev.items.map((it, i) => i === idx ? { ...it, added: true } : it) };
+    });
+  }, [waGuessResult]);
 
   // Toggle category collapse
   const toggleCat = (cat) => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -1907,6 +1979,13 @@ export default function WarehouseOrders() {
           <button className={`wo-nav-btn ${tab === 'stats' ? 'active' : ''}`} onClick={() => setTab('stats')}>
             <span className="wo-nav-icon">{'\u{1F4CA}'}</span> {t(lang, 'stats')}
           </button>
+          <button className={`wo-nav-btn ${tab === 'numbers' ? 'active' : ''}`} onClick={() => setTab('numbers')}>
+            <span className="wo-nav-icon">&#x2713;</span> {lang === 'es' ? 'Auditoria' : 'WH Audit'}
+          </button>
+          <button className={`wo-nav-btn ${tab === 'whatsapp' ? 'active' : ''}`} onClick={() => setTab('whatsapp')}>
+            <span className="wo-nav-icon">&#x1F4AC;</span> WhatsApp
+            {waMessages.length > 0 && <span className="wo-nav-badge">{waMessages.length}</span>}
+          </button>
         </div>
       </div>
 
@@ -2136,7 +2215,7 @@ export default function WarehouseOrders() {
               id="btn-save-order-top"
               className="wo-save-btn"
               onClick={handleSave}
-              disabled={!selectedRoute || (totals.totalCases === 0 && totals.totalUnits === 0) || saving}
+              disabled={!selectedRoute || (!waDraftMsg && !existingOrder && totals.totalCases === 0 && totals.totalUnits === 0) || saving}
             >
               {saving ? t(lang, 'saving') : t(lang, 'saveOrder')}
             </button>
@@ -2159,43 +2238,211 @@ export default function WarehouseOrders() {
                 {lang === 'es' ? 'Abrir Sheet' : 'Open Sheet'} &#x2197;
               </a>
             )}
-            {sheetsConfigured && (
-              <label className="wo-recent-label">
-                {lang === 'es' ? 'Ordenes recientes' : 'Recent Orders'}:
-                <select
-                  className="wo-recent-select"
-                  value=""
-                  onFocus={() => { if (!recentLoaded) loadRecentTabs(); }}
-                  onChange={e => {
-                    const tabName = e.target.value;
-                    if (!tabName) return;
-                    const parsed = parseTabName(tabName);
-                    if (parsed) {
-                      setSelectedRoute(parsed.route);
-                      setOrderName(parsed.driver);
-                      const dp = parsed.date.split('/');
-                      if (dp.length === 3) {
-                        const yr = parseInt(dp[2], 10);
-                        const fullYr = yr < 100 ? 2000 + yr : yr;
-                        setOrderDate(`${fullYr}-${String(dp[0]).padStart(2,'0')}-${String(dp[1]).padStart(2,'0')}`);
-                      }
-                      handlePullTab(tabName);
+            <label className="wo-recent-label">
+              {lang === 'es' ? 'Ordenes recientes' : 'Recent Orders'}:
+              <select
+                className="wo-recent-select"
+                value=""
+                onFocus={() => { if (sheetsConfigured && !recentLoaded) loadRecentTabs(); }}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  if (val.startsWith('__local__')) {
+                    const orderId = val.slice(9);
+                    const localOrder = orders.find(o => o.id === orderId);
+                    if (localOrder) {
+                      setSelectedRoute(String(localOrder.routeNumber));
+                      setOrderDate(localOrder.date);
+                      loadExistingOrder(localOrder);
                     }
-                  }}
-                >
-                  <option value="">{recentTabs.length === 0 ? (lang === 'es' ? 'Cargando...' : 'Loading...') : (lang === 'es' ? 'Seleccionar orden...' : 'Select order...')}</option>
-                  {recentTabs.map(rt => (
-                    <option key={rt.tabName} value={rt.tabName}>{rt.tabName}</option>
-                  ))}
-                </select>
-              </label>
-            )}
+                    return;
+                  }
+                  const parsed = parseTabName(val);
+                  if (parsed) {
+                    setSelectedRoute(parsed.route);
+                    setOrderName(parsed.driver);
+                    const dp = parsed.date.split('/');
+                    if (dp.length === 3) {
+                      const yr = parseInt(dp[2], 10);
+                      const fullYr = yr < 100 ? 2000 + yr : yr;
+                      setOrderDate(`${fullYr}-${String(dp[0]).padStart(2,'0')}-${String(dp[1]).padStart(2,'0')}`);
+                    }
+                    handlePullTab(val);
+                  }
+                }}
+              >
+                <option value="">{lang === 'es' ? 'Seleccionar orden...' : 'Select order...'}</option>
+                {orders.length > 0 && (
+                  <optgroup label={lang === 'es' ? 'Guardado Local' : 'Local Saved'}>
+                    {orders
+                      .slice()
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .slice(0, 15)
+                      .map(o => (
+                        <option key={`__local__${o.id}`} value={`__local__${o.id}`}>
+                          {o.routeNumber} — {o.name || ''} — {o.date}
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
+                {sheetsConfigured && recentTabs.length > 0 && (
+                  <optgroup label="Google Sheets">
+                    {recentTabs.map(rt => (
+                      <option key={rt.tabName} value={rt.tabName}>{rt.tabName}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </label>
           </div>
 
-          {waNote && (
+          {/* WA Order Builder — shown when an order is being built from a WhatsApp message */}
+          {waDraftMsg && (
+            <div className="wo-wa-builder">
+              <div className="wo-wa-builder-header">
+                <span className="wo-wa-builder-source">
+                  WhatsApp — {waDraftMsg.name || waDraftMsg.from}
+                  {waDraftMsg.route && ` (Route ${waDraftMsg.route})`}
+                </span>
+                <span className="wo-wa-builder-preview">{waDraftMsg.body?.slice(0, 100)}</span>
+                <button className="wo-wa-builder-close"
+                  onClick={() => { setWaDraftMsg(null); setWaGuessResult(null); }}>×</button>
+              </div>
+
+              {waGuessResult?.items?.length > 0 ? (
+                <>
+                  <div className="wo-wa-builder-body">
+                  <div className="wo-wa-builder-items">
+                  {(() => {
+                    const firstPendingIdx = waGuessResult.items.findIndex(it => !it.added);
+                    return waGuessResult.items.map((item, idx) => {
+                    const isActive = idx === firstPendingIdx;
+                    if (item.added) {
+                      return (
+                        <div key={idx} className="wo-wa-builder-line wo-wa-line-done wo-wa-line-collapsed">
+                          <span className="wo-wa-line-done-check">✓</span>
+                          <span className="wo-wa-line-done-text">{item.qty} {item.text}</span>
+                          {item.selectedQty > 0 && item.selectedSku && item.selectedSku !== 'other' && (
+                            <span className="wo-wa-line-done-qty">×{item.selectedQty}</span>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                    <div key={idx} className={`wo-wa-builder-line${isActive ? ' wo-wa-line-active' : ''}`}>
+                      <div className="wo-wa-builder-line-header">
+                        <span className="wo-wa-builder-line-text">
+                          {item.category && (
+                            <span className="wo-wa-line-cat">{item.category.replace(' Products','').replace(' Cents','¢')}</span>
+                          )}
+                          {item.qty} {item.text}
+                        </span>
+                        <div className="wo-wa-builder-qty-wrap">
+                          <span>Qty</span>
+                          <button onClick={() => updateItemQty(idx, (item.selectedQty || 0) - 1)}>−</button>
+                          <input type="number" min="0"
+                            value={item.selectedQty ?? 1}
+                            onChange={e => updateItemQty(idx, parseInt(e.target.value) || 0)} />
+                          <button onClick={() => updateItemQty(idx, (item.selectedQty || 0) + 1)}>+</button>
+                        </div>
+                        <button
+                          className="wo-wa-add-btn"
+                          disabled={!item.selectedSku || item.selectedSku === 'other'}
+                          onClick={() => applySingleWaItem(idx)}
+                        >Add</button>
+                      </div>
+
+                      <div className="wo-wa-builder-options">
+                        {item.matches.slice(0, 5).map(match => (
+                          <label key={match.sku}
+                            className={`wo-wa-option${item.selectedSku === match.sku ? ' wo-wa-option-selected' : ''}`}>
+                            <input type="radio" name={`wa-line-${idx}`}
+                              checked={item.selectedSku === match.sku}
+                              onChange={() => selectWaOption(idx, match.sku)} />
+                            <span className="wo-wa-option-desc">{match.desc}</span>
+                            <span className="wo-wa-option-cat">{match.category}</span>
+                          </label>
+                        ))}
+                        <label className={`wo-wa-option wo-wa-option-other${item.selectedSku === 'other' ? ' wo-wa-option-selected' : ''}`}>
+                          <input type="radio" name={`wa-line-${idx}`}
+                            checked={item.selectedSku === 'other'}
+                            onChange={() => selectWaOption(idx, 'other')} />
+                          Other...
+                        </label>
+                        {item.selectedSku === 'other' && (
+                          <div className="wo-wa-other-search">
+                            <input autoFocus placeholder="Search product..."
+                              value={item.otherSearch || ''}
+                              onChange={e => updateOtherSearch(idx, e.target.value)} />
+                            {(item.otherSearch?.length >= 2) && (
+                              <div className="wo-wa-other-results">
+                                {FULL_CATALOG
+                                  .filter(p =>
+                                    p.desc.toLowerCase().includes(item.otherSearch.toLowerCase()) ||
+                                    p.sku.includes(item.otherSearch))
+                                  .slice(0, 8)
+                                  .map(p => (
+                                    <div key={p.sku} className="wo-wa-other-result"
+                                      onClick={() => selectOtherProduct(idx, p.sku)}>
+                                      <span>{p.desc}</span>
+                                      <span className="wo-wa-other-cat">{p.category}</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })})()}
+                  </div>
+                  <div className="wo-wa-builder-msg">
+                    <div className="wo-wa-builder-msg-label">Original Message</div>
+                    <div className="wo-wa-builder-msg-body">
+                      {(() => {
+                        const matchLine = (it, trimmed) =>
+                          it.origLine ? it.origLine === trimmed : trimmed === `${it.qty} ${it.text}`;
+                        const firstPendingItem = waGuessResult.items.find(it => !it.added);
+                        return (waDraftMsg?.body || '').split('\n').map((rawLine, i) => {
+                          const trimmed = rawLine.trim();
+                          const item = waGuessResult.items.find(it => matchLine(it, trimmed));
+                          const isAdded = item?.added;
+                          const isActive = item && item === firstPendingItem;
+                          return (
+                            <div key={i} className={`wo-wa-msg-line${isAdded ? ' wo-wa-msg-done' : isActive ? ' wo-wa-msg-active' : ''}`}>
+                              <span className="wo-wa-msg-marker">{isAdded ? '✓' : isActive ? '▶' : ' '}</span>
+                              <span>{rawLine || '\u00a0'}</span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                  </div>
+                  <div className="wo-wa-builder-footer">
+                    <button className="wo-wa-apply-btn" onClick={applyWaSelections}>
+                      Apply Selections
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="wo-wa-builder-no-items">
+                  No items parsed — add products manually below.
+                  <button className="wo-wa-apply-btn"
+                    onClick={() => { setWaNote(waDraftMsg.body); setWaGuessResult(null); }}>
+                    Continue
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Compact WA source badge after builder is dismissed */}
+          {!waDraftMsg && waNote && (
             <div className="wo-wa-note">
               <div className="wo-wa-note-header">
-                <span className="wo-wa-note-icon">💬</span>
+                <span className="wo-wa-note-icon">&#x1F4AC;</span>
                 <span className="wo-wa-note-title">Original WhatsApp Message</span>
                 <button className="wo-wa-note-close" onClick={() => setWaNote('')}>&times;</button>
               </div>
@@ -2530,6 +2777,11 @@ export default function WarehouseOrders() {
                             loadExistingOrder(order);
                             setTab('entry');
                           }}>{t(lang, 'edit')}</button>
+                          {sheetsConfigured && !row.onSheet && (
+                            <button className="wo-sync-btn" disabled={syncing} onClick={() => handlePushQueueOrder(order)}>
+                              {lang === 'es' ? 'Sincronizar' : 'Sync'}
+                            </button>
+                          )}
                           <button className="wo-archive-btn" onClick={() => updateWarehouseOrder({ id: order.id, archived: true })}>
                             {lang === 'es' ? 'Archivar' : 'Archive'}
                           </button>
@@ -2661,63 +2913,29 @@ export default function WarehouseOrders() {
         );
       })()}
 
-      {/* ── WhatsApp Inbox — always visible ─────────────────────────────── */}
-      <div className="wa-inbox">
-            <div className="wa-inbox-header">
-              <h3>WhatsApp Inbox</h3>
-              <div className="wa-inbox-controls">
+      {/* ── WhatsApp Messenger Tab ────────────────────────────────────────── */}
+      {tab === 'whatsapp' && (
+        <div className="wa-messenger">
+          {/* ── Left sidebar: contact list ─────────────────────────── */}
+          <div className="wa-messenger-sidebar">
+            <div className="wa-messenger-sidebar-header">
+              <span className="wa-messenger-title">Chats</span>
+              <div className="wa-messenger-controls">
                 <span className={`wa-status-dot wa-status-${waStatus}`} title={waStatus} />
-                <span className="wa-status-label">{waStatus === 'connected' ? 'Connected' : waStatus === 'qr-pending' ? 'Scan QR' : 'Offline'}</span>
-                {waLastPoll > 0 && (
-                  <span className="wa-last-poll" title="Last checked">
-                    {waSyncing ? 'Checking...' : `Checked ${new Date(waLastPoll).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
-                  </span>
-                )}
-                <select
-                  className="wa-period-select"
-                  value={waPeriod}
-                  onChange={e => setWaPeriod(e.target.value)}
-                  title="Filter messages by time period"
-                >
-                  <option value="24h">Last 24h</option>
-                  <option value="2d">Last 2 days</option>
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
+                <span className="wa-status-label-sm">{waStatus === 'connected' ? 'On' : waStatus === 'qr-pending' ? 'QR' : 'Off'}</span>
+                <select className="wa-period-select" value={waPeriod} onChange={e => setWaPeriod(e.target.value)} title="Filter period">
+                  <option value="24h">24h</option>
+                  <option value="2d">2d</option>
+                  <option value="7d">7d</option>
+                  <option value="30d">30d</option>
                   <option value="all">All</option>
                 </select>
-                <button
-                  className={`wa-sync-now-btn${waSyncing ? ' spinning' : ''}`}
-                  onClick={handleWaSync}
-                  disabled={waSyncing}
-                  title="Sync now"
-                >
-                  ↻
-                </button>
-                <button
-                  className={`wa-refresh-btn${waRefreshing ? ' spinning' : ''}`}
-                  onClick={async () => {
-                    setWaRefreshing(true);
-                    const result = await fetchWhatsAppHistory(500);
-                    if (result.loaded > 0) await pollWaInbox();
-                    setWaRefreshing(false);
-                  }}
-                  disabled={waRefreshing || waStatus !== 'connected'}
-                  title="Refresh history from WhatsApp (fetch older messages)"
-                >
-                  {waRefreshing ? 'Loading...' : 'Refresh History'}
-                </button>
-                {waMessages.length > 0 && (
-                  <button className="wa-dismiss-all" onClick={() => handleDismiss(waMessages.map(m => m.id))}>
-                    Clear All ({waMessages.length})
-                  </button>
-                )}
-                <button className="wa-setup-btn" onClick={() => setWaShowSetup(prev => !prev)}>
-                  {waShowSetup ? 'Close' : 'Setup'}
-                </button>
+                <button className={`wa-sync-now-btn${waSyncing ? ' spinning' : ''}`} onClick={handleWaSync} disabled={waSyncing} title="Sync now">↻</button>
+                <button className="wa-setup-btn" onClick={() => setWaShowSetup(prev => !prev)} title="Setup">{waShowSetup ? '✕' : '⚙'}</button>
               </div>
             </div>
 
-            {/* Setup panel — pick order group + manage contacts */}
+            {/* Setup panel */}
             {waShowSetup && (
               <div className="wa-setup-panel">
                 <div className="wa-setup-row">
@@ -2727,16 +2945,11 @@ export default function WarehouseOrders() {
                       value={waOrderGroupId || ''}
                       onChange={async (e) => {
                         const gid = e.target.value;
-                        if (gid) {
-                          await setOrderGroup(gid);
-                          setWaOrderGroupId(gid);
-                        }
+                        if (gid) { await setOrderGroup(gid); setWaOrderGroupId(gid); }
                       }}
                     >
                       <option value="">Select group...</option>
-                      {waGroups.map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
+                      {waGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </label>
                 </div>
@@ -2751,443 +2964,262 @@ export default function WarehouseOrders() {
                     ))}
                   </div>
                 )}
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <button
+                    className={`wa-refresh-btn${waRefreshing ? ' spinning' : ''}`}
+                    onClick={async () => {
+                      setWaRefreshing(true);
+                      const result = await fetchWhatsAppHistory(500);
+                      if (result.loaded > 0) await pollWaInbox();
+                      setWaRefreshing(false);
+                    }}
+                    disabled={waRefreshing || waStatus !== 'connected'}
+                  >
+                    {waRefreshing ? 'Loading...' : 'Refresh History'}
+                  </button>
+                  {waMessages.length > 0 && (
+                    <button className="wa-dismiss-all" onClick={() => { handleDismiss(waMessages.map(m => m.id)); setWaSelectedPhone(null); }}>
+                      Clear All ({waMessages.length})
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Messages grouped by phone */}
-            {Object.keys(waGrouped).length === 0 ? (
-              <div className="wa-empty">
-                {waStatus === 'connected'
-                  ? (waOrderGroupId
-                    ? (waMessages.length > 0 && waFiltered.length === 0
-                      ? `No messages in selected period. ${waMessages.length} total in buffer.`
-                      : 'No messages yet. Waiting for orders...')
-                    : 'Set up an order group above to start capturing messages.')
-                  : 'WhatsApp service is offline. Start the service to receive messages.'}
-              </div>
-            ) : (
-              <div className="wa-phone-groups">
-                {Object.entries(waGrouped).map(([phone, msgs]) => {
+            {/* Contact rows */}
+            <div className="wa-contact-list">
+              {Object.keys(waGrouped).length === 0 ? (
+                <div className="wa-empty">
+                  {waStatus === 'connected'
+                    ? (waOrderGroupId ? 'No messages yet. Waiting for orders...' : 'Set up an order group above.')
+                    : 'WhatsApp offline. Start the service.'}
+                </div>
+              ) : (
+                Object.entries(waGrouped).map(([phone, msgs]) => {
                   const contact = waContacts[phone];
                   const displayName = contact?.name || msgs[0]?.contactName || phone;
                   const routeNum = contact?.route || msgs[0]?.contactRoute || null;
+                  const lastMsg = msgs[msgs.length - 1];
+                  const lastTime = lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                  const preview = lastMsg?.body ? lastMsg.body.replace(/\n/g, ' ').substring(0, 45) : lastMsg?.mediaBase64 ? '[image]' : '';
+                  const initials = displayName.split(' ').map(w => w[0]).filter(Boolean).join('').substring(0, 2).toUpperCase() || '?';
                   return (
-                    <div key={phone} className="wa-phone-group">
-                      <div className="wa-phone-header">
-                        <div className="wa-phone-info">
-                          <strong className="wa-phone-name">{displayName}</strong>
-                          {routeNum && <span className="wa-phone-route">Route {routeNum}</span>}
-                          <span className="wa-phone-number">{phone}</span>
-                          <span className="wa-msg-count">{msgs.length} msg{msgs.length !== 1 ? 's' : ''}</span>
+                    <div
+                      key={phone}
+                      className={`wa-contact-row${waSelectedPhone === phone ? ' active' : ''}`}
+                      onClick={() => setWaSelectedPhone(phone)}
+                    >
+                      <div className="wa-contact-avatar">{initials}</div>
+                      <div className="wa-contact-details">
+                        <div className="wa-contact-top">
+                          <span className="wa-contact-name">{displayName}</span>
+                          <span className="wa-contact-time">{lastTime}</span>
                         </div>
-                        <div className="wa-phone-actions">
-                          {!contact && (
-                            <button
-                              className="wa-assign-btn"
-                              onClick={() => setWaEditContact({ phone, name: msgs[0]?.pushName || '', route: '' })}
-                            >
-                              Assign
-                            </button>
-                          )}
-                          <button className="wa-dismiss-group" onClick={() => handleDismiss(msgs.map(m => m.id))}>
-                            Dismiss
-                          </button>
+                        <div className="wa-contact-bottom">
+                          <span className="wa-contact-preview">{routeNum ? `Route ${routeNum} · ` : ''}{preview}</span>
+                          {msgs.length > 0 && <span className="wa-contact-badge">{msgs.length}</span>}
                         </div>
-                      </div>
-
-                      {/* Assign contact modal inline */}
-                      {waEditContact && waEditContact.phone === phone && (
-                        <div className="wa-assign-form">
-                          <input
-                            type="text"
-                            placeholder="Name"
-                            value={waEditContact.name}
-                            onChange={e => setWaEditContact(prev => ({ ...prev, name: e.target.value }))}
-                          />
-                          <select
-                            value={waEditContact.route}
-                            onChange={e => setWaEditContact(prev => ({ ...prev, route: e.target.value }))}
-                          >
-                            <option value="">{t(lang, 'route')}...</option>
-                            {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
-                          </select>
-                          <button className="wa-assign-save" onClick={() => handleAssignContact(phone)}>{t(lang, 'assignSave')}</button>
-                          <button className="wa-assign-cancel" onClick={() => setWaEditContact(null)}>{t(lang, 'assignCancel')}</button>
-                        </div>
-                      )}
-
-                      {/* Message cards — show 8 most recent */}
-                      <div className="wa-messages">
-                        {msgs.slice(0, 8).map(m => (
-                          <div key={m.id} className="wa-msg-card">
-                            <button className="wa-msg-close" onClick={() => handleDismiss([m.id])}>×</button>
-                            {m.mediaBase64 && m.mediaType?.startsWith('image/') && (
-                              <div className="wa-msg-image">
-                                <img src={`data:${m.mediaType};base64,${m.mediaBase64}`} alt="Order" />
-                              </div>
-                            )}
-                            {m.body && <div className="wa-msg-body">{m.body}</div>}
-                            <div className="wa-msg-footer">
-                              <div className="wa-msg-time">
-                                {m.edited && <span className="wa-msg-edited">(edited)</span>}
-                                {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                {' '}
-                                {new Date(m.timestamp).toLocaleDateString()}
-                              </div>
-                              {m.body && (
-                                <button className="wa-guess-btn" onClick={() => guessOrder(m)}>
-                                  {t(lang, 'guessOrder')}
-                                </button>
-                              )}
-                            </div>
-                            <div className="wa-msg-create-order">
-                              <select
-                                className="wa-msg-route-select"
-                                value={m._createRoute ?? routeNum ?? ''}
-                                onChange={e => {
-                                  setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _createRoute: e.target.value } : msg));
-                                }}
-                              >
-                                <option value="">{t(lang, 'route')}...</option>
-                                {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
-                              </select>
-                              <button
-                                className="wa-msg-create-btn"
-                                onClick={async () => {
-                                  const route = m._createRoute ?? routeNum ?? '';
-                                  if (!route) { alert(t(lang, 'selectARoute')); return; }
-                                  const today = new Date().toISOString().split('T')[0];
-                                  const name = ROUTE_DRIVERS[route] || displayName;
-
-                                  // Build items from guessed matches
-                                  const orderCases = {};
-                                  if (waGuessResult && waGuessResult.msgId === m.id) {
-                                    waGuessResult.items.forEach(item => {
-                                      item.matches.forEach(match => {
-                                        if (match.checked && (match.qty ?? 0) > 0) {
-                                          orderCases[match.sku] = (orderCases[match.sku] || 0) + match.qty;
-                                        }
-                                      });
-                                    });
-                                  }
-
-                                  // Build order items array
-                                  const items = Object.entries(orderCases)
-                                    .filter(([, qty]) => qty > 0)
-                                    .map(([sku, qty]) => {
-                                      const p = FULL_CATALOG.find(pr => pr.sku === sku);
-                                      const caseUnits = qty * (p?.upc || 0);
-                                      return {
-                                        lineId: uuidv4(),
-                                        sku, category: p?.category || '', desc: p?.desc || '',
-                                        cases: qty, orderUnits: 0, upc: p?.upc || 0,
-                                        price: p?.price || 0, units: caseUnits,
-                                        gross: caseUnits * (p?.price || 0),
-                                      };
-                                    });
-
-                                  if (items.length === 0) { alert(t(lang, 'noItemsSelected')); return; }
-
-                                  const totalCases = items.reduce((s, i) => s + i.cases, 0);
-                                  const totalUnits = items.reduce((s, i) => s + i.units, 0);
-                                  const totalGross = items.reduce((s, i) => s + i.gross, 0);
-
-                                  const orderData = {
-                                    routeNumber: route, date: today, name,
-                                    invoiceNumber: '', invoiceCases: '', invoiceAmount: '',
-                                    loadNumber: '', loadCases: '', loadAmount: '',
-                                    status: 'pending', source: 'whatsapp', items,
-                                    totals: { totalCases, totalUnits, totalGross },
-                                    waOriginalMessage: m.body || '',
-                                  };
-
-                                  // Save to queue
-                                  addWarehouseOrder(orderData);
-
-                                  // Load into form for editing
-                                  setSelectedRoute(route);
-                                  setOrderName(name);
-                                  setOrderDate(today);
-                                  setCases(prev => {
-                                    const merged = { ...prev };
-                                    Object.entries(orderCases).forEach(([sku, qty]) => {
-                                      merged[sku] = (merged[sku] || 0) + qty;
-                                    });
-                                    return merged;
-                                  });
-                                  setWaNote(m.body || '');
-                                  setWaGuessResult(null);
-                                  // Auto-push to Sheets
-                                  pendingWaPush.current = items;
-                                  setTab('entry');
-                                }}
-                              >
-                                {t(lang, 'createOrder')}
-                              </button>
-                            </div>
-                            {/* Reply with pickup time */}
-                            <div className="wa-reply-section">
-                              {m._replyOpen ? (
-                                <div className="wa-reply-panel">
-                                  <div className="wa-reply-label">{t(lang, 'readyForPickup')}</div>
-                                  <div className="wa-reply-time-btns">
-                                    {[
-                                      { label: '+30m', min: 30 },
-                                      { label: '+45m', min: 45 },
-                                      { label: '+1hr', min: 60 },
-                                      { label: '+2hr', min: 120 },
-                                    ].map(opt => {
-                                      const etaTime = new Date(Date.now() + opt.min * 60000);
-                                      const timeStr = etaTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                                      return (
-                                        <button
-                                          key={opt.label}
-                                          className={`wa-reply-time-btn ${m._replyTime === timeStr ? 'active' : ''}`}
-                                          onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyTime: timeStr } : msg))}
-                                        >
-                                          {opt.label}<span className="wa-reply-time-val">{timeStr}</span>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                  <div className="wa-reply-send-row">
-                                    <input
-                                      className="wa-reply-time-input"
-                                      value={m._replyTime || ''}
-                                      onChange={e => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyTime: e.target.value } : msg))}
-                                      placeholder="e.g. 3:30 PM"
-                                    />
-                                    <button
-                                      className="wa-reply-send-btn"
-                                      disabled={!m._replyTime || m._replySending}
-                                      onClick={async () => {
-                                        if (!m._replyTime || !waOrderGroupId) return;
-                                        setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replySending: true } : msg));
-                                        try {
-                                          const pushName = m.pushName || displayName;
-                                          const msg = `@${pushName} your order will be ready for pickup at: *${m._replyTime}*`;
-                                          await sendWhatsAppMessage(waOrderGroupId, msg);
-                                          setWaMessages(prev => prev.map(msg2 => msg2.id === m.id ? { ...msg2, _replyOpen: false, _replySending: false, _replySent: true, _replyTime: '' } : msg2));
-                                        } catch (err) {
-                                          alert('Failed to send: ' + err.message);
-                                          setWaMessages(prev => prev.map(msg2 => msg2.id === m.id ? { ...msg2, _replySending: false } : msg2));
-                                        }
-                                      }}
-                                    >
-                                      {m._replySending ? '...' : t(lang, 'send')}
-                                    </button>
-                                    <button className="wa-reply-cancel-btn" onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyOpen: false, _replyTime: '' } : msg))}>
-                                      {t(lang, 'cancel')}
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button
-                                  className="wa-reply-btn"
-                                  onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyOpen: true } : msg))}
-                                >
-                                  {m._replySent ? `✓ ${t(lang, 'replied')}` : t(lang, 'replyEta')}
-                                </button>
-                              )}
-                            </div>
-                            {/* Guess results */}
-                            {waGuessResult && waGuessResult.msgId === m.id && (
-                              <div className="wa-guess-panel">
-                                <div className="wa-guess-header">
-                                  <strong>{t(lang, 'orderGuess')}</strong>
-                                  <button className="wa-guess-close" onClick={() => setWaGuessResult(null)}>x</button>
-                                </div>
-                                {waGuessResult.items.length === 0 ? (
-                                  <div className="wa-guess-empty">{t(lang, 'noMatch')}</div>
-                                ) : (
-                                  <>
-                                    {waGuessResult.items.map((item, idx) => {
-                                      // Group matches by category
-                                      const groups = {};
-                                      const priceOrder = ['.50 Cents', '2.49 Products', '4.79 Products', 'Crunch Time'];
-                                      item.matches.forEach(match => {
-                                        const cat = match.category || 'Other';
-                                        if (!groups[cat]) groups[cat] = [];
-                                        groups[cat].push(match);
-                                      });
-                                      const sortedCats = Object.keys(groups).sort((a, b) => {
-                                        const ai = priceOrder.findIndex(p => a.includes(p));
-                                        const bi = priceOrder.findIndex(p => b.includes(p));
-                                        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-                                      });
-                                      const checkedCount = item.matches.filter(m => m.checked).length;
-                                      const isExpanded = !!item.expanded;
-
-                                      return (
-                                        <div key={idx} className="wa-guess-section">
-                                          <div
-                                            className="wa-guess-section-header"
-                                            onClick={() => {
-                                              setWaGuessResult(prev => ({
-                                                ...prev,
-                                                items: prev.items.map((it, i) => i === idx ? { ...it, expanded: !it.expanded } : it)
-                                              }));
-                                            }}
-                                          >
-                                            <span className="wa-guess-expand">{isExpanded ? '▾' : '▸'}</span>
-                                            <span className="wa-guess-qty-badge">{item.qty}</span>
-                                            <span className="wa-guess-text">{item.text}</span>
-                                            {item.category && <span className="wa-guess-cat-badge">{item.category}</span>}
-                                            <span className="wa-guess-count">
-                                              {checkedCount > 0 ? `${checkedCount} selected` : `${item.matches.length} match${item.matches.length !== 1 ? 'es' : ''}`}
-                                            </span>
-                                          </div>
-                                          {isExpanded && (
-                                            <table className="wa-guess-table">
-                                              <thead>
-                                                <tr>
-                                                  <th>Product</th>
-                                                  <th>Qty</th>
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {sortedCats.map(cat => (
-                                                  <React.Fragment key={cat}>
-                                                    <tr className="wa-guess-cat-row">
-                                                      <td colSpan="2">{cat}</td>
-                                                    </tr>
-                                                    {groups[cat].map(match => (
-                                                      <tr key={match.sku} className={match.checked ? 'wa-guess-checked' : ''}>
-                                                        <td>{match.desc}</td>
-                                                        <td>
-                                                          <div className="wa-guess-qty-wrap">
-                                                            <div className="wa-guess-qty-arrows">
-                                                              <button onClick={() => {
-                                                                const val = Math.max(0, (match.qty ?? 0) - 1);
-                                                                setWaGuessResult(prev => ({ ...prev, items: prev.items.map((it, i) => i === idx ? { ...it, matches: it.matches.map(m => m.sku === match.sku ? { ...m, qty: val, checked: val > 0 } : m) } : it) }));
-                                                              }}>−</button>
-                                                              <button onClick={() => {
-                                                                const val = (match.qty ?? 0) + 1;
-                                                                setWaGuessResult(prev => ({ ...prev, items: prev.items.map((it, i) => i === idx ? { ...it, matches: it.matches.map(m => m.sku === match.sku ? { ...m, qty: val, checked: true } : m) } : it) }));
-                                                              }}>+</button>
-                                                            </div>
-                                                            <input
-                                                              type="number"
-                                                              className="wa-guess-qty-input"
-                                                              min="0"
-                                                              value={match.qty ?? 0}
-                                                              onChange={e => {
-                                                                const val = parseInt(e.target.value) || 0;
-                                                                setWaGuessResult(prev => ({
-                                                                  ...prev,
-                                                                  items: prev.items.map((it, i) => i === idx ? {
-                                                                    ...it,
-                                                                    matches: it.matches.map(m => m.sku === match.sku ? { ...m, qty: val, checked: val > 0 } : m)
-                                                                  } : it)
-                                                                }));
-                                                              }}
-                                                            />
-                                                          </div>
-                                                        </td>
-                                                      </tr>
-                                                    ))}
-                                                  </React.Fragment>
-                                                ))}
-                                              </tbody>
-                                            </table>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                    {(() => {
-                                      const hasChecked = waGuessResult.items.some(it => it.matches.some(m => m.checked));
-                                      const guessRoute = waGuessResult.guessRoute ?? routeNum ?? '';
-                                      return hasChecked && (
-                                        <div className="wa-guess-create">
-                                          <div className="wa-guess-route-row">
-                                            <label>Route:</label>
-                                            <select
-                                              className="wa-guess-route-select"
-                                              value={guessRoute}
-                                              onChange={e => setWaGuessResult(prev => ({ ...prev, guessRoute: e.target.value }))}
-                                            >
-                                              <option value="">-- select route --</option>
-                                              {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
-                                            </select>
-                                          </div>
-                                          <button
-                                            className="wa-create-order-btn wa-create-order-main"
-                                            onClick={() => {
-                                              if (!guessRoute) { alert('Please select a route'); return; }
-                                              const driverName = ROUTE_DRIVERS[guessRoute] || displayName;
-                                              setSelectedRoute(guessRoute);
-                                              setOrderName(driverName);
-                                              setOrderDate(new Date().toISOString().split('T')[0]);
-                                              // Load checked items
-                                              const newCases = {};
-                                              waGuessResult.items.forEach(item => {
-                                                item.matches.forEach(match => {
-                                                  if (match.checked) {
-                                                    const qty = match.qty ?? 0;
-                                                    newCases[match.sku] = (newCases[match.sku] || 0) + qty;
-                                                  }
-                                                });
-                                              });
-                                              // Build items for push
-                                              const pushItems = Object.entries(newCases)
-                                                .filter(([, qty]) => qty > 0)
-                                                .map(([sku, qty]) => {
-                                                  const p = FULL_CATALOG.find(pr => pr.sku === sku);
-                                                  const caseUnits = qty * (p?.upc || 0);
-                                                  return {
-                                                    lineId: uuidv4(),
-                                                    sku, category: p?.category || '', desc: p?.desc || '',
-                                                    cases: qty, orderUnits: 0, upc: p?.upc || 0,
-                                                    price: p?.price || 0, units: caseUnits,
-                                                    gross: caseUnits * (p?.price || 0),
-                                                  };
-                                                });
-                                              // Save order
-                                              const today = new Date().toISOString().split('T')[0];
-                                              const totalCases = pushItems.reduce((s, i) => s + i.cases, 0);
-                                              const totalUnits = pushItems.reduce((s, i) => s + i.units, 0);
-                                              const totalGross = pushItems.reduce((s, i) => s + i.gross, 0);
-                                              addWarehouseOrder({
-                                                routeNumber: guessRoute, date: today, name: driverName,
-                                                invoiceNumber: '', invoiceCases: '', invoiceAmount: '',
-                                                loadNumber: '', loadCases: '', loadAmount: '',
-                                                status: 'pending', source: 'whatsapp', items: pushItems,
-                                                totals: { totalCases, totalUnits, totalGross },
-                                                waOriginalMessage: waGuessResult._msgBody || '',
-                                              });
-                                              setCases(prev => {
-                                                const merged = { ...prev };
-                                                Object.entries(newCases).forEach(([sku, qty]) => {
-                                                  merged[sku] = (merged[sku] || 0) + qty;
-                                                });
-                                                return merged;
-                                              });
-                                              setWaNote(waGuessResult._msgBody || '');
-                                              // Auto-push to Sheets
-                                              pendingWaPush.current = pushItems;
-                                              setWaGuessResult(null);
-                                              setTab('entry');
-                                            }}
-                                            disabled={!guessRoute}
-                                          >
-                                            {t(lang, 'createOrderForRoute')} {guessRoute || '—'}
-                                          </button>
-                                        </div>
-                                      );
-                                    })()}
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
                       </div>
                     </div>
                   );
-                })}
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ── Right chat panel ──────────────────────────────────── */}
+          <div className="wa-messenger-chat">
+            {waSelectedPhone ? (() => {
+              const msgs = waGrouped[waSelectedPhone] || [];
+              const contact = waContacts[waSelectedPhone];
+              const displayName = contact?.name || msgs[0]?.contactName || waSelectedPhone;
+              const routeNum = contact?.route || msgs[0]?.contactRoute || null;
+              const initials = displayName.split(' ').map(w => w[0]).filter(Boolean).join('').substring(0, 2).toUpperCase() || '?';
+              return (
+                <>
+                  {/* Chat header */}
+                  <div className="wa-chat-header">
+                    <div className="wa-chat-avatar">{initials}</div>
+                    <div className="wa-chat-contact-info">
+                      <div className="wa-chat-name">{displayName}</div>
+                      <div className="wa-chat-sub">{routeNum ? `Route ${routeNum} · ` : ''}{waSelectedPhone}</div>
+                    </div>
+                    <div className="wa-chat-actions">
+                      {!contact && (
+                        <button
+                          className="wa-assign-btn"
+                          onClick={() => setWaEditContact({ phone: waSelectedPhone, name: msgs[0]?.pushName || '', route: '' })}
+                        >
+                          Assign
+                        </button>
+                      )}
+                      <button className="wa-dismiss-group" onClick={() => { handleDismiss(msgs.map(m => m.id)); setWaSelectedPhone(null); }}>
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Assign contact inline form */}
+                  {waEditContact && waEditContact.phone === waSelectedPhone && (
+                    <div className="wa-assign-form">
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={waEditContact.name}
+                        onChange={e => setWaEditContact(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                      <select
+                        value={waEditContact.route}
+                        onChange={e => setWaEditContact(prev => ({ ...prev, route: e.target.value }))}
+                      >
+                        <option value="">{t(lang, 'route')}...</option>
+                        {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r]}</option>)}
+                      </select>
+                      <button className="wa-assign-save" onClick={() => handleAssignContact(waSelectedPhone)}>{t(lang, 'assignSave')}</button>
+                      <button className="wa-assign-cancel" onClick={() => setWaEditContact(null)}>{t(lang, 'assignCancel')}</button>
+                    </div>
+                  )}
+
+                  {/* Message bubbles */}
+                  <div className="wa-chat-messages">
+                    {msgs.slice(0, 8).map(m => (
+                      <div key={m.id} className="wa-chat-bubble">
+                        {m.mediaBase64 && m.mediaType?.startsWith('image/') && (
+                          <div className="wa-bubble-image">
+                            <img src={`data:${m.mediaType};base64,${m.mediaBase64}`} alt="Order" />
+                          </div>
+                        )}
+                        {m.body && <div className="wa-bubble-body">{m.body}</div>}
+                        <div className="wa-bubble-meta">
+                          {m.edited && <span className="wa-msg-edited">(edited)</span>}
+                          <span className="wa-bubble-time">
+                            {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {' · '}
+                            {new Date(m.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          </span>
+                          <button className="wa-bubble-close" onClick={() => handleDismiss([m.id])}>×</button>
+                        </div>
+                        <div className="wa-bubble-actions">
+                          <button
+                            className="wa-msg-create-btn"
+                            onClick={() => {
+                              const result = m.body ? guessOrder(m) : null;
+                              const mphone = m.from;
+                              const mcontact = waContacts[mphone] || {};
+                              const route = mcontact.route || '';
+                              const contactName = mcontact.name || m.pushName || m.contactName || '';
+                              const today = new Date().toISOString().split('T')[0];
+                              const driverName = (route && ROUTE_DRIVERS[route]) || contactName;
+                              const items = (result?.items || []).map(item => {
+                                const best = item.matches.find(mi => mi.checked) || item.matches[0];
+                                return { ...item, selectedSku: best?.sku || null, selectedQty: item.qty || 1, otherSearch: '' };
+                              });
+                              // Save a minimal order immediately so existingOrder is found and Save is enabled
+                              const alreadyExists = orders.some(o => String(o.routeNumber) === String(route) && o.date === today);
+                              if (route && !alreadyExists) {
+                                addWarehouseOrder({
+                                  routeNumber: route,
+                                  date: today,
+                                  name: driverName,
+                                  items: [],
+                                  invoiceNumber: '', invoiceCases: '', invoiceAmount: '',
+                                  loadNumber: '', loadCases: '', loadAmount: '',
+                                  status: 'pending',
+                                  totals: { totalCases: 0, totalUnits: 0, totalGross: 0 },
+                                  source: 'whatsapp',
+                                  waMessageId: m.id,
+                                  waOriginalMessage: m.body || '',
+                                });
+                              }
+                              setWaGuessResult(result ? { ...result, items } : null);
+                              setWaDraftMsg({ id: m.id, body: m.body || '', from: mphone, name: contactName, route });
+                              if (route) { setSelectedRoute(route); setOrderName(driverName); }
+                              setOrderDate(today);
+                              setTab('entry');
+                            }}
+                          >
+                            {t(lang, 'createOrder')}
+                          </button>
+                          {/* Reply ETA */}
+                          <div className="wa-reply-section">
+                            {m._replyOpen ? (
+                              <div className="wa-reply-panel">
+                                <div className="wa-reply-label">{t(lang, 'readyForPickup')}</div>
+                                <div className="wa-reply-time-btns">
+                                  {[
+                                    { label: '+30m', min: 30 },
+                                    { label: '+45m', min: 45 },
+                                    { label: '+1hr', min: 60 },
+                                    { label: '+2hr', min: 120 },
+                                  ].map(opt => {
+                                    const etaTime = new Date(Date.now() + opt.min * 60000);
+                                    const timeStr = etaTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                    return (
+                                      <button
+                                        key={opt.label}
+                                        className={`wa-reply-time-btn ${m._replyTime === timeStr ? 'active' : ''}`}
+                                        onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyTime: timeStr } : msg))}
+                                      >
+                                        {opt.label}<span className="wa-reply-time-val">{timeStr}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <div className="wa-reply-send-row">
+                                  <input
+                                    className="wa-reply-time-input"
+                                    value={m._replyTime || ''}
+                                    onChange={e => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyTime: e.target.value } : msg))}
+                                    placeholder="e.g. 3:30 PM"
+                                  />
+                                  <button
+                                    className="wa-reply-send-btn"
+                                    disabled={!m._replyTime || m._replySending}
+                                    onClick={async () => {
+                                      if (!m._replyTime || !waOrderGroupId) return;
+                                      setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replySending: true } : msg));
+                                      try {
+                                        const pushName = m.pushName || displayName;
+                                        const msgText = `@${pushName} your order will be ready for pickup at: *${m._replyTime}*`;
+                                        await sendWhatsAppMessage(waOrderGroupId, msgText);
+                                        setWaMessages(prev => prev.map(msg2 => msg2.id === m.id ? { ...msg2, _replyOpen: false, _replySending: false, _replySent: true, _replyTime: '' } : msg2));
+                                      } catch (err) {
+                                        alert('Failed to send: ' + err.message);
+                                        setWaMessages(prev => prev.map(msg2 => msg2.id === m.id ? { ...msg2, _replySending: false } : msg2));
+                                      }
+                                    }}
+                                  >
+                                    {m._replySending ? '...' : t(lang, 'send')}
+                                  </button>
+                                  <button className="wa-reply-cancel-btn" onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyOpen: false, _replyTime: '' } : msg))}>
+                                    {t(lang, 'cancel')}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                className="wa-reply-btn"
+                                onClick={() => setWaMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, _replyOpen: true } : msg))}
+                              >
+                                {m._replySent ? `\u2713 ${t(lang, 'replied')}` : t(lang, 'replyEta')}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })() : (
+              <div className="wa-chat-empty">
+                <div className="wa-chat-empty-icon">&#x1F4AC;</div>
+                <div className="wa-chat-empty-text">Select a conversation to view messages</div>
               </div>
             )}
           </div>
+        </div>
+      )}
 
       {tab === 'history' && (
         <div className="wo-history">
@@ -3758,6 +3790,163 @@ export default function WarehouseOrders() {
           )}
         </div>
       )}
+
+      {/* Numbers tab — Load/Invoice integrity by route */}
+      {tab === 'numbers' && (() => {
+        const fmtDate = (d) => {
+          if (!d) return '';
+          const parts = d.split('-');
+          return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0].slice(2)}` : d;
+        };
+        const fmtAmt = (v) => v ? `$${parseFloat(v).toFixed(2)}` : null;
+        const num = (v) => parseFloat(v) || 0;
+
+        // Classify each order's integrity status
+        const classify = (o) => {
+          const hasInv = o.invoiceNumber || o.invoiceCases || o.invoiceAmount;
+          const hasLoad = o.loadNumber || o.loadCases || o.loadAmount;
+          if (!hasInv && !hasLoad) return 'empty';
+          if (!hasInv || !hasLoad) return 'incomplete';
+          const casesOk = !o.invoiceCases || !o.loadCases || num(o.invoiceCases) === num(o.loadCases);
+          const amtOk = !o.invoiceAmount || !o.loadAmount || Math.abs(num(o.invoiceAmount) - num(o.loadAmount)) < 0.02;
+          return casesOk && amtOk ? 'ok' : 'mismatch';
+        };
+
+        const byRoute = {};
+        orders.forEach(o => {
+          if (!byRoute[o.routeNumber]) byRoute[o.routeNumber] = [];
+          byRoute[o.routeNumber].push(o);
+        });
+
+        const routeGroups = Object.keys(byRoute)
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+          .map(route => ({
+            route,
+            driver: ROUTE_DRIVERS[route] || '',
+            orders: byRoute[route].slice().sort((a, b) => b.date.localeCompare(a.date)),
+          }));
+
+        // Global summary
+        const allOrders = orders.filter(o => o.routeNumber);
+        const summary = allOrders.reduce((acc, o) => {
+          const s = classify(o);
+          acc[s] = (acc[s] || 0) + 1;
+          return acc;
+        }, {});
+
+        return (
+          <div className="wo-numbers">
+            <div className="wo-stats-header">
+              <h3>{lang === 'es' ? 'Auditoria de Almacen' : 'Warehouse Audit'}</h3>
+            </div>
+
+            {/* Summary banner */}
+            {allOrders.length > 0 && (
+              <div className="wo-integrity-summary">
+                <div className="wo-integrity-chip wo-integrity-ok">
+                  <span className="wo-integrity-chip-icon">&#10003;</span>
+                  <span className="wo-integrity-chip-num">{summary.ok || 0}</span>
+                  <span className="wo-integrity-chip-label">{lang === 'es' ? 'Correcto' : 'Matched'}</span>
+                </div>
+                <div className="wo-integrity-chip wo-integrity-mismatch">
+                  <span className="wo-integrity-chip-icon">!</span>
+                  <span className="wo-integrity-chip-num">{summary.mismatch || 0}</span>
+                  <span className="wo-integrity-chip-label">{lang === 'es' ? 'Discrepancia' : 'Mismatch'}</span>
+                </div>
+                <div className="wo-integrity-chip wo-integrity-incomplete">
+                  <span className="wo-integrity-chip-icon">?</span>
+                  <span className="wo-integrity-chip-num">{(summary.incomplete || 0) + (summary.empty || 0)}</span>
+                  <span className="wo-integrity-chip-label">{lang === 'es' ? 'Incompleto' : 'Incomplete'}</span>
+                </div>
+              </div>
+            )}
+
+            {routeGroups.length === 0 ? (
+              <p style={{ color: '#9ca3af', padding: '20px' }}>No orders yet.</p>
+            ) : routeGroups.map(({ route, driver, orders: rOrders }) => {
+              const routeMismatches = rOrders.filter(o => classify(o) === 'mismatch').length;
+              return (
+                <div key={route} className="wo-numbers-group">
+                  <div className="wo-numbers-route-header">
+                    <span className="wo-numbers-route">{route}</span>
+                    <span className="wo-numbers-driver">{driver}</span>
+                    <span className="wo-numbers-count">{rOrders.length} {lang === 'es' ? 'ordenes' : 'orders'}</span>
+                    {routeMismatches > 0 && (
+                      <span className="wo-numbers-mismatch-badge">{routeMismatches} {lang === 'es' ? 'discrepancia' : 'mismatch'}{routeMismatches > 1 ? 's' : ''}</span>
+                    )}
+                  </div>
+                  <table className="wo-stats-table wo-numbers-table">
+                    <thead>
+                      <tr>
+                        <th>{lang === 'es' ? 'Estado' : 'Status'}</th>
+                        <th>{lang === 'es' ? 'Fecha' : 'Date'}</th>
+                        <th>Invoice #</th>
+                        <th>{lang === 'es' ? 'Cajas WH' : 'WH Cases'}</th>
+                        <th>{lang === 'es' ? 'Monto WH' : 'WH Amt'}</th>
+                        <th>Load #</th>
+                        <th>{lang === 'es' ? 'Cajas DRV' : 'DRV Cases'}</th>
+                        <th>{lang === 'es' ? 'Monto DRV' : 'DRV Amt'}</th>
+                        <th>{lang === 'es' ? 'Dif. Cajas' : 'Case Diff'}</th>
+                        <th>{lang === 'es' ? 'Dif. Monto' : 'Amt Diff'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rOrders.map(o => {
+                        const status = classify(o);
+                        const caseDiff = (o.invoiceCases && o.loadCases) ? num(o.loadCases) - num(o.invoiceCases) : null;
+                        const amtDiff  = (o.invoiceAmount && o.loadAmount) ? num(o.loadAmount) - num(o.invoiceAmount) : null;
+                        const caseMismatch = caseDiff !== null && caseDiff !== 0;
+                        const amtMismatch  = amtDiff !== null && Math.abs(amtDiff) >= 0.02;
+                        return (
+                          <tr
+                            key={o.id || `${o.routeNumber}-${o.date}`}
+                            className={`wo-numbers-row wo-numbers-status-${status}`}
+                            onClick={() => {
+                              const freshOrder = orders.find(ord => ord.id === o.id) || o;
+                              setSelectedRoute(String(freshOrder.routeNumber));
+                              setOrderDate(freshOrder.date);
+                              loadExistingOrder(freshOrder);
+                              setTab('entry');
+                            }}
+                            title={lang === 'es' ? 'Abrir orden' : 'Open order'}
+                          >
+                            <td>
+                              <span className={`wo-integrity-badge wo-integrity-badge-${status}`}>
+                                {status === 'ok' ? '✓' : status === 'mismatch' ? '!' : '?'}
+                              </span>
+                            </td>
+                            <td>{fmtDate(o.date)}</td>
+                            <td className="wo-numbers-ref">{o.invoiceNumber || <span className="wo-numbers-empty">—</span>}</td>
+                            <td className={`wo-stats-num${caseMismatch ? ' wo-cell-mismatch' : ''}`}>{o.invoiceCases || '—'}</td>
+                            <td className={`wo-stats-num${amtMismatch ? ' wo-cell-mismatch' : ''}`}>{fmtAmt(o.invoiceAmount) || '—'}</td>
+                            <td className="wo-numbers-ref">{o.loadNumber || <span className="wo-numbers-empty">—</span>}</td>
+                            <td className={`wo-stats-num${caseMismatch ? ' wo-cell-mismatch' : ''}`}>{o.loadCases || '—'}</td>
+                            <td className={`wo-stats-num${amtMismatch ? ' wo-cell-mismatch' : ''}`}>{fmtAmt(o.loadAmount) || '—'}</td>
+                            <td className="wo-stats-num">
+                              {caseDiff !== null ? (
+                                <span className={caseDiff === 0 ? 'wo-diff-ok' : 'wo-diff-bad'}>
+                                  {caseDiff > 0 ? `+${caseDiff}` : caseDiff}
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td className="wo-stats-num">
+                              {amtDiff !== null ? (
+                                <span className={Math.abs(amtDiff) < 0.02 ? 'wo-diff-ok' : 'wo-diff-bad'}>
+                                  {amtDiff >= 0 ? `+$${amtDiff.toFixed(2)}` : `-$${Math.abs(amtDiff).toFixed(2)}`}
+                                </span>
+                              ) : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Pull from Sheet modal */}
       {showPullModal && (

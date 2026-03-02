@@ -62,7 +62,7 @@ export const PRODUCT_CATALOG = [
   { sku: '028768', category: '.50 Cents', type: 'DIPSY',   desc: 'BBQ Dipsy Doodles',        price: 0.36, retail: 0.50, upc: 42 },
   { sku: '027388', category: '.50 Cents', type: 'DOODLE',  desc: 'Crunchy Doodles',          price: 0.36, retail: 0.50, upc: 42 },
   { sku: '028119', category: '.50 Cents', type: 'PUFF',    desc: 'BBQ Honey Puff',           price: 0.36, retail: 0.50, upc: 42 },
-  { sku: '028786', category: '.50 Cents', type: 'PUFF',    desc: 'Fiery Ridgies',            price: 0.36, retail: 0.50, upc: 42 },
+  { sku: '028786', category: '.50 Cents', type: 'PUFF',    desc: 'Fiery Ridgies',            price: 0.36, retail: 0.50, upc: 40 },
   { sku: '028750', category: '.50 Cents', type: 'PUFF',    desc: 'Hot Honey Puff',           price: 0.36, retail: 0.50, upc: 42 },
   { sku: '027043', category: '.50 Cents', type: 'PUFF',    desc: 'Puff Doodles',             price: 0.36, retail: 0.50, upc: 42 },
   { sku: '027074', category: '.50 Cents', type: 'ONION',   desc: 'Onion Rings',              price: 0.36, retail: 0.50, upc: 36 },
