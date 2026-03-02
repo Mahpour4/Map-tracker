@@ -75,7 +75,7 @@ export const PRODUCT_CATALOG = [
   { sku: '028736', category: '2.49 Products', type: 'PUFF',    desc: 'Hot & Honey Doodles',  price: 1.79, retail: 2.49, upc: 18 },
   { sku: '028737', category: '2.49 Products', type: 'POPCORN', desc: 'White Cheddar Popcorn', price: 1.79, retail: 2.49, upc: 16 },
   { sku: '028739', category: '2.49 Products', type: 'POPCORN', desc: 'Hot Cheese Popcorn',   price: 1.79, retail: 2.49, upc: 16 },
-  { sku: '028738', category: 'Deep River Large', type: 'D/RIV/L', desc: 'DR Salt & Vinegar 8oz', price: 3.70, retail: 5.49, upc: 12 },
+  { sku: '028738', category: '2.49 Products', type: 'POPCORN', desc: 'Butter Popcorn',       price: 1.79, retail: 2.49, upc: 16 },
   { sku: '028732', category: '2.49 Products', type: 'RIDGIES', desc: 'SC & Onion Ridgies',   price: 1.79, retail: 2.49, upc: 18 },
   { sku: '028731', category: '2.49 Products', type: 'RIDGIES', desc: 'Plain Ridgies',        price: 1.79, retail: 2.49, upc: 18 },
   { sku: '028740', category: '2.49 Products', type: 'ONION',   desc: 'Onion Rings',          price: 1.79, retail: 2.49, upc: 16 },
