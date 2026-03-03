@@ -285,69 +285,102 @@ async function acceptAlert(page, url, refNumber) {
     }
 
     // Strategy 2: Set resolution time to 48 hours
-    // Only runs if "Accept Here" was clicked and resolution form appeared
+    // The restime dropdown is a Select2 widget — native <select> options are empty.
+    // Must click the Select2 container to open the dropdown, then click the rendered option.
     let timeSet = false;
 
     try {
-      // Diagnostic: log all selects and their options
+      // Extra wait for Select2 to fully initialize after the accept click
+      await sleep(1500);
+
+      // Diagnostic: log all selects
       const selectInfo = await page.evaluate(() => {
         var selects = document.querySelectorAll('select');
         var info = [];
         for (var i = 0; i < selects.length; i++) {
           var s = selects[i];
-          var opts = [];
-          for (var j = 0; j < s.options.length; j++) {
-            opts.push({ value: s.options[j].value, text: s.options[j].text });
-          }
-          info.push({ name: s.name || '', id: s.id || '', optionCount: s.options.length, options: opts });
+          info.push({ name: s.name || '', id: s.id || '', optionCount: s.options.length });
         }
         return info;
       });
       if (selectInfo.length > 0) {
         console.log(`[GW]   Found ${selectInfo.length} select(s) on page:`);
         selectInfo.forEach((s, i) => {
-          console.log(`[GW]     Select ${i}: name="${s.name}" id="${s.id}" options=[${s.options.map(o => `"${o.value}:${o.text}"`).join(', ')}]`);
+          console.log(`[GW]     Select ${i}: name="${s.name}" id="${s.id}" options=${s.optionCount}`);
         });
-      } else {
-        console.log(`[GW]   No select elements found on page`);
       }
 
+      // First try: native options (in case they are present)
       timeSet = await page.evaluate((hours) => {
-        // Find the resolution select — must be a restime/resolution select, NOT dashboard filters
         var sel = document.querySelector('select[name*="restime"]')
                || document.querySelector('select[id*="restime"]')
                || document.querySelector('select[name*="resolution"]');
         if (!sel || !sel.options || sel.options.length === 0) return false;
-
-        // Find the option with value or text containing the target hours (e.g. "48")
-        var match = null;
         for (var i = 0; i < sel.options.length; i++) {
           var o = sel.options[i];
-          var val = (o.value || '') + '';
-          var txt = (o.text || '') + '';
-          if (val === hours || val.indexOf(hours) !== -1 || txt.indexOf(hours) !== -1) {
-            match = o;
-            break;
+          if ((o.value+'').indexOf(hours) !== -1 || (o.text+'').indexOf(hours) !== -1) {
+            sel.value = o.value;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            try { if (window.$ && window.$(sel).val) window.$(sel).val(o.value).trigger('change'); } catch(_) {}
+            return o.text || o.value;
           }
         }
-        if (!match) return false;
-
-        sel.value = match.value;
-        // Trigger native change event
-        sel.dispatchEvent(new Event('change', { bubbles: true }));
-        // Also trigger jQuery change if available (for Select2 widgets)
-        try {
-          if (window.$ && window.$(sel).val) {
-            window.$(sel).val(match.value).trigger('change');
-          }
-        } catch (_) {}
-        return (match.text || match.value || '') + '';
+        return false;
       }, RESOLUTION_HOURS);
+
+      // Second try: Select2 UI — click the container to open dropdown, then click the option
+      if (!timeSet) {
+        console.log('[GW]   Native options empty — trying Select2 UI interaction');
+
+        // Open the Select2 dropdown by clicking its rendered container
+        const opened = await page.evaluate(() => {
+          var sel = document.querySelector('select[name*="restime"]')
+                 || document.querySelector('select[id*="restime"]');
+          if (!sel) return false;
+          // Select2 renders a .select2-container sibling next to the hidden <select>
+          var container = sel.nextElementSibling;
+          if (!container || !container.classList.contains('select2-container')) {
+            // Try parent's child
+            container = sel.parentElement && sel.parentElement.querySelector('.select2-container');
+          }
+          if (container) {
+            var selection = container.querySelector('.select2-selection, .select2-choice');
+            if (selection) { selection.click(); return true; }
+          }
+          // Fallback: jQuery Select2 API
+          try { if (window.$ && window.$(sel).select2) { window.$(sel).select2('open'); return true; } } catch(_) {}
+          return false;
+        });
+
+        if (opened) {
+          try {
+            // Wait for Select2 results list to render
+            await page.waitForSelector('.select2-results__option, .select2-results li, ul.select2-results li', { timeout: 4000 });
+            await sleep(300);
+
+            timeSet = await page.evaluate((hours) => {
+              var options = document.querySelectorAll('.select2-results__option, .select2-results li');
+              for (var i = 0; i < options.length; i++) {
+                var txt = (options[i].textContent || '').trim();
+                if (txt.indexOf(hours) !== -1) {
+                  options[i].click();
+                  return txt;
+                }
+              }
+              return false;
+            }, RESOLUTION_HOURS);
+          } catch (s2err) {
+            console.log('[GW]   Select2 dropdown did not open in time:', s2err.message);
+          }
+        } else {
+          console.log('[GW]   Could not open Select2 container for restime');
+        }
+      }
 
       if (timeSet) {
         console.log('[GW]   Set resolution to: ' + timeSet);
       } else {
-        console.log('[GW]   Could not find 48hr option in resolution select — proceeding anyway');
+        console.log('[GW]   Could not set 48hr — proceeding anyway (form default will be used)');
       }
     } catch (err2) {
       console.error('[GW]   Strategy 2 error:', err2.message);
