@@ -43,16 +43,10 @@
     let searchText = "";
 
     async function loadData(forceRefresh) {
-      if (forceRefresh) {
-        ["visitHistory.json", "stores.csv"].forEach(f => {
-          sessionStorage.removeItem("cache_src/data/" + f);
-          sessionStorage.removeItem("cache_ts_src/data/" + f);
-        });
-      }
       try {
         const [visitData, storesCsv] = await Promise.all([
-          fetchData("src/data/visitHistory.json"),
-          fetchData("src/data/stores.csv")
+          fetchData("src/data/visitHistory.json", forceRefresh),
+          fetchData("src/data/stores.csv", forceRefresh)
         ]);
         const stores = parseCSV(storesCsv);
         const now = new Date();

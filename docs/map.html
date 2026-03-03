@@ -8,7 +8,62 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    #map-container { height: calc(100vh - 48px); width: 100%; }
+    body { overflow: hidden; }
+    #app { display: flex; height: calc(100vh - 48px); }
+
+    /* --- Sidebar --- */
+    #sidebar {
+      width: 320px; min-width: 320px; background: #1e293b;
+      border-right: 1px solid #334155; display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    #sidebar.collapsed { width: 0; min-width: 0; padding: 0; }
+    .sidebar-toggle {
+      position: absolute; top: 56px; left: 320px; z-index: 1000;
+      background: #1e293b; border: 1px solid #334155; border-left: none;
+      color: #94a3b8; padding: 8px 6px; cursor: pointer; border-radius: 0 6px 6px 0;
+      font-size: 14px;
+    }
+    .sidebar-toggle.collapsed-btn { left: 0; }
+    .sidebar-header {
+      padding: 12px; border-bottom: 1px solid #334155;
+    }
+    .sidebar-header h3 { font-size: 14px; color: #fff; margin-bottom: 8px; }
+    .sidebar-search {
+      width: 100%; padding: 8px 10px; background: #0f172a; border: 1px solid #334155;
+      border-radius: 6px; color: #e2e8f0; font-size: 13px; outline: none;
+    }
+    .sidebar-search:focus { border-color: #3b82f6; }
+    .sidebar-filters {
+      display: flex; gap: 6px; margin-top: 8px;
+    }
+    .sidebar-filters select {
+      flex: 1; padding: 6px 8px; background: #0f172a; border: 1px solid #334155;
+      border-radius: 6px; color: #e2e8f0; font-size: 12px; outline: none;
+    }
+    .store-count {
+      padding: 6px 12px; font-size: 12px; color: #64748b; border-bottom: 1px solid #334155;
+    }
+    #store-list {
+      flex: 1; overflow-y: auto; padding: 4px 0;
+    }
+    .store-item {
+      padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #0f172a;
+      transition: background 0.1s; font-size: 13px;
+    }
+    .store-item:hover { background: #334155; }
+    .store-item.active { background: #1e3a5f; border-left: 3px solid #3b82f6; }
+    .store-item-name { font-weight: 600; color: #fff; }
+    .store-item-detail { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .store-item-badges { display: flex; gap: 4px; margin-top: 4px; }
+    .store-item-badges .mini-badge {
+      font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600;
+    }
+
+    /* --- Map --- */
+    #map-container { flex: 1; position: relative; }
+
+    /* Loading overlay */
     .loading-overlay {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       z-index: 1001; background: #1e293b; padding: 24px 32px; border-radius: 12px;
@@ -16,140 +71,505 @@
       color: #e2e8f0;
     }
     .loading-overlay.error { color: #ef4444; }
-    .route-badge {
-      display: inline-block; padding: 2px 8px; border-radius: 4px;
-      font-weight: 700; font-size: 12px; color: #fff;
-    }
-    .store-popup { font-size: 13px; line-height: 1.5; min-width: 180px; }
+
+    /* --- Store Popup --- */
+    .store-popup { font-size: 13px; line-height: 1.6; min-width: 220px; }
     .store-popup strong { font-size: 14px; }
     .store-popup .detail { color: #64748b; font-size: 12px; }
-    .legend {
-      background: #1e293b; color: #e2e8f0; padding: 10px 14px; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 12px; line-height: 1.8;
+    .store-popup .type-badge {
+      display: inline-block; padding: 1px 8px; border-radius: 4px;
+      font-weight: 600; font-size: 11px; color: #fff;
     }
-    .legend h4 { margin: 0 0 4px; font-size: 13px; color: #fff; }
-    .legend-row { display: flex; align-items: center; gap: 6px; }
+    .store-popup .visit-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-weight: 600; font-size: 11px; color: #fff; margin-top: 4px;
+    }
+    .store-popup .dates { margin-top: 6px; font-size: 12px; color: #94a3b8; }
+    .store-popup .dates span { display: block; }
+
+    /* --- Legend --- */
+    .map-legend {
+      position: absolute; bottom: 30px; right: 12px; z-index: 1000;
+      background: rgba(30, 41, 59, 0.95); color: #e2e8f0; padding: 12px 14px;
+      border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 12px; line-height: 1.8; max-width: 180px;
+    }
+    .map-legend h4 { margin: 0 0 4px; font-size: 13px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+      padding: 2px 4px; border-radius: 4px; transition: all 0.1s;
+      user-select: none;
+    }
+    .legend-item:hover { background: #334155; }
+    .legend-item.off { opacity: 0.4; }
+    .legend-item.off span { text-decoration: line-through; }
     .legend-dot {
-      width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff;
-      flex-shrink: 0;
+      width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;
+      flex-shrink: 0; transition: background 0.15s;
+    }
+    .legend-sep { border: none; border-top: 1px solid #334155; margin: 6px 0; }
+    .legend-clear {
+      cursor: pointer; font-size: 16px; color: #64748b; padding: 0 4px;
+      border-radius: 4px;
+    }
+    .legend-clear:hover { color: #fff; background: #334155; }
+
+    /* --- Pulse Animations --- */
+    @keyframes pulse-ring { 0% { transform: translate(-50%,-50%) scale(0.5); opacity: 1; } 100% { transform: translate(-50%,-50%) scale(2.5); opacity: 0; } }
+    .pulse-slow { animation: pulse-ring 3s ease-out infinite; }
+    .pulse-medium { animation: pulse-ring 2s ease-out infinite; }
+    .pulse-fast { animation: pulse-ring 1s ease-out infinite; }
+
+    /* Blink selected marker */
+    @keyframes marker-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .marker-blink { animation: marker-blink 0.6s infinite; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      #sidebar { width: 100%; min-width: 100%; max-height: 40vh; }
+      #app { flex-direction: column; }
+      .sidebar-toggle { display: none; }
     }
   </style>
 </head>
 <body>
-  <div id="map-container"></div>
-  <div class="loading-overlay" id="loading">Loading map data...</div>
+  <div id="app">
+    <div id="sidebar">
+      <div class="sidebar-header">
+        <h3>Stores</h3>
+        <input type="text" class="sidebar-search" id="search" placeholder="Search stores..."
+               oninput="onSearch(this.value)">
+        <div class="sidebar-filters">
+          <select id="f-route" onchange="onFilterRoute(this.value)">
+            <option value="">All Routes</option>
+          </select>
+          <select id="f-type" onchange="onFilterType(this.value)">
+            <option value="">All Types</option>
+          </select>
+          <select id="f-status" onchange="onFilterStatus(this.value)">
+            <option value="">All Status</option>
+            <option value="ontrack">On Track</option>
+            <option value="missed">Missed</option>
+            <option value="overdue">Overdue</option>
+            <option value="never">Never Visited</option>
+          </select>
+        </div>
+      </div>
+      <div class="store-count" id="store-count">Loading...</div>
+      <div id="store-list"></div>
+    </div>
+    <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">◀</button>
+    <div id="map-container">
+      <div class="loading-overlay" id="loading">Loading map data...</div>
+    </div>
+  </div>
 
   <script src="js/users.js"></script>
   <script src="js/shared.js"></script>
   <script>
-    const session = requireAuth("map");
-    if (session) {
-      injectNav("map");
-      initMap();
+    // ── Config ──
+    const recencyTiers = [
+      { label: '0-7 days',    color: '#22c55e', maxDays: 7,       pulse: null },
+      { label: '8-10 days',   color: '#3b82f6', maxDays: 10,      pulse: null },
+      { label: '11-15 days',  color: '#eab308', maxDays: 15,      pulse: null },
+      { label: '16-30 days',  color: '#f97316', maxDays: 30,      pulse: null },
+      { label: '31-89 days',  color: '#ef4444', maxDays: 89,      pulse: null },
+      { label: '90+ days',    color: '#6b7280', maxDays: Infinity, pulse: null },
+    ];
+    const neverTier = { label: 'Never visited', color: '#9ca3af', pulse: null };
+
+    const typeColors = {
+      'food-lion': '#ef4444', 'shoppers': '#3b82f6', 'wegmans': '#8b5cf6',
+      'walmart': '#f59e0b', 'giant-martins': '#f97316', 'weis': '#06b6d4',
+      'redners': '#ec4899', 'acme': '#22c55e', 'geresbecks': '#14b8a6',
+      'military': '#4f46e5', 'other': '#6b7280',
+    };
+
+    // Distinct colors for route zones
+    const routeZoneColors = [
+      '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
+      '#06b6d4', '#ec4899', '#f97316', '#14b8a6', '#4f46e5',
+      '#eab308', '#64748b', '#a855f7', '#0ea5e9', '#d946ef',
+    ];
+
+    // ── State ──
+    let leafletMap, allStores = [], routeZones = {};
+    let markers = {}, selectedStoreId = null, blinkTimer = null;
+    let filterRoute = '', filterType = '', filterStatus = '', searchText = '';
+
+    // ── Init ──
+    async function init() {
+      console.log('[MAP] Init starting...');
+      try {
+        leafletMap = L.map('map-container').setView([39.0, -76.7], 9);
+        console.log('[MAP] Leaflet map created');
+      } catch (e) {
+        console.error('[MAP] ERR-02: Leaflet init failed:', e);
+        document.getElementById('loading').textContent = 'ERR-02: Map init failed - ' + e.message;
+        return;
+      }
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap', maxZoom: 19
+      }).addTo(leafletMap);
+
+      try {
+        console.log('[MAP] Fetching stores.csv...');
+        const csv = await fetchData('src/data/stores.csv');
+        console.log('[MAP] Got CSV, length:', csv.length);
+        const rawStores = parseCSV(csv);
+        console.log('[MAP] Parsed', rawStores.length, 'rows from CSV');
+        allStores = rawStores.map(processStore).filter(s => s.lat && s.lng);
+        console.log('[MAP] Processed', allStores.length, 'stores with valid coords');
+        allStores.sort((a, b) => a.name.localeCompare(b.name));
+
+        document.getElementById('loading').remove();
+        buildRouteZones();
+        console.log('[MAP] Built', Object.keys(routeZones).length, 'route zones');
+        buildFilters();
+        renderMap();
+        console.log('[MAP] Rendered', Object.keys(markers).length, 'markers');
+        renderSidebar();
+        addLegend();
+        console.log('[MAP] Init complete');
+      } catch (err) {
+        console.error('[MAP] ERR-03: Data load failed:', err);
+        var el = document.getElementById('loading');
+        el.className = 'loading-overlay error';
+        el.textContent = 'ERR-03: ' + err.message;
+      }
     }
 
-    function initMap() {
-      var map = L.map('map-container').setView([39.0, -76.7], 9);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
-      }).addTo(map);
+    // ── Process store from CSV ──
+    function processStore(s) {
+      const id = s.ID || '';
+      const lat = parseFloat(s.Latitude);
+      const lng = parseFloat(s.Longitude);
+      const lastSale = s['Last Sale'] || '';
+      const lastVisited = s['Last Visited'] || '';
+      const latestDate = getLatest(lastSale, lastVisited);
+      const days = latestDate ? daysSince(latestDate) : Infinity;
+      const tier = days === Infinity ? neverTier : recencyTiers.find(t => days <= t.maxDays) || recencyTiers[recencyTiers.length - 1];
+      const type = detectType(id);
 
-      var gradeColors = { A: '#22c55e', B: '#3b82f6', C: '#eab308', D: '#f97316', F: '#ef4444' };
-      var gradeLabels = { A: 'A (90%+)', B: 'B (75-89%)', C: 'C (55-74%)', D: 'D (30-54%)', F: 'F (<30%)' };
+      // Status
+      let status;
+      if (days === Infinity) status = 'never';
+      else if (days <= 7) status = 'ontrack';
+      else if (days <= 14) status = 'missed';
+      else status = 'overdue';
 
-      function createIcon(color, size) {
-        return L.divIcon({
+      return {
+        id, lat, lng, type, status, days, tier,
+        name: s['Store Name'] || id,
+        address: s.Address || '',
+        city: s.City || '',
+        state: s.State || '',
+        zip: s['Zip Code'] || '',
+        route: s['Route Number'] || '',
+        driver: s.Driver || '',
+        region: s.Region || '',
+        lastSale, lastVisited,
+        dormant: s.Dormant === 'Yes',
+      };
+    }
+
+    function getLatest(d1, d2) {
+      if (!d1 && !d2) return null;
+      if (!d1) return d2;
+      if (!d2) return d1;
+      return new Date(d1) > new Date(d2) ? d1 : d2;
+    }
+
+    function detectType(id) {
+      if (!id) return 'other';
+      const pfx = id.substring(0, 3).toUpperCase();
+      const typeMap = {
+        'FLW': 'food-lion', 'SFW': 'shoppers', 'SRW': 'shoppers',
+        'WEG': 'wegmans', 'WMT': 'walmart', 'GMF': 'giant-martins',
+        'GMN': 'giant-martins', 'WEI': 'weis', 'RED': 'redners',
+        'ACM': 'acme', 'GER': 'geresbecks', 'MIL': 'military',
+      };
+      return typeMap[pfx] || 'other';
+    }
+
+    // ── Route Zones ──
+    function buildRouteZones() {
+      const groups = {};
+      allStores.forEach(s => {
+        if (!s.route) return;
+        if (!groups[s.route]) groups[s.route] = [];
+        groups[s.route].push(s);
+      });
+
+      const routeNums = Object.keys(groups).sort();
+      routeNums.forEach((route, idx) => {
+        const stores = groups[route];
+        if (stores.length < 2) return; // need at least 2 stores for a zone
+        const lats = stores.map(s => s.lat);
+        const lngs = stores.map(s => s.lng);
+        const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+        const padLat = Math.max((maxLat - minLat) * 0.1, 0.01);
+        const padLng = Math.max((maxLng - minLng) * 0.1, 0.01);
+        const bounds = [
+          [maxLat + padLat, minLng - padLng],
+          [maxLat + padLat, maxLng + padLng],
+          [minLat - padLat, maxLng + padLng],
+          [minLat - padLat, minLng - padLng],
+        ];
+        const color = routeZoneColors[idx % routeZoneColors.length];
+        routeZones[route] = { bounds, color, count: stores.length };
+      });
+    }
+
+    // ── Render Map ──
+    let zonePolygons = [], markerLayer = null;
+
+    function renderMap() {
+      // Clear existing
+      zonePolygons.forEach(p => leafletMap.removeLayer(p));
+      zonePolygons = [];
+      if (markerLayer) leafletMap.removeLayer(markerLayer);
+      markerLayer = L.layerGroup().addTo(leafletMap);
+      markers = {};
+
+      // Draw route zone polygons
+      Object.entries(routeZones).forEach(([route, zone]) => {
+        if (filterRoute && filterRoute !== route) return;
+        if (hiddenRoutes.has(route)) return;
+        const poly = L.polygon(zone.bounds, {
+          color: zone.color, fillColor: zone.color,
+          fillOpacity: 0.12, weight: 2, dashArray: '8,4',
+        }).addTo(leafletMap);
+        poly.bindTooltip('Route ' + route + ' (' + zone.count + ' stores)', { sticky: true });
+        poly.on('click', () => leafletMap.fitBounds(poly.getBounds(), { padding: [30, 30] }));
+        zonePolygons.push(poly);
+      });
+
+      // Draw store markers
+      getFiltered().forEach(s => {
+        const color = s.tier.color;
+        const pulseClass = s.tier.pulse;
+        const size = 10;
+        const pulseRing = pulseClass
+          ? '<div class="' + pulseClass + '" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:' +
+            (size + 16) + 'px;height:' + (size + 16) + 'px;border-radius:50%;border:2px solid ' + color + ';pointer-events:none;"></div>'
+          : '';
+
+        const icon = L.divIcon({
           className: 'custom-marker',
-          html: '<div style="width:' + size + 'px;height:' + size + 'px;background:' + color +
-            ';border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
-          iconSize: [size + 4, size + 4],
-          iconAnchor: [(size + 4) / 2, (size + 4) / 2],
+          html: '<div style="position:relative;width:' + (size + 20) + 'px;height:' + (size + 20) + 'px;">' +
+            '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:' + size +
+            'px;height:' + size + 'px;background:' + color +
+            ';border-radius:50%;border:2px solid #000;box-shadow:0 2px 6px rgba(0,0,0,0.4);z-index:2;"></div>' +
+            pulseRing + '</div>',
+          iconSize: [size + 20, size + 20],
+          iconAnchor: [(size + 20) / 2, (size + 20) / 2],
+        });
+
+        const marker = L.marker([s.lat, s.lng], { icon }).addTo(markerLayer);
+        marker.bindPopup(buildPopup(s));
+        marker.on('click', () => selectStore(s.id));
+        markers[s.id] = marker;
+      });
+    }
+
+    function buildPopup(s) {
+      const typeColor = typeColors[s.type] || '#6b7280';
+      const typeLabel = s.type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const routeColor = routeZones[s.route]?.color || '#6b7280';
+      return '<div class="store-popup">' +
+        '<strong>' + s.name + '</strong><br>' +
+        '<span class="detail">' + s.address + ', ' + s.city + ', ' + s.state + ' ' + s.zip + '</span><br>' +
+        '<span class="type-badge" style="background:' + typeColor + '">' + typeLabel + '</span> ' +
+        (s.route ? '<span class="type-badge" style="background:' + routeColor + '">Rte ' + s.route + '</span>' : '') +
+        '<div class="dates">' +
+          '<span>Last Sale: ' + (s.lastSale ? formatDate(s.lastSale) : 'None') + '</span>' +
+          '<span>Last Visit: ' + (s.lastVisited ? formatDate(s.lastVisited) : 'None') + '</span>' +
+        '</div>' +
+        '<div class="visit-badge" style="background:' + s.tier.color + '">' +
+          (s.days === Infinity ? 'Never visited' : s.days + 'd — ' + s.tier.label) +
+        '</div>' +
+        '</div>';
+    }
+
+    // ── Sidebar ──
+    function buildFilters() {
+      const routes = [...new Set(allStores.map(s => s.route).filter(Boolean))].sort();
+      const types = [...new Set(allStores.map(s => s.type))].sort();
+      document.getElementById('f-route').innerHTML =
+        '<option value="">All Routes</option>' +
+        routes.map(r => '<option value="' + r + '">Route ' + r + '</option>').join('');
+      document.getElementById('f-type').innerHTML =
+        '<option value="">All Types</option>' +
+        types.map(t => '<option value="' + t + '">' + t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + '</option>').join('');
+    }
+
+    function getFiltered() {
+      return allStores.filter(s => {
+        if (filterRoute && s.route !== filterRoute) return false;
+        if (filterType && s.type !== filterType) return false;
+        if (filterStatus && s.status !== filterStatus) return false;
+        if (searchText) {
+          const hay = [s.id, s.name, s.city, s.address, s.route].join(' ').toLowerCase();
+          if (!hay.includes(searchText)) return false;
+        }
+        // Legend tier toggle
+        if (s.days === Infinity && hiddenTiers.has(-1)) return false;
+        if (s.days !== Infinity) {
+          const tierIdx = recencyTiers.findIndex(t => s.days <= t.maxDays);
+          if (tierIdx >= 0 && hiddenTiers.has(tierIdx)) return false;
+        }
+        // Legend route toggle
+        if (s.route && hiddenRoutes.has(s.route)) return false;
+        return true;
+      });
+    }
+
+    function renderSidebar() {
+      const filtered = getFiltered();
+      document.getElementById('store-count').textContent = filtered.length + ' of ' + allStores.length + ' stores';
+      const list = document.getElementById('store-list');
+      list.innerHTML = '';
+      filtered.forEach(s => {
+        const routeColor = routeZones[s.route]?.color || '#6b7280';
+        const active = s.id === selectedStoreId ? ' active' : '';
+        list.innerHTML += '<div class="store-item' + active + '" onclick="selectStore(\'' + s.id + '\')">' +
+          '<div class="store-item-name">' + s.name + '</div>' +
+          '<div class="store-item-detail">' + s.city + (s.route ? ' • Rte ' + s.route : '') + '</div>' +
+          '<div class="store-item-badges">' +
+            '<span class="mini-badge" style="background:' + s.tier.color + ';color:#fff">' +
+              (s.days === Infinity ? 'Never' : s.days + 'd') + '</span>' +
+            (s.route ? '<span class="mini-badge" style="background:' + routeColor + ';color:#fff">Rte ' + s.route + '</span>' : '') +
+          '</div></div>';
+      });
+    }
+
+    function selectStore(id) {
+      selectedStoreId = id;
+      const store = allStores.find(s => s.id === id);
+      if (!store) return;
+      leafletMap.setView([store.lat, store.lng], 15);
+      const marker = markers[id];
+      if (marker) {
+        marker.openPopup();
+        // Blink the marker
+        const el = marker.getElement();
+        if (el) {
+          el.classList.add('marker-blink');
+          clearTimeout(blinkTimer);
+          blinkTimer = setTimeout(() => el.classList.remove('marker-blink'), 5000);
+        }
+      }
+      // Highlight in sidebar
+      document.querySelectorAll('.store-item').forEach(el => el.classList.remove('active'));
+      const items = document.querySelectorAll('.store-item');
+      const filtered = getFiltered();
+      const idx = filtered.findIndex(s => s.id === id);
+      if (idx >= 0 && items[idx]) {
+        items[idx].classList.add('active');
+        items[idx].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    // ── Filter handlers ──
+    function onSearch(val) { searchText = val.toLowerCase(); renderMap(); renderSidebar(); }
+    function onFilterRoute(val) { filterRoute = val; renderMap(); renderSidebar(); }
+    function onFilterType(val) { filterType = val; renderMap(); renderSidebar(); }
+    function onFilterStatus(val) { filterStatus = val; renderMap(); renderSidebar(); }
+
+    // ── Sidebar toggle ──
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      const btn = document.getElementById('sidebar-toggle');
+      sb.classList.toggle('collapsed');
+      if (sb.classList.contains('collapsed')) {
+        btn.textContent = '▶';
+        btn.classList.add('collapsed-btn');
+      } else {
+        btn.textContent = '◀';
+        btn.classList.remove('collapsed-btn');
+      }
+      setTimeout(() => leafletMap.invalidateSize(), 300);
+    }
+
+    // ── Legend (clickable toggles) ──
+    let hiddenTiers = new Set();
+    let hiddenRoutes = new Set();
+
+    function addLegend() {
+      const legendDiv = document.createElement('div');
+      legendDiv.className = 'map-legend';
+      legendDiv.id = 'map-legend';
+      rebuildLegendHTML(legendDiv);
+      document.getElementById('map-container').appendChild(legendDiv);
+    }
+
+    function rebuildLegendHTML(legendDiv) {
+      if (!legendDiv) legendDiv = document.getElementById('map-legend');
+      if (!legendDiv) return;
+
+      let html = '<h4>Visit Recency <span class="legend-clear" onclick="clearLegendFilters()">&times;</span></h4>';
+      recencyTiers.forEach((t, i) => {
+        const off = hiddenTiers.has(i);
+        html += '<div class="legend-item' + (off ? ' off' : '') + '" onclick="toggleTier(' + i + ')">' +
+          '<div class="legend-dot" style="background:' + (off ? '#334155' : t.color) + '"></div> ' +
+          '<span>' + t.label + '</span></div>';
+      });
+      // Never visited
+      const neverOff = hiddenTiers.has(-1);
+      html += '<div class="legend-item' + (neverOff ? ' off' : '') + '" onclick="toggleTier(-1)">' +
+        '<div class="legend-dot" style="background:' + (neverOff ? '#334155' : neverTier.color) + '"></div> ' +
+        '<span>' + neverTier.label + '</span></div>';
+
+      // Route zones
+      const routeNums = Object.keys(routeZones).sort();
+      if (routeNums.length > 0) {
+        html += '<hr class="legend-sep"><h4>Route Zones</h4>';
+        routeNums.forEach(r => {
+          const off = hiddenRoutes.has(r);
+          html += '<div class="legend-item' + (off ? ' off' : '') + '" onclick="toggleRoute(\'' + r + '\')">' +
+            '<div class="legend-dot" style="background:' + (off ? '#334155' : routeZones[r].color) +
+            ';border-radius:2px;border-color:' + (off ? '#334155' : routeZones[r].color) + '"></div> ' +
+            '<span>Route ' + r + '</span></div>';
         });
       }
+      legendDiv.innerHTML = html;
+    }
 
-      // Try map-snapshot first, fall back to building from raw data
-      fetch('data/map-snapshot.json?t=' + Date.now())
-        .then(function(r) {
-          if (!r.ok) throw new Error('No snapshot');
-          return r.json();
-        })
-        .then(renderSnapshot)
-        .catch(function() {
-          // Fall back: build map from stores.csv
-          fetchData('src/data/stores.csv')
-            .then(function(csv) {
-              var stores = parseCSV(csv);
-              document.getElementById('loading').remove();
-              stores.forEach(function(s) {
-                if (!s.Latitude || !s.Longitude) return;
-                var marker = L.marker([parseFloat(s.Latitude), parseFloat(s.Longitude)], {
-                  icon: createIcon('#3b82f6', 10)
-                }).addTo(map);
-                marker.bindPopup(
-                  '<div class="store-popup"><strong>' + (s['Store Name'] || s.ID) + '</strong><br>' +
-                  '<span class="detail">' + (s.Address || '') + ', ' + (s.City || '') + '</span><br>' +
-                  'Route: <b>' + (s['Route Number'] || 'Unassigned') + '</b></div>'
-                );
-              });
-            })
-            .catch(function(err) {
-              var el = document.getElementById('loading');
-              el.className = 'loading-overlay error';
-              el.textContent = 'Failed to load map data: ' + err.message;
-            });
-        });
+    function toggleTier(tierIdx) {
+      if (hiddenTiers.has(tierIdx)) hiddenTiers.delete(tierIdx);
+      else hiddenTiers.add(tierIdx);
+      rebuildLegendHTML();
+      renderMap();
+      renderSidebar();
+    }
 
-      function renderSnapshot(data) {
-        document.getElementById('loading').remove();
-        var routeGrades = {};
-        (data.routes || []).forEach(function(r) { routeGrades[r.number] = r; });
+    function toggleRoute(route) {
+      if (hiddenRoutes.has(route)) hiddenRoutes.delete(route);
+      else hiddenRoutes.add(route);
+      rebuildLegendHTML();
+      renderMap();
+      renderSidebar();
+    }
 
-        (data.zones || []).forEach(function(zone) {
-          if (zone.bounds && zone.bounds.length > 2) {
-            L.polygon(zone.bounds, {
-              color: zone.color, fillColor: zone.color, fillOpacity: 0.15, weight: 2, dashArray: '6,4'
-            }).addTo(map).bindTooltip(zone.name, { sticky: true });
-          }
-        });
+    function clearLegendFilters() {
+      hiddenTiers.clear();
+      hiddenRoutes.clear();
+      rebuildLegendHTML();
+      renderMap();
+      renderSidebar();
+    }
 
-        (data.subZones || []).forEach(function(sz) {
-          if (sz.bounds && sz.bounds.length > 2) {
-            L.polygon(sz.bounds, {
-              color: sz.color, fillColor: sz.color, fillOpacity: 0.12, weight: 1.5
-            }).addTo(map).bindTooltip(sz.name, { sticky: true });
-          }
-        });
-
-        (data.stores || []).forEach(function(store) {
-          if (!store.lat || !store.lng) return;
-          var routeInfo = routeGrades[store.routeNumber];
-          var color = routeInfo ? routeInfo.color : '#6b7280';
-          var grade = routeInfo ? routeInfo.grade : '?';
-          var coverage = routeInfo ? routeInfo.coverage : 0;
-          var marker = L.marker([store.lat, store.lng], { icon: createIcon(color, 10) }).addTo(map);
-          var badgeBg = routeInfo ? routeInfo.color : '#6b7280';
-          marker.bindPopup(
-            '<div class="store-popup"><strong>' + (store.name || store.id) + '</strong><br>' +
-            '<span class="detail">' + (store.address || '') + (store.city ? ', ' + store.city : '') + '</span><br>' +
-            'Route: <b>' + (store.routeNumber || 'Unassigned') + '</b> ' +
-            '<span class="route-badge" style="background:' + badgeBg + '">' + grade + '</span><br>' +
-            '<span class="detail">Coverage: ' + Math.round(coverage) + '%</span></div>'
-          );
-        });
-
-        var legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function() {
-          var div = L.DomUtil.create('div', 'legend');
-          div.innerHTML = '<h4>Route Grade</h4>';
-          ['A', 'B', 'C', 'D', 'F'].forEach(function(g) {
-            div.innerHTML += '<div class="legend-row"><div class="legend-dot" style="background:' +
-              gradeColors[g] + '"></div> ' + gradeLabels[g] + '</div>';
-          });
-          div.innerHTML += '<div class="legend-row" style="margin-top:4px"><div class="legend-dot" style="background:#6b7280"></div> Unassigned</div>';
-          return div;
-        };
-        legend.addTo(map);
-      }
+    // ── Auth + Start ──
+    const session = requireAuth("map");
+    if (session) {
+      console.log('[MAP] Auth OK, user:', session.name);
+      injectNav("map");
+      init();
+    } else {
+      console.log('[MAP] ERR-01: Auth failed, redirecting');
     }
   </script>
 </body>

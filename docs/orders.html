@@ -34,12 +34,8 @@
     let searchText = "";
 
     async function loadData(forceRefresh) {
-      if (forceRefresh) {
-        sessionStorage.removeItem("cache_src/data/warehouseOrders.json");
-        sessionStorage.removeItem("cache_ts_src/data/warehouseOrders.json");
-      }
       try {
-        const data = await fetchData("src/data/warehouseOrders.json");
+        const data = await fetchData("src/data/warehouseOrders.json", forceRefresh);
         allOrders = (data.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         if (data.lastSyncedAt) {
           document.getElementById("last-updated").textContent = "Synced: " + formatDate(data.lastSyncedAt);

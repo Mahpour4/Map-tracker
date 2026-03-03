@@ -45,16 +45,10 @@
     }
 
     async function loadData(forceRefresh) {
-      if (forceRefresh) {
-        sessionStorage.removeItem("cache_src/data/schedules.json");
-        sessionStorage.removeItem("cache_ts_src/data/schedules.json");
-        sessionStorage.removeItem("cache_src/data/stores.csv");
-        sessionStorage.removeItem("cache_ts_src/data/stores.csv");
-      }
       try {
         const [sched, storesCsv] = await Promise.all([
-          fetchData("src/data/schedules.json"),
-          fetchData("src/data/stores.csv")
+          fetchData("src/data/schedules.json", forceRefresh),
+          fetchData("src/data/stores.csv", forceRefresh)
         ]);
         scheduleData = sched || {};
         // Build store lookup

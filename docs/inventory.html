@@ -37,12 +37,8 @@
     let searchText = "";
 
     async function loadData(forceRefresh) {
-      if (forceRefresh) {
-        sessionStorage.removeItem("cache_src/data/inventoryData.json");
-        sessionStorage.removeItem("cache_ts_src/data/inventoryData.json");
-      }
       try {
-        const data = await fetchData("src/data/inventoryData.json");
+        const data = await fetchData("src/data/inventoryData.json", forceRefresh);
         if (data.lastUpdated) {
           document.getElementById("last-updated").textContent = "Updated: " + formatDate(data.lastUpdated);
         }

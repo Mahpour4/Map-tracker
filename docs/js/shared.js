@@ -62,16 +62,18 @@ function rawUrl(filePath) {
   return `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${filePath}`;
 }
 
-async function fetchData(filePath) {
+async function fetchData(filePath, bustCache) {
   const cacheKey = `cache_${filePath}`;
   const tsKey = `cache_ts_${filePath}`;
-  const cached = sessionStorage.getItem(cacheKey);
-  const ts = sessionStorage.getItem(tsKey);
-  if (cached && ts && Date.now() - Number(ts) < CACHE_TTL) {
-    return JSON.parse(cached);
+  if (!bustCache) {
+    const cached = sessionStorage.getItem(cacheKey);
+    const ts = sessionStorage.getItem(tsKey);
+    if (cached && ts && Date.now() - Number(ts) < CACHE_TTL) {
+      return JSON.parse(cached);
+    }
   }
   const url = rawUrl(filePath);
-  const resp = await fetch(url + "?t=" + Date.now());
+  const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Failed to fetch ${filePath}: ${resp.status}`);
   const text = await resp.text();
   let data;
