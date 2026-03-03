@@ -140,6 +140,9 @@ export default function WarehouseOrders() {
   const [waNote, setWaNote] = useState(''); // original WhatsApp message for reference
   const [waDraftMsg, setWaDraftMsg] = useState(null); // { id, body, from, name, route } — active WA order being built
   const [waSelectedPhone, setWaSelectedPhone] = useState(null); // active contact in WA messenger view
+  const [waPasteOpen, setWaPasteOpen] = useState(false); // paste order textarea toggle
+  const [waPasteText, setWaPasteText] = useState(''); // paste order text content
+  const [waPasteRoute, setWaPasteRoute] = useState(''); // optional route for pasted order
   const waPollerRef = useRef(null);
 
   // Google Sheets sync state
@@ -891,14 +894,21 @@ export default function WarehouseOrders() {
       setWaStatus(statusRes.status || 'offline');
       setWaMessages(prev => {
         const uiState = {};
+        const manualMsgs = [];
         prev.forEach(m => {
+          if (m.isManual) { manualMsgs.push(m); return; }
           const flags = {};
           Object.keys(m).forEach(k => { if (k.startsWith('_')) flags[k] = m[k]; });
           if (Object.keys(flags).length) uiState[m.id] = flags;
         });
-        return msgs.map(m => uiState[m.id] ? { ...m, ...uiState[m.id] } : m);
+        const serverMsgs = msgs.map(m => uiState[m.id] ? { ...m, ...uiState[m.id] } : m);
+        return [...manualMsgs, ...serverMsgs];
       });
-      setWaContacts(contacts);
+      setWaContacts(prev => {
+        const manual = {};
+        Object.entries(prev).forEach(([k, v]) => { if (k === 'visual-basic') manual[k] = v; });
+        return { ...contacts, ...manual };
+      });
       setWaOrderGroupId(groupId);
       setWaLastPoll(Date.now());
     } catch { /* service offline */ }
@@ -2931,6 +2941,7 @@ export default function WarehouseOrders() {
                   <option value="all">All</option>
                 </select>
                 <button className={`wa-sync-now-btn${waSyncing ? ' spinning' : ''}`} onClick={handleWaSync} disabled={waSyncing} title="Sync now">↻</button>
+                <button className="wa-paste-btn" onClick={() => setWaPasteOpen(prev => !prev)} title="Paste order from clipboard">{waPasteOpen ? '✕' : '📋'}</button>
                 <button className="wa-setup-btn" onClick={() => setWaShowSetup(prev => !prev)} title="Setup">{waShowSetup ? '✕' : '⚙'}</button>
               </div>
             </div>
@@ -2982,6 +2993,52 @@ export default function WarehouseOrders() {
                       Clear All ({waMessages.length})
                     </button>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Paste order panel */}
+            {waPasteOpen && (
+              <div className="wa-paste-panel">
+                <textarea
+                  className="wa-paste-textarea"
+                  rows={6}
+                  placeholder={"Paste order text here...\ne.g.\n4.79\n60 golden original chips\n20 plain ridgies"}
+                  value={waPasteText}
+                  onChange={e => setWaPasteText(e.target.value)}
+                />
+                <div className="wa-paste-actions">
+                  <select className="wa-paste-route" value={waPasteRoute} onChange={e => setWaPasteRoute(e.target.value)}>
+                    <option value="">Route (optional)</option>
+                    {routes.map(r => <option key={r} value={r}>{r} - {ROUTE_DRIVERS[r] || ''}</option>)}
+                  </select>
+                  <button
+                    className="wa-paste-add"
+                    disabled={!waPasteText.trim()}
+                    onClick={() => {
+                      const text = waPasteText.trim();
+                      if (!text) return;
+                      const syntheticMsg = {
+                        id: 'manual-' + Date.now(),
+                        from: 'visual-basic',
+                        body: text,
+                        timestamp: Date.now(),
+                        contactName: 'Visual Basic',
+                        pushName: 'Visual Basic',
+                        isManual: true,
+                      };
+                      setWaMessages(prev => [syntheticMsg, ...prev]);
+                      if (waPasteRoute) {
+                        setWaContacts(prev => ({ ...prev, 'visual-basic': { name: 'Visual Basic', route: waPasteRoute } }));
+                      }
+                      setWaSelectedPhone('visual-basic');
+                      setWaPasteText('');
+                      setWaPasteRoute('');
+                      setWaPasteOpen(false);
+                    }}
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
             )}

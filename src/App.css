@@ -646,24 +646,25 @@ textarea {
 
 /* ============ Alert exclamation marker (standalone Leaflet marker) ============ */
 .map-alert-exclaim {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   background: #ef4444;
   color: #fff;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
-  line-height: 18px;
+  line-height: 22px;
   text-align: center;
   border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 6px rgba(239,68,68,0.6);
   pointer-events: none;
-  animation: alert-exclaim-flash 0.9s ease-in-out infinite;
 }
-
-@keyframes alert-exclaim-flash {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.2; transform: scale(0.7); }
+.map-alert-exclaim.map-alert-pulse {
+  animation: alert-exclaim-pulse 1.5s ease-in-out infinite;
+}
+@keyframes alert-exclaim-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 2px 6px rgba(239,68,68,0.6); }
+  50% { opacity: 0.85; transform: scale(1.15); box-shadow: 0 2px 12px rgba(239,68,68,0.8); }
 }
 
 .zone-meta {
@@ -4882,37 +4883,54 @@ textarea {
 }
 
 .al-header {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
-.al-title-row {
+/* Row 1 — Top Bar */
+.al-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
   gap: 8px;
 }
 
-.al-title-row h2 {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
+.al-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-/* Date picker */
-.al-quick-dates {
+.al-top-left h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.al-top-center {
   display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.al-top-right {
+  display: flex;
+  align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .al-quick-btn {
-  padding: 5px 12px;
+  padding: 3px 8px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -4935,17 +4953,11 @@ textarea {
   cursor: not-allowed;
 }
 
-.al-date-picker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .al-date-input {
-  padding: 6px 10px;
+  padding: 3px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 11px;
   background: var(--bg-card);
   color: var(--text);
   font-family: inherit;
@@ -4958,12 +4970,12 @@ textarea {
 }
 
 .al-btn-fetch {
-  padding: 6px 16px;
+  padding: 3px 10px;
   border-radius: var(--radius);
   border: none;
   background: var(--primary);
   color: white;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -4980,12 +4992,12 @@ textarea {
 }
 
 .al-btn-refresh {
-  padding: 6px 16px;
+  padding: 3px 10px;
   border-radius: var(--radius);
-  border: 2px solid var(--primary);
+  border: 1px solid var(--primary);
   background: transparent;
   color: var(--primary);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -5004,22 +5016,23 @@ textarea {
 
 .al-stats {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .al-stat {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 15px;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .al-stat span {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -5033,26 +5046,36 @@ textarea {
 .al-stat.emerald { background: #ecfdf5; color: #059669; }
 .al-stat-divider { width: 1px; height: 18px; background: #e2e8f0; margin: 0 4px; }
 
-/* Filters */
-.al-filters {
+/* Row 2 — Filter Bar */
+.al-filter-bar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
   gap: 8px;
 }
 
-.al-filter-group {
+.al-filter-left {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
 
+.al-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
 .al-filter-btn {
-  padding: 5px 14px;
-  border-radius: 16px;
+  padding: 3px 10px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--bg-card);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   color: var(--text-muted);
@@ -5080,22 +5103,24 @@ textarea {
 }
 
 .al-select {
-  padding: 6px 10px;
+  padding: 3px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-size: 12px;
+  font-size: 11px;
   background: var(--bg-card);
   color: var(--text);
+  width: auto;
+  max-width: 140px;
 }
 
 .al-search {
-  padding: 6px 10px;
+  padding: 3px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-size: 12px;
+  font-size: 11px;
   background: var(--bg-card);
   color: var(--text);
-  min-width: 180px;
+  width: 150px;
 }
 
 .al-search:focus {
@@ -5108,7 +5133,7 @@ textarea {
 .al-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 /* Route sections */
@@ -5117,14 +5142,14 @@ textarea {
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-card);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 
 .al-route-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 6px 12px;
   cursor: pointer;
   background: #f8fafc;
   border-bottom: 1px solid transparent;
@@ -5139,13 +5164,13 @@ textarea {
 .al-route-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .al-route-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 .al-chevron {
@@ -5160,7 +5185,7 @@ textarea {
 
 .al-route-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--text);
 }
 
@@ -5175,11 +5200,11 @@ textarea {
 }
 
 .al-route-counts {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   white-space: nowrap;
 }
 
@@ -5495,7 +5520,7 @@ textarea {
 .al-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .al-table thead {
@@ -5503,9 +5528,9 @@ textarea {
 }
 
 .al-table th {
-  padding: 8px 12px;
+  padding: 4px 8px;
   text-align: left;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -5514,14 +5539,14 @@ textarea {
 }
 
 .al-table td {
-  padding: 10px 12px;
+  padding: 4px 8px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
   color: var(--text);
 }
 
 .al-table tbody tr {
-  border-left: 3px solid transparent;
+  border-left: 2px solid transparent;
   transition: background 0.1s;
 }
 
@@ -5546,8 +5571,8 @@ textarea {
 }
 
 .al-status-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -5565,7 +5590,7 @@ textarea {
 
 .al-map-link {
   color: var(--primary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -5576,12 +5601,12 @@ textarea {
 
 .al-cell-service {
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .al-email-link {
   color: #dc2626;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
@@ -5664,12 +5689,12 @@ textarea {
 }
 
 .al-cell-date {
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
 .al-cell-time {
-  font-size: 12px;
+  font-size: 10px;
   color: #6b7280;
   white-space: nowrap;
 }
@@ -6058,12 +6083,12 @@ textarea {
 }
 
 .al-btn-report {
-  padding: 6px 16px;
+  padding: 3px 10px;
   border-radius: var(--radius);
-  border: 2px solid #7c3aed;
+  border: 1px solid #7c3aed;
   background: transparent;
   color: #7c3aed;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -6078,12 +6103,12 @@ textarea {
 /* ============ Alert Statistics Panel ============ */
 
 .al-btn-stats {
-  padding: 6px 16px;
+  padding: 3px 10px;
   border-radius: var(--radius);
-  border: 2px solid #0891b2;
+  border: 1px solid #0891b2;
   background: transparent;
   color: #0891b2;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -12672,6 +12697,69 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
   padding: 0 2px;
 }
 
+/* Paste order panel */
+.wa-paste-btn {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-paste-btn:hover { background: #f3f4f6; }
+.wa-paste-panel {
+  padding: 10px 14px;
+  background: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+}
+.wa-paste-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  resize: vertical;
+  background: #fff;
+  color: #1e293b;
+}
+.wa-paste-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+.wa-paste-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.wa-paste-route {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  background: #fff;
+}
+.wa-paste-add {
+  padding: 5px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wa-paste-add:hover { background: var(--primary-hover); }
+.wa-paste-add:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* Empty state */
 .wa-empty {
   padding: 24px 16px;
@@ -12833,6 +12921,8 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .inv-card-sold .inv-card-val { color: #dc2626; }
 .inv-card-remaining .inv-card-val { color: #16a34a; }
 .inv-card-pct .inv-card-val { color: #2563eb; }
+.inv-card-delivery .inv-card-val { color: #0891b2; }
+.inv-card-sub { font-size: 0.7rem; color: #64748b; margin-top: 2px; }
 
 /* Filter bar */
 .inv-filter-bar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
@@ -12893,6 +12983,8 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .inv-sold-units { font-size: 0.78rem; color: #666; font-weight: 400; }
 .inv-remaining { font-weight: 600; color: #000; }
 .inv-zero { color: #000 !important; }
+.inv-projected { color: #1976d2; font-weight: 500; }
+.inv-has-future { color: #1976d2; }
 .inv-td-deliveries { }
 .inv-td-actions { white-space: nowrap; }
 

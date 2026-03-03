@@ -999,17 +999,20 @@ export function AppProvider({ children }) {
   }, [state.stores, state.alerts]);
 
   const loadAlertImage = useCallback(async (emailId) => {
-    if (!emailId) return;
+    if (!emailId) return null;
     dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: true, error: null, dataUri: null } });
     try {
       const result = await fetchAlertImageApi(emailId);
       if (result) {
         dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: false, error: null, ...result } });
+        return result;
       } else {
         dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: false, error: 'No image found', dataUri: null } });
+        return null;
       }
     } catch (err) {
       dispatch({ type: 'SET_ALERT_IMAGE', payload: { emailId, loading: false, error: err.message, dataUri: null } });
+      return null;
     }
   }, []);
 

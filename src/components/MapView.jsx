@@ -129,8 +129,14 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited) {
 const alertExclaimIcon = L.divIcon({
   className: 'alert-exclaim-marker',
   html: '<div class="map-alert-exclaim">!</div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 28], // anchored below so it floats above the store dot
+  iconSize: [22, 22],
+  iconAnchor: [11, 32],
+});
+const alertExclaimPulseIcon = L.divIcon({
+  className: 'alert-exclaim-marker',
+  html: '<div class="map-alert-exclaim map-alert-pulse">!</div>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 32],
 });
 
 // Truck icon for fleet vehicle overlay (diamond shape to distinguish from store circles)
@@ -206,7 +212,7 @@ export default function MapView() {
   const [visitMode, setVisitMode] = useState(true);
   const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
   const [zonesOff, setZonesOff] = useState(true); // default: zones hidden
-  const [showAlerts, setShowAlerts] = useState(true); // toggle alert markers on map
+  const [showAlerts, setShowAlerts] = useState(false); // toggle alert markers on map (off by default)
   const [hideCash, setHideCash] = useState(true);
   const [hideChain, setHideChain] = useState(false);
   const zonesInitialized = useRef(false);
@@ -530,19 +536,15 @@ export default function MapView() {
       let sentWithImage = false;
       if (alert.emailId) {
         try {
-          // Fetch image if not already cached
-          if (!alertImages[alert.emailId]?.dataUri) {
-            await loadAlertImage(alert.emailId);
+          // Use cached image or fetch fresh — loadAlertImage returns the result directly
+          let img = alertImages[alert.emailId];
+          if (!img?.dataUri) {
+            img = await loadAlertImage(alert.emailId);
           }
-          // Wait briefly for state to update, then check cache
-          await new Promise(r => setTimeout(r, 500));
-        } catch (_) {}
-      }
-      const img = alertImages[alert.emailId];
-      if (img?.dataUri && !img.error) {
-        try {
-          await sendWhatsAppAlertWithImage(groupId, alertData, img.dataUri, img.mimeType || 'image/jpeg');
-          sentWithImage = true;
+          if (img?.dataUri && !img.error) {
+            await sendWhatsAppAlertWithImage(groupId, alertData, img.dataUri, img.mimeType || 'image/jpeg');
+            sentWithImage = true;
+          }
         } catch (_) {}
       }
       // Fallback to text-only
@@ -771,7 +773,7 @@ export default function MapView() {
             <hr className="legend-divider" />
             <label
               className={`legend-item legend-item-clickable${showAlerts ? ' legend-item-active' : ''}`}
-              title={showAlerts ? 'Click to hide alert markers' : 'Click to show alert markers'}
+              title={showAlerts ? `${storesWithOpenAlerts.size} open alerts — click to hide` : `${storesWithOpenAlerts.size} open alerts — click to show`}
             >
               <input
                 type="checkbox"
@@ -780,7 +782,7 @@ export default function MapView() {
                 onChange={() => setShowAlerts(prev => !prev)}
               />
               <span className="legend-alert-icon">!</span>
-              <span>Alerts</span>
+              <span>Alerts {storesWithOpenAlerts.size > 0 ? `(${storesWithOpenAlerts.size})` : ''}</span>
             </label>
           </>
         ) : (
@@ -892,7 +894,7 @@ export default function MapView() {
       )}
 
       {/* Render store markers (filtered to match sidebar) */}
-      {filteredStores.map((store) => (
+      {(showAlerts ? filteredStores.filter(s => storesWithOpenAlerts.has(s.id)) : filteredStores).map((store) => (
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
@@ -1056,15 +1058,19 @@ export default function MapView() {
       {/* Alert exclamation markers — one per store with an open alert */}
       {showAlerts && filteredStores
         .filter(store => storesWithOpenAlerts.has(store.id))
-        .map(store => (
-          <Marker
-            key={`alert-${store.id}`}
-            position={[store.lat, store.lng]}
-            icon={alertExclaimIcon}
-            interactive={false}
-            zIndexOffset={1000}
-          />
-        ))}
+        .map(store => {
+          const days = getDaysSinceVisit(getLatestDate(store));
+          const nearingOrange = days !== null && days >= 11 && days <= 15;
+          return (
+            <Marker
+              key={`alert-${store.id}`}
+              position={[store.lat, store.lng]}
+              icon={nearingOrange ? alertExclaimPulseIcon : alertExclaimIcon}
+              interactive={false}
+              zIndexOffset={1000}
+            />
+          );
+        })}
     </MapContainer>
     </div>
   );

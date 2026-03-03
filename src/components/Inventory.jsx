@@ -218,13 +218,16 @@ export default function Inventory() {
         // Remaining = arrived stock minus what's been sold (not total pipeline)
         const remaining = arrivedUnits - sold;
         const pct = arrivedUnits > 0 ? Math.round((remaining / arrivedUnits) * 100) : 0;
+        // Projected = in stock now + future deliveries
+        const futureUnits = deliveries.reduce((s, d) => d.date > todayStr ? s + d.qty : s, 0);
+        const projected = remaining + futureUnits;
         // Check: custom catalog entry > linked SKU > direct match
         const catalogMatch = item.catalogEntry
           || (item.linkedSku && catalogByNormSku[normSku(item.linkedSku)])
           || catalogByNormSku[normSku(item.sku)]
           || null;
         const priceTier = getPriceTier(item.description);
-        return { ...item, incoming: totalIncoming, arrivedUnits, filteredIncoming, remaining, pct, sold, deliveries, catalogMatch, priceTier };
+        return { ...item, incoming: totalIncoming, arrivedUnits, filteredIncoming, remaining, pct, sold, futureUnits, projected, deliveries, catalogMatch, priceTier };
       })
       .filter(item => {
         // Date filter: hide items that have no delivery on the selected date
@@ -260,8 +263,10 @@ export default function Inventory() {
       acc.filteredIncoming += r.filteredIncoming;
       acc.sold += r.sold;
       acc.remaining += r.remaining;
+      acc.projected += r.projected;
+      acc.hasFuture = acc.hasFuture || r.futureUnits > 0;
       return acc;
-    }, { incoming: 0, filteredIncoming: 0, sold: 0, remaining: 0 });
+    }, { incoming: 0, filteredIncoming: 0, sold: 0, remaining: 0, projected: 0, hasFuture: false });
   }, [rows]);
 
   // Group rows by price tier for sectioned table view
@@ -354,6 +359,35 @@ export default function Inventory() {
     };
   }, [rows]);
 
+  // Weekly sales by price tier (Mon-Sun of current week) — sum directly from warehouse orders
+  const allOrders = warehouseOrders?.orders || [];
+  const weeklySalesByTier = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? 6 : day - 1;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    const mondayStr = monday.toISOString().split('T')[0];
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const sundayStr = sunday.toISOString().split('T')[0];
+
+    const tiers = { '$4.79': 0, '$0.50': 0, '$2.49': 0, deepRiver: 0 };
+    allOrders.forEach(order => {
+      if (!order.date || order.date < mondayStr || order.date > sundayStr) return;
+      (order.items || []).forEach(item => {
+        const cat = item.category || '';
+        const cases = item.cases || 0;
+        if (cat === '4.79 Products') tiers['$4.79'] += cases;
+        else if (cat === '.50 Cents') tiers['$0.50'] += cases;
+        else if (cat === '2.49 Products') tiers['$2.49'] += cases;
+        if (cat === 'Deep River Small' || cat === 'Deep River Large') tiers.deepRiver += cases;
+      });
+    });
+    return tiers;
+  }, [allOrders]);
+
   // Group items by delivery date for the date-grouped view
   const dateGroups = useMemo(() => {
     const groups = {};
@@ -414,9 +448,14 @@ export default function Inventory() {
 
   function startEdit(item) {
     setEditSku(item.sku);
+    const deliveries = item.deliveries || [];
+    const arrivedUnits = deliveries.reduce((s, d) => d.date <= todayStr ? s + d.qty : s, 0);
+    const currentStock = arrivedUnits - (item.sold || 0);
     setEditVal({
       incoming: item.incoming,
       sold: item.sold,
+      arrivedUnits,
+      currentStock: currentStock > 0 ? currentStock : 0,
       linkedSku: item.linkedSku || '',
       // For "Add new" catalog entry
       newCategory: item.catalogEntry?.category || '',
@@ -434,13 +473,36 @@ export default function Inventory() {
     const sold = parseFloat(editVal.sold) || 0;
     const prevSold = items[sku]?.sold || 0;
     const updates = { incoming, sold };
-    // Track manual sold adjustments
-    if (sold !== prevSold) {
-      const log = items[sku]?.adjustmentHistory || [];
-      updates.adjustmentHistory = [...log, {
-        type: 'manual', from: prevSold, to: sold, date: new Date().toISOString(),
-        note: `Manual edit: ${prevSold} → ${sold}`,
-      }];
+
+    // Handle "Current Stock" — add a manual delivery to make the math work
+    const currentStock = parseFloat(editVal.currentStock);
+    if (!isNaN(currentStock) && currentStock >= 0) {
+      const neededArrived = currentStock + sold; // what arrivedUnits should be
+      const item = items[sku];
+      const deliveries = [...(item?.deliveries || [])];
+      const existingArrived = deliveries.reduce((s, d) => d.date <= todayStr ? s + d.qty : s, 0);
+      const adjustment = neededArrived - existingArrived;
+      if (adjustment !== 0) {
+        // Add or update a stock count delivery for today
+        const poLabel = `Stock count: ${currentStock} on floor`;
+        const todayIdx = deliveries.findIndex(d => d.date === todayStr && (d.po || '').startsWith('Stock count'));
+        if (todayIdx >= 0) {
+          deliveries[todayIdx] = { ...deliveries[todayIdx], qty: adjustment, po: poLabel };
+        } else {
+          deliveries.push({ date: todayStr, qty: adjustment, po: poLabel });
+        }
+        updates.deliveries = deliveries;
+        updates.incoming = deliveries.reduce((s, d) => s + d.qty, 0);
+      }
+    } else {
+      // Track manual sold adjustments (only when not using current stock)
+      if (sold !== prevSold) {
+        const log = items[sku]?.adjustmentHistory || [];
+        updates.adjustmentHistory = [...log, {
+          type: 'manual', from: prevSold, to: sold, date: new Date().toISOString(),
+          note: `Manual edit: ${prevSold} → ${sold}`,
+        }];
+      }
     }
     let newCustomCatalog = inventory.customCatalog || [];
 
@@ -698,21 +760,30 @@ export default function Inventory() {
 
         {/* Summary cards */}
         <div className="inv-cards">
-          <div className="inv-card">
-            <div className="inv-card-label">{dateFilter !== 'all' ? `Ordered (${formatDate(dateFilter)})` : 'Total Ordered'}</div>
-            <div className="inv-card-val">{(dateFilter !== 'all' ? totals.filteredIncoming : totals.incoming).toLocaleString()}</div>
+          <div className="inv-card inv-card-delivery">
+            <div className="inv-card-label">Next Delivery</div>
+            {stockSummary.futureEntries.length > 0 ? (<>
+              <div className="inv-card-val">{new Date(stockSummary.futureEntries[0].date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+              <div className="inv-card-sub">{stockSummary.futureEntries[0].qty} cases{stockSummary.futureEntries[0].po ? ` · PO ${stockSummary.futureEntries[0].po}` : ''}</div>
+            </>) : (
+              <div className="inv-card-val">None</div>
+            )}
           </div>
           <div className="inv-card inv-card-sold">
-            <div className="inv-card-label">Sold</div>
-            <div className="inv-card-val">{totals.sold.toLocaleString()}</div>
+            <div className="inv-card-label">$4.79 Sold This Week</div>
+            <div className="inv-card-val">{weeklySalesByTier['$4.79'].toLocaleString()}</div>
+          </div>
+          <div className="inv-card inv-card-sold">
+            <div className="inv-card-label">$.50 Sold This Week</div>
+            <div className="inv-card-val">{weeklySalesByTier['$0.50'].toLocaleString()}</div>
+          </div>
+          <div className="inv-card inv-card-sold">
+            <div className="inv-card-label">$2.49 Sold This Week</div>
+            <div className="inv-card-val">{weeklySalesByTier['$2.49'].toLocaleString()}</div>
           </div>
           <div className="inv-card inv-card-remaining">
-            <div className="inv-card-label">In Stock</div>
-            <div className="inv-card-val">{totals.remaining.toLocaleString()}</div>
-          </div>
-          <div className="inv-card inv-card-pct">
-            <div className="inv-card-label">Products</div>
-            <div className="inv-card-val">{rows.length}{dateFilter !== 'all' ? ` / ${Object.keys(items).length}` : ''}</div>
+            <div className="inv-card-label">Deep River This Week</div>
+            <div className="inv-card-val">{weeklySalesByTier.deepRiver.toLocaleString()}</div>
           </div>
         </div>
       </div>
@@ -949,6 +1020,7 @@ export default function Inventory() {
               {dateFilter !== 'all' && <th className="inv-th-num">All Orders</th>}
               <th className="inv-th-num" onClick={() => toggleSort('sold')}>Sold{sortIcon('sold')}</th>
               <th className="inv-th-num" onClick={() => toggleSort('remaining')}>In Stock{sortIcon('remaining')}</th>
+              <th className="inv-th-num" onClick={() => toggleSort('projected')}>Projected{sortIcon('projected')}</th>
               <th className="inv-th-pct"></th>
               <th className="inv-th-deliveries">Arriving</th>
               <th className="inv-th-actions"></th>
@@ -968,7 +1040,7 @@ export default function Inventory() {
             <React.Fragment key={tier}>
               {showDRParent && rowsByTier.length > 1 && (
                 <tr className="inv-section-row inv-section-parent" onClick={() => setCollapsedSections(prev => ({ ...prev, '__DR__': !prev['__DR__'] }))} style={{ cursor: 'pointer' }}>
-                  <td colSpan={dateFilter !== 'all' ? 11 : 10} className="inv-section-cell inv-parent-cell">
+                  <td colSpan={dateFilter !== 'all' ? 12 : 11} className="inv-section-cell inv-parent-cell">
                     <span className="inv-section-toggle">{collapsedSections['__DR__'] ? '\u25B6' : '\u25BC'}</span>
                     <span className="inv-section-label">DEEP RIVER</span>
                     <span className="inv-section-count">{drTotalItems} items &middot; {drTotalUnits.toLocaleString()} units</span>
@@ -977,7 +1049,7 @@ export default function Inventory() {
               )}
               {!(isDR && collapsedSections['__DR__']) && rowsByTier.length > 1 && (
                 <tr className={`inv-section-row${isDR ? ' inv-section-sub' : ''}`} onClick={() => setCollapsedSections(prev => ({ ...prev, [tier]: !prev[tier] }))} style={{ cursor: 'pointer' }}>
-                  <td colSpan={dateFilter !== 'all' ? 11 : 10} className={`inv-section-cell${isDR ? ' inv-sub-cell' : ''}`}>
+                  <td colSpan={dateFilter !== 'all' ? 12 : 11} className={`inv-section-cell${isDR ? ' inv-sub-cell' : ''}`}>
                     <span className="inv-section-toggle">{collapsedSections[tier] ? '\u25B6' : '\u25BC'}</span>
                     <span className="inv-section-label">{isDR ? tier.replace('Deep River ', '') : tier}</span>
                     <span className="inv-section-count">{tierItems.length} items &middot; {tierItems.reduce((s, i) => s + i.incoming, 0).toLocaleString()} units</span>
@@ -991,17 +1063,27 @@ export default function Inventory() {
                   <>
                     <td className="inv-td-alert"></td>
                     <td className="inv-td-sku">{item.sku}</td>
-                    <td className="inv-td-desc" colSpan={dateFilter !== 'all' ? 7 : 6}>
+                    <td className="inv-td-desc" colSpan={dateFilter !== 'all' ? 8 : 7}>
                       <div className="inv-edit-row">
                         <div className="inv-edit-item-name">{item.description}</div>
                         <div className="inv-edit-fields">
-                          <label className="inv-edit-label">Incoming
-                            <input className="inv-edit-input" type="number" value={editVal.incoming} onChange={e => setEditVal(v => ({ ...v, incoming: e.target.value }))} />
+                          <label className="inv-edit-label">Current Stock
+                            <input className="inv-edit-input inv-edit-current-stock" type="number" min="0" placeholder="Count on floor..."
+                              value={editVal.currentStock}
+                              onChange={e => {
+                                const val = e.target.value;
+                                const cs = parseFloat(val);
+                                const sold = parseFloat(editVal.sold) || 0;
+                                // Back-calculate: neededArrived = currentStock + sold
+                                const newIncoming = !isNaN(cs) ? cs + sold : editVal.incoming;
+                                setEditVal(v => ({ ...v, currentStock: val, incoming: newIncoming }));
+                              }}
+                            />
                           </label>
                           <label className="inv-edit-label">Sold
-                            <input className="inv-edit-input" type="number" value={editVal.sold} onChange={e => setEditVal(v => ({ ...v, sold: e.target.value }))} />
+                            <input className="inv-edit-input" type="number" value={editVal.sold} readOnly style={{ opacity: 0.6 }} title="Sold is computed from orders" />
                           </label>
-                          <span className="inv-edit-remaining">= {(parseFloat(editVal.incoming) || 0) - (parseFloat(editVal.sold) || 0)} remaining</span>
+                          <span className="inv-edit-remaining">= {(parseFloat(editVal.currentStock) || 0)} in stock</span>
                         </div>
                         <div className="inv-link-section">
                           <span className="inv-link-label">Catalog link:</span>
@@ -1105,6 +1187,9 @@ export default function Inventory() {
                     <td className={`inv-td-num inv-remaining ${item.remaining <= 0 ? 'inv-zero' : ''}`}>
                       {item.remaining.toLocaleString()}
                     </td>
+                    <td className={`inv-td-num inv-projected${item.futureUnits > 0 ? ' inv-has-future' : ''}`}>
+                      {item.futureUnits > 0 ? item.projected.toLocaleString() : '—'}
+                    </td>
                     <td className="inv-td-pct">
                       <div className="inv-pct-bar-wrap">
                         <div className="inv-pct-bar" style={{ width: `${Math.max(0, item.pct)}%` }}></div>
@@ -1137,7 +1222,7 @@ export default function Inventory() {
               {trailSku === item.sku && (() => {
                 const deductions = item.orderDeductions || {};
                 const adjustments = item.adjustmentHistory || [];
-                const colCount = dateFilter !== 'all' ? 11 : 10;
+                const colCount = dateFilter !== 'all' ? 12 : 11;
                 const entries = Object.entries(deductions).map(([key, val]) => {
                   if (typeof val === 'object' && val.orderId) return val;
                   return { orderId: key, units: typeof val === 'number' ? val : 0, orderName: '', orderDate: '', routeNumber: '', lineId: null };
@@ -1147,12 +1232,15 @@ export default function Inventory() {
                 const activity = [];
                 deliveries.forEach(d => {
                   const arrived = d.date <= todayStr;
-                  activity.push({ date: d.date, type: arrived ? 'Received' : 'Pending', detail: d.po ? `PO ${d.po}` : '', cases: d.qty });
+                  const isStockCount = (d.po || '').startsWith('Stock count');
+                  const type = isStockCount ? 'Stock Count' : (arrived ? 'Received' : 'Pending');
+                  const detail = isStockCount ? d.po : (d.po ? `PO ${d.po}` : '');
+                  activity.push({ date: d.date, type, detail, cases: d.qty });
                 });
                 entries.forEach(e => {
                   activity.push({ date: e.orderDate || '', type: 'Sold', detail: `${e.routeNumber || ''} ${e.orderName || ''}`.trim(), cases: -(e.cases || 0) });
                 });
-                adjustments.forEach(a => {
+                adjustments.filter(a => a.type !== 'stock_count').forEach(a => {
                   activity.push({ date: a.date ? a.date.split('T')[0] : '', type: 'Adjustment', detail: a.note || '', cases: a.qty || 0 });
                 });
                 activity.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -1226,7 +1314,7 @@ export default function Inventory() {
             );})})()}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={dateFilter !== 'all' ? 11 : 10} className="inv-empty">No items found.</td>
+                <td colSpan={dateFilter !== 'all' ? 12 : 11} className="inv-empty">No items found.</td>
               </tr>
             )}
           </tbody>
@@ -1237,6 +1325,7 @@ export default function Inventory() {
               {dateFilter !== 'all' && <td className="inv-td-num" style={{ color: '#94a3b8' }}>{totals.incoming.toLocaleString()}</td>}
               <td className="inv-td-num inv-sold">{totals.sold.toLocaleString()}</td>
               <td className="inv-td-num inv-remaining">{totals.remaining.toLocaleString()}</td>
+              <td className="inv-td-num inv-projected">{totals.hasFuture ? totals.projected.toLocaleString() : ''}</td>
               <td colSpan={dateFilter !== 'all' ? 3 : 2}></td>
             </tr>
           </tfoot>

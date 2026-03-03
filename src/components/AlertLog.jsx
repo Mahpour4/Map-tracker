@@ -1584,117 +1584,39 @@ export default function AlertLog() {
     <div className="al-page">
       {/* Header */}
       <div className="al-header">
-        <div className="al-title-row">
-          <h2>Alert Log</h2>
-          <span
-            className={`al-wa-status al-wa-status--${waStatus}`}
-            title={`WhatsApp: ${waStatus} — Click to configure groups`}
-            onClick={() => { if (waStatus === 'connected') { handleRefreshGroups(); setShowWaSettings(!showWaSettings); } }}
-            style={{ cursor: waStatus === 'connected' ? 'pointer' : 'default' }}
-          >
-            WA {waStatus === 'connected' ? 'ON' : waStatus === 'qr-pending' ? 'QR' : 'OFF'}
-          </span>
-          <div className="al-quick-dates">
-            <button
-              className={`al-quick-btn ${filterDate === null ? 'active' : ''}`}
-              onClick={() => setFilterDate(null)}
-            >All</button>
-            <button
-              className={`al-quick-btn ${filterDate === today ? 'active' : ''}`}
-              onClick={() => setFilterDate(today)}
-            >Today</button>
-            <button
-              className={`al-quick-btn ${filterDate === yesterday ? 'active' : ''}`}
-              onClick={() => setFilterDate(yesterday)}
-            >Yesterday</button>
-            <button
-              className={`al-quick-btn ${filterDate === dayBefore ? 'active' : ''}`}
-              onClick={() => setFilterDate(dayBefore)}
-            >Day Before</button>
-            <button
-              className={`al-quick-btn ${filterDate === 'this-week' ? 'active' : ''}`}
-              onClick={() => setFilterDate('this-week')}
-            >This Week</button>
-            <button
-              className={`al-quick-btn ${filterDate === 'last-week' ? 'active' : ''}`}
-              onClick={() => setFilterDate('last-week')}
-            >Last Week</button>
-          </div>
-          <div className="al-date-picker">
-            <input
-              type="date"
-              className="al-date-input"
-              value={alertDate}
-              max={today}
-              onChange={(e) => setAlertDate(e.target.value)}
-            />
-            <button
-              className="al-btn-fetch"
-              onClick={() => handleFetchByDate()}
-              disabled={fetching}
+        {/* Row 1 — Top Bar */}
+        <div className="al-top-bar">
+          <div className="al-top-left">
+            <h2>Alert Log</h2>
+            <span
+              className={`al-wa-status al-wa-status--${waStatus}`}
+              title={`WhatsApp: ${waStatus} — Click to configure groups`}
+              onClick={() => { if (waStatus === 'connected') { handleRefreshGroups(); setShowWaSettings(!showWaSettings); } }}
+              style={{ cursor: waStatus === 'connected' ? 'pointer' : 'default' }}
             >
+              WA {waStatus === 'connected' ? 'ON' : waStatus === 'qr-pending' ? 'QR' : 'OFF'}
+            </span>
+          </div>
+          <div className="al-top-center">
+            <button className={`al-quick-btn ${filterDate === null ? 'active' : ''}`} onClick={() => setFilterDate(null)}>All</button>
+            <button className={`al-quick-btn ${filterDate === today ? 'active' : ''}`} onClick={() => setFilterDate(today)}>Today</button>
+            <button className={`al-quick-btn ${filterDate === yesterday ? 'active' : ''}`} onClick={() => setFilterDate(yesterday)}>Yesterday</button>
+            <button className={`al-quick-btn ${filterDate === dayBefore ? 'active' : ''}`} onClick={() => setFilterDate(dayBefore)}>Day Before</button>
+            <button className={`al-quick-btn ${filterDate === 'this-week' ? 'active' : ''}`} onClick={() => setFilterDate('this-week')}>This Week</button>
+            <button className={`al-quick-btn ${filterDate === 'last-week' ? 'active' : ''}`} onClick={() => setFilterDate('last-week')}>Last Week</button>
+          </div>
+          <div className="al-top-right">
+            <input type="date" className="al-date-input" value={alertDate} max={today} onChange={(e) => setAlertDate(e.target.value)} />
+            <button className="al-btn-fetch" onClick={() => handleFetchByDate()} disabled={fetching}>
               {fetching ? 'Fetching...' : 'Fetch Alerts'}
             </button>
-            <button
-              className="al-btn-refresh"
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
+            <button className="al-btn-refresh" onClick={handleRefresh} disabled={refreshing}>
               {refreshing ? 'Refreshing...' : 'Refresh Stores'}
             </button>
-            <button
-              className="al-btn-report"
-              onClick={() => setPage('alertAnalytics')}
-            >
-              30-Day Report
-            </button>
-            <button
-              className={`al-btn-stats ${showStats ? 'active' : ''}`}
-              onClick={() => setShowStats(!showStats)}
-            >
+            <button className="al-btn-report" onClick={() => setPage('alertAnalytics')}>30-Day Report</button>
+            <button className={`al-btn-stats ${showStats ? 'active' : ''}`} onClick={() => setShowStats(!showStats)}>
               {showStats ? 'Close Stats' : 'Statistics'}
             </button>
-          </div>
-          <div className="al-stats">
-            <span className="al-stat red" title="Store not yet visited">{stats.open} <span>Open</span></span>
-            <span className="al-stat green" title="Store visited after alert">{stats.resolved} <span>Resolved</span></span>
-            {stats.unknown > 0 && <span className="al-stat gray" title="Store not found in data">{stats.unknown} <span>No Match</span></span>}
-            <span className="al-stat gray">{stats.total} <span>Total</span></span>
-            {stats.avgResponse !== null && <span className="al-stat gray" title="Average days between alert and store visit">{stats.avgResponse}d <span>Avg Response</span></span>}
-            <span className="al-stat-divider" />
-            <span className="al-stat blue" title="Accepted on GlobalWorx">{stats.accepted} <span>Accepted</span></span>
-            <span className="al-stat teal" title="Store visited — awaiting GW completion">{stats.done} <span>Done</span></span>
-            <span className="al-stat emerald" title="Completed on GlobalWorx">{stats.completed} <span>Completed</span></span>
-            {autoAcceptCount > 0 && (
-              <button
-                className="al-btn-autoaccept"
-                onClick={handleAutoAccept}
-                disabled={autoAccepting}
-                title={`${autoAcceptCount} alert(s) have acceptance URLs — auto-accept on GlobalWorx`}
-              >
-                {autoAccepting ? 'Accepting...' : `Auto-Accept ${autoAcceptCount}`}
-              </button>
-            )}
-            {autoClearCount > 0 && (
-              <button
-                className="al-btn-autoclear"
-                onClick={handleAutoClear}
-                disabled={autoClearing}
-                title={`${autoClearCount} Done alert(s) — click Complete on GlobalWorx and label as Completed`}
-              >
-                {autoClearing ? 'Clearing...' : `Auto-Clear ${autoClearCount}`}
-              </button>
-            )}
-            {checkedAlerts.size > 0 && (
-              <button
-                className="al-btn-checkstatus"
-                onClick={handleCheckStatus}
-                disabled={statusChecking}
-                title={`Check GlobalWorx status for ${checkedAlerts.size} selected alert(s)`}
-              >
-                {statusChecking ? 'Checking...' : `Check Status ${checkedAlerts.size}`}
-              </button>
-            )}
           </div>
         </div>
 
@@ -1735,9 +1657,9 @@ export default function AlertLog() {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="al-filters">
-          <div className="al-filter-group">
+        {/* Row 2 — Filter Bar */}
+        <div className="al-filter-bar">
+          <div className="al-filter-left">
             <button className={`al-filter-btn ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterStatus('all'); setExpandedRoutes(null); setCheckedAlerts(new Set()); }}>
               All ({stats.total})
             </button>
@@ -1752,8 +1674,6 @@ export default function AlertLog() {
                 {showCompleted ? 'Hide' : 'Show'} Completed ({stats.completed})
               </button>
             )}
-          </div>
-          <div className="al-filter-group">
             <select className="al-select" value={filterRoute} onChange={e => setLocalFilterRoute(e.target.value)}>
               <option value="all">All Routes</option>
               {alertRoutes.map(r => <option key={r} value={r}>Route {r}</option>)}
@@ -1769,6 +1689,47 @@ export default function AlertLog() {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
+          </div>
+          <div className="al-filter-right">
+            <span className="al-stat red" title="Store not yet visited">{stats.open} <span>Open</span></span>
+            <span className="al-stat green" title="Store visited after alert">{stats.resolved} <span>Resolved</span></span>
+            {stats.unknown > 0 && <span className="al-stat gray" title="Store not found in data">{stats.unknown} <span>No Match</span></span>}
+            <span className="al-stat gray">{stats.total} <span>Total</span></span>
+            {stats.avgResponse !== null && <span className="al-stat gray" title="Average days between alert and store visit">{stats.avgResponse}d <span>Avg Response</span></span>}
+            <span className="al-stat-divider" />
+            <span className="al-stat blue" title="Accepted on GlobalWorx">{stats.accepted} <span>Accepted</span></span>
+            <span className="al-stat teal" title="Store visited — awaiting GW completion">{stats.done} <span>Done</span></span>
+            <span className="al-stat emerald" title="Completed on GlobalWorx">{stats.completed} <span>Completed</span></span>
+            {autoAcceptCount > 0 && (
+              <button
+                className="al-btn-autoaccept"
+                onClick={handleAutoAccept}
+                disabled={autoAccepting}
+                title={`${autoAcceptCount} alert(s) have acceptance URLs — auto-accept on GlobalWorx`}
+              >
+                {autoAccepting ? 'Accepting...' : `Auto-Accept ${autoAcceptCount}`}
+              </button>
+            )}
+            {autoClearCount > 0 && (
+              <button
+                className="al-btn-autoclear"
+                onClick={handleAutoClear}
+                disabled={autoClearing}
+                title={`${autoClearCount} Done alert(s) — click Complete on GlobalWorx and label as Completed`}
+              >
+                {autoClearing ? 'Clearing...' : `Auto-Clear ${autoClearCount}`}
+              </button>
+            )}
+            {checkedAlerts.size > 0 && (
+              <button
+                className="al-btn-checkstatus"
+                onClick={handleCheckStatus}
+                disabled={statusChecking}
+                title={`Check GlobalWorx status for ${checkedAlerts.size} selected alert(s)`}
+              >
+                {statusChecking ? 'Checking...' : `Check Status ${checkedAlerts.size}`}
+              </button>
+            )}
           </div>
         </div>
       </div>
