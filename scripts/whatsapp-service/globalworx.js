@@ -310,80 +310,102 @@ async function acceptAlert(page, url, refNumber) {
         });
       }
 
-      // First try: native options (in case they are present)
-      timeSet = await page.evaluate((hours) => {
+      await saveDebug(page, refNumber, 'resolution-form');
+
+      // Attempt 1: set via native <select> options (hardcoded '48' — no arg passing to avoid Puppeteer serialization issues)
+      timeSet = await page.evaluate(() => {
+        var TARGET = '48';
         var sel = document.querySelector('select[name*="restime"]')
                || document.querySelector('select[id*="restime"]')
                || document.querySelector('select[name*="resolution"]');
-        if (!sel || !sel.options || sel.options.length === 0) return false;
-        for (var i = 0; i < sel.options.length; i++) {
-          var o = sel.options[i];
-          if ((o.value+'').indexOf(hours) !== -1 || (o.text+'').indexOf(hours) !== -1) {
-            sel.value = o.value;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            try { if (window.$ && window.$(sel).val) window.$(sel).val(o.value).trigger('change'); } catch(_) {}
-            return o.text || o.value;
+        if (!sel) return 'NO_SELECT';
+        var opts = Array.from(sel.options || []);
+        if (opts.length === 0) return 'NO_OPTIONS';
+        // Log all options for debugging
+        var optList = opts.map(function(o) { return String(o.value) + ':' + String(o.text); }).join(' | ');
+        console.log('[GW_EVAL] Options:', optList);
+        var match = null;
+        for (var i = 0; i < opts.length; i++) {
+          var v = String(opts[i].value || '');
+          var t = String(opts[i].text || opts[i].textContent || '');
+          if (v === TARGET || v.indexOf(TARGET) !== -1 || t.indexOf(TARGET) !== -1) {
+            match = opts[i];
+            break;
           }
         }
-        return false;
-      }, RESOLUTION_HOURS);
+        if (!match) return 'NO_MATCH:' + optList;
+        sel.value = match.value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        try { if (window.$ && window.$(sel).val) window.$(sel).val(match.value).trigger('change'); } catch(_) {}
+        return 'SET:' + String(match.text || match.value);
+      });
 
-      // Second try: Select2 UI — click the container to open dropdown, then click the option
-      if (!timeSet) {
-        console.log('[GW]   Native options empty — trying Select2 UI interaction');
+      console.log('[GW]   Resolution select result: ' + timeSet);
+      await saveDebug(page, refNumber, 'after-set-restime');
 
-        // Open the Select2 dropdown by clicking its rendered container
-        const opened = await page.evaluate(() => {
-          var sel = document.querySelector('select[name*="restime"]')
-                 || document.querySelector('select[id*="restime"]');
-          if (!sel) return false;
-          // Select2 renders a .select2-container sibling next to the hidden <select>
+      // If native set worked, timeSet starts with 'SET:'
+      if (timeSet && String(timeSet).startsWith('SET:')) {
+        timeSet = String(timeSet).replace('SET:', '');
+        console.log('[GW]   Set resolution to: ' + timeSet);
+      } else {
+        // Native failed — try Select2 UI (click container, pick from rendered list)
+        console.log('[GW]   Native select failed (' + timeSet + ') — trying Select2 UI');
+        timeSet = false;
+
+        const s2Info = await page.evaluate(() => {
+          var sel = document.querySelector('select[name*="restime"]') || document.querySelector('select[id*="restime"]');
+          if (!sel) return { found: false };
           var container = sel.nextElementSibling;
           if (!container || !container.classList.contains('select2-container')) {
-            // Try parent's child
             container = sel.parentElement && sel.parentElement.querySelector('.select2-container');
           }
           if (container) {
             var selection = container.querySelector('.select2-selection, .select2-choice');
-            if (selection) { selection.click(); return true; }
+            if (selection) {
+              selection.click();
+              return { found: true, clicked: true, html: container.outerHTML.slice(0, 300) };
+            }
+            return { found: true, clicked: false, html: container.outerHTML.slice(0, 300) };
           }
-          // Fallback: jQuery Select2 API
-          try { if (window.$ && window.$(sel).select2) { window.$(sel).select2('open'); return true; } } catch(_) {}
-          return false;
+          try { if (window.$ && window.$(sel).select2) { window.$(sel).select2('open'); return { found: true, clicked: true, method: 'jquery' }; } } catch(_) {}
+          return { found: false };
         });
 
-        if (opened) {
-          try {
-            // Wait for Select2 results list to render
-            await page.waitForSelector('.select2-results__option, .select2-results li, ul.select2-results li', { timeout: 4000 });
-            await sleep(300);
+        console.log('[GW]   Select2 open attempt:', JSON.stringify(s2Info));
+        await saveDebug(page, refNumber, 'select2-open-attempt');
 
-            timeSet = await page.evaluate((hours) => {
-              var options = document.querySelectorAll('.select2-results__option, .select2-results li');
-              for (var i = 0; i < options.length; i++) {
-                var txt = (options[i].textContent || '').trim();
-                if (txt.indexOf(hours) !== -1) {
-                  options[i].click();
-                  return txt;
-                }
-              }
-              return false;
-            }, RESOLUTION_HOURS);
-          } catch (s2err) {
-            console.log('[GW]   Select2 dropdown did not open in time:', s2err.message);
-          }
-        } else {
-          console.log('[GW]   Could not open Select2 container for restime');
+        if (s2Info.clicked) {
+          await sleep(800);
+          await saveDebug(page, refNumber, 'select2-after-click');
+
+          const s2Options = await page.evaluate(() => {
+            var opts = Array.from(document.querySelectorAll('.select2-results__option, .select2-results li, .select2-drop li'));
+            return opts.map(function(o) { return (o.textContent || '').trim(); });
+          });
+          console.log('[GW]   Select2 rendered options:', JSON.stringify(s2Options));
+
+          const clicked = await page.evaluate(() => {
+            var TARGET = '48';
+            var opts = Array.from(document.querySelectorAll('.select2-results__option, .select2-results li, .select2-drop li'));
+            for (var i = 0; i < opts.length; i++) {
+              var txt = (opts[i].textContent || '').trim();
+              if (txt.indexOf(TARGET) !== -1) { opts[i].click(); return txt; }
+            }
+            return false;
+          });
+
+          console.log('[GW]   Select2 click result: ' + clicked);
+          await saveDebug(page, refNumber, 'select2-after-select');
+          if (clicked) timeSet = clicked;
         }
       }
 
       if (timeSet) {
-        console.log('[GW]   Set resolution to: ' + timeSet);
-      } else {
-        console.log('[GW]   Could not set 48hr — proceeding anyway (form default will be used)');
+        console.log('[GW]   Resolution time set to: ' + timeSet);
       }
     } catch (err2) {
       console.error('[GW]   Strategy 2 error:', err2.message);
+      await saveDebug(page, refNumber, 'strategy2-error').catch(() => {});
     }
 
     // HARD STOP: if resolution time could not be set to 48hr, do NOT submit.
