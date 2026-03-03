@@ -321,11 +321,12 @@ export default function AlertLog() {
     const accepted = base.filter(a => a.globalworxAccepted).length;
     const done = base.filter(a => a.globalworxDone).length;
     const completed = base.filter(a => a.globalworxCompleted).length;
+    const errors = base.filter(a => a.globalworxError).length;
     const resolvedWithDays = base.filter(a => a.status === 'resolved' && a.days !== null);
     const avgResponse = resolvedWithDays.length > 0
       ? Math.round(resolvedWithDays.reduce((sum, a) => sum + a.days, 0) / resolvedWithDays.length)
       : null;
-    return { total, open, resolved, unknown, accepted, done, completed, avgResponse };
+    return { total, open, resolved, unknown, accepted, done, completed, errors, avgResponse };
   }, [enrichedAlerts, showCompleted, filterStatus, filterDate, weekDates, lastWeekDates, filterRoute, filterVendor, searchTerm]);
 
   // Count alerts eligible for auto-clear (Done + has acceptance URL + not yet completed)
@@ -1700,6 +1701,9 @@ export default function AlertLog() {
             <span className="al-stat blue" title="Accepted on GlobalWorx">{stats.accepted} <span>Accepted</span></span>
             <span className="al-stat teal" title="Store visited — awaiting GW completion">{stats.done} <span>Done</span></span>
             <span className="al-stat emerald" title="Completed on GlobalWorx">{stats.completed} <span>Completed</span></span>
+            {stats.errors > 0 && (
+              <span className="al-stat red" title="Auto-complete failed — needs manual action">{stats.errors} <span>Error</span></span>
+            )}
             {autoAcceptCount > 0 && (
               <button
                 className="al-btn-autoaccept"
@@ -2325,22 +2329,24 @@ export default function AlertLog() {
                                   : '—'}
                               </td>
                               <td className="al-cell-gw">
-                                {a.globalworxCompleted
-                                  ? <span className="al-gw-col-completed" title="Completion form submitted">Completed</span>
-                                  : a.globalworxDone
-                                    ? <span className="al-gw-col-done" title="Store visited — marked Done">Done</span>
-                                    : a.globalworxAccepted
-                                      ? <span className="al-gw-col-yes" title="Accepted">✓</span>
-                                      : a.acceptanceUrl
-                                        ? <a
-                                            href={a.acceptanceUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="al-gw-btn"
-                                            title="Open GlobalWorx acceptance form"
-                                            onClick={e => e.stopPropagation()}
-                                          >Accept</a>
-                                        : <span className="al-gw-col-no" title="No acceptance link">—</span>
+                                {a.globalworxError
+                                  ? <span className="al-gw-col-error" title="Auto-complete failed — needs manual action">⚠ Error</span>
+                                  : a.globalworxCompleted
+                                    ? <span className="al-gw-col-completed" title="Completion form submitted">Completed</span>
+                                    : a.globalworxDone
+                                      ? <span className="al-gw-col-done" title="Store visited — marked Done">Done</span>
+                                      : a.globalworxAccepted
+                                        ? <span className="al-gw-col-yes" title="Accepted">✓</span>
+                                        : a.acceptanceUrl
+                                          ? <a
+                                              href={a.acceptanceUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="al-gw-btn"
+                                              title="Open GlobalWorx acceptance form"
+                                              onClick={e => e.stopPropagation()}
+                                            >Accept</a>
+                                          : <span className="al-gw-col-no" title="No acceptance link">—</span>
                                 }
                               </td>
                               <td>
@@ -2452,18 +2458,20 @@ export default function AlertLog() {
                                       </div>
 
                                       {/* GlobalWorx acceptance status */}
-                                      <div className={`al-detail-check ${a.globalworxCompleted ? 'yes' : a.globalworxDone ? 'yes' : a.globalworxAccepted ? 'yes' : 'no'}`}>
-                                        <span className="al-detail-check-icon">{a.globalworxCompleted ? '✓' : a.globalworxDone ? '✓' : a.globalworxAccepted ? '✓' : '✗'}</span>
+                                      <div className={`al-detail-check ${a.globalworxError ? 'error' : a.globalworxCompleted ? 'yes' : a.globalworxDone ? 'yes' : a.globalworxAccepted ? 'yes' : 'no'}`}>
+                                        <span className="al-detail-check-icon">{a.globalworxError ? '⚠' : a.globalworxCompleted ? '✓' : a.globalworxDone ? '✓' : a.globalworxAccepted ? '✓' : '✗'}</span>
                                         <div className="al-detail-check-label">
-                                          {a.globalworxCompleted
-                                            ? 'GlobalWorx completion form submitted'
-                                            : a.globalworxDone
-                                              ? 'Store visited — marked Done in Gmail'
-                                              : a.globalworxAccepted
-                                                ? 'GlobalWorx acceptance form submitted'
-                                                : 'GlobalWorx acceptance not yet submitted'}
+                                          {a.globalworxError
+                                            ? 'Auto-complete failed — open the acceptance form and complete manually'
+                                            : a.globalworxCompleted
+                                              ? 'GlobalWorx completion form submitted'
+                                              : a.globalworxDone
+                                                ? 'Store visited — marked Done in Gmail'
+                                                : a.globalworxAccepted
+                                                  ? 'GlobalWorx acceptance form submitted'
+                                                  : 'GlobalWorx acceptance not yet submitted'}
                                         </div>
-                                        {a.acceptanceUrl && !a.globalworxAccepted && !a.globalworxDone && !a.globalworxCompleted && (
+                                        {a.acceptanceUrl && (a.globalworxError || (!a.globalworxAccepted && !a.globalworxDone && !a.globalworxCompleted)) && (
                                           <a
                                             href={a.acceptanceUrl}
                                             target="_blank"

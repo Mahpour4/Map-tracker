@@ -386,6 +386,13 @@ async function acceptAlert(page, url, refNumber) {
       console.error('[GW]   Strategy 2 error:', err2.message);
     }
 
+    // HARD STOP: if resolution time could not be set to 48hr, do NOT submit.
+    // Submitting with the wrong resolution time (e.g. 1hr default) is worse than not submitting.
+    if (acceptClicked && !timeSet) {
+      console.error(`[GW]   ${refNumber} — ABORTED: could not set 48hr resolution time. Will not submit with wrong value.`);
+      return { success: false, error: 'Could not set 48hr resolution — submission aborted to prevent wrong value' };
+    }
+
     await sleep(1000);
 
     // Strategy 3: Click "Accept Issue" / Submit — CSS first, then XPath

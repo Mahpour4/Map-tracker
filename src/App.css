@@ -5679,6 +5679,23 @@ textarea {
   white-space: nowrap;
 }
 
+.al-gw-col-error {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.al-detail-check.error {
+  background: #fef2f2;
+}
+.al-detail-check.error .al-detail-check-icon { color: #dc2626; }
+
 .al-store-link {
   color: #2563eb;
   cursor: pointer;
