@@ -12726,6 +12726,55 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
   cursor: pointer;
 }
 .wa-paste-btn:hover { background: #f3f4f6; }
+.wa-chatall-btn {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 13px;
+}
+.wa-chatall-btn:hover { background: #f3f4f6; }
+.wa-chatall-btn.active { background: #dbeafe; border-color: #93c5fd; }
+.wa-chatall-msg {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+}
+.wa-chatall-msg:hover { background: #f9fafb; }
+.wa-chatall-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.wa-chatall-sender {
+  font-weight: 600;
+  font-size: 12px;
+  color: #1d4ed8;
+}
+.wa-chatall-route {
+  font-size: 10px;
+  background: #e0e7ff;
+  color: #4338ca;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.wa-chatall-time {
+  margin-left: auto;
+  font-size: 11px;
+  color: #9ca3af;
+}
+.wa-chatall-body {
+  font-size: 12px;
+  color: #4b5563;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  max-height: 80px;
+  overflow: hidden;
+}
 .wa-paste-panel {
   padding: 10px 14px;
   background: #eff6ff;

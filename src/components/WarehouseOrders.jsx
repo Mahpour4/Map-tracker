@@ -143,6 +143,7 @@ export default function WarehouseOrders() {
   const [waPasteOpen, setWaPasteOpen] = useState(false); // paste order textarea toggle
   const [waPasteText, setWaPasteText] = useState(''); // paste order text content
   const [waPasteRoute, setWaPasteRoute] = useState(''); // optional route for pasted order
+  const [waChatAll, setWaChatAll] = useState(false); // toggle: show all messages in one flat chat
   const waPollerRef = useRef(null);
 
   // Google Sheets sync state
@@ -2941,6 +2942,7 @@ export default function WarehouseOrders() {
                   <option value="all">All</option>
                 </select>
                 <button className={`wa-sync-now-btn${waSyncing ? ' spinning' : ''}`} onClick={handleWaSync} disabled={waSyncing} title="Sync now">↻</button>
+                <button className={`wa-chatall-btn${waChatAll ? ' active' : ''}`} onClick={() => setWaChatAll(prev => !prev)} title={waChatAll ? 'Grouped view' : 'Show all messages'}>{waChatAll ? '👥' : '💬'}</button>
                 <button className="wa-paste-btn" onClick={() => setWaPasteOpen(prev => !prev)} title="Paste order from clipboard">{waPasteOpen ? '✕' : '📋'}</button>
                 <button className="wa-setup-btn" onClick={() => setWaShowSetup(prev => !prev)} title="Setup">{waShowSetup ? '✕' : '⚙'}</button>
               </div>
@@ -3043,43 +3045,70 @@ export default function WarehouseOrders() {
               </div>
             )}
 
-            {/* Contact rows */}
+            {/* Contact rows OR flat all-chat view */}
             <div className="wa-contact-list">
-              {Object.keys(waGrouped).length === 0 ? (
-                <div className="wa-empty">
-                  {waStatus === 'connected'
-                    ? (waOrderGroupId ? 'No messages yet. Waiting for orders...' : 'Set up an order group above.')
-                    : 'WhatsApp offline. Start the service.'}
-                </div>
-              ) : (
-                Object.entries(waGrouped).map(([phone, msgs]) => {
-                  const contact = waContacts[phone];
-                  const displayName = contact?.name || msgs[0]?.contactName || phone;
-                  const routeNum = contact?.route || msgs[0]?.contactRoute || null;
-                  const lastMsg = msgs[msgs.length - 1];
-                  const lastTime = lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-                  const preview = lastMsg?.body ? lastMsg.body.replace(/\n/g, ' ').substring(0, 45) : lastMsg?.mediaBase64 ? '[image]' : '';
-                  const initials = displayName.split(' ').map(w => w[0]).filter(Boolean).join('').substring(0, 2).toUpperCase() || '?';
-                  return (
-                    <div
-                      key={phone}
-                      className={`wa-contact-row${waSelectedPhone === phone ? ' active' : ''}`}
-                      onClick={() => setWaSelectedPhone(phone)}
-                    >
-                      <div className="wa-contact-avatar">{initials}</div>
-                      <div className="wa-contact-details">
-                        <div className="wa-contact-top">
-                          <span className="wa-contact-name">{displayName}</span>
-                          <span className="wa-contact-time">{lastTime}</span>
+              {waChatAll ? (
+                // ── Flat all-messages view ──
+                waFiltered.length === 0 ? (
+                  <div className="wa-empty">No messages</div>
+                ) : (
+                  [...waFiltered].sort((a, b) => b.timestamp - a.timestamp).map(m => {
+                    const contact = waContacts[m.from];
+                    const senderName = contact?.name || m.contactName || m.pushName || m.from;
+                    const routeNum = contact?.route || m.contactRoute || null;
+                    const timeStr = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const dateStr = new Date(m.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+                    const bodyPreview = m.body ? m.body.replace(/\n/g, ' ') : m.mediaBase64 ? '[image]' : '';
+                    return (
+                      <div key={m.id} className="wa-chatall-msg" onClick={() => { setWaChatAll(false); setWaSelectedPhone(m.from); }}>
+                        <div className="wa-chatall-header">
+                          <span className="wa-chatall-sender">{senderName}</span>
+                          {routeNum && <span className="wa-chatall-route">R{routeNum}</span>}
+                          <span className="wa-chatall-time">{timeStr} · {dateStr}</span>
                         </div>
-                        <div className="wa-contact-bottom">
-                          <span className="wa-contact-preview">{routeNum ? `Route ${routeNum} · ` : ''}{preview}</span>
-                          {msgs.length > 0 && <span className="wa-contact-badge">{msgs.length}</span>}
+                        <div className="wa-chatall-body">{bodyPreview}</div>
+                      </div>
+                    );
+                  })
+                )
+              ) : (
+                // ── Grouped by contact view ──
+                Object.keys(waGrouped).length === 0 ? (
+                  <div className="wa-empty">
+                    {waStatus === 'connected'
+                      ? (waOrderGroupId ? 'No messages yet. Waiting for orders...' : 'Set up an order group above.')
+                      : 'WhatsApp offline. Start the service.'}
+                  </div>
+                ) : (
+                  Object.entries(waGrouped).map(([phone, msgs]) => {
+                    const contact = waContacts[phone];
+                    const displayName = contact?.name || msgs[0]?.contactName || phone;
+                    const routeNum = contact?.route || msgs[0]?.contactRoute || null;
+                    const lastMsg = msgs[msgs.length - 1];
+                    const lastTime = lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                    const preview = lastMsg?.body ? lastMsg.body.replace(/\n/g, ' ').substring(0, 45) : lastMsg?.mediaBase64 ? '[image]' : '';
+                    const initials = displayName.split(' ').map(w => w[0]).filter(Boolean).join('').substring(0, 2).toUpperCase() || '?';
+                    return (
+                      <div
+                        key={phone}
+                        className={`wa-contact-row${waSelectedPhone === phone ? ' active' : ''}`}
+                        onClick={() => setWaSelectedPhone(phone)}
+                      >
+                        <div className="wa-contact-avatar">{initials}</div>
+                        <div className="wa-contact-details">
+                          <div className="wa-contact-top">
+                            <span className="wa-contact-name">{displayName}</span>
+                            <span className="wa-contact-time">{lastTime}</span>
+                          </div>
+                          <div className="wa-contact-bottom">
+                            <span className="wa-contact-preview">{routeNum ? `Route ${routeNum} · ` : ''}{preview}</span>
+                            {msgs.length > 0 && <span className="wa-contact-badge">{msgs.length}</span>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })
+                )
               )}
             </div>
           </div>
