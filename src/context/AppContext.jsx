@@ -1057,9 +1057,23 @@ export function AppProvider({ children }) {
       console.warn('[AutoAccept] Gmail token expired — label skipped. Reconnect Gmail and re-run.');
     }
 
+    // Mark aborted alerts (48hr resolution not set) as errors — label Gmail + update state
+    const abortedResults = results.filter(r => r.abortedResolution);
+    if (abortedResults.length > 0) {
+      const abortedAlerts = abortedResults.map(r => unaccepted.find(a => a.refNumber === r.refNumber)).filter(Boolean);
+      abortedAlerts.forEach(a => { a.globalworxError = true; });
+      const abortedEmailIds = abortedAlerts.map(a => a.emailId).filter(Boolean);
+      if (abortedEmailIds.length > 0 && gmailOk) {
+        await labelAlertsError(abortedEmailIds);
+      }
+      console.error(`[AutoAccept] ${abortedAlerts.length} alert(s) aborted — 48hr resolution could not be set: ${abortedResults.map(r => r.refNumber).join(', ')}`);
+      // Force state update so UI shows error badges immediately
+      dispatch({ type: 'LOAD_ALERTS', payload: [...state.alerts] });
+    }
+
     const accepted = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
-    return { accepted, failed, total: unaccepted.length, results };
+    return { accepted, failed, aborted: abortedResults.length, total: unaccepted.length, results };
   }, [state.alerts]);
 
   const syncAlertsFromGithub = useCallback(() => {

@@ -390,7 +390,7 @@ async function acceptAlert(page, url, refNumber) {
     // Submitting with the wrong resolution time (e.g. 1hr default) is worse than not submitting.
     if (acceptClicked && !timeSet) {
       console.error(`[GW]   ${refNumber} — ABORTED: could not set 48hr resolution time. Will not submit with wrong value.`);
-      return { success: false, error: 'Could not set 48hr resolution — submission aborted to prevent wrong value' };
+      return { success: false, abortedResolution: true, error: 'Could not set 48hr resolution — submission aborted' };
     }
 
     await sleep(1000);

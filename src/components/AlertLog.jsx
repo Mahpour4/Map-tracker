@@ -619,11 +619,13 @@ export default function AlertLog() {
     setAutoAccepting(true);
     try {
       const result = await autoAcceptAlerts();
-      if (result.accepted > 0) {
-        // Refresh alerts to pick up new "Processed" labels
-        await fetchGmailAlerts();
-      }
-      alert(`Auto-Accept: ${result.accepted} accepted, ${result.failed} failed out of ${result.total}`);
+      // Always refresh so error badges and accepted labels both appear
+      await fetchGmailAlerts();
+      const parts = [];
+      if (result.accepted > 0) parts.push(`${result.accepted} accepted`);
+      if (result.aborted > 0) parts.push(`${result.aborted} failed (48hr dropdown could not be set — marked as Error)`);
+      if (result.failed - (result.aborted || 0) > 0) parts.push(`${result.failed - (result.aborted || 0)} other failures`);
+      alert(`Auto-Accept: ${parts.length ? parts.join(', ') : 'no changes'} out of ${result.total}`);
     } catch (err) {
       alert(`Auto-Accept failed: ${err.message}`);
     } finally {
