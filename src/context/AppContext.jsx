@@ -1045,9 +1045,14 @@ export function AppProvider({ children }) {
       }
     });
 
-    // Label successfully accepted emails as "Processed" in Gmail (marks globalworxAccepted = true on next fetch)
-    const acceptedIds = results.filter(r => r.success && r.emailId).map(r => r.emailId);
     const gmailOk = isGmailConnected();
+
+    // Immediately mark successfully accepted alerts in state so Accept button disappears right away
+    const successfulAlerts = results.filter(r => r.success).map(r => unaccepted.find(a => a.refNumber === r.refNumber)).filter(Boolean);
+    successfulAlerts.forEach(a => { a.globalworxAccepted = true; });
+
+    // Label successfully accepted emails as "Processed" in Gmail
+    const acceptedIds = results.filter(r => r.success && r.emailId).map(r => r.emailId);
     console.log(`[AutoAccept] ${results.filter(r => r.success).length} accepted, ${acceptedIds.length} have emailId, gmailConnected=${gmailOk}`);
     if (acceptedIds.length > 0 && gmailOk) {
       await labelAlertsProcessed(acceptedIds);
@@ -1067,7 +1072,10 @@ export function AppProvider({ children }) {
         await labelAlertsError(abortedEmailIds);
       }
       console.error(`[AutoAccept] ${abortedAlerts.length} alert(s) aborted — 48hr resolution could not be set: ${abortedResults.map(r => r.refNumber).join(', ')}`);
-      // Force state update so UI shows error badges immediately
+    }
+
+    // Dispatch once to update UI for both accepted + aborted
+    if (successfulAlerts.length > 0 || abortedResults.length > 0) {
       dispatch({ type: 'LOAD_ALERTS', payload: [...state.alerts] });
     }
 
