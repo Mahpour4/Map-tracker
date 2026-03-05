@@ -4,7 +4,7 @@ import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '..
 import { fleetVehicles } from '../data/fleetData';
 import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, fetchWarehouseOrdersJson, saveWarehouseOrdersJson, fetchInventoryJson, saveInventoryJson, getToken } from '../services/githubService';
 import { loadLocalData, saveLocalData } from '../services/localDataService';
-import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, labelAlertsError, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
+import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, labelAlertsError, unlabelAlertsError, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
 import localSchedules from '../data/schedules.json';
 import localVisitHistory from '../data/visitHistory.json';
@@ -1084,6 +1084,42 @@ export function AppProvider({ children }) {
     return { accepted, failed, aborted: abortedResults.length, total: unaccepted.length, results };
   }, [state.alerts]);
 
+  // Manual override for errored alerts — user picks: accepted, done, or completed
+  const manualOverrideAlert = useCallback(async (refNumber, action) => {
+    const alert = state.alerts.find(a => a.refNumber === refNumber);
+    if (!alert) return;
+    const emailId = alert.emailId;
+
+    // Remove Error label from Gmail first
+    if (emailId) {
+      await unlabelAlertsError([emailId]);
+    }
+    alert.globalworxError = false;
+
+    if (action === 'accepted') {
+      // Mark as accepted — goes back into the regular check-visit queue
+      alert.globalworxAccepted = true;
+      alert.globalworxDone = false;
+      alert.globalworxCompleted = false;
+      if (emailId) await labelAlertsProcessed([emailId]);
+    } else if (action === 'done') {
+      // Mark as done — will be auto-cleared when the user presses the auto-clear button
+      alert.globalworxAccepted = true;
+      alert.globalworxDone = true;
+      alert.globalworxCompleted = false;
+      if (emailId) await labelAlertsDone([emailId]);
+    } else if (action === 'completed') {
+      // Mark as completed — no complete button available, treat as fully resolved
+      alert.globalworxAccepted = true;
+      alert.globalworxDone = true;
+      alert.globalworxCompleted = true;
+      if (emailId) await labelAlertsCompleted([emailId]);
+    }
+
+    dispatch({ type: 'LOAD_ALERTS', payload: [...state.alerts] });
+    console.log(`[Alerts] Manual override: ${refNumber} → ${action}`);
+  }, [state.alerts]);
+
   const syncAlertsFromGithub = useCallback(() => {
     if (!getToken()) return;
     dispatch({ type: 'SET_ALERT_SYNC_STATUS', payload: { status: 'loading' } });
@@ -1564,6 +1600,7 @@ export function AppProvider({ children }) {
     fetchGmailAlerts,
     autoAcceptAlerts,
     autoCompleteAlerts,
+    manualOverrideAlert,
     syncAlertsFromGithub,
     loadAlertImage,
     saveSchedule,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import cityCoords from '../data/cityCoords';
 import { geocodeAddress } from '../utils/geocodeAddress';
@@ -247,89 +247,94 @@ export default function DataImport() {
     return map;
   }, [stores]);
 
-  // Listen for Chrome extension postMessage imports
-  const handleExtensionImport = useCallback((event) => {
-    if (event.data?.type !== 'MAP_TRACKER_IMPORT') return;
-    const { source, data } = event.data;
-
-    if (source === 'dao') {
-      // DAO transaction import — same as txProcessFileData but with raw data
-      let txData;
-      try {
-        txData = typeof data === 'string' ? JSON.parse(data) : data;
-      } catch {
-        setExtImportResult({ ok: false, message: 'Invalid DAO transaction data from extension.' });
-        return;
-      }
-      if (!Array.isArray(txData) || txData.length === 0) {
-        setExtImportResult({ ok: false, message: 'No transaction data received from extension.' });
-        return;
-      }
-      const newIds = new Set(txData.map(d => d.id).filter(Boolean));
-      const kept = transactions.filter(t => !t.id || !newIds.has(t.id));
-      const merged = [...kept, ...txData];
-      setTransactions(merged);
-
-      // Auto-sync last sale dates from the new transactions
-      const parsed = parseTransactions(txData);
-      const invoices = parsed.filter(t => t.docType === 'Invoice' && !t.isVoid && (t.amount || 0) > 0);
-      const latestByStore = {};
-      for (const tx of invoices) {
-        const store = matchCustomerToStore(tx.custName, tx.custNum, stores);
-        if (!store) continue;
-        const date = tx.settlementDate || tx.docDate?.date;
-        if (!date) continue;
-        if (!latestByStore[store.id] || date > latestByStore[store.id]) {
-          latestByStore[store.id] = date;
-        }
-      }
-      const updates = [];
-      for (const [storeId, date] of Object.entries(latestByStore)) {
-        const store = stores.find(s => s.id === storeId);
-        if (!store) continue;
-        if (!store.lastSaleDate || date > store.lastSaleDate) {
-          updates.push({ id: storeId, lastSaleDate: date });
-        }
-      }
-      if (updates.length > 0) bulkImportStores(updates, []);
-
-      // Log the import
-      const dates = parsed.map(t => t.settlementDate || t.docDate?.date || '').filter(Boolean).sort();
-      const routes = [...new Set(parsed.map(t => t.route).filter(Boolean))].sort();
-      addImportEntry({
-        importType: 'transactions',
-        totalInFeed: txData.length,
-        parsedCount: parsed.length,
-        newRecords: txData.length - (transactions.length - kept.length),
-        duplicatesSkipped: transactions.length - kept.length,
-        dateRange: dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : '',
-        routes,
-      });
-
-      setExtImportResult({
-        ok: true,
-        message: `Imported ${txData.length} DAO transactions. Updated last sale on ${updates.length} store${updates.length !== 1 ? 's' : ''}.`,
-      });
-    }
-
-    if (source === 'websnak') {
-      // WebSnak store import — set the textarea content and trigger parse
-      const text = typeof data === 'string' ? data : JSON.stringify(data);
-      setRawInput(text);
-      setApplied(false);
-      setParsed(null);
-      // Notify user to review and apply
-      setExtImportResult({
-        ok: true,
-        message: `Received ${typeof data === 'string' ? 'store' : ''} data from WebSnak. Review below and click "Apply" to import.`,
-      });
-    }
-  }, [transactions, stores, setTransactions, bulkImportStores, addImportEntry]);
-
+  // Poll localStorage for Chrome extension import data (set by extension, no script injection needed)
   useEffect(() => {
-    window.addEventListener('message', handleExtensionImport);
-    return () => window.removeEventListener('message', handleExtensionImport);
-  }, [handleExtensionImport]);
+    const CHECK_KEY = 'MAP_TRACKER_EXT_IMPORT';
+    let lastTs = 0;
+
+    const interval = setInterval(() => {
+      try {
+        const raw = localStorage.getItem(CHECK_KEY);
+        if (!raw) return;
+        const { source, data, ts } = JSON.parse(raw);
+        if (ts <= lastTs) return; // Already processed
+        lastTs = ts;
+        localStorage.removeItem(CHECK_KEY);
+
+        if (source === 'dao') {
+          let txData;
+          try {
+            txData = typeof data === 'string' ? JSON.parse(data) : data;
+          } catch {
+            setExtImportResult({ ok: false, message: 'Invalid DAO transaction data from extension.' });
+            return;
+          }
+          if (!Array.isArray(txData) || txData.length === 0) {
+            setExtImportResult({ ok: false, message: 'No transaction data received from extension.' });
+            return;
+          }
+          const newIds = new Set(txData.map(d => d.id).filter(Boolean));
+          const kept = transactions.filter(t => !t.id || !newIds.has(t.id));
+          const merged = [...kept, ...txData];
+          setTransactions(merged);
+
+          const parsed = parseTransactions(txData);
+          const invoices = parsed.filter(t => t.docType === 'Invoice' && !t.isVoid && (t.amount || 0) > 0);
+          const latestByStore = {};
+          for (const tx of invoices) {
+            const store = matchCustomerToStore(tx.custName, tx.custNum, stores);
+            if (!store) continue;
+            const date = tx.settlementDate || tx.docDate?.date;
+            if (!date) continue;
+            if (!latestByStore[store.id] || date > latestByStore[store.id]) {
+              latestByStore[store.id] = date;
+            }
+          }
+          const updates = [];
+          for (const [storeId, date] of Object.entries(latestByStore)) {
+            const store = stores.find(s => s.id === storeId);
+            if (!store) continue;
+            if (!store.lastSaleDate || date > store.lastSaleDate) {
+              updates.push({ id: storeId, lastSaleDate: date });
+            }
+          }
+          if (updates.length > 0) bulkImportStores(updates, []);
+
+          const dates = parsed.map(t => t.settlementDate || t.docDate?.date || '').filter(Boolean).sort();
+          const routes = [...new Set(parsed.map(t => t.route).filter(Boolean))].sort();
+          addImportEntry({
+            importType: 'transactions',
+            totalInFeed: txData.length,
+            parsedCount: parsed.length,
+            newRecords: txData.length - (transactions.length - kept.length),
+            duplicatesSkipped: transactions.length - kept.length,
+            dateRange: dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : '',
+            routes,
+          });
+
+          setExtImportResult({
+            ok: true,
+            message: `Imported ${txData.length} DAO transactions. Updated last sale on ${updates.length} store${updates.length !== 1 ? 's' : ''}.`,
+          });
+        }
+
+        if (source === 'websnak') {
+          const text = typeof data === 'string' ? data : JSON.stringify(data);
+          setRawInput(text);
+          setApplied(false);
+          setParsed(null);
+          setExtImportResult({
+            ok: true,
+            message: 'Received store data from WebSnak. Review below and click "Apply" to import.',
+          });
+        }
+      } catch (e) {
+        // Ignore parse errors from stale data
+      }
+    }, 2000); // Check every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [transactions, stores, setTransactions, bulkImportStores, addImportEntry]);
 
   async function handleParse() {
     setApplied(false);

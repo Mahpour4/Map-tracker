@@ -84,7 +84,7 @@ function getRecencyTier(lastVisited) {
   return recencyTiers[recencyTiers.length - 1];
 }
 
-function createStoreIcon(type, isSelected, visitMode, lastVisited) {
+function createStoreIcon(type, isSelected, visitMode, lastVisited, activePulseTiers) {
   const baseColor = visitMode
     ? getRecencyTier(lastVisited).color
     : (typeColors[type] || typeColors.other);
@@ -92,7 +92,7 @@ function createStoreIcon(type, isSelected, visitMode, lastVisited) {
   const border = isSelected ? '3px solid #1e3a5f' : '2px solid #000';
   const blinkClass = isSelected ? 'marker-blink' : '';
   const tier = visitMode ? getRecencyTier(lastVisited) : null;
-  const pulseClass = (visitMode && tier && tier.pulse) ? tier.pulse : '';
+  const pulseClass = (visitMode && tier && tier.pulse && activePulseTiers && activePulseTiers.has(tier.label)) ? tier.pulse : '';
   const pulseRing = pulseClass
     ? `<div class="${pulseClass}" style="
         position: absolute;
@@ -214,8 +214,10 @@ export default function MapView() {
   const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
   const [zonesOff, setZonesOff] = useState(true); // default: zones hidden
   const [showAlerts, setShowAlerts] = useState(false); // toggle alert markers on map (off by default)
+  const [pulseTiers, setPulseTiers] = useState(new Set()); // which tiers pulse on alert markers (all off by default)
   const [hideCash, setHideCash] = useState(true);
   const [hideChain, setHideChain] = useState(false);
+  const [salesDayFilter, setSalesDayFilter] = useState(new Set()); // 'today' | 'yesterday'
   const zonesInitialized = useRef(false);
   const [copiedFlash, setCopiedFlash] = useState(false);
   const [copiedRouteFlash, setCopiedRouteFlash] = useState(null);
@@ -324,6 +326,24 @@ export default function MapView() {
     setMapView([39.0, -76.8], 8);
   }
 
+  // Today / yesterday date strings for sales day filter
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+  const yesterdayStr = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+  const thisWeekRange = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun
+    const sun = new Date(now); sun.setDate(now.getDate() - day);
+    const sat = new Date(sun); sat.setDate(sun.getDate() + 6);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { start: fmt(sun), end: fmt(sat) };
+  }, []);
+
   // Filter stores to match sidebar filters
   const filteredStores = useMemo(() => {
     let result = stores;
@@ -377,8 +397,26 @@ export default function MapView() {
       });
     }
 
+    // Sales day filter: only show stores with sale/visit on selected day(s)
+    if (salesDayFilter.size > 0) {
+      const allowedDates = new Set();
+      if (salesDayFilter.has('today')) allowedDates.add(todayStr);
+      if (salesDayFilter.has('yesterday')) allowedDates.add(yesterdayStr);
+      const checkWeek = salesDayFilter.has('this-week');
+      result = result.filter(s => {
+        const sale = s.lastSaleDate ? s.lastSaleDate.split('T')[0].split(' ')[0] : null;
+        const visit = s.lastVisited ? s.lastVisited.split('T')[0].split(' ')[0] : null;
+        if (allowedDates.size > 0 && ((sale && allowedDates.has(sale)) || (visit && allowedDates.has(visit)))) return true;
+        if (checkWeek) {
+          if (sale && sale >= thisWeekRange.start && sale <= thisWeekRange.end) return true;
+          if (visit && visit >= thisWeekRange.start && visit <= thisWeekRange.end) return true;
+        }
+        return false;
+      });
+    }
+
     return result;
-  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, hideChain, visitMode, legendFilter]);
+  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, hideChain, visitMode, legendFilter, salesDayFilter, todayStr, yesterdayStr, thisWeekRange]);
 
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
@@ -766,7 +804,7 @@ export default function MapView() {
                     checked={isActive}
                     onChange={toggle}
                   />
-                  <span className={`legend-dot ${tier.pulse || ''}`} style={{ background: tier.color }} />
+                  <span className={`legend-dot ${pulseTiers.has(tier.label) && tier.pulse ? tier.pulse : ''}`} style={{ background: tier.color }} />
                   <span>{tier.label}</span>
                 </label>
               );
@@ -785,6 +823,52 @@ export default function MapView() {
               <span className="legend-alert-icon">!</span>
               <span>Alerts {storesWithOpenAlerts.size > 0 ? `(${storesWithOpenAlerts.size})` : ''}</span>
             </label>
+            {showAlerts && (
+              <div className="legend-pulse-control">
+                <span className="legend-pulse-label">Pulse on:</span>
+                {recencyTiers.map(tier => (
+                  <label key={tier.label} className={`legend-pulse-option${pulseTiers.has(tier.label) ? ' active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={pulseTiers.has(tier.label)}
+                      onChange={() => setPulseTiers(prev => {
+                        const next = new Set(prev);
+                        next.has(tier.label) ? next.delete(tier.label) : next.add(tier.label);
+                        return next;
+                      })}
+                    />
+                    <span className="legend-dot" style={{ background: tier.color, width: 8, height: 8 }} />
+                    {tier.label}
+                  </label>
+                ))}
+              </div>
+            )}
+            <hr className="legend-divider" />
+            <div className="legend-title">Sales Activity</div>
+            {['today', 'yesterday', 'this-week'].map(day => {
+              const isActive = salesDayFilter.has(day);
+              const label = day === 'today' ? 'Today' : day === 'yesterday' ? 'Yesterday' : 'This Week';
+              const dotColor = day === 'today' ? '#22c55e' : day === 'yesterday' ? '#3b82f6' : '#8b5cf6';
+              return (
+                <label
+                  key={day}
+                  className={`legend-item legend-item-clickable${isActive ? ' legend-item-active' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    className="legend-checkbox"
+                    checked={isActive}
+                    onChange={() => setSalesDayFilter(prev => {
+                      const next = new Set(prev);
+                      isActive ? next.delete(day) : next.add(day);
+                      return next;
+                    })}
+                  />
+                  <span className="legend-dot" style={{ background: dotColor }} />
+                  <span>{label}</span>
+                </label>
+              );
+            })}
           </>
         ) : (
           <>
@@ -899,7 +983,7 @@ export default function MapView() {
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
-          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store))}
+          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store), pulseTiers)}
           eventHandlers={{
             click: () => {
               if (selectedStore === store.id) {
@@ -1061,12 +1145,13 @@ export default function MapView() {
         .filter(store => storesWithOpenAlerts.has(store.id))
         .map(store => {
           const days = getDaysSinceVisit(getLatestDate(store));
-          const nearingOrange = days !== null && days >= 11 && days <= 15;
+          const tier = days !== null ? recencyTiers.find(t => days <= t.maxDays) : null;
+          const shouldPulse = tier && pulseTiers.has(tier.label);
           return (
             <Marker
               key={`alert-${store.id}`}
               position={[store.lat, store.lng]}
-              icon={nearingOrange ? alertExclaimPulseIcon : alertExclaimIcon}
+              icon={shouldPulse ? alertExclaimPulseIcon : alertExclaimIcon}
               interactive={false}
               zIndexOffset={1000}
             />

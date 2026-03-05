@@ -1101,6 +1101,41 @@ textarea {
   justify-content: center;
   line-height: 1;
 }
+
+.legend-pulse-control {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0 4px 8px;
+  margin-left: 8px;
+  border-left: 2px solid var(--border);
+}
+.legend-pulse-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 1px;
+}
+.legend-pulse-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.legend-pulse-option input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+}
+.legend-pulse-option.active {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .legend-dot {
   width: 10px;
   height: 10px;
@@ -5695,6 +5730,48 @@ textarea {
   background: #fef2f2;
 }
 .al-detail-check.error .al-detail-check-icon { color: #dc2626; }
+
+/* Error resolve dropdown + panel in detail view */
+.al-error-dropdown-detail {
+  padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+  background: #fff; color: #333; font-size: 12px;
+  cursor: pointer; outline: none;
+}
+.al-error-dropdown-detail:hover { border-color: #9ca3af; }
+.al-error-dropdown-detail:disabled { opacity: 0.5; cursor: wait; background: #f3f4f6; }
+.al-error-resolve-panel {
+  display: flex; align-items: center; gap: 8px; margin-top: 6px;
+  padding: 6px 8px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;
+}
+.al-error-resolve-label { font-size: 11px; font-weight: 600; color: #374151; white-space: nowrap; }
+
+/* Alert detail thumbnail */
+.al-detail-thumb-wrap { margin: 8px 0; }
+.al-detail-thumb {
+  max-width: 180px; max-height: 120px; border-radius: 6px;
+  border: 1px solid #e5e7eb; cursor: pointer; object-fit: cover;
+  transition: opacity 0.15s;
+}
+.al-detail-thumb:hover { opacity: 0.8; }
+.al-detail-thumb-loading { font-size: 11px; color: #9ca3af; }
+
+/* Lightbox overlay */
+.al-lightbox {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.al-lightbox-img {
+  max-width: 90vw; max-height: 90vh; border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5); cursor: default;
+}
+.al-lightbox-close {
+  position: absolute; top: 16px; right: 24px;
+  background: rgba(255,255,255,0.15); border: none; color: #fff;
+  font-size: 24px; width: 40px; height: 40px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.al-lightbox-close:hover { background: rgba(255,255,255,0.3); }
 
 .al-store-link {
   color: #2563eb;

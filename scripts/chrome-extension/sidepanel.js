@@ -175,5 +175,15 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
+// Clear / reset button
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('log').innerHTML = '<div class="empty-log">No activity yet</div>';
+  const btn = document.getElementById('importBtn');
+  if (btn && currentDetected) {
+    btn.disabled = false;
+    btn.textContent = currentDetected.btnText;
+  }
+});
+
 // Show empty state initially
 document.getElementById('log').innerHTML = '<div class="empty-log">No activity yet</div>';

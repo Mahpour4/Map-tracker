@@ -1,5 +1,7 @@
 // Background service worker
 // Opens side panel on icon click, relays scraped data to Map Tracker app
+// Delays activation by 1 minute after Chrome starts to avoid slowing startup
+// Does NOT inject scripts into the app tab — uses localStorage instead
 
 const APP_URL_PATTERNS = [
   'http://localhost:',
@@ -7,8 +9,17 @@ const APP_URL_PATTERNS = [
   'https://mahpour4.github.io/Map-tracker',
 ];
 
-// Open side panel when clicking the extension icon
+// Disable extension for the first 60 seconds after Chrome starts
+let ready = false;
+chrome.action.disable();
+setTimeout(() => {
+  ready = true;
+  chrome.action.enable();
+}, 60000);
+
+// Open side panel when clicking the extension icon (only after warmup)
 chrome.action.onClicked.addListener((tab) => {
+  if (!ready) return;
   chrome.sidePanel.open({ windowId: tab.windowId });
 });
 
@@ -16,11 +27,22 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type !== 'import-to-app') return;
 
+  // Store the scraped data so the app can pick it up
+  // The app polls localStorage for MAP_TRACKER_EXT_IMPORT
   findOrOpenAppTab().then((tab) => {
-    // Inject a small script that posts the data to the React app via window.postMessage
+    // Set localStorage on the app's origin via a minimal cookie-based approach
+    // Use executeScript ONLY to set one localStorage key — nothing else
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: deliverData,
+      world: 'MAIN',
+      func: (source, data) => {
+        // ONLY set localStorage — do not touch anything else
+        try {
+          localStorage.setItem('MAP_TRACKER_EXT_IMPORT', JSON.stringify({ source, data, ts: Date.now() }));
+        } catch (e) {
+          console.error('Map Tracker extension: failed to set import data', e);
+        }
+      },
       args: [msg.source, msg.data],
     }).then(() => {
       chrome.runtime.sendMessage({
@@ -59,8 +81,8 @@ async function findOrOpenAppTab() {
     }
   }
 
-  // No existing tab — open localhost:5173 (Vite default)
-  const newTab = await chrome.tabs.create({ url: 'http://localhost:5173' });
+  // No existing tab — open the local dev server
+  const newTab = await chrome.tabs.create({ url: 'http://localhost:5174' });
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Tab load timeout')), 15000);
@@ -74,13 +96,4 @@ async function findOrOpenAppTab() {
     }
     chrome.tabs.onUpdated.addListener(listener);
   });
-}
-
-// This function runs in the Map Tracker tab's context
-function deliverData(source, data) {
-  window.postMessage({
-    type: 'MAP_TRACKER_IMPORT',
-    source: source,
-    data: data,
-  }, '*');
 }

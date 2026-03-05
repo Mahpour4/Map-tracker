@@ -374,6 +374,21 @@ export async function labelAlertsError(messageIds) {
   }
 }
 
+/** Remove Error label from alert emails (for manual override of errored alerts) */
+export async function unlabelAlertsError(messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  try {
+    const labelId = await getOrCreateErrorLabel();
+    await gmailPost('/users/me/messages/batchModify', {
+      ids: messageIds,
+      removeLabelIds: [labelId],
+    });
+    console.log(`[Gmail] Removed Error label from ${messageIds.length} email(s)`);
+  } catch (err) {
+    console.error('[Gmail] Failed to remove Error label:', err);
+  }
+}
+
 /** Remove Done + Completed labels from emails (for cleanup of falsely labeled alerts) */
 export async function unlabelAlertsDoneAndCompleted(messageIds) {
   if (!messageIds || messageIds.length === 0) return;

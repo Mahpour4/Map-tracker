@@ -139,23 +139,49 @@ function parseSettlementDate(raw) {
 }
 
 /**
+ * Chain name patterns → store ID prefix mapping
+ * Each entry: [regex to match DAO custName, store ID prefix, digits to pad to]
+ * The regex must have a capture group for the store number
+ */
+const CHAIN_PATTERNS = [
+  [/FOOD\s*LION\s+#?(\d+)/i,          'FLW'],
+  [/SHOPPERS?\s*(?:FOOD)?\s*#?(\d+)/i, 'SFW'],
+  [/SHOP\s*RITE\s+#?(\d+)/i,          'SRW'],
+  [/GIANT\s+(?:FOOD\s+)?#?(\d+)/i,    'GTW'],
+  [/MARTINS?\s+#?(\d+)/i,             'MTW'],
+  [/WEIS\s+#?(\d+)/i,                 'WMW'],
+  [/REDNER'?S?\s+#?(\d+)/i,           'RDW'],
+  [/ACME\s+#?(\d+)/i,                 'AMW'],
+  [/WAL[\s-]*MART\s+#?(\d+)/i,        'WAW'],
+  [/WEGMANS?\s+#?(\d+)/i,             'WGW'],
+  [/TARGET\s+#?(\d+)/i,               'TGW'],
+  [/B\s*GREEN\s+.*?(\d+)/i,           'BGW'],
+  [/FOOD\s*DEPOT\s+#?(\d+)/i,         'FDW'],
+  [/GROCERY\s*OUTLET\s+#?(\d+)/i,     'GOW'],
+  [/KEY\s*FOOD\s+#?(\d+)/i,           'KFW'],
+  [/COMM(?:ISSARY)?\s+.+?(\d+)/i,     'CMW'],
+  [/GERESBECK'?S?\s+.*?(\d+)/i,       'GBW'],
+  [/SAVE\s*A\s*LOT\s+.*?(\d+)/i,      'SL0'],
+];
+
+/**
  * Map DAO customer name to Map Tracker store ID format
  * "FOOD LION 1322" → "FLW01322"
- * "Comm Ft Belvoir 5235" → "CMW05235"
+ * "SHOPPERS 2342" → "SFW02342"
+ * "SHOP RITE 542" → "SRW00542"
  */
 export function mapCustomerToStoreId(custName) {
   if (!custName) return null;
-  const upper = custName.toUpperCase().trim();
+  const trimmed = custName.trim();
 
-  // FOOD LION XXXX → FLW0XXXX
-  const flMatch = upper.match(/FOOD\s*LION\s+(\d+)/);
-  if (flMatch) return `FLW0${flMatch[1]}`;
+  for (const [regex, prefix] of CHAIN_PATTERNS) {
+    const m = trimmed.match(regex);
+    if (m) {
+      const num = m[1].padStart(5, '0');
+      return `${prefix}${num}`;
+    }
+  }
 
-  // Commissary patterns
-  const commMatch = upper.match(/COMM(?:ISSARY)?\s+.+?(\d+)/);
-  if (commMatch) return `CMW0${commMatch[1]}`;
-
-  // B GREEN / other patterns — return null for manual matching
   return null;
 }
 
@@ -165,26 +191,45 @@ export function mapCustomerToStoreId(custName) {
 export function matchCustomerToStore(custName, custNum, stores) {
   if (!stores || stores.length === 0) return null;
 
-  // Try store ID mapping first
+  // Strategy 1: Construct store ID from chain name + number
   const storeId = mapCustomerToStoreId(custName);
   if (storeId) {
     const found = stores.find(s => s.id === storeId || s.storeNumber === storeId);
     if (found) return found;
   }
 
-  // Try matching by store number
+  // Strategy 2: Match custNum against numeric portion of store IDs/storeNumbers
   if (custNum) {
-    const found = stores.find(s => s.storeNumber === custNum || s.customerNumber === custNum);
+    const numericCust = custNum.replace(/^0+/, '') || '0';
+    const found = stores.find(s => {
+      // Extract numeric portion from store ID (e.g., "SFW02342" → "2342")
+      const idNum = (s.id || '').replace(/^[A-Z]+0*/i, '');
+      if (idNum && idNum === numericCust) return true;
+      // Also check storeNumber field directly and its numeric portion
+      const sn = s.storeNumber || '';
+      if (sn === custNum) return true;
+      const snNum = sn.replace(/^[A-Z]+0*/i, '');
+      if (snNum && snNum === numericCust) return true;
+      return false;
+    });
     if (found) return found;
   }
 
-  // Try fuzzy name match
-  const upper = (custName || '').toUpperCase();
-  const found = stores.find(s => {
-    const sName = (s.name || '').toUpperCase();
-    return sName && upper.includes(sName) || sName.includes(upper);
-  });
-  return found || null;
+  // Strategy 3: Fuzzy name match — for CASH/IND stores with unique names
+  if (custName) {
+    const upper = custName.toUpperCase().trim();
+    // Skip very short or generic names that would false-match
+    if (upper.length >= 4) {
+      const found = stores.find(s => {
+        const sName = (s.name || '').toUpperCase();
+        if (!sName || sName.length < 4) return false;
+        return upper.includes(sName) || sName.includes(upper);
+      });
+      if (found) return found;
+    }
+  }
+
+  return null;
 }
 
 /**

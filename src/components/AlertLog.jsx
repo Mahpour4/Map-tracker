@@ -44,7 +44,7 @@ function formatDate(dateStr) {
 }
 
 export default function AlertLog() {
-  const { state, selectStore, setSidebarTab, setMapView, setPage, setFilterRoute, setFilterRegion, setFilterType, setSearch, loadAlertImage, fetchGmailAlerts, autoAcceptAlerts, autoCompleteAlerts, syncFromGithub } = useApp();
+  const { state, selectStore, setSidebarTab, setMapView, setPage, setFilterRoute, setFilterRegion, setFilterType, setSearch, loadAlertImage, fetchGmailAlerts, autoAcceptAlerts, autoCompleteAlerts, manualOverrideAlert, syncFromGithub } = useApp();
   const { alerts, stores, alertImages, syncStatus, schedules, visitHistory, travelLog, fleetVehicles } = state;
 
   const today = localDateStr();
@@ -77,7 +77,7 @@ export default function AlertLog() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRoute, setLocalFilterRoute] = useState('all');
   const [filterVendor, setLocalFilterVendor] = useState('all');
-  const [filterDate, setFilterDate] = useState(null); // null = show all dates
+  const [filterDate, setFilterDate] = useState('this-week'); // default to this week view
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRoutes, setExpandedRoutes] = useState(null); // null = auto (expand unresolved)
   const [expandedImage, setExpandedImage] = useState(null); // emailId of alert with open image
@@ -96,6 +96,8 @@ export default function AlertLog() {
   const [checkedAlerts, setCheckedAlerts] = useState(new Set());
   const [statusChecking, setStatusChecking] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [overriding, setOverriding] = useState(null); // refNumber currently being overridden
+  const [lightboxImg, setLightboxImg] = useState(null); // dataUri for fullscreen lightbox
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
   const [waGroups, setWaGroups] = useState([]); // available WhatsApp groups
@@ -519,8 +521,13 @@ export default function AlertLog() {
   }
 
   function handleAlertRowClick(a) {
+    const opening = selectedAlertRef !== a.refNumber;
     setSelectedAlertRef(ref => ref === a.refNumber ? null : a.refNumber);
     setExpandedImage(null);
+    // Auto-fetch image when opening detail panel
+    if (opening && a.emailId && !alertImages[a.emailId]) {
+      loadAlertImage(a.emailId);
+    }
   }
 
   // Get group ID mapped to a route
@@ -630,6 +637,18 @@ export default function AlertLog() {
       alert(`Auto-Accept failed: ${err.message}`);
     } finally {
       setAutoAccepting(false);
+    }
+  }
+
+  // --- Manual override for errored alerts ---
+  async function handleManualOverride(refNumber, action) {
+    setOverriding(refNumber);
+    try {
+      await manualOverrideAlert(refNumber, action);
+    } catch (err) {
+      alert(`Override failed: ${err.message}`);
+    } finally {
+      setOverriding(null);
     }
   }
 
@@ -2332,7 +2351,7 @@ export default function AlertLog() {
                               </td>
                               <td className="al-cell-gw">
                                 {a.globalworxError
-                                  ? <span className="al-gw-col-error" title="Auto-complete failed — needs manual action">⚠ Error</span>
+                                  ? <span className="al-gw-col-error" title="Auto-complete failed — expand row to resolve">⚠ Error</span>
                                   : a.globalworxCompleted
                                     ? <span className="al-gw-col-completed" title="Completion form submitted">Completed</span>
                                     : a.globalworxDone
@@ -2421,6 +2440,24 @@ export default function AlertLog() {
                                       </div>
                                     </div>
 
+                                    {/* Alert image thumbnail */}
+                                    {a.emailId && (() => {
+                                      const img = alertImages[a.emailId];
+                                      return img?.dataUri ? (
+                                        <div className="al-detail-thumb-wrap">
+                                          <img
+                                            className="al-detail-thumb"
+                                            src={img.dataUri}
+                                            alt="Alert"
+                                            onClick={(e) => { e.stopPropagation(); setLightboxImg(img.dataUri); }}
+                                            title="Click to enlarge"
+                                          />
+                                        </div>
+                                      ) : img?.loading ? (
+                                        <div className="al-detail-thumb-wrap"><span className="al-detail-thumb-loading">Loading image...</span></div>
+                                      ) : null;
+                                    })()}
+
                                     {/* Visit / sale status since the alert */}
                                     <div className="al-detail-status">
                                       <div className="al-detail-status-title">Store Activity Since Alert</div>
@@ -2480,6 +2517,23 @@ export default function AlertLog() {
                                             rel="noopener noreferrer"
                                             className="al-gw-detail-btn"
                                           >Open Acceptance Form</a>
+                                        )}
+                                        {a.globalworxError && (
+                                          <div className="al-error-resolve-panel">
+                                            <span className="al-error-resolve-label">Resolve as:</span>
+                                            <select
+                                              className="al-error-dropdown al-error-dropdown-detail"
+                                              value=""
+                                              disabled={overriding === a.refNumber}
+                                              onClick={e => e.stopPropagation()}
+                                              onChange={e => { if (e.target.value) handleManualOverride(a.refNumber, e.target.value); }}
+                                            >
+                                              <option value="">{overriding === a.refNumber ? 'Resolving...' : 'Select...'}</option>
+                                              <option value="accepted">Accepted</option>
+                                              <option value="done">Done</option>
+                                              <option value="completed">Completed</option>
+                                            </select>
+                                          </div>
                                         )}
                                       </div>
 
@@ -2578,6 +2632,14 @@ export default function AlertLog() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lightbox overlay */}
+      {lightboxImg && (
+        <div className="al-lightbox" onClick={() => setLightboxImg(null)}>
+          <img className="al-lightbox-img" src={lightboxImg} alt="Alert" />
+          <button className="al-lightbox-close" onClick={() => setLightboxImg(null)}>✕</button>
         </div>
       )}
     </div>
