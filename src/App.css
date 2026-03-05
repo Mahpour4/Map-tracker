@@ -7918,8 +7918,8 @@ textarea {
   overflow: hidden;
 }
 .tl-map-sidebar {
-  width: 420px;
-  min-width: 320px;
+  width: 612px;
+  min-width: 400px;
   min-height: 350px;
   flex-shrink: 0;
   border: 1px solid var(--border);
@@ -8819,6 +8819,61 @@ textarea {
   font-weight: 600;
   margin-bottom: 8px;
   flex-shrink: 0;
+}
+
+/* ── Visit calendar ── */
+.tl-cal-wrap {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.tl-cal-box {
+  flex: 1;
+  min-width: 200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+.tl-cal-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.82rem;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.tl-cal-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.tl-cal-table th {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 2px 0;
+  text-align: center;
+}
+.tl-cal-day {
+  text-align: center;
+  padding: 4px 0;
+  font-size: 0.75rem;
+  color: var(--text);
+  border-radius: 4px;
+}
+.tl-cal-day.today {
+  font-weight: 700;
+  border: 1px solid var(--primary);
+}
+.tl-cal-day.visit {
+  background: #22c55e;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 50%;
+}
+.tl-cal-empty {
+  padding: 4px 0;
 }
 
 /* ============ Fleet Tracker — Schedule Alerts ============ */

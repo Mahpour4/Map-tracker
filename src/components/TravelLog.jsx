@@ -397,28 +397,39 @@ export default function TravelLog() {
   }, [stores, storeSearchQuery]);
 
   // Visit history for selected search store
+  // Group visits by date — one row per day (earliest arrive, latest depart, total dwell)
   const selectedStoreVisits = useMemo(() => {
     if (!selectedSearchStore) return [];
-    const visits = [];
     const storeId = selectedSearchStore.id;
+    const byDate = {}; // { "2026-03-04": { date, arrive, depart, dwell, vehicle } }
     Object.entries(travelLog || {}).forEach(([dateKey, vehicles]) => {
       Object.entries(vehicles || {}).forEach(([vin, entries]) => {
         (entries || []).forEach(entry => {
           if (entry.locationId === storeId && entry.type !== 'driving') {
             const vehicle = vehicleList.find(v => v.vin === vin);
-            visits.push({
-              date: dateKey,
-              arrivalTime: entry.arrivalTime || entry.time,
-              departureTime: entry.departureTime,
-              dwellMinutes: entry.dwellMinutes,
-              vehicle: vehicle?.label || vin,
-            });
+            const key = dateKey + '-' + vin;
+            if (!byDate[key]) {
+              byDate[key] = {
+                date: dateKey,
+                arrivalTime: entry.arrivalTime || entry.time,
+                departureTime: entry.departureTime,
+                dwellMinutes: entry.dwellMinutes || 0,
+                vehicle: vehicle?.label || vin,
+              };
+            } else {
+              const cur = byDate[key];
+              const arrive = entry.arrivalTime || entry.time;
+              if (arrive && (!cur.arrivalTime || arrive < cur.arrivalTime)) cur.arrivalTime = arrive;
+              if (entry.departureTime && (!cur.departureTime || entry.departureTime > cur.departureTime)) cur.departureTime = entry.departureTime;
+              cur.dwellMinutes += entry.dwellMinutes || 0;
+            }
           }
         });
       });
     });
-    visits.sort((a, b) => (b.date + (b.arrivalTime || '')).localeCompare(a.date + (a.arrivalTime || '')));
-    return visits;
+    return Object.values(byDate)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 3);
   }, [selectedSearchStore, travelLog, vehicleList]);
 
   // Purple marker icon for searched store
@@ -1616,6 +1627,58 @@ export default function TravelLog() {
                 ) : (
                   <div className="tl-search-empty">No recorded visits for this store.</div>
                 )}
+                {/* Mini calendar showing visit dates */}
+                {(() => {
+                  const visitDates = new Set(selectedStoreVisits.map(v => v.date));
+                  // Show current month calendar
+                  const now = new Date();
+                  const year = now.getFullYear();
+                  const month = now.getMonth();
+                  const firstDay = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+                  const prevMonth = month === 0 ? 11 : month - 1;
+                  const prevYear = month === 0 ? year - 1 : year;
+                  const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+                  const prevFirstDay = new Date(prevYear, prevMonth, 1).getDay();
+                  const prevDaysInMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+                  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                  const pad = n => String(n).padStart(2, '0');
+                  const renderMonth = (y, m, dInM, fDay) => {
+                    const cells = [];
+                    for (let i = 0; i < fDay; i++) cells.push(<td key={`e${i}`} className="tl-cal-empty"></td>);
+                    for (let d = 1; d <= dInM; d++) {
+                      const ds = `${y}-${pad(m + 1)}-${pad(d)}`;
+                      const isVisit = visitDates.has(ds);
+                      const isToday = ds === localDateStr();
+                      cells.push(
+                        <td key={d} className={`tl-cal-day${isVisit ? ' visit' : ''}${isToday ? ' today' : ''}`}>
+                          {d}
+                        </td>
+                      );
+                    }
+                    const rows = [];
+                    for (let i = 0; i < cells.length; i += 7) rows.push(<tr key={i}>{cells.slice(i, i + 7)}</tr>);
+                    return rows;
+                  };
+                  return (
+                    <div className="tl-cal-wrap">
+                      <div className="tl-cal-box">
+                        <div className="tl-cal-title">{monthNames[prevMonth]} {prevYear}</div>
+                        <table className="tl-cal-table">
+                          <thead><tr>{'SMTWTFS'.split('').map((d,i) => <th key={i}>{d}</th>)}</tr></thead>
+                          <tbody>{renderMonth(prevYear, prevMonth, prevDaysInMonth, prevFirstDay)}</tbody>
+                        </table>
+                      </div>
+                      <div className="tl-cal-box">
+                        <div className="tl-cal-title">{monthNames[month]} {year}</div>
+                        <table className="tl-cal-table">
+                          <thead><tr>{'SMTWTFS'.split('').map((d,i) => <th key={i}>{d}</th>)}</tr></thead>
+                          <tbody>{renderMonth(year, month, daysInMonth, firstDay)}</tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
