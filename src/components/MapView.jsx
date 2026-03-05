@@ -186,16 +186,17 @@ export default function MapView() {
   const { state, selectStore, selectZone, selectSubZone, setMapView, setSearch, setFilterRegion, setFilterType, setFilterRoute, updateStore, recordVisit, toggleVehiclesOnMap, loadAlertImage } = useApp();
   const { stores, zones, selectedStore, selectedZone, selectedSubZone, mapCenter, mapZoom, searchTerm, filterRegion, filterType, filterRoute, vehicleLocations, showVehiclesOnMap, alerts, alertImages } = state;
 
-  // Build set of store IDs that have at least one open (unresolved) alert
+  // Build set of store IDs that have at least one truly open alert
+  // Excludes completed and done alerts — map only shows unresolved
   const storesWithOpenAlerts = useMemo(() => {
     const set = new Set();
     if (!alerts || alerts.length === 0) return set;
-    // Index stores by id for fast lookup (same approach as AlertPanel)
     const storeById = {};
     stores.forEach(s => { storeById[s.id] = s; });
     alerts.forEach(a => {
       if (!a.dateReceived) return;
-      // Use storeId (already matched) — fall back to storeNumber scan
+      // Map only shows truly open alerts
+      if (a.globalworxCompleted || a.globalworxDone) return;
       const store = a.storeId
         ? storeById[a.storeId]
         : stores.find(s => s.storeNumber === a.storeNumber);

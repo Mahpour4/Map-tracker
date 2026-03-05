@@ -86,6 +86,17 @@ function FitBounds({ points }) {
   return null;
 }
 
+// Fly to a specific store on search
+function FlyToStore({ store }) {
+  const map = useMap();
+  useEffect(() => {
+    if (store && store.lat && store.lng) {
+      map.flyTo([store.lat, store.lng], 15, { duration: 1 });
+    }
+  }, [store, map]);
+  return null;
+}
+
 // Create numbered marker icon
 function createStopIcon(type, index) {
   const color = getTypeColor(type);
@@ -137,6 +148,10 @@ export default function TravelLog() {
   const [unmappedCards, setUnmappedCards] = useState([]); // [{ last4, cardId, txCount, totalAmount }]
   const [showCardMapping, setShowCardMapping] = useState(false);
   const [cardMapVersion, setCardMapVersion] = useState(0); // bump to re-fetch fuel data after mapping changes
+  // Right panel mode
+  const [rightPanelMode, setRightPanelMode] = useState('data'); // 'data' | 'search'
+  const [storeSearchQuery, setStoreSearchQuery] = useState('');
+  const [selectedSearchStore, setSelectedSearchStore] = useState(null);
 
   // Get all dates that have log entries, sorted descending
   const availableDates = useMemo(() => {
@@ -367,6 +382,52 @@ export default function TravelLog() {
     return visible.filter(e => isValidCoord(e.lat, e.lng));
   }, [showBreadcrumbs, showDrivingPeriods, breadcrumbsOnMap, drivingOnMap, breadcrumbEntries, drivingEntries]);
   const mapPoints = useMemo(() => mapEntries.map(e => [e.lat, e.lng]), [mapEntries]);
+
+  // Store search results
+  const storeSearchResults = useMemo(() => {
+    if (!storeSearchQuery || storeSearchQuery.trim().length < 2) return [];
+    const q = storeSearchQuery.toLowerCase().trim();
+    return stores.filter(s =>
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.id || '').toLowerCase().includes(q) ||
+      (s.city || '').toLowerCase().includes(q) ||
+      (s.address || '').toLowerCase().includes(q) ||
+      String(s.routeNumber || '').includes(q)
+    ).slice(0, 50);
+  }, [stores, storeSearchQuery]);
+
+  // Visit history for selected search store
+  const selectedStoreVisits = useMemo(() => {
+    if (!selectedSearchStore) return [];
+    const visits = [];
+    const storeId = selectedSearchStore.id;
+    Object.entries(travelLog || {}).forEach(([dateKey, vehicles]) => {
+      Object.entries(vehicles || {}).forEach(([vin, entries]) => {
+        (entries || []).forEach(entry => {
+          if (entry.locationId === storeId && entry.type !== 'driving') {
+            const vehicle = vehicleList.find(v => v.vin === vin);
+            visits.push({
+              date: dateKey,
+              arrivalTime: entry.arrivalTime || entry.time,
+              departureTime: entry.departureTime,
+              dwellMinutes: entry.dwellMinutes,
+              vehicle: vehicle?.label || vin,
+            });
+          }
+        });
+      });
+    });
+    visits.sort((a, b) => (b.date + (b.arrivalTime || '')).localeCompare(a.date + (a.arrivalTime || '')));
+    return visits;
+  }, [selectedSearchStore, travelLog, vehicleList]);
+
+  // Purple marker icon for searched store
+  const searchStoreIcon = useMemo(() => L.divIcon({
+    className: 'tl-map-marker',
+    html: '<div style="background:#8b5cf6;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);">\u2605</div>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  }), []);
 
   // Reactively compute address-match suggestions for all unmatched driving entries
   const suggestions = useMemo(() => {
@@ -1121,24 +1182,26 @@ export default function TravelLog() {
 
   return (
     <div className="tl-page">
-      <div className="tl-header">
-        <h2>Travel Log</h2>
-        <p className="tl-desc">
-          Pull location history from Motive and detect store visits
-          (15+ min dwell). Chain: 805m (~½ mi), Independent: 200m radius. Route-matched stores only.
-        </p>
-      </div>
-
-      {/* Filters + Process Day + Raw Data */}
-      <div className="tl-filters">
-        <div className="tl-filter">
-          <label>Date</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
-            max={today}
-          />
+      {/* Row 1: Title + Stats | Date + Span */}
+      <div className="tl-top-bar">
+        <div className="tl-top-left">
+          <h2>Travel Log</h2>
+          <div className="tl-badges">
+            {stats.vehicleCount > 0 && <span className="tl-badge" title={`${stats.vehicleCount} vehicle${stats.vehicleCount !== 1 ? 's' : ''}`}>{stats.vehicleCount} vehicles</span>}
+            <span className="tl-badge blue" title={`${stats.storeVisits} store visits`}>{stats.storeVisits} stores</span>
+            <span className="tl-badge orange" title={`${stats.warehouseVisits} warehouse stops`}>{stats.warehouseVisits} wh</span>
+            <span className="tl-badge" title={`${stats.drivingSegments} driving segments`}>{stats.drivingSegments} drives</span>
+            {stats.totalMiles > 0 && <span className="tl-badge" title={`${stats.totalMiles.toFixed(1)} miles driven`}>{stats.totalMiles.toFixed(0)} mi</span>}
+            {stats.fuel?.mpg && <span className="tl-badge green" title={`${stats.fuel.mpg.toFixed(1)} miles per gallon`}>{stats.fuel.mpg.toFixed(1)} mpg</span>}
+            {unmappedCards.length > 0 && (
+              <span className="tl-badge red" style={{ cursor: 'pointer' }} onClick={() => setShowCardMapping(!showCardMapping)} title={`${unmappedCards.length} unmapped fuel card(s)`}>
+                {unmappedCards.length} unmapped
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="tl-top-right">
+          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} max={today} />
           <div className="tl-span-btns">
             <button className={`tl-span-btn${selectedSpan === 'day' ? ' active' : ''}`} onClick={() => setSelectedSpan('day')}>Day</button>
             <button className={`tl-span-btn${selectedSpan === 'week' ? ' active' : ''}`} onClick={() => setSelectedSpan('week')}>7d</button>
@@ -1146,51 +1209,34 @@ export default function TravelLog() {
             <button className={`tl-span-btn${selectedSpan === 'month' ? ' active' : ''}`} onClick={() => setSelectedSpan('month')}>30d</button>
           </div>
         </div>
-        <div className="tl-filter">
-          <label>Vehicle</label>
+      </div>
+
+      {/* Row 2: Vehicle + Actions | Filters + Mode Toggle */}
+      <div className="tl-filter-bar">
+        <div className="tl-filter-left">
           <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)}>
             <option value="all">All Vehicles</option>
             {vehicleList.map(v => (
               <option key={v.vin} value={v.vin}>{v.label}</option>
             ))}
           </select>
+          <button className="btn btn-primary" onClick={handleProcessDay} disabled={processing}>
+            {processing ? 'Processing...' : `Process ${selectedDate === today ? 'Today' : selectedDate}`}
+          </button>
+          {rawData && (
+            <button className="btn btn-outline tl-raw-btn" onClick={() => setShowRawData(true)} title="View raw API data from Motive">Raw Data</button>
+          )}
         </div>
-        <div className="tl-filter">
-          <label>Show</label>
-          <div className="tl-toggle-group">
-            <button
-              className={`tl-toggle-btn${showBreadcrumbs ? ' active' : ''}`}
-              onClick={() => setShowBreadcrumbs(b => !b)}
-            >
-              Breadcrumbs <span className="tl-toggle-count">({breadcrumbEntries.length})</span>
-            </button>
-            <button
-              className={`tl-toggle-btn${showDrivingPeriods ? ' active' : ''}`}
-              onClick={() => setShowDrivingPeriods(b => !b)}
-            >
-              Driving Periods <span className="tl-toggle-count">({drivingEntries.length})</span>
-            </button>
-          </div>
-        </div>
-        <div className="tl-filter tl-filter-action">
-          <label>&nbsp;</label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              className="btn btn-primary"
-              onClick={handleProcessDay}
-              disabled={processing}
-            >
-              {processing ? 'Processing...' : `Process ${selectedDate === today ? 'Today' : selectedDate}`}
-            </button>
-            {rawData && (
-              <button
-                className="btn btn-outline tl-raw-btn"
-                onClick={() => setShowRawData(true)}
-                title="View raw API data from Motive"
-              >
-                Raw Data
-              </button>
-            )}
+        <div className="tl-filter-right">
+          <button className={`tl-filter-chip${showBreadcrumbs ? ' active' : ''}`} onClick={() => setShowBreadcrumbs(b => !b)}>
+            Breadcrumbs ({breadcrumbEntries.length})
+          </button>
+          <button className={`tl-filter-chip${showDrivingPeriods ? ' active' : ''}`} onClick={() => setShowDrivingPeriods(b => !b)}>
+            Driving ({drivingEntries.length})
+          </button>
+          <div className="tl-mode-toggle">
+            <button className={`tl-mode-btn${rightPanelMode === 'data' ? ' active' : ''}`} onClick={() => setRightPanelMode('data')}>Data</button>
+            <button className={`tl-mode-btn${rightPanelMode === 'search' ? ' active' : ''}`} onClick={() => { setRightPanelMode('search'); setSelectedSearchStore(null); }}>Search</button>
           </div>
         </div>
       </div>
@@ -1201,90 +1247,6 @@ export default function TravelLog() {
           {processStatus.message}
         </div>
       )}
-
-      {/* Stats */}
-      <div className="tl-stats">
-        <span className="tl-stat" title={`${stats.vehicleCount} unique vehicle${stats.vehicleCount !== 1 ? 's' : ''} with activity in this ${selectedSpan === 'day' ? 'day' : 'period'}`}>
-          {stats.vehicleCount} <span>Vehicles</span>
-        </span>
-        <span className="tl-stat blue" title={`${stats.storeVisits} detected store visits (15+ min dwell time at a route-matched store location)`}>
-          {stats.storeVisits} <span>Store Visits</span>
-        </span>
-        <span className="tl-stat orange" title={`${stats.warehouseVisits} warehouse stop${stats.warehouseVisits !== 1 ? 's' : ''} (loading/unloading at distribution center)`}>
-          {stats.warehouseVisits} <span>Warehouse</span>
-        </span>
-        {stats.customVisits > 0 && (
-          <span className="tl-stat purple" title={`${stats.customVisits} stop${stats.customVisits !== 1 ? 's' : ''} at custom-defined locations (gas stations, offices, etc.)`}>
-            {stats.customVisits} <span>Custom</span>
-          </span>
-        )}
-        <span className="tl-stat green" title={`${stats.drivingSegments} driving segments recorded by Motive ELD between stops`}>
-          {stats.drivingSegments} <span>Driving</span>
-        </span>
-        <span className="tl-stat" title={`${stats.total} total non-driving stops (stores + warehouse + custom)`}>
-          {stats.total} <span>Total Stops</span>
-        </span>
-        {stats.totalMiles > 0 && (
-          <span className="tl-stat" title={`${stats.totalMiles.toFixed(1)} miles driven total from Motive driving period data`}>
-            {stats.totalMiles.toFixed(1)} <span>Miles</span>
-          </span>
-        )}
-        {stats.fuel && stats.fuel.mode === 'trip' && (
-          <>
-            <span className="tl-stat red" title={`$${stats.fuel.lastCost?.toFixed(2) || '0'} spent on fuel at ${stats.fuel.lastMerchant || 'unknown station'} on ${stats.fuel.lastDate || '?'}`}>
-              ${stats.fuel.lastCost?.toFixed(2) || '0'} <span>Last Fill</span>
-            </span>
-            <span className="tl-stat" title={`${stats.fuel.lastGallons?.toFixed(1) || '0'} gallons pumped at last fill-up on ${stats.fuel.lastDate || '?'}`}>
-              {stats.fuel.lastGallons?.toFixed(1) || '0'} <span>Gallons</span>
-            </span>
-            {stats.fuel.milesBetween > 0 && (
-              <span className="tl-stat" title={`${stats.fuel.milesBetween.toFixed(0)} miles driven between previous fill (${stats.fuel.prevDate || '?'}) and last fill (${stats.fuel.lastDate || '?'})`}>
-                {stats.fuel.milesBetween.toFixed(0)} <span>Mi/Fill</span>
-              </span>
-            )}
-            {stats.fuel.mpg && (
-              <span className="tl-stat green" title={`${stats.fuel.mpg.toFixed(1)} miles per gallon for last tank — ${stats.fuel.milesBetween?.toFixed(0) || '?'} miles on ${stats.fuel.lastGallons?.toFixed(1) || '?'} gallons`}>
-                {stats.fuel.mpg.toFixed(1)} <span>MPG</span>
-              </span>
-            )}
-            {stats.fuel.costPerMile && (
-              <span className="tl-stat" title={`$${stats.fuel.costPerMile.toFixed(2)} fuel cost per mile for last tank`}>
-                ${stats.fuel.costPerMile.toFixed(2)} <span>$/Mile</span>
-              </span>
-            )}
-          </>
-        )}
-        {stats.fuel && stats.fuel.mode === 'span' && (
-          <>
-            <span className="tl-stat red" title={`$${stats.fuel.totalCost.toFixed(2)} total fuel spend across ${stats.fuel.fillCount} fill-up${stats.fuel.fillCount !== 1 ? 's' : ''} in this ${stats.daysInSpan}-day period`}>
-              ${stats.fuel.totalCost.toFixed(2)} <span>Fuel ({stats.daysInSpan}d)</span>
-            </span>
-            <span className="tl-stat" title={`${stats.fuel.totalGallons.toFixed(1)} total gallons pumped across ${stats.fuel.fillCount} fill-up${stats.fuel.fillCount !== 1 ? 's' : ''}`}>
-              {stats.fuel.totalGallons.toFixed(1)} <span>Gal ({stats.fuel.fillCount} fills)</span>
-            </span>
-            {stats.fuel.mpg && (
-              <span className="tl-stat green" title={`${stats.fuel.mpg.toFixed(1)} average MPG — ${stats.totalMiles.toFixed(0)} miles driven on ${stats.fuel.totalGallons.toFixed(1)} gallons over ${stats.daysInSpan} days`}>
-                {stats.fuel.mpg.toFixed(1)} <span>MPG</span>
-              </span>
-            )}
-            {stats.fuel.costPerMile && (
-              <span className="tl-stat" title={`$${stats.fuel.costPerMile.toFixed(2)} average fuel cost per mile over ${stats.daysInSpan} days`}>
-                ${stats.fuel.costPerMile.toFixed(2)} <span>$/Mile</span>
-              </span>
-            )}
-          </>
-        )}
-        {unmappedCards.length > 0 && (
-          <span
-            className="tl-stat red"
-            style={{ cursor: 'pointer', textDecoration: 'underline' }}
-            title={`${unmappedCards.length} fuel card(s) not mapped to any route — $${unmappedCards.reduce((s, c) => s + c.totalAmount, 0).toFixed(2)} in untracked spend. Click to map.`}
-            onClick={() => setShowCardMapping(!showCardMapping)}
-          >
-            {unmappedCards.length} <span>Unmapped Cards</span>
-          </span>
-        )}
-      </div>
 
       {/* Card-to-Route Mapping Panel */}
       {showCardMapping && unmappedCards.length > 0 && (
@@ -1327,19 +1289,25 @@ export default function TravelLog() {
         </div>
       )}
 
-      {/* Map */}
-      {mapPoints.length > 0 && (
-        <div className="tl-map-container">
+      {/* Body: Map left + Panels right */}
+      <div className="tl-body">
+        <div className="tl-map-sidebar">
           <MapContainer
             center={[39.3, -76.6]}
             zoom={10}
-            style={{ height: '350px', width: '100%', borderRadius: '8px' }}
+            style={{ height: '100%', width: '100%', borderRadius: '8px' }}
           >
             <TileLayer
               attribution='&copy; OpenStreetMap'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <FitBounds points={mapPoints} />
+            {selectedSearchStore && <FlyToStore store={selectedSearchStore} />}
+            {selectedSearchStore && selectedSearchStore.lat && selectedSearchStore.lng && (
+              <Marker position={[selectedSearchStore.lat, selectedSearchStore.lng]} icon={searchStoreIcon}>
+                <Popup><strong>{selectedSearchStore.name}</strong><br />{[selectedSearchStore.address, selectedSearchStore.city, selectedSearchStore.state].filter(Boolean).join(', ')}</Popup>
+              </Marker>
+            )}
             {mapEntries.map((entry, i) => (
               <Marker
                 key={`${entry.vehicleVin}-${entry.locationId}-${i}`}
@@ -1365,10 +1333,8 @@ export default function TravelLog() {
             ))}
           </MapContainer>
         </div>
-      )}
-
-      {/* Dual Timeline Panels */}
-      <div className="tl-dual-timeline">
+        <div className="tl-right-panel">
+        {rightPanelMode === 'data' ? (<>
         {showBreadcrumbs && (
           <div className="tl-panel tl-panel-breadcrumbs">
             <div className="tl-panel-header">
@@ -1587,6 +1553,74 @@ export default function TravelLog() {
         {!showBreadcrumbs && !showDrivingPeriods && (
           <div className="tl-empty" style={{ flex: 1 }}>Both panels are hidden — use the toggles above to show data.</div>
         )}
+        </>) : (
+          <div className="tl-search-panel">
+            <div className="tl-search-input-wrap">
+              <input
+                className="tl-search-input"
+                type="text"
+                placeholder="Search stores by name, ID, city, or route..."
+                value={storeSearchQuery}
+                onChange={e => { setStoreSearchQuery(e.target.value); setSelectedSearchStore(null); }}
+              />
+            </div>
+            {!selectedSearchStore ? (
+              <div className="tl-search-results">
+                {storeSearchResults.map(store => (
+                  <div key={store.id} className="tl-search-item" onClick={() => setSelectedSearchStore(store)}>
+                    <div className="tl-search-name">{store.name}</div>
+                    <div className="tl-search-addr">{[store.address, store.city, store.state].filter(Boolean).join(', ')}</div>
+                    <span className="tl-search-route">Route {store.routeNumber || '?'}</span>
+                  </div>
+                ))}
+                {storeSearchQuery.length >= 2 && storeSearchResults.length === 0 && (
+                  <div className="tl-search-empty">No stores match &ldquo;{storeSearchQuery}&rdquo;</div>
+                )}
+                {storeSearchQuery.length < 2 && (
+                  <div className="tl-search-empty">Type at least 2 characters to search</div>
+                )}
+              </div>
+            ) : (
+              <div className="tl-search-detail">
+                <div className="tl-search-store-header">
+                  <button className="tl-search-back" onClick={() => setSelectedSearchStore(null)}>&larr; Back</button>
+                  <h4>{selectedSearchStore.name}</h4>
+                  <span className="tl-search-store-meta">
+                    {[selectedSearchStore.address, selectedSearchStore.city, selectedSearchStore.state].filter(Boolean).join(', ')} &middot; Route {selectedSearchStore.routeNumber || '?'}
+                  </span>
+                </div>
+                <div className="tl-search-visits-count">{selectedStoreVisits.length} visit{selectedStoreVisits.length !== 1 ? 's' : ''} found</div>
+                {selectedStoreVisits.length > 0 ? (
+                  <table className="tl-bc-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Arrive</th>
+                        <th>Depart</th>
+                        <th>Dwell</th>
+                        <th>Vehicle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedStoreVisits.map((v, i) => (
+                        <tr key={i} className="tl-bc-row tl-bc-store">
+                          <td>{v.date}</td>
+                          <td className="tl-bc-time">{v.arrivalTime ? new Date(v.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
+                          <td className="tl-bc-time">{v.departureTime ? new Date(v.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
+                          <td className="tl-bc-dwell">{v.dwellMinutes != null ? `${v.dwellMinutes}m` : '-'}</td>
+                          <td>{v.vehicle}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="tl-search-empty">No recorded visits for this store.</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        </div>
       </div>
 
       {/* ---- Raw Data Modal ---- */}

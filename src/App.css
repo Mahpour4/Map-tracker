@@ -7661,53 +7661,130 @@ textarea {
   background: var(--bg);
 }
 
-.tl-header {
+/* ── Top bar (Row 1): Title + badges | Date + span ── */
+.tl-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
-
-.tl-header h2 {
+.tl-top-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.tl-top-bar h2 {
   font-size: 1.4rem;
   color: var(--text);
-  margin-bottom: 4px;
+  margin: 0;
+  white-space: nowrap;
 }
-
-.tl-desc {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  margin-bottom: 0; /* parent gap handles spacing */
-}
-
-.tl-filters {
+.tl-badges {
   display: flex;
-  gap: 12px;
+  gap: 5px;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
+}
+.tl-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.tl-badge.blue   { color: var(--primary); border-color: #93c5fd; background: #eff6ff; }
+.tl-badge.orange  { color: #f59e0b; border-color: #fcd34d; background: #fffbeb; }
+.tl-badge.green   { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
+.tl-badge.red     { color: #ef4444; border-color: #fca5a5; background: #fef2f2; }
+.tl-badge.purple  { color: #a855f7; border-color: #d8b4fe; background: #faf5ff; }
+
+.tl-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
+.tl-top-right input[type="date"] {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
 
-.tl-filter {
+/* ── Filter bar (Row 2): Vehicle + actions | chips + mode ── */
+.tl-filter-bar {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
-
-.tl-filter label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
+.tl-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-
-.tl-filter select,
-.tl-filter input[type="date"] {
+.tl-filter-left select {
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.85rem;
-  min-width: 140px; /* narrower so it wraps gracefully on small screens */
-  width: 100%;
+  min-width: 180px;
 }
+.tl-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tl-filter-chip {
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tl-filter-chip:hover { border-color: var(--primary); color: var(--primary); }
+.tl-filter-chip.active {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* ── Mode toggle (Data / Search) ── */
+.tl-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.tl-mode-btn {
+  padding: 4px 14px;
+  border: none;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tl-mode-btn:first-child { border-right: 1px solid var(--border); }
+.tl-mode-btn.active { background: var(--primary); color: white; }
+.tl-mode-btn:hover:not(.active) { background: #f3f4f6; }
 
 .tl-span-btns {
   display: flex;
@@ -7734,10 +7811,6 @@ textarea {
   border-color: var(--primary);
 }
 
-.tl-filter-action {
-  align-self: flex-end;
-}
-
 .tl-status {
   padding: 8px 12px;
   border-radius: var(--radius);
@@ -7761,57 +7834,6 @@ textarea {
   background: #fef2f2;
   color: #991b1b;
   border: 1px solid #fecaca;
-}
-
-.tl-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.tl-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--text);
-  box-shadow: var(--shadow);
-  min-width: 70px;
-  white-space: nowrap;
-}
-
-.tl-stat span {
-  font-size: 0.68rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.tl-stat.blue {
-  color: var(--primary);
-}
-
-.tl-stat.orange {
-  color: #f59e0b;
-}
-
-.tl-stat.green {
-  color: #22c55e;
-}
-
-.tl-stat.red {
-  color: #ef4444;
-}
-
-.tl-stat.purple {
-  color: #a855f7;
 }
 
 /* Card-to-Route Mapping Panel */
@@ -7886,10 +7908,32 @@ textarea {
   min-width: 160px;
 }
 
-.tl-map-container {
+/* ── Body: map left + panels right ── */
+.tl-body {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.tl-map-sidebar {
+  width: 420px;
+  min-width: 320px;
+  min-height: 350px;
   flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
+  overflow: hidden;
+  /* Leaflet needs explicit height — stretch to fill body */
+  align-self: stretch;
+}
+.tl-right-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
   overflow: hidden;
 }
 
@@ -7908,14 +7952,7 @@ textarea {
   padding: 12px 12px 12px 0;
 }
 
-/* ── Dual panel layout ── */
-.tl-dual-timeline {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
+/* panels stack vertically in right panel */
 
 .tl-panel {
   display: flex;
@@ -7977,39 +8014,9 @@ textarea {
   padding: 4px 4px 4px 0;
 }
 
-/* ── Toggle buttons in filter bar ── */
-.tl-toggle-group {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.tl-toggle-btn {
-  padding: 5px 12px;
-  border-radius: 20px;
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
-  color: #6b7280;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.tl-toggle-btn.active {
-  border-color: #93c5fd;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 600;
-}
-
-.tl-toggle-count {
-  font-weight: 400;
-  opacity: 0.75;
-}
-
 @media (max-width: 900px) {
-  .tl-dual-timeline { flex-direction: column; }
+  .tl-body { flex-direction: column; }
+  .tl-map-sidebar { width: 100%; min-width: 0; height: 300px; }
 }
 
 .tl-timeline {
@@ -8643,11 +8650,6 @@ textarea {
   margin-top: 4px;
 }
 
-/* --- Custom stat color --- */
-.tl-stat.purple span {
-  color: #8b5cf6;
-}
-
 /* --- Per-Row Raw Data Toggle --- */
 .tl-raw-toggle-btn {
   font-size: 0.62rem;
@@ -8705,6 +8707,118 @@ textarea {
 }
 .tl-delete-btn:hover {
   background: #fee2e2;
+}
+
+/* ── Store Search panel ── */
+.tl-search-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.tl-search-input-wrap {
+  flex-shrink: 0;
+  padding: 0 0 10px;
+}
+.tl-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.88rem;
+  background: var(--bg-card);
+}
+.tl-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.tl-search-results {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tl-search-item {
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tl-search-item:hover {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+.tl-search-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.tl-search-addr {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.tl-search-route {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: var(--primary);
+}
+.tl-search-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 32px 16px;
+}
+.tl-search-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+.tl-search-store-header {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+.tl-search-back {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.tl-search-back:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.tl-search-store-header h4 {
+  margin: 4px 0 2px;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+.tl-search-store-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.tl-search-visits-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 /* ============ Fleet Tracker — Schedule Alerts ============ */
