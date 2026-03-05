@@ -189,7 +189,7 @@ FLW01572,01572,Food Lion 1572,14630 MINNEVILLE RD,Dale City,VA,22193,209,Route 2
 FLW01588,01588,Food Lion 1588,4195 WINCHESTER RD,Marshall,VA,20115,209,Route 209 Driver,Northern Virginia,Marshall,Marshall,38.8640017,-77.8474504,2026-02-19,2026-02-26,No
 FLW02518,02518,Food Lion 2518,12420 DILLINGHAM SQ,Lake Ridge,VA,22192,209,Route 209 Driver,Northern Virginia,Lake Ridge,Lake Ridge,38.682,-77.2996,2026-02-24,2026-02-13,No
 FLW02597,02597,Food Lion 2597,6306 HOADLEY RD,Manassas,VA,20112,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.754552568574056,-77.47053987995825,2026-02-24,2026-02-26,No
-WGW00049,00049,Wegmans 049,7505 HILLTOP VILLAGE CTR DR,Alexandria,VA,22315,209,Route 209 Driver,Northern Virginia,Alexandria,Alexandria,38.8048,-77.0469,2025-12-05,2025-12-05,No
+WGW00049,00049,Wegmans 049,7505 HILLTOP VILLAGE CTR DR,Alexandria,VA,22315,209,Route 209 Driver,Northern Virginia,Alexandria,Alexandria,38.8048,-77.0469,2025-12-05,2025-12-05,Yes
 WGW00055,00055,Wegmans 055,14801 DINING WAY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.631162,-77.288755,2025-11-13,2025-11-13,Yes
 CASH0543,CASH0543,Marlton Spirits,9518 Crain Hwy,Upper Marlboro,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,2025-11-12,2025-11-12,Yes
 CMW05119,CMW05119,Comm Andrew AFB 5119,1684 STARKEY AVE,JB Andrews,MD,20762,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8108,-76.866,2026-02-27,2026-02-17,No
@@ -202,7 +202,7 @@ CASH0520,CASH0520,Dagmar Hotel,50 Summit Ave,Hagerstown,MD,21740,201,Route 201 D
 CASH0545,CASH0545,Sandy Jaks LLC,14407 Hollow RD,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.69806146722824,-78.18268858409427,,,Yes
 CASH1111,CASH1111,40 West Deli,15142 National Pike,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6530127,-77.7425063,,,Yes
 SFW02674,SFW02674,Shoppers Food Whse 2674,4174 Fortuna Ctr Plaza,Dumfries,VA,22025,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.5966601,-77.3320979,,,Yes
-WMW00081,WMW00081,Weis Markets 081,31 Eastern Blvd N,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6341622,-77.6979267,,,Yes
+WMW00081,WMW00081,Weis Markets 081,31 Eastern Blvd N,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6341622,-77.6979267,,2026-03-05,No
 WMW00100,WMW00100,Weis Markets 100,2 Old Camp Rd,Frederick,MD,21702,201,Route 201 Driver,Maryland Central,Maryland Central,Maryland Central,39.422232,-77.466165,,,Yes
 WMW00108,WMW00108,Weis Markets 108,1102 S Queen St,Martinsburg,WV,25401,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.444963,-77.9675667,,,Yes
 WMW00172,WMW00172,Weis Markets 172,550 W Macphail Rd,Bel Air,MD,21014,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5231735,-76.3457186,2025-04-02,,Yes
@@ -214,7 +214,7 @@ CASH0017,CASH0017,Aden Deli,2300 Orem Ave,Baltimore,MD,,203,Route 203 Driver,Bal
 CASH0020,CASH0020,Ali's Snack Shop,1737 West North Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3096851,-76.6461025,,2026-02-19,No
 CASH0021,CASH0021,All Brothers Carryout,1039 East Curry St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.300520697349754,-76.61864759530016,2026-02-23,2026-02-05,No
 CASH0027,CASH0027,Apple One Mini Mart,1388 Taylor Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3831727,-76.5710038,2026-02-04,2026-02-25,No
-CASH0034,CASH0034,B&B Convenience,336 S Monroe St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2835144,-76.6467874,2026-02-11,2026-02-26,No
+CASH0034,CASH0034,B&B Convenience,336 S Monroe St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2835144,-76.6467874,2026-02-11,2026-03-05,No
 CASH0050,CASH0050,BP Slade,524 Reisterstown Rd,Pikesville,MD,21208,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3681255,-76.7175643,,2026-03-02,No
 CASH0061,CASH0061,Carol Food Mart,3333 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2803933,-76.6730622,,2025-12-01,Yes
 CASH0094,CASH0094,Dollar Plus Sper Marquet,2004 W Pratt St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2852493,-76.6488,,2026-01-09,No
