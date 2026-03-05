@@ -1,0 +1,511 @@
+================================================================================
+                        MAP TRACKER — FEATURE LOG
+                        Current Version: 2.50.0
+                        Last Updated: 2026-03-04
+================================================================================
+
+This log documents every feature and enhancement added to the Map Tracker
+application, organized by version and category.
+
+================================================================================
+  v2.50.0 — Chrome Extension Data Importer (Mar 2026)
+================================================================================
+
+  Chrome Extension (Side Panel)
+  - Chrome extension with right-hand side panel (like Claude extension)
+  - Auto-detects DAO Dashboard vs WebSnak from current tab URL
+  - "Import DAO Dashboard" button scrapes all transaction pages
+  - "Import WebSnak Stores" button scrapes all store pages with auto-pagination
+  - Activity log in sidebar shows scrape progress, success, and errors
+  - Sidebar auto-updates when switching tabs or navigating
+  - Scraped data sent directly to Map Tracker app via postMessage
+  - DAO import: auto-imports transactions + syncs last sale dates on stores
+  - WebSnak import: loads store data into Data Import for review and apply
+  - Host permissions for daogroup.com, allFrames for iframe support
+  - Load as unpacked extension from scripts/chrome-extension/
+
+================================================================================
+  v2.49.0 — Travel Log Redesign & Store Search (Mar 2026)
+================================================================================
+
+  Travel Log Layout
+  - Side-by-side layout: map on left (612px sidebar), data panels on right
+  - Breadcrumbs and Driving Periods panels stacked vertically on right
+  - 2-row header: title + stat badges (top), vehicle/filters/actions (bottom)
+  - Stats condensed into compact inline badges (stores, wh, drives, mi, mpg)
+  - Responsive: stacks vertically on screens under 900px
+
+  Store Search
+  - Data/Search toggle button in filter bar to switch right panel mode
+  - Search stores by name, ID, city, address, or route number
+  - Shows 3 most recent visits (grouped by date, not individual entries)
+  - Visit details: date, arrival, departure, total dwell, vehicle
+  - Mini calendar below table showing current + previous month
+  - Visit dates highlighted as green circles on calendar
+  - Map flies to selected store with purple star marker
+
+  Map Alerts
+  - Fix: map alert count now matches Alert Log open count
+  - Map only shows truly open alerts (excludes completed and done alerts)
+  - AlertLog still shows completed/done alerts for the week as before
+
+================================================================================
+  v2.47.0 — WhatsApp All-Chat, Inventory Cards, Map Alerts (Mar 2026)
+================================================================================
+
+  WhatsApp
+  - All-chat toggle: show every message from all contacts in one flat
+    chronological view (toggle between grouped and flat with one button)
+  - Paste Order feature: paste formatted order text into WhatsApp tab,
+    creates a synthetic message from "Visual Basic" that can be processed
+    with Create Order
+  - Fix: manual/pasted messages no longer disappear when the 5-second
+    poll cycle refreshes the inbox
+
+  Inventory
+  - Redesigned summary cards: replaced generic totals (Total Ordered,
+    Sold, In Stock, Products) with meaningful data
+  - New cards: Next Delivery date, $4.79 Sold This Week, $.50 Sold This
+    Week, $2.49 Sold This Week, Deep River This Week
+  - Weekly sales now pull directly from warehouse orders by item.category
+    instead of inventory orderDeductions (more reliable)
+
+  Map / Alerts
+  - Alert exclamation marks default to hidden (toggle via legend checkbox)
+  - When Alerts checkbox is checked, non-alert stores are hidden
+  - Pulsing animation only on yellow-tier stores (11-15 days since visit)
+  - Alert count shown in legend label: "Alerts (5)"
+  - Fix: WhatsApp alert image sending now works (fixed stale closure bug
+    where alertImages reference was outdated after async fetch)
+
+  Alert Log
+  - Header redesigned from one long row into two organized rows:
+    top bar (title, stats, actions) + filter bar (search, filters)
+  - WhatsApp settings section sits between the two rows
+
+  Orders Data
+  - Fixed Eastern Shore order: SKU 028663 had cases set to 60663 (SKU
+    number leaked into cases field); corrected to 12 items, 240 cases
+
+================================================================================
+  v2.46.0 — WhatsApp Builder, Compact Panels (Feb 2026)
+================================================================================
+
+  - WhatsApp builder collapses answered questions for cleaner workflow
+  - Compact Warehouse/Driver panel
+  - Queue sync button added
+  - Recent orders view shows local orders
+  - Fix: 028786 Fiery Ridgies UPC corrected to 40
+
+================================================================================
+  v2.43.0 — Inventory Improvements (Feb 2026)
+================================================================================
+
+  - Human-friendly inventory column headers
+  - Stock panel with availability tracking
+  - Catalog links from inventory items to product catalog entries
+  - Inventory date-grouped view with PO tracking
+  - Deep River catalog items added
+  - Fix: order guess now separates price categories (.50, 2.49, 4.79)
+
+================================================================================
+  v2.40.0 — Google Sheets Integration (Feb 2026)
+================================================================================
+
+  - Google Sheets route summary sheet generation
+  - Order metadata (invoice, load info) written to column P rows 3-8
+  - Sync everywhere on Save Order click
+  - Sync time status bar on Warehouse Orders page
+  - Local disk persistence for warehouse orders
+  - Fix: HMR loop caused by saving data files inside src/
+
+================================================================================
+  v2.39.0 — Smarter Order Guess (Feb 2026)
+================================================================================
+
+  - Qty display in order guess results
+  - Category headers in parsed order output
+  - Auto-fill best match when confidence is high
+  - Inline price prefix parsing: ".50 honey bbq 4", "1.49 mesquite BBQ 3"
+
+================================================================================
+  v2.38.0 — WhatsApp Message History (Feb 2026)
+================================================================================
+
+  - Period dropdown filter (24h, 2d, 7d, 30d, All)
+  - Auto-fetch message history on startup
+  - Refresh History button for loading older messages
+
+================================================================================
+  v2.37.0 — Order Queue & Archive (Feb 2026)
+================================================================================
+
+  - Merged queue table view for all orders
+  - Archive completed orders
+  - Auto-sync orders to Google Sheets on save
+  - Manual sync button + last-checked time indicator
+
+================================================================================
+  v2.36.0 — WhatsApp Inbox Improvements (Feb 2026)
+================================================================================
+
+  - Auto sign-in on Fetch Alerts
+  - Show 8 WhatsApp messages per contact
+  - WhatsApp inbox visible on all tabs
+  - Always poll for new messages
+  - Limit to 2 most recent messages per sender (inbox preview)
+  - Fix: nav dropdowns not opening (overflow-x:auto clipping)
+
+================================================================================
+  v2.35.0 — Navigation Redesign (Feb 2026)
+================================================================================
+
+  - Floating dropdown menus
+  - Bigger navigation bar
+  - True centering of nav items
+  - Open Sheet link in signed-in sync bar
+  - Fix: WhatsApp getGroups timeout and detached frame errors
+
+================================================================================
+  v2.33.0 — Developer Experience (Feb 2026)
+================================================================================
+
+  - Lock Vite dev server to port 5174
+  - Global error boundary and unhandled error logging
+
+================================================================================
+  v2.30.0–v2.32.0 — Setup & PDF (Feb 2026)
+================================================================================
+
+  - PDF order history cover page
+  - First-time setup script (setup.bat)
+  - Fix: setup.bat admin elevation loop
+  - Fix: setup.bat stays open and uses winget for Node install
+
+================================================================================
+  v2.29.0 — PDF Pick Sheet & WhatsApp i18n (Feb 2026)
+================================================================================
+
+  - PDF pick sheet generation for warehouse orders
+  - Reply ETA feature for WhatsApp messages (+30m, +45m, +1hr, +2hr)
+  - WhatsApp interface Spanish translations
+
+================================================================================
+  v2.28.0 — Restock Planner & UI Polish (Feb 2026)
+================================================================================
+
+  - Restock planner based on sales velocity
+  - WhatsApp inbox in orders page
+  - Stats table styling improvements
+  - General UI polish pass
+
+================================================================================
+  v2.27.0 — Roles & Languages (Feb 2026)
+================================================================================
+
+  - Worker/Admin role setup with different permissions
+  - Spanish language toggle for order interface
+  - Order history improvements
+
+================================================================================
+  v2.26.0 — Google Sheets Sync (Feb 2026)
+================================================================================
+
+  - Google Sheets bidirectional sync for orders
+  - Order UI improvements
+  - Auto-convert units to cases when quantity >= units-in-case
+  - Average cost per unit in totals row
+  - Frozen totals row below header with live calculations
+  - Order Units input + Excel-style table grid
+  - Driver confirmation panel + auto-fill route
+  - Load #, invoice #/amount fields + driver dropdown
+
+================================================================================
+  v2.25.0 — Warehouse Orders (Feb 2026)
+================================================================================
+
+  - Full Warehouse Orders page
+  - Product catalog with 110+ SKUs across all price tiers
+  - Order entry grid with category sections
+  - Route-based order organization
+
+================================================================================
+  v2.24.0 — Fleet Data (Feb 2026)
+================================================================================
+
+  - Fleet registration data integration
+  - Fix: null route handling
+
+================================================================================
+  v2.23.0 — Transactions & Catalog (Feb 2026)
+================================================================================
+
+  - GP efficiency metrics on Transactions page
+  - Wise Foods product catalog integration
+  - DAO bookmarklet for scraping transaction data
+  - start.bat launcher script
+
+================================================================================
+  v2.22.0 — WebSnak Scraper & Viewer (Feb 2026)
+================================================================================
+
+  - WebSnak scraper v5/v6 with auto-pagination across all pages
+  - GitHub Pages read-only map viewer + Publish Map button
+  - Move transaction import to Data Import page
+  - Black map markers style option
+  - Fix: scraper captures LASTSALESDATE, ROUTENUM, SRCHADDRESS fields
+
+================================================================================
+  v2.20.0–v2.21.0 — Alert Status & Scraping (Feb 2026)
+================================================================================
+
+  - Manual Check Status feature for alerts
+  - Alert filter fixes
+  - Auto-scrape GlobalWorx details when generating PDF
+
+================================================================================
+  v2.19.0 — GlobalWorx PDF Reports (Feb 2026)
+================================================================================
+
+  - Scrape GlobalWorx alert details for PDF route reports
+  - Fix: geolocation domain + visible browser for debugging
+
+================================================================================
+  v2.17.0–v2.18.4 — Alert Lifecycle Automation (Feb 2026)
+================================================================================
+
+  - Headless GlobalWorx automation via Puppeteer
+  - Auto-accept alerts (click Accept Here button)
+  - Auto-complete alerts (click Complete Here button)
+  - Auto-Done labeling after 48-hour wait
+  - Auto-Clear: complete Done alerts immediately
+  - Debug screenshots + HTML capture for troubleshooting
+  - Detect already-accepted alerts
+  - Fix: false Completed labels on unaccepted alerts
+  - Fix: Complete button matching wrong elements
+  - Auto-cleanup falsely labeled alerts
+  - Error label for failed automation attempts
+  - 48hr resolution time selection via Select2 dropdown
+
+================================================================================
+  v2.16.0 — GlobalWorx Auto-Accept (Feb 2026)
+================================================================================
+
+  - GlobalWorx auto-accept system
+  - Bookmarklet pagination fix
+  - Transaction reports
+
+================================================================================
+  v2.15.0 — DAO Transactions (Feb 2026)
+================================================================================
+
+  - DAO Transactions tab
+  - Leaderboard sales integration
+  - GlobalWorx alert removal workflow
+
+================================================================================
+  v2.14.0 — Schedule Compliance & Auto-Clear (Feb 2026)
+================================================================================
+
+  - Route schedule compliance tracking fix
+  - Alert auto-clear for resolved alerts
+
+================================================================================
+  v2.13.0 — Batch Completion (Feb 2026)
+================================================================================
+
+  - Complete Route button: batch GlobalWorx completion via Express service
+  - Schedule severity tiers for missed + late visit detection
+
+================================================================================
+  v2.12.0 — Alert Statistics (Feb 2026)
+================================================================================
+
+  - This Week filter for alert stats
+  - Completed column in alert tables
+  - Route time filter
+  - Color legend for alert status
+  - Fuel card-to-route mapping UI
+
+================================================================================
+  v2.11.0 — WhatsApp Groups & Travel Log (Feb 2026)
+================================================================================
+
+  - WhatsApp group messaging for driver communication
+  - Travel log time spans
+  - Fuel per-fill-up statistics
+  - Alert filter fixes
+
+================================================================================
+  v2.10.0 — WhatsApp Integration (Feb 2026)
+================================================================================
+
+  - WhatsApp integration service for driver messaging
+  - WhatsApp Web.js backend with Express API
+  - QR code authentication
+  - Send alerts to drivers via WhatsApp
+
+================================================================================
+  v2.9.0 — Transaction Fixes (Feb 2026)
+================================================================================
+
+  - Fix duplicate transactions
+  - Improved card display
+  - Filtered totals for fuel tracker
+
+================================================================================
+  v2.8.0–v2.8.3 — Fuel Tracker & Route Reports (Feb 2026)
+================================================================================
+
+  - Fuel Tracker page with card-to-route linking
+  - Transaction analytics and drill-down
+  - Receipt annotation for declined transactions
+  - Route Report Card PDF (2-page compact format)
+  - 7-day time span filter for route reports
+  - Sortable column headers across all tables
+  - Truck data and out-of-date stores in route report
+
+================================================================================
+  v2.6.0 — Route Report Card (Feb 2026)
+================================================================================
+
+  - Route Report Card PDF generation
+  - GlobalWorx automation improvements
+  - Leaderboard upgrades
+
+================================================================================
+  v2.1.0–v2.1.6 — Map Enhancements (Jan–Feb 2026)
+================================================================================
+
+  - Zone toggle button + auto-hide zones in visit status mode
+  - Multi-select checkboxes for visit recency legend filter
+  - Clickable visit recency legend (filter map + populate stale panel)
+  - Show address on matched start/end locations
+  - Per-panel map toggles
+  - Hide Cash stores toggle (default on)
+  - Hide Chain toggle
+  - Stale stores panel with WhatsApp message copy
+  - Military (All) virtual route filter
+  - Zone numbers on map labels and sidebar
+
+================================================================================
+  v2.0.0–v2.0.5 — Travel Log Redesign (Jan 2026)
+================================================================================
+
+  - Dual-panel breadcrumbs / driving periods timeline
+  - Travel Log timeline redesign with grid layout
+  - Dual origin/destination match buttons
+  - Address suggestions reactive display
+  - JSON format support in Data Import
+
+================================================================================
+  v1.7.0–v1.8.3 — Travel Log & Geocoding (Jan 2026)
+================================================================================
+
+  - Motive driving periods API integration
+  - Vehicle-to-route mapping
+  - Batch day processing with dwell-based visit detection
+  - Proximity auto-visit logging
+  - Travel log with map view
+  - Address-level geocoding for accurate store coords
+  - Google Maps links for all addresses
+  - Manual store matching on Travel Log
+  - Per-vehicle processing
+
+================================================================================
+  v1.4.0–v1.6.0 — Fleet Tracking (Jan 2026)
+================================================================================
+
+  - Motive API fleet tracker with vehicle tracking
+  - Map overlay for vehicle positions
+  - Warehouse settings management
+  - Proximity auto-visit detection
+  - Insurance and vehicle details
+
+================================================================================
+  v1.2.0–v1.3.1 — Motive API Integration (Jan 2026)
+================================================================================
+
+  - Motive v1/v3 vehicle_locations endpoint support
+  - Driving periods endpoint for fleet locations
+  - Dormant store logic (3+ months without service)
+  - WhatsApp alert button on store cards and map popups
+  - Version badge display
+
+================================================================================
+  CORE FEATURES (v1.0.0 — Jan 2026)
+================================================================================
+
+  Map View
+  - Interactive Leaflet.js map with store markers
+  - Color-coded markers by visit recency (green/blue/yellow/orange/red/gray)
+  - Zone polygons with labels and hover highlights
+  - Store popups with details, visit history, and actions
+  - Route filter dropdown
+  - Chain/type quick filter buttons
+  - Clear Filters & Reset button
+  - Password-protected store removal
+  - Blink store marker on sidebar click
+
+  Alert System
+  - Gmail integration for fetching service alerts
+  - OAuth authentication with Google Identity Services
+  - Alert-to-store matching by store number, name, and city
+  - Alert Log page with route-grouped tables
+  - Alert image fetching and preview
+  - PDF export per route
+  - 30-day alert accumulation
+  - WhatsApp share from alerts
+  - Date picker for historical alert fetching
+  - Alert persistence with GitHub sync
+
+  Visit History
+  - Visit History page with color-coded data table
+  - Resizable columns, sortable headers
+  - Chain/type quick filter buttons
+  - PDF export with sort/group options
+  - Overall grade calculation
+  - Calendar date picker for manual visit entry
+  - Universal visit history with GitHub persistence
+
+  Route Schedule
+  - Route Schedule builder
+  - Schedule persistence
+  - Compliance tracking with severity tiers
+  - Leaderboard with coverage-based scoring
+  - PDF export for clean schedule output
+  - Days-since-last-sale badge on schedule stops
+
+  Data Management
+  - GitHub sync for all data (stores, visits, alerts, schedules, orders)
+  - Data Import page for Python-format and JSON feeds
+  - Import log tracking
+  - Custom Locations management page
+  - Address override system
+  - Reverse geocode auto-fill for locations
+  - Store ID migration (old format to standard prefixed format)
+
+  Store Data
+  - 500+ stores across 10+ routes
+  - Chain stores (Food Lion, Walmart, etc.) and independent/cash stores
+  - Military base stores
+  - Custom location types (warehouse, custom)
+  - Per-store visit history, last sale date, coordinates
+
+================================================================================
+  INFRASTRUCTURE
+================================================================================
+
+  - React + Vite frontend
+  - Express.js backend services (WhatsApp, GlobalWorx automation)
+  - Puppeteer for headless browser automation
+  - WhatsApp Web.js for messaging integration
+  - Google Sheets API for order sync
+  - Gmail API for alert fetching
+  - Motive API for fleet tracking
+  - GitHub API for data persistence
+  - jsPDF + autoTable for PDF generation
+  - Leaflet.js for mapping
+  - GitHub Pages for read-only viewer
+
+================================================================================

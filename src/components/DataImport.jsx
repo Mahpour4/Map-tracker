@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import cityCoords from '../data/cityCoords';
 import { geocodeAddress } from '../utils/geocodeAddress';
@@ -237,12 +237,99 @@ export default function DataImport() {
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
 
+  // Chrome extension auto-import banner
+  const [extImportResult, setExtImportResult] = useState(null);
+
   // Store lookup
   const storeMap = useMemo(() => {
     const map = {};
     stores.forEach(s => { map[s.id] = s; });
     return map;
   }, [stores]);
+
+  // Listen for Chrome extension postMessage imports
+  const handleExtensionImport = useCallback((event) => {
+    if (event.data?.type !== 'MAP_TRACKER_IMPORT') return;
+    const { source, data } = event.data;
+
+    if (source === 'dao') {
+      // DAO transaction import — same as txProcessFileData but with raw data
+      let txData;
+      try {
+        txData = typeof data === 'string' ? JSON.parse(data) : data;
+      } catch {
+        setExtImportResult({ ok: false, message: 'Invalid DAO transaction data from extension.' });
+        return;
+      }
+      if (!Array.isArray(txData) || txData.length === 0) {
+        setExtImportResult({ ok: false, message: 'No transaction data received from extension.' });
+        return;
+      }
+      const newIds = new Set(txData.map(d => d.id).filter(Boolean));
+      const kept = transactions.filter(t => !t.id || !newIds.has(t.id));
+      const merged = [...kept, ...txData];
+      setTransactions(merged);
+
+      // Auto-sync last sale dates from the new transactions
+      const parsed = parseTransactions(txData);
+      const invoices = parsed.filter(t => t.docType === 'Invoice' && !t.isVoid && (t.amount || 0) > 0);
+      const latestByStore = {};
+      for (const tx of invoices) {
+        const store = matchCustomerToStore(tx.custName, tx.custNum, stores);
+        if (!store) continue;
+        const date = tx.settlementDate || tx.docDate?.date;
+        if (!date) continue;
+        if (!latestByStore[store.id] || date > latestByStore[store.id]) {
+          latestByStore[store.id] = date;
+        }
+      }
+      const updates = [];
+      for (const [storeId, date] of Object.entries(latestByStore)) {
+        const store = stores.find(s => s.id === storeId);
+        if (!store) continue;
+        if (!store.lastSaleDate || date > store.lastSaleDate) {
+          updates.push({ id: storeId, lastSaleDate: date });
+        }
+      }
+      if (updates.length > 0) bulkImportStores(updates, []);
+
+      // Log the import
+      const dates = parsed.map(t => t.settlementDate || t.docDate?.date || '').filter(Boolean).sort();
+      const routes = [...new Set(parsed.map(t => t.route).filter(Boolean))].sort();
+      addImportEntry({
+        importType: 'transactions',
+        totalInFeed: txData.length,
+        parsedCount: parsed.length,
+        newRecords: txData.length - (transactions.length - kept.length),
+        duplicatesSkipped: transactions.length - kept.length,
+        dateRange: dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : '',
+        routes,
+      });
+
+      setExtImportResult({
+        ok: true,
+        message: `Imported ${txData.length} DAO transactions. Updated last sale on ${updates.length} store${updates.length !== 1 ? 's' : ''}.`,
+      });
+    }
+
+    if (source === 'websnak') {
+      // WebSnak store import — set the textarea content and trigger parse
+      const text = typeof data === 'string' ? data : JSON.stringify(data);
+      setRawInput(text);
+      setApplied(false);
+      setParsed(null);
+      // Notify user to review and apply
+      setExtImportResult({
+        ok: true,
+        message: `Received ${typeof data === 'string' ? 'store' : ''} data from WebSnak. Review below and click "Apply" to import.`,
+      });
+    }
+  }, [transactions, stores, setTransactions, bulkImportStores, addImportEntry]);
+
+  useEffect(() => {
+    window.addEventListener('message', handleExtensionImport);
+    return () => window.removeEventListener('message', handleExtensionImport);
+  }, [handleExtensionImport]);
 
   async function handleParse() {
     setApplied(false);
@@ -484,6 +571,17 @@ export default function DataImport() {
           Paste Python-format store feed data to update last sale dates and add new stores.
         </p>
       </div>
+
+      {/* Extension import result banner */}
+      {extImportResult && (
+        <div
+          className={extImportResult.ok ? 'data-import-success' : 'data-import-error'}
+          style={{ marginBottom: 12, cursor: 'pointer' }}
+          onClick={() => setExtImportResult(null)}
+        >
+          {extImportResult.message} {' '}&times;
+        </div>
+      )}
 
       {/* Transaction Import Section */}
       <div className="data-import-geocode-section">
