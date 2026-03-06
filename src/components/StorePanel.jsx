@@ -2,13 +2,14 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
 const STORE_TYPES = [
-  'food-lion', 'shoppers', 'wegmans', 'walmart', 'giant-martins',
+  'food-lion', 'shoppers', 'shoprite', 'wegmans', 'walmart', 'giant-martins',
   'weis', 'redners', 'acme', 'geresbecks', 'military', 'other',
 ];
 
 const typeLabels = {
   'food-lion': 'Food Lion',
-  'shoppers': 'Shoppers/ShopRite',
+  'shoppers': 'Shoppers',
+  'shoprite': 'ShopRite',
   'wegmans': 'Wegmans',
   'walmart': 'Walmart',
   'giant-martins': 'Giant/Martins',
@@ -23,6 +24,7 @@ const typeLabels = {
 const typeColors = {
   'food-lion': { bg: '#fee2e2', text: '#991b1b' },
   'shoppers': { bg: '#dbeafe', text: '#1e40af' },
+  'shoprite': { bg: '#e0f2fe', text: '#075985' },
   'wegmans': { bg: '#ede9fe', text: '#5b21b6' },
   'walmart': { bg: '#fef3c7', text: '#92400e' },
   'giant-martins': { bg: '#ffedd5', text: '#9a3412' },

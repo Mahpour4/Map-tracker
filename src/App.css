@@ -1066,6 +1066,9 @@ textarea {
 .legend-item-active .legend-dot {
   box-shadow: 0 0 0 2px rgba(0,0,0,0.25);
 }
+.legend-item-hidden {
+  opacity: 0.5;
+}
 .legend-clear-btn {
   margin-left: auto;
   background: none;
@@ -1190,6 +1193,59 @@ textarea {
 }
 
 /* ============ Stale Stores Panel ============ */
+/* Sales Activity Summary Card */
+.sales-activity-card {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  padding: 10px 14px;
+  min-width: 180px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+}
+.sales-activity-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 4px;
+}
+.sales-activity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  font-size: 12px;
+}
+.sales-activity-route {
+  color: #4b5563;
+}
+.sales-activity-count {
+  font-weight: 700;
+  color: #f97316;
+}
+.sales-activity-count.complete {
+  color: #16a34a;
+}
+.sales-activity-count.none {
+  color: #ef4444;
+}
+.sales-activity-total {
+  border-top: 1px solid #e5e7eb;
+  margin-top: 4px;
+  padding-top: 4px;
+  font-weight: 700;
+}
+.sales-activity-total .sales-activity-route {
+  color: #111827;
+}
+
 .stale-panel {
   position: absolute;
   top: 12px;

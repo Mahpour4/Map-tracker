@@ -29,7 +29,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // Store the scraped data so the app can pick it up
   // The app polls localStorage for MAP_TRACKER_EXT_IMPORT
-  findOrOpenAppTab().then((tab) => {
+  findAppTab().then((tab) => {
     // Set localStorage on the app's origin via a minimal cookie-based approach
     // Use executeScript ONLY to set one localStorage key — nothing else
     chrome.scripting.executeScript({
@@ -66,34 +66,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   });
 });
 
-// Find an existing Map Tracker tab or open a new one
-async function findOrOpenAppTab() {
+// Find an existing Map Tracker tab (don't open a new one — preserves Google Sheets connection)
+async function findAppTab() {
   const tabs = await chrome.tabs.query({});
 
   for (const tab of tabs) {
     const url = (tab.url || '').toLowerCase();
     for (const pattern of APP_URL_PATTERNS) {
-      if (url.startsWith(pattern)) {
-        await chrome.tabs.update(tab.id, { active: true });
-        await chrome.windows.update(tab.windowId, { focused: true });
+      if (url.startsWith(pattern.toLowerCase())) {
+        // If Chrome discarded this tab, reactivate it and wait for reload
+        if (tab.discarded) {
+          await chrome.tabs.update(tab.id, { active: true });
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Tab reload timeout')), 15000);
+            function listener(tabId, changeInfo) {
+              if (tabId === tab.id && changeInfo.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                clearTimeout(timeout);
+                setTimeout(resolve, 1000);
+              }
+            }
+            chrome.tabs.onUpdated.addListener(listener);
+          });
+          // Re-fetch the tab after reload
+          return chrome.tabs.get(tab.id);
+        }
+        // Tab is alive — return it without focusing (no reload, no disruption)
         return tab;
       }
     }
   }
 
-  // No existing tab — open the local dev server
-  const newTab = await chrome.tabs.create({ url: 'http://localhost:5174' });
-
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Tab load timeout')), 15000);
-
-    function listener(tabId, changeInfo) {
-      if (tabId === newTab.id && changeInfo.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(listener);
-        clearTimeout(timeout);
-        setTimeout(() => resolve(newTab), 1000);
-      }
-    }
-    chrome.tabs.onUpdated.addListener(listener);
-  });
+  throw new Error('Map Tracker is not open. Please open it in your browser first.');
 }

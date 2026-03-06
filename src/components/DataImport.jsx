@@ -206,7 +206,8 @@ function detectStoreType(name, id) {
   const n = (name || '').toLowerCase();
   if ((id || '').startsWith('CMW') || n.includes('commissary')) return 'military';
   if (n.includes('food lion')) return 'food-lion';
-  if (n.includes('shoppers') || n.includes('shop rite')) return 'shoppers';
+  if (n.includes('shoppers')) return 'shoppers';
+  if (n.includes('shoprite') || n.includes('shop rite')) return 'shoprite';
   if (n.includes('giant') || n.includes('martin')) return 'giant-martins';
   if (n.includes('weis')) return 'weis';
   if (n.includes('redner')) return 'redners';

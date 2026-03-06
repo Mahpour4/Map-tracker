@@ -25,6 +25,7 @@ L.Icon.Default.mergeOptions({
 const typeColors = {
   'food-lion': '#ef4444',
   'shoppers': '#3b82f6',
+  'shoprite': '#0ea5e9',
   'wegmans': '#8b5cf6',
   'walmart': '#f59e0b',
   'giant-martins': '#f97316',
@@ -39,6 +40,7 @@ const typeColors = {
 const typeLabels = {
   'food-lion': 'Food Lion',
   'shoppers': 'Shoppers',
+  'shoprite': 'ShopRite',
   'wegmans': 'Wegmans',
   'walmart': 'Walmart',
   'giant-martins': 'Giant/Martins',
@@ -211,7 +213,8 @@ export default function MapView() {
 
   const [hiddenZones, setHiddenZones] = useState(new Set());
   const [visitMode, setVisitMode] = useState(true);
-  const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels
+  const [legendFilter, setLegendFilter] = useState(new Set()); // Set of active tier labels (inclusion)
+  const [hiddenTiers, setHiddenTiers] = useState(new Set(['Dormant (90+ days)', 'Never visited'])); // exclusion filter
   const [zonesOff, setZonesOff] = useState(true); // default: zones hidden
   const [showAlerts, setShowAlerts] = useState(false); // toggle alert markers on map (off by default)
   const [pulseTiers, setPulseTiers] = useState(new Set()); // which tiers pulse on alert markers (all off by default)
@@ -337,11 +340,14 @@ export default function MapView() {
   }, []);
   const thisWeekRange = useMemo(() => {
     const now = new Date();
-    const day = now.getDay(); // 0=Sun
-    const sun = new Date(now); sun.setDate(now.getDate() - day);
-    const sat = new Date(sun); sat.setDate(sun.getDate() + 6);
+    const day = now.getDay(); // 0=Sun, 4=Thu
+    // Week runs previous Thursday through this Wednesday
+    // On Thursday (day=4), go back 7 days to last Thursday; on Friday go back 1 to Thursday, etc.
+    const daysSinceThurs = ((day - 4) + 7) % 7 || 7; // always use PREVIOUS Thursday
+    const thu = new Date(now); thu.setDate(now.getDate() - daysSinceThurs);
+    const wed = new Date(thu); wed.setDate(thu.getDate() + 7); // Thu through next Thu (inclusive)
     const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return { start: fmt(sun), end: fmt(sat) };
+    return { start: fmt(thu), end: fmt(wed) };
   }, []);
 
   // Filter stores to match sidebar filters
@@ -397,6 +403,20 @@ export default function MapView() {
       });
     }
 
+    // Hidden tiers exclusion filter (hides dormant/never visited by default; always applies when no route selected, or when a sales day filter is active)
+    if (visitMode && hiddenTiers.size > 0 && (filterRoute === 'all' || salesDayFilter.size > 0)) {
+      result = result.filter((s) => {
+        const days = getDaysSinceVisit(getLatestDate(s));
+        if (days === null) return !hiddenTiers.has(neverVisitedTier.label);
+        for (let idx = 0; idx < recencyTiers.length; idx++) {
+          const tier = recencyTiers[idx];
+          const prevMax = recencyTiers[idx - 1]?.maxDays ?? -1;
+          if (days > prevMax && days <= tier.maxDays) return !hiddenTiers.has(tier.label);
+        }
+        return true;
+      });
+    }
+
     // Sales day filter: only show stores with sale/visit on selected day(s)
     if (salesDayFilter.size > 0) {
       const allowedDates = new Set();
@@ -416,7 +436,7 @@ export default function MapView() {
     }
 
     return result;
-  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, hideChain, visitMode, legendFilter, salesDayFilter, todayStr, yesterdayStr, thisWeekRange]);
+  }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, hideChain, visitMode, legendFilter, hiddenTiers, salesDayFilter, todayStr, yesterdayStr, thisWeekRange]);
 
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
@@ -495,6 +515,47 @@ export default function MapView() {
       return a.localeCompare(b);
     });
   }, [staleStores]);
+
+  // Sales activity summary: visited vs total by route when a sales day filter is active
+  const salesSummaryByRoute = useMemo(() => {
+    if (salesDayFilter.size === 0) return null;
+    const allowedDates = new Set();
+    if (salesDayFilter.has('today')) allowedDates.add(todayStr);
+    if (salesDayFilter.has('yesterday')) allowedDates.add(yesterdayStr);
+    const checkWeek = salesDayFilter.has('this-week');
+    const byRoute = {};
+    // Use all stores (not filtered by salesDayFilter) but respect other filters
+    let base = stores;
+    if (filterRegion !== 'all') base = base.filter(s => s.region === filterRegion);
+    if (filterType !== 'all') base = base.filter(s => s.type === filterType);
+    if (filterRoute !== 'all') {
+      if (filterRoute === 'MIL') base = base.filter(s => s.id.startsWith('CMW'));
+      else base = base.filter(s => s.routeNumber === filterRoute);
+    }
+    if (hideCash) base = base.filter(s => s.type !== 'other');
+    if (hideChain) base = base.filter(s => s.type === 'other' || s.type === 'military');
+    base.forEach(s => {
+      const route = s.routeNumber && s.routeNumber !== '0' ? s.routeNumber : 'Unassigned';
+      if (!byRoute[route]) byRoute[route] = { total: 0, visited: 0 };
+      byRoute[route].total++;
+      const sale = s.lastSaleDate ? s.lastSaleDate.split('T')[0].split(' ')[0] : null;
+      const visit = s.lastVisited ? s.lastVisited.split('T')[0].split(' ')[0] : null;
+      let matched = false;
+      if (allowedDates.size > 0 && ((sale && allowedDates.has(sale)) || (visit && allowedDates.has(visit)))) matched = true;
+      if (!matched && checkWeek) {
+        if (sale && sale >= thisWeekRange.start && sale <= thisWeekRange.end) matched = true;
+        if (visit && visit >= thisWeekRange.start && visit <= thisWeekRange.end) matched = true;
+      }
+      if (matched) byRoute[route].visited++;
+    });
+    return Object.entries(byRoute).sort(([a], [b]) => {
+      if (a === 'Unassigned') return 1;
+      if (b === 'Unassigned') return -1;
+      const na = parseInt(a), nb = parseInt(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+  }, [salesDayFilter, stores, filterRegion, filterType, filterRoute, hideCash, hideChain, todayStr, yesterdayStr, thisWeekRange]);
 
   const copyStaleMessage = useCallback(() => {
     if (staleStores.length === 0) return;
@@ -712,6 +773,29 @@ export default function MapView() {
         );
       })()}
 
+      {/* Sales Activity Summary Card */}
+      {salesSummaryByRoute && salesSummaryByRoute.length > 0 && (
+        <div className="sales-activity-card">
+          <div className="sales-activity-title">
+            {salesDayFilter.has('this-week') ? 'This Week' : salesDayFilter.has('today') ? 'Today' : 'Yesterday'} — by Route
+          </div>
+          {salesSummaryByRoute.map(([route, { total, visited }]) => (
+            <div key={route} className="sales-activity-row">
+              <span className="sales-activity-route">Route {route}</span>
+              <span className={`sales-activity-count${visited === total ? ' complete' : visited === 0 ? ' none' : ''}`}>
+                {visited}/{total}
+              </span>
+            </div>
+          ))}
+          <div className="sales-activity-row sales-activity-total">
+            <span className="sales-activity-route">Total</span>
+            <span className="sales-activity-count">
+              {salesSummaryByRoute.reduce((s, [, r]) => s + r.visited, 0)}/{salesSummaryByRoute.reduce((s, [, r]) => s + r.total, 0)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Copied flash */}
       {copiedFlash && (
         <div className="copied-flash">Message copied to clipboard</div>
@@ -781,31 +865,42 @@ export default function MapView() {
           <>
             <div className="legend-title">
               Visit Recency
-              {legendFilter.size > 0 && (
-                <button className="legend-clear-btn" onClick={() => setLegendFilter(new Set())} title="Clear all filters">✕</button>
+              {(legendFilter.size > 0 || hiddenTiers.size !== 2 || !hiddenTiers.has('Dormant (90+ days)') || !hiddenTiers.has('Never visited') || salesDayFilter.size > 0 || pulseTiers.size > 0) && (
+                <button className="legend-clear-btn" onClick={() => { setLegendFilter(new Set()); setHiddenTiers(new Set(['Dormant (90+ days)', 'Never visited'])); setSalesDayFilter(new Set()); setPulseTiers(new Set()); }} title="Reset to defaults">Reset</button>
               )}
             </div>
             {[...recencyTiers, neverVisitedTier].map((tier) => {
               const isActive = legendFilter.has(tier.label);
-              const toggle = () => setLegendFilter(prev => {
-                const next = new Set(prev);
-                isActive ? next.delete(tier.label) : next.add(tier.label);
-                return next;
-              });
+              const isHidden = hiddenTiers.has(tier.label);
+              const toggle = () => {
+                if (isHidden) {
+                  // Unhide first
+                  setHiddenTiers(prev => { const next = new Set(prev); next.delete(tier.label); return next; });
+                } else if (isActive) {
+                  // Uncheck inclusion filter
+                  setLegendFilter(prev => { const next = new Set(prev); next.delete(tier.label); return next; });
+                } else if (legendFilter.size > 0) {
+                  // Add to inclusion filter
+                  setLegendFilter(prev => { const next = new Set(prev); next.add(tier.label); return next; });
+                } else {
+                  // No inclusion filter active — hide this tier
+                  setHiddenTiers(prev => { const next = new Set(prev); next.add(tier.label); return next; });
+                }
+              };
               return (
                 <label
                   key={tier.label}
-                  className={`legend-item legend-item-clickable${isActive ? ' legend-item-active' : ''}`}
-                  title={isActive ? 'Uncheck to remove filter' : `Check to filter: ${tier.label}`}
+                  className={`legend-item legend-item-clickable${isActive ? ' legend-item-active' : ''}${isHidden ? ' legend-item-hidden' : ''}`}
+                  title={isHidden ? 'Hidden — click to show' : isActive ? 'Uncheck to remove filter' : `Click to ${legendFilter.size > 0 ? 'filter' : 'hide'}: ${tier.label}`}
                 >
                   <input
                     type="checkbox"
                     className="legend-checkbox"
-                    checked={isActive}
+                    checked={isActive || (!isHidden && legendFilter.size === 0)}
                     onChange={toggle}
                   />
-                  <span className={`legend-dot ${pulseTiers.has(tier.label) && tier.pulse ? tier.pulse : ''}`} style={{ background: tier.color }} />
-                  <span>{tier.label}</span>
+                  <span className={`legend-dot ${pulseTiers.has(tier.label) && tier.pulse ? tier.pulse : ''}`} style={{ background: tier.color, opacity: isHidden ? 0.3 : 1 }} />
+                  <span style={{ opacity: isHidden ? 0.4 : 1 }}>{tier.label}</span>
                 </label>
               );
             })}
