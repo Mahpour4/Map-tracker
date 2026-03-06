@@ -84,11 +84,11 @@ FLW01385,01385,Food Lion,1030 FOREST AVE,Dover,DE,19904,210,Route 210 Driver,Del
 FLW01419,01419,Food Lion,250 GATEWAY SOUTH BLVD,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.1228365,-75.4985452,2026-03-04,2026-02-25,No
 FLW01426,01426,Food Lion 1426,215 STADIUM ST,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Dover,Dover,39.2801631,-75.5909896,2026-03-04,2026-02-25,No
 FLW01458,01458,Food Lion 1458,30214 SUSSEX HWY UNIT 5,Laurel,DE,19956,210,Route 210 Driver,Delaware,Laurel,Laurel,38.5562,-75.5713,2026-03-03,2026-03-04,No
-FLW01560,01560,Food Lion 1560,206 N Fruitland Blvd,Fruitland,MD,21826,206,Route 210 Driver,Eastern Shore Maryland,Fruitland,Fruitland,38.3244654,-75.6177442,2026-03-03,2026-02-24,No
+FLW01560,01560,Food Lion 1560,206 N Fruitland Blvd,Fruitland,MD,21826,206,Route 210 Driver,Eastern Shore Maryland,Fruitland,Fruitland,38.3244654,-75.6177442,2026-03-03,2026-03-06,No
 FLW02117,FLW02117,Food Lion 2117,31810 River Rd,Millington,MD,21651,210,Route 210 Driver,Eastern Shore Maryland,Millington,Millington,39.2649848,-75.8611169,2026-03-05,2026-02-12,No
 FLW02123,FLW02123,Food Lion 2123,37468 LION DR,Selbyville,DE,19975,206,Route 206 Driver,Delaware,Selbyville,Selbyville,38.4741288,-75.1062007,2026-03-05,2026-03-05,No
 FLW02224,02224,Food Lion,22954 SUSSEX HWY,SEAFORD,DE,19973,210,Route 210 Driver,Delaware,SEAFORD,SEAFORD,38.6529282,-75.594538,2026-03-04,2026-02-24,No
-FLW00246,FLW00246,Food Lion 246,11801 COASTAL HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.42258,-75.0560709,2026-03-05,2026-03-05,No
+FLW00246,FLW00246,Food Lion 246,11801 COASTAL HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.42258,-75.0560709,2026-03-05,2026-03-06,No
 FLW02508,02508,Food Lion 2508,22485 Lankford Hwy,Cape Charles,VA,23310,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.2693824,-75.973054,2026-03-02,2026-02-17,No
 FLW02521,FLW02521,Food Lion 2521,9537 Bridgeville Center Rd,Bridgeville,DE,19933,210,Route 210 Driver,Delaware,Bridgeville,Bridgeville,38.7191431,-75.5851018,2026-03-03,2026-02-24,No
 FLW02561,02561,Food Lion 2561,110 BROADKILL RD,Milton,DE,19968,206,Route 206 Driver,Delaware,Milton,Milton,38.7901428,-75.3148388,2026-03-04,2026-02-25,No
@@ -118,7 +118,7 @@ IND00104,IND00104,Montego Bay Supermarket,12903 COASTAL HWY,Ocean City,MD,21842,
 RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,206,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,2026-02-28,2026-02-13,No
 FLW02522,FLW02522,Food Lion 2522,2466 CENTREVILLE RD,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.044,-76.0667,2026-02-26,2026-02-12,No
 FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,2026-03-02,2026-02-17,No
-WMW00272,WMW00272,Weis Market 272,24832 JOHN J WILLIAMS HWY,Millsboro,DE,19966,206,Route 210 Driver,Delaware,Millsboro,Millsboro,38.6369733,-75.1950002,2026-02-28,2026-02-28,No
+WMW00272,WMW00272,Weis Market 272,24832 JOHN J WILLIAMS HWY,Millsboro,DE,19966,206,Route 210 Driver,Delaware,Millsboro,Millsboro,38.6369733,-75.1950002,2026-02-28,2026-03-06,No
 AMW02836,AMW02836,Acme 2836,236 E Glenwood Ave,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Smyrna,Smyrna,39.3051701,-75.6090861,2026-02-18,2026-02-17,No
 AMW00293,AMW00293,Acme 293,9507 COASTAL HWY,Ocean City,MD,21842,206,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4104309,-75.0582964,2026-02-27,2026-02-27,No
 AMW03816,AMW03816,Acme 3816,460 E Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Middletown,Middletown,39.4485146,-75.697669,2026-02-17,2026-02-17,No
@@ -356,7 +356,7 @@ WAW02560,WAW02560,WALMART 2560,11416 Ocean Gtwy,Berlin,MD,21811,206,Route 206 Dr
 WAW02791,WAW02791,Walmart 2791,4 College Park Dr,Georgetown,DE,19947,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.6904,-75.3857,,,Yes
 WAW02931,WAW02931,Walmart 2931,409 N. Fruitland Blvd,Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Lower Shore,38.3282583,-75.6105343,,2026-02-18,No
 WAW04378,WAW04378,Walmart 4378,26036 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,37.6853385,-75.7239726,,,Yes
-WMW00271,WMW00271,WEIS MARKETS 271,17232 N. Village Main Bvd,Lewes,DE,19958,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.7525305,-75.1669437,2026-02-28,2026-02-28,No
+WMW00271,WMW00271,WEIS MARKETS 271,17232 N. Village Main Bvd,Lewes,DE,19958,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.7525305,-75.1669437,2026-02-28,2026-03-06,No
 AMW00849,AMW00849,ACME 0849,711 WASHINGTON AVE,CHESTERTOWN,MD,21620,210,Route 210 Driver,Eastern Shore Maryland,Chestertown,Upper Shore,39.2242811,-76.0680042,2026-02-12,2026-02-12,No
 CASH0426,CASH0426,College Heights BP,513 Washington Ave,Chestertown,MD,21620,210,Route 210 Driver,Eastern Shore Maryland,Chestertown,Upper Shore,39.220618,-76.0681921,2025-04-18,2026-02-02,No
 SFW02692,SFW02692,SHOPPERS FOOD WHSE 2692,7051 MLKING HWY,LANDOVER,MD,,0,Route 210 Driver,Prince George's County,Prince George's County,Prince George's County,38.934,-76.8973,2025-09-10,2025-09-10,Yes
