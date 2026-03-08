@@ -425,7 +425,7 @@ CASH0090,CASH0090,Deli Marquet,2906 Garrison Blvd,Baltimore,MD,,200,Route 200 Dr
 CASH0091,CASH0091,Discount Liquor,7542 Belair Rd,Baltimore,MD,21236,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3642275,-76.5204014,,,Yes
 CASH0097,CASH0097,Dr Deli & Grocery,2808 Jefferson St,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2971021,-76.5773184,,,Yes
 CASH0099,CASH0099,Dundalk Carryout Market,2021 Dundalk Ave,Dundalk,MD,21222,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2669458,-76.5279202,,,Yes
-CASH0101,CASH0101,Eagle Mart,3101 Pulasky Hwy,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2938,-76.6195,,2026-01-16,No
+CASH0101,CASH0101,Eagle Mart,3101 Pulasky Hwy,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2938,-76.6195,,2026-01-19,No
 CASH0105,CASH0105,Economy Mart,1533 W Baltimore St,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2881562,-76.6421948,,2024-09-14,Yes
 CASH0066,CASH0066,Casa Blanca Quick Mart,2517 E Oliver St,Baltimore,MD,21213,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3078296,-76.5821716,,,Yes
 CASH0071,CASH0071,Circle K Falls Rd,4434 Falls Rd,Baltimore,MD,21211,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3428573,-76.6405779,,,Yes
@@ -533,7 +533,7 @@ CASH0319,CASH0319,Quick Mart,8604 Loch Raven Blvd,Baltimore,MD,21287,200,Route 2
 CASH0320,CASH0320,Quick Mart Belair,6656 Belair Rd,Baltimore,MD,21206,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3552465,-76.5305558,,,Yes
 CASH0321,CASH0321,Quick Mart Dundalk,2020 Merritt Blvd,Dundalk,MD,21222,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2597493,-76.5105913,,,Yes
 CASH0323,CASH0323,Quick Mart Winsor,7410 Winsor Mill Rd,Baltimore,MD,21244,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3185,-76.727,,,Yes
-CASH0326,CASH0326,Rap City Convenience,1645 W North Ave,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3098092,-76.6439114,,2026-01-09,No
+CASH0326,CASH0326,Rap City Convenience,1645 W North Ave,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3098092,-76.6439114,,2026-01-19,No
 CASH0331,CASH0331,Reyes Grocery,801 N Bentalou St,Baltimore,MD,21216,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2971575,-76.6532121,,,Yes
 CASH0333,CASH0333,Rfc Convenience,505 Avondale Rd,Dundalk,MD,21222,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2398717,-76.5070195,,,Yes
 CASH0334,CASH0334,Rn5 Mart,600 N Highland Ave,Baltimore,MD,21205,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2983245,-76.5700128,,,Yes
@@ -550,7 +550,7 @@ CASH0354,CASH0354,Shell 5000 Pulasky,5000 Pulaski Hwy,Baltimore,MD,,200,Route 20
 CASH0355,CASH0355,Shell Edmonson,4598 Edmondson Ave,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.293507,-76.693768,,,Yes
 CASH0356,CASH0356,Shell Security Blv.,6600 Security Blvd,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3126524,-76.7356265,,,Yes
 CASH0358,CASH0358,Shop Express,5010 Frederick Ave,Baltimore,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2814238,-76.6977522,,,Yes
-CASH0359,CASH0359,Shop Express Food Stores,2335 Orleans St,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.295474,-76.5839203,,2026-01-05,No
+CASH0359,CASH0359,Shop Express Food Stores,2335 Orleans St,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.295474,-76.5839203,,2026-01-19,No
 CASH0360,CASH0360,Shop Express Market,1000 Dundalk Ave,Dundalk,MD,,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2873064,-76.5091236,,,Yes
 CASH0361,CASH0361,Sicilis,1702 Yakima Rd,Parkville,MD,21234,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.3841,-76.5394,,,Yes
 CASH0362,CASH0362,Sicily's,1702 Yakona Rd,Parkville,MD,21234,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.3960947,-76.5624811,,,Yes
@@ -573,7 +573,7 @@ CASH0390,CASH0390,Tobacco King,9213 Baltimore Ave,College Park,MD,20740,200,Rout
 CASH0394,CASH0394,Tr Convenience Store,Park Heights Ave,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3483138,-76.6746283,,,Yes
 CASH0396,CASH0396,Tropimart,607 Kennedy St NW,Washington,DC,20011,200,Route 200 Driver,Washington DC,Washington DC,Washington DC,38.956,-77.02,,,Yes
 CASH0398,CASH0398,US Fuel 33rd St,500 E 33rd,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3284126,-76.6114478,,2026-01-05,No
-CASH0399,CASH0399,US Fuel Orleans St,3827 Orleans St,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2956833,-76.580676,,,Yes
+CASH0399,CASH0399,US Fuel Orleans St,3827 Orleans St,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2956833,-76.580676,,2026-01-19,No
 CASH0401,CASH0401,Wabash CMF,3300 W Cold Spring,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3366861,-76.6747268,,,Yes
 CASH0402,CASH0402,Waffie,839 W 36th St,Baltimore,MD,21211,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3310352,-76.6304615,,,Yes
 CASH0404,CASH0404,West Pratt Grocery,2035 W Pratt St,Baltimore,MD,21223,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.284837,-76.6496345,,2026-01-13,No
@@ -597,7 +597,7 @@ CASH0454,CASH0454,Candy Quickstop Beer and Wine,21101 Frederick Rd,Germantown,MD
 CASH0501,CASH0501,R&R Convenience Deli,812 Guilford Rd,Baltimore,MD,21207,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3108,-76.6836,,,Yes
 CASH0502,CASH0502,Milton Mini Mart,242 N. Milton Ave,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2955037,-76.5823485,,,Yes
 CASH0508,CASH0508,City Mart and Tobacco,2847 Huntingdon Ave,Baltimore,MD,21211,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3216051,-76.6230829,,,Yes
-CASH0509,CASH0509,Delmart,3038 Clifton Park Terrace,Baltimore,MD,21213,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3210684,-76.5745252,,,Yes
+CASH0509,CASH0509,Delmart,3038 Clifton Park Terrace,Baltimore,MD,21213,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3210684,-76.5745252,,2026-01-19,No
 CASH0510,CASH0510,8082 Market,27 South Fulton Ave,Baltimore,MD,21223,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2875502,-76.6449718,,,Yes
 CASH0511,CASH0511,Wilmart (Smallwood),300 S. Smallwood St.,Baltimore,MD,21223,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2839546,-76.6514713,,2026-01-14,No
 CASH0512,CASH0512,Albright Convenience,2442 East Preston St.,Baltimore,MD,21213,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3059891,-76.5829952,,2026-01-15,No
