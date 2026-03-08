@@ -109,24 +109,53 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-8958435","19cbf35aab19d80b","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-05","","",""
 "ADUSA-8958164","19cbedca988df4e7","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-05","","",""
 "ADUSA-8957291","19cbe6796deb0d59","FLW02193","2193","Food Lion","Finksburg","WISE FOODS","ADUSA","204","2026-03-05","","",""
-"ADUSA-8961267","19cc3850b5a78121","FLW00656","656","Food Lion","Leonardtown","WISE FOODS","ADUSA","207","2026-03-06","","",""
-"ADUSA-8961046","19cc36e6a2bbc318","FLW01226","1226","Food Lion","Woodbridge","WISE FOODS","ADUSA","209","2026-03-06","","",""
-"ADUSA-8960890","19cc35eb86d4b7c5","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","","",""
-"ADUSA-8960357","19cc3361d33661dd","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","","",""
-"ADUSA-8960285","19cc32a6c94e013c","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","","",""
-"ADUSA-8960067","19cc3251f82112d8","","6307","Giant","Eldersburg","WISE FOODS","ADUSA","","2026-03-06","","",""
+"ADUSA-8961267","19cc3850b5a78121","FLW00656","656","Food Lion","Leonardtown","WISE FOODS","ADUSA","207","2026-03-06","Coates, Shary","Excessive out of stocks","Ad items: 3 
+Non Ad items: 0 
+Total items: 3 
+Location: Shelf/In aisle"
+"ADUSA-8961046","19cc36e6a2bbc318","FLW01226","1226","Food Lion","Woodbridge","WISE FOODS","ADUSA","209","2026-03-06","James, Tierra","Backstock/Overstock","Allotted space: 3 
+Amount of backstock: 10 
+Units: Cases"
+"ADUSA-8960890","19cc35eb86d4b7c5","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","salgado zelaya, jacqueline","Merchandising service","No service 
+Location: Shelf/In aisle 
+Store stocked: No"
+"ADUSA-8960357","19cc3361d33661dd","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","King, Dishawn","Display build execution","Display not removed after sale"
+"ADUSA-8960285","19cc32a6c94e013c","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","King, Dishawn","Display build execution","Display not removed after sale"
+"ADUSA-8960067","19cc3251f82112d8","","6307","Giant","Eldersburg","WISE FOODS","ADUSA","","2026-03-06","HIGGINS, BRADY","Housekeeping","Consolidate/Loose product 
+Location: Back room"
 "ADUSA-8960130","19cc31ae0754e50f","FLW01249","1249","Food Lion","Dumfries","WISE FOODS","ADUSA","209","2026-03-06","","",""
 "Non Ad items: 1 ","","SFW02342","","","","","","207","","","",""
 "Total items: 4 ","","SFW02342","","","","","","207","","","",""
-"ADUSA-8960017","19cc307ab4bc5140","FLW00658","658","Food Lion","Berlin","WISE FOODS","ADUSA","206","2026-03-06","","",""
-"ADUSA-8959896","19cc2eaaae1129a6","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-06","","",""
+"ADUSA-8960017","19cc307ab4bc5140","FLW00658","658","Food Lion","Berlin","WISE FOODS","ADUSA","206","2026-03-06","Johnson, Katrina","On shelf out of date","Unit counts: 5"
+"ADUSA-8959896","19cc2eaaae1129a6","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-06","Hudgins, Steven","Excessive out of stocks","Ad items: 2 
+Non Ad items: 1 
+Total items: 3 
+Location: Shelf/In aisle"
 "ADUSA-8959811","19cc2bffa590b736","FLW02521","2521","Food Lion","Bridgeville","WISE FOODS","ADUSA","210","2026-03-06","","",""
 "ADUSA-8963065","19cc456413474482","FLW01653","1653","Food Lion","Essex","WISE FOODS","ADUSA","214","2026-03-06","","",""
-"ADUSA-8962862","19cc4309b6b872c0","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-06","","",""
-"ADUSA-8963265","19cc47abaee1ed94","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-06","","",""
-"ADUSA-8963262","19cc479ebff713e3","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-06","","",""
-"ADUSA-8963871","19cc83281e94e6bb","FLW01560","1560","Food Lion","Fruitland","WISE FOODS","ADUSA","206","2026-03-07","","",""
-"ADUSA-8963439","19cc51ea1bb615b1","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-06","","",""
+"ADUSA-8962862","19cc4309b6b872c0","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-06","Hudgins, Steven","Excessive out of stocks","Ad items: 2 
+Non Ad items: 1 
+Total items: 3 
+Location: Shelf/In aisle"
+"ADUSA-8963265","19cc47abaee1ed94","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-06","Valentin, Ashley","Excessive out of stocks","Ad items: 7 
+Non Ad items: 0 
+Total items: 7 
+Location: Shelf/In aisle"
+"ADUSA-8963262","19cc479ebff713e3","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-06","Valentin, Ashley","Excessive out of stocks","Ad items: 7 
+Non Ad items: 0 
+Total items: 7 
+Location: Shelf/In aisle"
+"ADUSA-8963871","19cc83281e94e6bb","FLW01560","1560","Food Lion","Fruitland","WISE FOODS","ADUSA","206","2026-03-07","Tarr, Jeremy","Excessive out of stocks","Ad items: 3 
+Non Ad items: 0 
+Total items: 3 
+Location: Shelf/In aisle"
+"ADUSA-8963439","19cc51ea1bb615b1","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-06","Valentin, Ashley","Excessive out of stocks","Ad items: 7 
+Non Ad items: 0 
+Total items: 7 
+Location: Shelf/In aisle"
 "ADUSA-8967514","19ccdedfb68a5bcd","FLW01653","1653","Food Lion","Essex","WISE FOODS","ADUSA","214","2026-03-08","","",""
-"ADUSA-8967148","19ccdb6443cf9235","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-08","","",""
-"ADUSA-8967041","19ccda11689748c3","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-08","","",""
+"ADUSA-8967148","19ccdb6443cf9235","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-08","Kirby, Carl","Excessive out of stocks","Ad items: 8 
+Non Ad items: 0 
+Total items: 8 
+Location: Shelf/In aisle"
+"ADUSA-8967041","19ccda11689748c3","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-08","Spielman, Brady","On shelf out of date","Unit counts: 9"
