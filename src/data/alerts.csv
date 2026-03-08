@@ -115,7 +115,10 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-8960357","19cc3361d33661dd","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","","",""
 "ADUSA-8960285","19cc32a6c94e013c","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-06","","",""
 "ADUSA-8960067","19cc3251f82112d8","","6307","Giant","Eldersburg","WISE FOODS","ADUSA","","2026-03-06","","",""
-"ADUSA-8960130","19cc31ae0754e50f","FLW01249","1249","Food Lion","Dumfries","WISE FOODS","ADUSA","209","2026-03-06","","",""
+"ADUSA-8960130","19cc31ae0754e50f","FLW01249","1249","Food Lion","Dumfries","WISE FOODS","ADUSA","209","2026-03-06","Maradiaga, Veronica","Excessive out of stocks","Ad items: 3 
+Non Ad items: 1 
+Total items: 4 
+Location: Shelf/In aisle"
 "Non Ad items: 1 ","","SFW02342","","","","","","207","","","",""
 "Total items: 4 ","","SFW02342","","","","","","207","","","",""
 "ADUSA-8960017","19cc307ab4bc5140","FLW00658","658","Food Lion","Berlin","WISE FOODS","ADUSA","206","2026-03-06","","",""
