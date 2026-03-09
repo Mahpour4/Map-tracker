@@ -234,8 +234,19 @@ async function acceptAlert(page, url, refNumber) {
           await page.waitForSelector('input.si-accept-confirm, input[value="Accept Issue"]', { timeout: 8000 });
           console.log(`[GW]   Resolution form appeared`);
         } catch (_) {
-          console.log(`[GW]   Timed out waiting for resolution form — sleeping 4s`);
-          await sleep(4000);
+          console.log(`[GW]   Timed out waiting for resolution form — checking if already accepted`);
+          await sleep(2000);
+          // Check if page says "This issue has already been accepted"
+          const alreadyMsg = await page.evaluate(() => {
+            var body = document.body ? (document.body.innerText || '') : '';
+            return body.indexOf('already been accepted') !== -1 || body.indexOf('already accepted') !== -1;
+          });
+          if (alreadyMsg) {
+            console.log(`[GW]   Page says "already been accepted" — treating as success`);
+            await saveDebug(page, refNumber, 'already-accepted');
+            return { success: true, alreadyAccepted: true, alertDetails };
+          }
+          await sleep(2000);
         }
         break;
       }
@@ -291,7 +302,7 @@ async function acceptAlert(page, url, refNumber) {
 
     try {
       // Extra wait for Select2 to fully initialize after the accept click
-      await sleep(1500);
+      await sleep(2500);
 
       // Diagnostic: log all selects
       const selectInfo = await page.evaluate(() => {
@@ -375,7 +386,7 @@ async function acceptAlert(page, url, refNumber) {
         await saveDebug(page, refNumber, 'select2-open-attempt');
 
         if (s2Info.clicked) {
-          await sleep(800);
+          await sleep(1500);
           await saveDebug(page, refNumber, 'select2-after-click');
 
           const s2Options = await page.evaluate(() => {
@@ -406,6 +417,26 @@ async function acceptAlert(page, url, refNumber) {
     } catch (err2) {
       console.error('[GW]   Strategy 2 error:', err2.message);
       await saveDebug(page, refNumber, 'strategy2-error').catch(() => {});
+    }
+
+    // Verify: check what the dropdown actually shows now (regardless of errors above)
+    if (acceptClicked && !timeSet) {
+      try {
+        const currentValue = await page.evaluate(() => {
+          // Check Select2 rendered text
+          var s2Text = document.querySelector('.select2-selection__rendered, .select2-chosen');
+          if (s2Text) return (s2Text.textContent || '').trim();
+          // Check native select
+          var sel = document.querySelector('select[name*="restime"]') || document.querySelector('select[id*="restime"]');
+          if (sel && sel.selectedIndex >= 0) return (sel.options[sel.selectedIndex].text || '').trim();
+          return '';
+        });
+        console.log(`[GW]   Verification — dropdown currently shows: "${currentValue}"`);
+        if (currentValue && currentValue.indexOf('48') !== -1) {
+          timeSet = currentValue;
+          console.log(`[GW]   Verified: 48hr is actually set despite earlier error`);
+        }
+      } catch (_) {}
     }
 
     // HARD STOP: if resolution time could not be set to 48hr, do NOT submit.

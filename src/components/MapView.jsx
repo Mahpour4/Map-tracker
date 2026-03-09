@@ -86,10 +86,12 @@ function getRecencyTier(lastVisited) {
   return recencyTiers[recencyTiers.length - 1];
 }
 
-function createStoreIcon(type, isSelected, visitMode, lastVisited, activePulseTiers) {
-  const baseColor = visitMode
-    ? getRecencyTier(lastVisited).color
-    : (typeColors[type] || typeColors.other);
+function createStoreIcon(type, isSelected, visitMode, lastVisited, activePulseTiers, missed) {
+  const baseColor = missed
+    ? '#ef4444'
+    : visitMode
+      ? getRecencyTier(lastVisited).color
+      : (typeColors[type] || typeColors.other);
   const size = isSelected ? 14 : 10;
   const border = isSelected ? '3px solid #1e3a5f' : '2px solid #000';
   const blinkClass = isSelected ? 'marker-blink' : '';
@@ -340,14 +342,9 @@ export default function MapView() {
   }, []);
   const thisWeekRange = useMemo(() => {
     const now = new Date();
-    const day = now.getDay(); // 0=Sun, 4=Thu
-    // Week runs previous Thursday through this Wednesday
-    // On Thursday (day=4), go back 7 days to last Thursday; on Friday go back 1 to Thursday, etc.
-    const daysSinceThurs = ((day - 4) + 7) % 7 || 7; // always use PREVIOUS Thursday
-    const thu = new Date(now); thu.setDate(now.getDate() - daysSinceThurs);
-    const wed = new Date(thu); wed.setDate(thu.getDate() + 7); // Thu through next Thu (inclusive)
+    const start = new Date(now); start.setDate(now.getDate() - 7);
     const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return { start: fmt(thu), end: fmt(wed) };
+    return { start: fmt(start), end: fmt(now) };
   }, []);
 
   // Filter stores to match sidebar filters
@@ -418,6 +415,8 @@ export default function MapView() {
     }
 
     // Sales day filter: only show stores with sale/visit on selected day(s)
+    // For "this-week": keep unvisited Food Lion, Redner, Martins, ShopRite and tag them red
+    const missedChainTypes = new Set(['food-lion', 'redners', 'giant-martins', 'shoprite']);
     if (salesDayFilter.size > 0) {
       const allowedDates = new Set();
       if (salesDayFilter.has('today')) allowedDates.add(todayStr);
@@ -426,10 +425,20 @@ export default function MapView() {
       result = result.filter(s => {
         const sale = s.lastSaleDate ? s.lastSaleDate.split('T')[0].split(' ')[0] : null;
         const visit = s.lastVisited ? s.lastVisited.split('T')[0].split(' ')[0] : null;
-        if (allowedDates.size > 0 && ((sale && allowedDates.has(sale)) || (visit && allowedDates.has(visit)))) return true;
-        if (checkWeek) {
-          if (sale && sale >= thisWeekRange.start && sale <= thisWeekRange.end) return true;
-          if (visit && visit >= thisWeekRange.start && visit <= thisWeekRange.end) return true;
+        let matched = false;
+        if (allowedDates.size > 0 && ((sale && allowedDates.has(sale)) || (visit && allowedDates.has(visit)))) matched = true;
+        if (!matched && checkWeek) {
+          if (sale && sale >= thisWeekRange.start && sale <= thisWeekRange.end) matched = true;
+          if (visit && visit >= thisWeekRange.start && visit <= thisWeekRange.end) matched = true;
+        }
+        if (matched) {
+          s._missedThisWeek = false;
+          return true;
+        }
+        // Keep unvisited stores for key chains, mark them as missed
+        if (checkWeek && missedChainTypes.has(s.type)) {
+          s._missedThisWeek = true;
+          return true;
         }
         return false;
       });
@@ -705,6 +714,8 @@ export default function MapView() {
         </div>
       )}
 
+      {/* Left panels container — stacks stale panel and sales card vertically */}
+      <div className="left-panels-container">
       {/* Stale Stores Panel */}
       {(() => {
         const hasStaleFilter = visitMode && legendFilter.size > 0 && ![...legendFilter].every(l => l === '0-7 days');
@@ -795,6 +806,7 @@ export default function MapView() {
           </div>
         </div>
       )}
+      </div>
 
       {/* Copied flash */}
       {copiedFlash && (
@@ -1078,7 +1090,7 @@ export default function MapView() {
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
-          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store), pulseTiers)}
+          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store), pulseTiers, store._missedThisWeek)}
           eventHandlers={{
             click: () => {
               if (selectedStore === store.id) {

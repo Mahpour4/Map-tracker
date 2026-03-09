@@ -120,6 +120,33 @@ app.post('/api/whatsapp/send-report', async (req, res) => {
   }
 });
 
+// Send a batch of store-grouped alerts with images to a group (alert blast)
+app.post('/api/whatsapp/send-alert-blast', async (req, res) => {
+  try {
+    const { groupId, storeGroups, summary } = req.body;
+    if (!groupId || !storeGroups || !Array.isArray(storeGroups) || storeGroups.length === 0) {
+      return res.status(400).json({ error: 'groupId and storeGroups array are required' });
+    }
+    const result = await whatsapp.sendAlertBlast(groupId, storeGroups, summary);
+    res.json(result);
+  } catch (err) {
+    console.error('Alert blast error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get driver responses to alert blasts
+app.get('/api/whatsapp/alert-responses', (req, res) => {
+  const responses = whatsapp.getAlertResponses();
+  res.json({ responses });
+});
+
+// Get blast-sent refs (which alerts have been sent)
+app.get('/api/whatsapp/blast-sent-refs', (req, res) => {
+  const refs = whatsapp.getBlastSentRefs();
+  res.json({ refs });
+});
+
 // ── Order Group Message Endpoints ────────────────────────────────────────────
 
 // Set which WhatsApp group to listen to for orders

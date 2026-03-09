@@ -72,6 +72,33 @@ export async function sendWhatsAppReport(groupId, routeNumber, stats) {
   return res.json();
 }
 
+// ── Alert Blast ─────────────────────────────────────────────────────────────
+
+export async function sendAlertBlast(groupId, storeGroups, summary) {
+  const res = await fetch(`${BASE}/send-alert-blast`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId, storeGroups, summary }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to send alert blast');
+  }
+  return res.json();
+}
+
+export async function getAlertResponses() {
+  const res = await fetch(`${BASE}/alert-responses`);
+  if (!res.ok) return { responses: [] };
+  return res.json();
+}
+
+export async function getBlastSentRefs() {
+  const res = await fetch(`${BASE}/blast-sent-refs`);
+  if (!res.ok) return { refs: {} };
+  return res.json();
+}
+
 // ── Order Message Inbox ──────────────────────────────────────────────────────
 
 export async function setOrderGroup(groupId) {

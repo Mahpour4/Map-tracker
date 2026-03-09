@@ -6,7 +6,7 @@ import { fetchAlertImage, isGmailConnected, signInWithGoogle } from '../services
 import { scrapeAlertDetails as gwScrapeDetails, checkAlertStatus as gwCheckStatus } from '../services/globalworxService';
 import { labelAlertsCompleted } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
-import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport } from '../services/whatsappService';
+import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport, sendAlertBlast, getAlertResponses, getBlastSentRefs } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
 
 function localDateStr(d = new Date()) {
@@ -100,6 +100,8 @@ export default function AlertLog() {
   const [lightboxImg, setLightboxImg] = useState(null); // dataUri for fullscreen lightbox
   const [waStatus, setWaStatus] = useState('offline'); // offline | connected | qr-pending | disconnected
   const [waSending, setWaSending] = useState(null); // identifier of what's being sent
+  const [blastProgress, setBlastProgress] = useState(null); // { route, current, total } during blast
+  const [alertResponses, setAlertResponses] = useState([]); // driver responses from WhatsApp
   const [waGroups, setWaGroups] = useState([]); // available WhatsApp groups
   const [showWaSettings, setShowWaSettings] = useState(false);
   const WA_GROUP_MAP_KEY = 'wa_route_group_map';
@@ -142,6 +144,25 @@ export default function AlertLog() {
     try { return JSON.parse(localStorage.getItem(PDF_SENT_KEY)) || {}; }
     catch { return {}; }
   });
+
+  // --- Blast sent tracking (individual ref numbers) ---
+  const BLAST_SENT_KEY = 'blast_sent_refs';
+  const [blastSentRefs, setBlastSentRefs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BLAST_SENT_KEY)) || {}; }
+    catch { return {}; }
+  });
+
+  function markBlastSent(refs) {
+    const now = new Date().toISOString();
+    const updated = { ...blastSentRefs };
+    refs.forEach(ref => { updated[ref] = now; });
+    setBlastSentRefs(updated);
+    localStorage.setItem(BLAST_SENT_KEY, JSON.stringify(updated));
+  }
+
+  function isBlastSent(refNumber) {
+    return !!blastSentRefs[refNumber];
+  }
 
   function getRouteRefKey(routeAlerts) {
     // Create a stable key from sorted RefNumbers so we can track exactly which alerts were sent
@@ -589,6 +610,183 @@ export default function AlertLog() {
     ];
     const text = encodeURIComponent(lines.join('\n'));
     window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+
+  // Hydrate blast-sent refs from server on mount (doesn't need WA connected)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { refs } = await getBlastSentRefs();
+        if (mounted && refs && Object.keys(refs).length > 0) {
+          setBlastSentRefs(prev => {
+            const merged = { ...prev, ...refs };
+            localStorage.setItem(BLAST_SENT_KEY, JSON.stringify(merged));
+            return merged;
+          });
+        }
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Fetch driver responses from WhatsApp service
+  useEffect(() => {
+    if (waStatus !== 'connected') return;
+    let mounted = true;
+    const fetchResponses = async () => {
+      try {
+        const { responses } = await getAlertResponses();
+        if (mounted && responses) setAlertResponses(responses);
+      } catch {}
+    };
+    fetchResponses();
+    const interval = setInterval(fetchResponses, 30000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [waStatus]);
+
+  // Send all open alerts for a route as individual WhatsApp messages with images
+  async function handleSendAlertBlast(e, route, routeAlerts) {
+    e.stopPropagation();
+    const groupId = getRouteGroupId(route);
+    if (!groupId) {
+      setShowWaSettings(true);
+      return;
+    }
+
+    // Filter to only open/unresolved alerts that haven't been blasted yet
+    const openAlerts = routeAlerts.filter(a => a.status !== 'resolved' && !isBlastSent(a.refNumber));
+    const alreadySent = routeAlerts.filter(a => a.status !== 'resolved' && isBlastSent(a.refNumber)).length;
+    const resolvedCount = routeAlerts.filter(a => a.status === 'resolved').length;
+
+    if (openAlerts.length === 0) {
+      const msg = alreadySent > 0
+        ? `All open alerts for Route ${route} have already been sent (${alreadySent} sent, ${resolvedCount} resolved).`
+        : `No open alerts for Route ${route}. All ${resolvedCount} alerts are resolved!`;
+      alert(msg);
+      return;
+    }
+
+    setBlastProgress({ route, current: 0, total: openAlerts.length });
+
+    try {
+      // Step 1: Fetch and process images for all open alerts
+      const blastPayload = [];
+      const gmailOk = isGmailConnected();
+
+      // Helper: convert external URL to base64 data URI
+      async function resolveImageToBase64(imgData) {
+        if (!imgData || !imgData.dataUri) return null;
+        // Already a base64 data URI
+        if (imgData.dataUri.startsWith('data:image/')) return imgData.dataUri;
+        // External URL — fetch and convert
+        if (imgData.isExternal || imgData.dataUri.startsWith('http')) {
+          try {
+            const resp = await fetch(imgData.dataUri);
+            const blob = await resp.blob();
+            return await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } catch {
+            try {
+              const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(imgData.dataUri)}`;
+              const resp = await fetch(proxyUrl);
+              const blob = await resp.blob();
+              return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            } catch { return null; }
+          }
+        }
+        return null;
+      }
+
+      // Fetch images for all open alerts
+      const alertsWithImages = [];
+      for (let i = 0; i < openAlerts.length; i++) {
+        const a = openAlerts[i];
+        setBlastProgress({ route, current: i + 1, total: openAlerts.length, phase: 'images' });
+
+        let imageBase64 = null;
+        let mimeType = 'image/jpeg';
+        if (a.emailId) {
+          const cached = alertImages[a.emailId];
+          if (cached && cached.dataUri && !cached.loading) {
+            imageBase64 = await resolveImageToBase64(cached);
+            mimeType = cached.mimeType || 'image/jpeg';
+          } else if (gmailOk) {
+            try {
+              const imgResult = await fetchAlertImage(a.emailId);
+              if (imgResult?.dataUri) {
+                imageBase64 = await resolveImageToBase64(imgResult);
+                mimeType = imgResult.mimeType || 'image/jpeg';
+              }
+            } catch {}
+          }
+        }
+        alertsWithImages.push({ ...a, imageBase64: imageBase64 || '', mimeType });
+      }
+
+      // Step 2: Group alerts by store (storeNumber + storeName)
+      const storeGroupMap = {};
+      alertsWithImages.forEach(a => {
+        const storeKey = `${a.storeName}#${a.storeNumber}`;
+        if (!storeGroupMap[storeKey]) {
+          storeGroupMap[storeKey] = {
+            store: `${a.storeName} #${a.storeNumber}`,
+            city: a.city || '',
+            alerts: [],
+          };
+        }
+        storeGroupMap[storeKey].alerts.push({
+          refNumber: a.refNumber,
+          alertDate: formatDate(a.dateReceived),
+          createdBy: a.gwCreatedBy || '',
+          alertType: a.gwAlertType || a.vendor || '',
+          reason: a.gwReason || '',
+          imageBase64: a.imageBase64,
+          mimeType: a.mimeType,
+        });
+      });
+      const storeGroups = Object.values(storeGroupMap);
+
+      // Step 3: Build summary message
+      const summaryLines = [
+        `\uD83D\uDCCA *Route ${route} Alert Summary*`,
+        '',
+        `\uD83D\uDD34 *${openAlerts.length}* open alert${openAlerts.length !== 1 ? 's' : ''} across *${storeGroups.length}* store${storeGroups.length !== 1 ? 's' : ''} sent above`,
+      ];
+      if (resolvedCount > 0) {
+        summaryLines.push(`\u2705 *${resolvedCount}* alert${resolvedCount !== 1 ? 's' : ''} resolved this week \u2014 great job!`);
+      }
+      summaryLines.push('', '\u21A9\uFE0F Reply to any alert above to log your response.');
+      const summary = summaryLines.join('\n');
+
+      // Step 4: Send blast (grouped by store)
+      setBlastProgress({ route, current: 0, total: storeGroups.length, phase: 'sending' });
+      const result = await sendAlertBlast(groupId, storeGroups, summary);
+
+      const successRefs = result.results.filter(r => r.success).map(r => r.refNumber);
+      const failed = result.results.filter(r => !r.success).length;
+      if (successRefs.length > 0) markBlastSent(successRefs);
+      alert(`Sent ${successRefs.length} alert${successRefs.length !== 1 ? 's' : ''} to Route ${route} WhatsApp group${failed > 0 ? ` (${failed} failed)` : ''}${alreadySent > 0 ? ` (${alreadySent} previously sent, skipped)` : ''}`);
+
+      // Refresh responses after blast
+      try {
+        const { responses } = await getAlertResponses();
+        if (responses) setAlertResponses(responses);
+      } catch {}
+    } catch (err) {
+      alert(`Alert blast failed: ${err.message}`);
+    } finally {
+      setBlastProgress(null);
+    }
   }
 
   // Auto-clear: label all clearable alerts as completed in one step
@@ -2233,6 +2431,27 @@ export default function AlertLog() {
                               {waSending === `report-${route}` ? '...' : 'WA'}
                             </button>
                           )}
+                          {route !== 'Unmatched' && waStatus === 'connected' && getRouteGroupId(route) && (() => {
+                            const unsentCount = routeAlerts.filter(a => a.status !== 'resolved' && !isBlastSent(a.refNumber)).length;
+                            return (
+                              <button
+                                className={`al-btn-blast${unsentCount === 0 ? ' al-btn-blast--sent' : ''}`}
+                                onClick={(e) => handleSendAlertBlast(e, route, routeAlerts)}
+                                disabled={blastProgress !== null}
+                                title={unsentCount > 0
+                                  ? `Send ${unsentCount} unsent open alert${unsentCount !== 1 ? 's' : ''} to Route ${route} WhatsApp group`
+                                  : `All open alerts already sent for Route ${route}`}
+                              >
+                                {blastProgress?.route === route
+                                  ? blastProgress.phase === 'images'
+                                    ? `Loading ${blastProgress.current}/${blastProgress.total}...`
+                                    : `Sending ${blastProgress.current}/${blastProgress.total}...`
+                                  : unsentCount > 0
+                                    ? `Send Alerts (${unsentCount})`
+                                    : 'Sent'}
+                              </button>
+                            );
+                          })()}
                           {sentInfo && (
                             <span className="al-pdf-sent-tag">Sent {sentDate}</span>
                           )}
@@ -2267,6 +2486,7 @@ export default function AlertLog() {
                         <th>Ref #</th>
                         <th>Days to Serve</th>
                         <th>GW</th>
+                        <th>W/Alert</th>
                         <th>Email</th>
                         <th>Actions</th>
                       </tr>
@@ -2370,6 +2590,14 @@ export default function AlertLog() {
                                           : <span className="al-gw-col-no" title="No acceptance link">—</span>
                                 }
                               </td>
+                              <td className="al-cell-sent">
+                                {isBlastSent(a.refNumber)
+                                  ? <span className="al-sent-date" title={new Date(blastSentRefs[a.refNumber]).toLocaleString()}>
+                                      {new Date(blastSentRefs[a.refNumber]).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+                                    </span>
+                                  : <span className="al-sent-no">—</span>
+                                }
+                              </td>
                               <td>
                                 {a.emailId && (
                                   <a
@@ -2414,7 +2642,7 @@ export default function AlertLog() {
                             {/* ── Inline detail panel ── */}
                             {isDetailOpen && (
                               <tr className="al-detail-row">
-                                <td colSpan={14}>
+                                <td colSpan={15}>
                                   <div className="al-detail-panel">
 
                                     {/* Store profile */}
@@ -2458,84 +2686,88 @@ export default function AlertLog() {
                                       ) : null;
                                     })()}
 
-                                    {/* Visit / sale status since the alert */}
+                                    {/* Alert info lines */}
                                     <div className="al-detail-status">
-                                      <div className="al-detail-status-title">Store Activity Since Alert</div>
+                                      {/* Line 1: Alert Received */}
+                                      <div className="al-detail-info-line">
+                                        <span className="al-detail-info-label">Alert Received:</span>
+                                        <span className="al-detail-info-value">{formatDate(a.dateReceived)}{a.timeReceived ? ` ${a.timeReceived}` : ''}</span>
+                                      </div>
 
-                                      {/* Visited */}
-                                      <div className={`al-detail-check ${visitedSinceAlert ? 'yes' : 'no'}`}>
-                                        <span className="al-detail-check-icon">{visitedSinceAlert ? '✓' : '✗'}</span>
-                                        <div>
-                                          <div className="al-detail-check-label">
-                                            {visitedSinceAlert
-                                              ? `Visited after alert (${formatDate(lastVisitedDate)})`
-                                              : lastVisitedDate
-                                                ? `Last visit was before alert (${formatDate(lastVisitedDate)})`
-                                                : 'No visit recorded'}
+                                      {/* Line 2: Last Sale / Last Visit */}
+                                      <div className="al-detail-info-line">
+                                        <span className="al-detail-info-label">Last Sale:</span>
+                                        <span className={`al-detail-info-value ${soldSinceAlert ? 'al-info-good' : 'al-info-bad'}`}>{lastSaleDate ? formatDate(lastSaleDate) : '—'}</span>
+                                        <span className="al-detail-info-sep">/</span>
+                                        <span className="al-detail-info-label">Last Visit:</span>
+                                        <span className={`al-detail-info-value ${visitedSinceAlert ? 'al-info-good' : 'al-info-bad'}`}>{lastVisitedDate ? formatDate(lastVisitedDate) : '—'}</span>
+                                      </div>
+
+                                      {/* Line 3: GlobalWorx Accepted / Days Old */}
+                                      <div className="al-detail-info-line">
+                                        <span className="al-detail-info-label">GlobalWorx Accepted:</span>
+                                        <span className={`al-detail-info-value ${a.globalworxError ? 'al-info-error' : a.globalworxAccepted || a.globalworxDone || a.globalworxCompleted ? 'al-info-good' : 'al-info-bad'}`}>
+                                          {a.globalworxError ? 'Error' : a.globalworxCompleted ? 'Completed' : a.globalworxDone ? 'Done' : a.globalworxAccepted ? 'Yes' : 'No'}
+                                        </span>
+                                        <span className="al-detail-info-sep">/</span>
+                                        <span className="al-detail-info-label">This alert is</span>
+                                        <span className={`al-detail-info-value ${a.days !== null && a.days > 7 ? 'al-info-bad' : 'al-info-good'}`}>
+                                          {a.days !== null ? `${a.days} days old` : '—'}
+                                        </span>
+                                      </div>
+
+                                      {/* Line 4: Driver response (if any) */}
+                                      {(() => {
+                                        const resp = alertResponses.find(r => r.refNumber === a.refNumber);
+                                        if (!resp) return null;
+                                        const respDate = new Date(resp.timestamp);
+                                        const respDateStr = `${String(respDate.getMonth() + 1).padStart(2, '0')}/${String(respDate.getDate()).padStart(2, '0')} ${String(respDate.getHours()).padStart(2, '0')}:${String(respDate.getMinutes()).padStart(2, '0')}`;
+                                        return (
+                                          <div className="al-detail-info-line al-detail-response">
+                                            <span className="al-detail-info-label">Driver:</span>
+                                            <span className="al-detail-info-value" style={{ fontWeight: 500, fontStyle: 'italic' }}>"{resp.response}"</span>
+                                            <span className="al-detail-info-sep">—</span>
+                                            <span className="al-detail-info-value">{resp.driverName}, {respDateStr}</span>
                                           </div>
-                                          {postAlertVisits.length > 0 && (
-                                            <div className="al-detail-visit-chips">
-                                              {postAlertVisits.slice(0, 8).map(d => (
-                                                <span key={d} className="al-detail-chip">{formatDate(d)}</span>
-                                              ))}
-                                              {postAlertVisits.length > 8 && <span className="al-detail-chip-more">+{postAlertVisits.length - 8} more</span>}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
+                                        );
+                                      })()}
 
-                                      {/* Sold */}
-                                      <div className={`al-detail-check ${soldSinceAlert ? 'yes' : 'no'}`}>
-                                        <span className="al-detail-check-icon">{soldSinceAlert ? '✓' : '✗'}</span>
-                                        <div className="al-detail-check-label">
-                                          {soldSinceAlert
-                                            ? `Sale recorded after alert (${formatDate(lastSaleDate)})`
-                                            : lastSaleDate
-                                              ? `Last sale was before alert (${formatDate(lastSaleDate)})`
-                                              : 'No sale data in CSV'}
+                                      {/* Post-alert visit chips */}
+                                      {postAlertVisits.length > 0 && (
+                                        <div className="al-detail-visit-chips">
+                                          {postAlertVisits.slice(0, 8).map(d => (
+                                            <span key={d} className="al-detail-chip">{formatDate(d)}</span>
+                                          ))}
+                                          {postAlertVisits.length > 8 && <span className="al-detail-chip-more">+{postAlertVisits.length - 8} more</span>}
                                         </div>
-                                      </div>
+                                      )}
 
-                                      {/* GlobalWorx acceptance status */}
-                                      <div className={`al-detail-check ${a.globalworxError ? 'error' : a.globalworxCompleted ? 'yes' : a.globalworxDone ? 'yes' : a.globalworxAccepted ? 'yes' : 'no'}`}>
-                                        <span className="al-detail-check-icon">{a.globalworxError ? '⚠' : a.globalworxCompleted ? '✓' : a.globalworxDone ? '✓' : a.globalworxAccepted ? '✓' : '✗'}</span>
-                                        <div className="al-detail-check-label">
-                                          {a.globalworxError
-                                            ? 'Auto-complete failed — open the acceptance form and complete manually'
-                                            : a.globalworxCompleted
-                                              ? 'GlobalWorx completion form submitted'
-                                              : a.globalworxDone
-                                                ? 'Store visited — marked Done in Gmail'
-                                                : a.globalworxAccepted
-                                                  ? 'GlobalWorx acceptance form submitted'
-                                                  : 'GlobalWorx acceptance not yet submitted'}
+                                      {/* Error resolve controls */}
+                                      {a.acceptanceUrl && (a.globalworxError || (!a.globalworxAccepted && !a.globalworxDone && !a.globalworxCompleted)) && (
+                                        <a
+                                          href={a.acceptanceUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="al-gw-detail-btn"
+                                        >Open Acceptance Form</a>
+                                      )}
+                                      {a.globalworxError && (
+                                        <div className="al-error-resolve-panel">
+                                          <span className="al-error-resolve-label">Resolve as:</span>
+                                          <select
+                                            className="al-error-dropdown al-error-dropdown-detail"
+                                            value=""
+                                            disabled={overriding === a.refNumber}
+                                            onClick={e => e.stopPropagation()}
+                                            onChange={e => { if (e.target.value) handleManualOverride(a.refNumber, e.target.value); }}
+                                          >
+                                            <option value="">{overriding === a.refNumber ? 'Resolving...' : 'Select...'}</option>
+                                            <option value="accepted">Accepted</option>
+                                            <option value="done">Done</option>
+                                            <option value="completed">Completed</option>
+                                          </select>
                                         </div>
-                                        {a.acceptanceUrl && (a.globalworxError || (!a.globalworxAccepted && !a.globalworxDone && !a.globalworxCompleted)) && (
-                                          <a
-                                            href={a.acceptanceUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="al-gw-detail-btn"
-                                          >Open Acceptance Form</a>
-                                        )}
-                                        {a.globalworxError && (
-                                          <div className="al-error-resolve-panel">
-                                            <span className="al-error-resolve-label">Resolve as:</span>
-                                            <select
-                                              className="al-error-dropdown al-error-dropdown-detail"
-                                              value=""
-                                              disabled={overriding === a.refNumber}
-                                              onClick={e => e.stopPropagation()}
-                                              onChange={e => { if (e.target.value) handleManualOverride(a.refNumber, e.target.value); }}
-                                            >
-                                              <option value="">{overriding === a.refNumber ? 'Resolving...' : 'Select...'}</option>
-                                              <option value="accepted">Accepted</option>
-                                              <option value="done">Done</option>
-                                              <option value="completed">Completed</option>
-                                            </select>
-                                          </div>
-                                        )}
-                                      </div>
+                                      )}
 
                                       {/* All recent visits from visitHistory (last 3 before alert) */}
                                       {storeVisits.filter(d => !a.dateReceived || d < a.dateReceived).slice(0, 3).length > 0 && (
@@ -2598,7 +2830,7 @@ export default function AlertLog() {
 
                             {isImgOpen && (
                               <tr className="al-image-row">
-                                <td colSpan={14}>
+                                <td colSpan={15}>
                                   <div className="al-image-container">
                                     {imgData?.loading && <span className="al-image-loading">Loading image...</span>}
                                     {imgData?.error && <span className="al-image-error">{imgData.error}</span>}
