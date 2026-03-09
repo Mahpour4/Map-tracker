@@ -132,7 +132,10 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-8967041","19ccda11689748c3","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-08","","","","03/08/2026 09:26 AM","On shelf out of date","On shelf out of date. On shelf out of date","Spielman, Brady"
 "ADUSA-8972667","19cd2f86dd26f206","FLW00378","378","Food Lion","Warrenton","WISE FOODS","ADUSA","209","2026-03-09","","","","03/09/2026 10:20 AM","Merchandising service","Merchandising service. Store did not receive service at all last week. Last service date was 2/26.","Spriggs, Nicholas"
 "ADUSA-8972596","19cd2f22f63620a9","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-09","","","","03/09/2026 10:13 AM","Excessive out of stocks","Excessive out of stocks.","Valentin, Ashley"
-"ADUSA-8972131","19cd2d0cc87d4934","FLW01249","1249","Food Lion","Dumfries","WISE FOODS","ADUSA","209","2026-03-09","","","","03/09/2026 09:37 AM","Excessive out of stocks","Excessive out of stocks. The endcap is low on product as well","Maradiaga, Veronica"
+"ADUSA-8972131","19cd2d0cc87d4934","FLW01249","1249","Food Lion","Dumfries","WISE FOODS","ADUSA","209","2026-03-09","Maradiaga, Veronica","Excessive out of stocks","Ad items: 3 
+Non Ad items: 1 
+Total items: 4 
+Location: Shelf/In aisle","03/09/2026 09:37 AM","Excessive out of stocks","Excessive out of stocks. The endcap is low on product as well","Maradiaga, Veronica"
 "ADUSA-8971638","19cd2ac67440b657","FLW01297","1297","Food Lion","Federalsburg","WISE FOODS","ADUSA","210","2026-03-09","","","","03/09/2026 08:57 AM","Failure processing credits","Failure processing credits. Need credits gone","Fox, Logan"
 "ADUSA-8971040","19cd28a41cb641fd","FLW00246","246","Food Lion","Ocean City","WISE FOODS","ADUSA","206","2026-03-09","","","","03/09/2026 08:19 AM","On shelf out of date","On shelf out of date.","Benner, Halleigh"
 "ADUSA-8970993","19cd283df6190321","FLW02630","2630","Food Lion","Perryville","WISE FOODS","ADUSA","214","2026-03-09","","","","03/09/2026 08:12 AM","Excessive out of stocks","Excessive out of stocks. Shelves in need of products","May, Mycalah"
