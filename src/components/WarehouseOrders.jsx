@@ -2283,26 +2283,38 @@ export default function WarehouseOrders() {
                 }}
               >
                 <option value="">{lang === 'es' ? 'Seleccionar orden...' : 'Select order...'}</option>
-                {orders.length > 0 && (
-                  <optgroup label={lang === 'es' ? 'Guardado Local' : 'Local Saved'}>
-                    {orders
-                      .slice()
-                      .sort((a, b) => b.date.localeCompare(a.date))
-                      .slice(0, 15)
-                      .map(o => (
+                {orders.length > 0 && (() => {
+                  const byRoute = {};
+                  orders.slice().sort((a, b) => b.date.localeCompare(a.date)).forEach(o => {
+                    const r = o.routeNumber || '?';
+                    if (!byRoute[r]) byRoute[r] = [];
+                    byRoute[r].push(o);
+                  });
+                  return Object.keys(byRoute).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(route => (
+                    <optgroup key={`local-${route}`} label={`Route ${route}`}>
+                      {byRoute[route].slice(0, 8).map(o => (
                         <option key={`__local__${o.id}`} value={`__local__${o.id}`}>
-                          {o.routeNumber} — {o.name || ''} — {o.date}
+                          {o.name || ''} — {o.date}
                         </option>
                       ))}
-                  </optgroup>
-                )}
-                {sheetsConfigured && recentTabs.length > 0 && (
-                  <optgroup label="Google Sheets">
-                    {recentTabs.map(rt => (
-                      <option key={rt.tabName} value={rt.tabName}>{rt.tabName}</option>
-                    ))}
-                  </optgroup>
-                )}
+                    </optgroup>
+                  ));
+                })()}
+                {sheetsConfigured && recentTabs.length > 0 && (() => {
+                  const byRoute = {};
+                  recentTabs.forEach(rt => {
+                    const r = rt.route || '?';
+                    if (!byRoute[r]) byRoute[r] = [];
+                    byRoute[r].push(rt);
+                  });
+                  return Object.keys(byRoute).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(route => (
+                    <optgroup key={`sheets-${route}`} label={`Route ${route} (Sheets)`}>
+                      {byRoute[route].map(rt => (
+                        <option key={rt.tabName} value={rt.tabName}>{rt.driver} — {rt.date}</option>
+                      ))}
+                    </optgroup>
+                  ));
+                })()}
               </select>
             </label>
           </div>

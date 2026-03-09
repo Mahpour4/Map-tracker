@@ -38,6 +38,34 @@ function extractBody(payload) {
   return '';
 }
 
+/** Parse alert detail fields from email body (Date/Time, Issue Type, Notes, Created By) */
+function parseAlertBody(bodyHtml) {
+  if (!bodyHtml) return {};
+  // Strip HTML tags to get plain text, preserve line breaks
+  const text = bodyHtml
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|tr|li)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#\d+;/gi, '')
+    .replace(/\r\n/g, '\n');
+
+  const result = {};
+  const fieldMap = {
+    'Date/Time': 'alertDateTime',
+    'Issue Type': 'issueType',
+    'Notes': 'notes',
+    'Created By': 'createdBy',
+  };
+  for (const [label, key] of Object.entries(fieldMap)) {
+    const regex = new RegExp(`${label.replace('/', '\\/')}\\s*:\\s*(.+)`, 'i');
+    const m = text.match(regex);
+    if (m) result[key] = m[1].trim();
+  }
+  return result;
+}
+
 /** Extract first GlobalWorx acceptance URL from email body HTML */
 function extractAcceptanceUrl(bodyHtml) {
   if (!bodyHtml) return null;
@@ -499,9 +527,14 @@ export async function fetchAlertEmails(afterDate, maxResults = 100) {
           parsed.globalworxDone = doneLabelId ? labels.includes(doneLabelId) : false;
           parsed.globalworxCompleted = completedLabelId ? labels.includes(completedLabelId) : false;
           parsed.globalworxError = errorLabelId ? labels.includes(errorLabelId) : false;
-          // Extract acceptance URL from email body
+          // Extract acceptance URL and body details from email body
           const body = extractBody(detail.payload);
           parsed.acceptanceUrl = extractAcceptanceUrl(body);
+          const bodyFields = parseAlertBody(body);
+          if (bodyFields.alertDateTime) parsed.alertDateTime = bodyFields.alertDateTime;
+          if (bodyFields.issueType) parsed.issueType = bodyFields.issueType;
+          if (bodyFields.notes) parsed.notes = bodyFields.notes;
+          if (bodyFields.createdBy) parsed.createdBy = bodyFields.createdBy;
           alerts.push(parsed);
           rawMessages.push({ id, subject, date, parsed: true });
         } else {
@@ -776,7 +809,7 @@ export function matchAlertToStore(alert, stores) {
 
 // ---- Alert CSV serialization ----
 
-const ALERT_CSV_HEADER = 'RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,DateReceived,GwCreatedBy,GwAlertType,GwReason';
+const ALERT_CSV_HEADER = 'RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,DateReceived,GwCreatedBy,GwAlertType,GwReason,AlertDateTime,IssueType,Notes,CreatedBy';
 
 function quoteCsvField(val) {
   const s = (val || '').toString();
@@ -800,6 +833,10 @@ export function alertsToCsv(alerts) {
       a.gwCreatedBy || '',
       a.gwAlertType || '',
       a.gwReason || '',
+      a.alertDateTime || '',
+      a.issueType || '',
+      a.notes || '',
+      a.createdBy || '',
     ].map(quoteCsvField).join(','));
   });
   return lines.join('\n');
@@ -844,6 +881,10 @@ export function parseAlertsCsv(csv) {
       gwCreatedBy: cols[10] || '',
       gwAlertType: cols[11] || '',
       gwReason: cols[12] || '',
+      alertDateTime: cols[13] || '',
+      issueType: cols[14] || '',
+      notes: cols[15] || '',
+      createdBy: cols[16] || '',
     };
   });
 }

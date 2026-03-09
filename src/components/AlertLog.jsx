@@ -554,11 +554,16 @@ export default function AlertLog() {
 
     // If WhatsApp service is connected and route has a mapped group, send via API
     if (waStatus === 'connected' && groupId) {
+      const bodyLines = [];
+      if (alert.issueType) bodyLines.push(`Issue: ${alert.issueType}`);
+      if (alert.notes) bodyLines.push(`Notes: ${alert.notes}`);
+      if (alert.createdBy) bodyLines.push(`Created By: ${alert.createdBy}`);
+      if (alert.alertDateTime) bodyLines.push(`Alert Date: ${alert.alertDateTime}`);
       const alertData = {
         route: alert.routeNumber || 'N/A',
         type: alert.vendor || 'Alert',
         store: `${alert.storeName} #${alert.storeNumber}`,
-        message: `${alert.city} — Ref: ${alert.refNumber}`,
+        message: `${alert.city} — Ref: ${alert.refNumber}${bodyLines.length ? '\n' + bodyLines.join('\n') : ''}`,
         timestamp: formatDate(alert.dateReceived),
       };
       setWaSending(`alert-${alert.refNumber}`);
@@ -587,6 +592,10 @@ export default function AlertLog() {
       `Ref: ${alert.refNumber}`,
       `Date: ${formatDate(alert.dateReceived)}`,
     ];
+    if (alert.issueType) lines.push(`Issue: ${alert.issueType}`);
+    if (alert.notes) lines.push(`Notes: ${alert.notes}`);
+    if (alert.createdBy) lines.push(`Created By: ${alert.createdBy}`);
+    if (alert.alertDateTime) lines.push(`Alert Date: ${alert.alertDateTime}`);
     const text = encodeURIComponent(lines.join('\n'));
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
@@ -1050,17 +1059,23 @@ export default function AlertLog() {
         const addr = a.store?.address || '';
         const storeCell = `${a.storeName} #${a.storeNumber}\n${addr}${addr && a.city ? ', ' : ''}${a.city || ''}`;
 
-        // Details column: Created By + Reason (items + location) from GlobalWorx scrape
+        // Details column: Created By + Reason from GW scrape, supplemented by email body fields
         const detailParts = [];
         if (a.gwCreatedBy) detailParts.push(`By: ${a.gwCreatedBy}`);
+        else if (a.createdBy) detailParts.push(`By: ${a.createdBy}`);
         if (a.gwReason) {
-          // Reason may contain multiple lines like "Ad items: 2\nNon Ad items: 0\nTotal items: 2\nLocation: Shelf/In aisle"
-          // or "Consolidate/Loose product\nLocation: Back room"
           detailParts.push(a.gwReason);
         }
         if (a.gwAlertType && !detailParts.some(p => p.includes(a.gwAlertType))) {
           detailParts.unshift(a.gwAlertType);
         }
+        if (a.issueType && !detailParts.some(p => p.includes(a.issueType))) {
+          detailParts.push(`Issue: ${a.issueType}`);
+        }
+        if (a.notes && !detailParts.some(p => p.includes(a.notes))) {
+          detailParts.push(`Notes: ${a.notes}`);
+        }
+        if (a.alertDateTime) detailParts.push(`Alert: ${a.alertDateTime}`);
         const detailsCell = detailParts.join('\n') || '';
 
         // Last Svc column: days since visit + schedule day
