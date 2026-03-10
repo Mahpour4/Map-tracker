@@ -1192,20 +1192,30 @@ textarea {
   left: 284px;
 }
 
-/* ============ Stale Stores Panel ============ */
-/* Sales Activity Summary Card */
-.sales-activity-card {
+/* ============ Left Panels Container ============ */
+.left-panels-container {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100% - 24px);
+  pointer-events: none;
+}
+.left-panels-container > * {
+  pointer-events: auto;
+}
+
+/* Sales Activity Summary Card */
+.sales-activity-card {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   padding: 10px 14px;
   min-width: 180px;
-  max-height: calc(100% - 24px);
   overflow-y: auto;
 }
 .sales-activity-title {
@@ -1247,10 +1257,6 @@ textarea {
 }
 
 .stale-panel {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 1000;
   background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -5392,6 +5398,42 @@ textarea {
   cursor: not-allowed;
 }
 
+.al-btn-blast {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  transition: all 0.15s;
+}
+.al-btn-blast:hover {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+.al-btn-blast:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.al-btn-blast--sent {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #9ca3af;
+}
+
+.al-detail-response {
+  background: #eff6ff;
+  border-radius: 6px;
+  padding: 6px 10px !important;
+  margin-top: 4px;
+}
+
 .al-btn-complete {
   padding: 3px 8px;
   border-radius: 4px;
@@ -5746,6 +5788,14 @@ textarea {
   font-size: 14px;
 }
 
+.al-cell-sent { text-align: center; }
+.al-sent-date {
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+}
+.al-sent-no { color: #d1d5db; font-size: 14px; }
+
 .al-gw-col-done {
   display: inline-block;
   padding: 1px 6px;
@@ -6093,48 +6143,36 @@ textarea {
   min-width: 200px;
 }
 
-.al-detail-status-title {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 8px;
-}
-
-.al-detail-check {
+.al-detail-info-line {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  margin-bottom: 5px;
-  font-size: 0.82rem;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  font-size: 0.84rem;
+  border-bottom: 1px solid #f3f4f6;
 }
+.al-detail-info-line:last-of-type { border-bottom: none; }
 
-.al-detail-check.yes {
-  background: #dcfce7;
-}
-
-.al-detail-check.no {
-  background: #fef2f2;
-}
-
-.al-detail-check-icon {
-  font-size: 0.9rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  line-height: 1.4;
-}
-
-.al-detail-check.yes .al-detail-check-icon { color: #16a34a; }
-.al-detail-check.no  .al-detail-check-icon { color: #dc2626; }
-
-.al-detail-check-label {
-  color: #374151;
+.al-detail-info-label {
+  color: #6b7280;
   font-weight: 500;
-  line-height: 1.35;
+  white-space: nowrap;
 }
+
+.al-detail-info-value {
+  color: #111827;
+  font-weight: 700;
+}
+
+.al-detail-info-sep {
+  color: #d1d5db;
+  font-weight: 400;
+  margin: 0 2px;
+}
+
+.al-info-good { color: #16a34a; }
+.al-info-bad { color: #dc2626; }
+.al-info-error { color: #dc2626; font-weight: 700; }
 
 .al-detail-visit-chips {
   display: flex;
@@ -9007,6 +9045,92 @@ textarea {
 }
 .tl-cal-empty {
   padding: 4px 0;
+}
+.tl-cal-day.inactive {
+  background: #fee2e2;
+  color: #dc2626;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+/* ============ Vehicle Activity Panel ============ */
+.tl-activity-panel {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+.tl-activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.tl-activity-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.tl-activity-vehicle-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  min-width: 200px;
+}
+.tl-activity-period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.tl-activity-period label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.tl-activity-period input[type="date"] {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+.tl-activity-process-btn {
+  padding: 6px 14px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tl-activity-process-btn:hover {
+  opacity: 0.85;
+}
+.tl-activity-process-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tl-cal-day.clickable {
+  cursor: pointer;
+}
+.tl-cal-day.clickable:hover {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+.tl-activity-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.tl-activity-stat {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.tl-activity-stat strong {
+  color: var(--text);
 }
 
 /* ============ Fleet Tracker — Schedule Alerts ============ */

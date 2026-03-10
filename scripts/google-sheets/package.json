@@ -1,0 +1,16 @@
+{
+  "name": "sheets-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Download warehouse orders from Google Sheets",
+  "scripts": {
+    "sync": "node sync-orders.js",
+    "sync:dry": "node sync-orders.js --dry-run",
+    "pull": "node pull-sheet.js",
+    "pull:dry": "node pull-sheet.js --dry-run"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}

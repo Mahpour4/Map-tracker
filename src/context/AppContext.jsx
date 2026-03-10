@@ -1048,14 +1048,22 @@ export function AppProvider({ children }) {
     const gmailOk = isGmailConnected();
 
     // Immediately mark successfully accepted alerts in state so Accept button disappears right away
+    // Also clear any previous globalworxError flag from failed attempts
     const successfulAlerts = results.filter(r => r.success).map(r => unaccepted.find(a => a.refNumber === r.refNumber)).filter(Boolean);
-    successfulAlerts.forEach(a => { a.globalworxAccepted = true; });
+    const previouslyErrored = successfulAlerts.filter(a => a.globalworxError);
+    successfulAlerts.forEach(a => { a.globalworxAccepted = true; a.globalworxError = false; });
 
     // Label successfully accepted emails as "Processed" in Gmail
     const acceptedIds = results.filter(r => r.success && r.emailId).map(r => r.emailId);
     console.log(`[AutoAccept] ${results.filter(r => r.success).length} accepted, ${acceptedIds.length} have emailId, gmailConnected=${gmailOk}`);
     if (acceptedIds.length > 0 && gmailOk) {
       await labelAlertsProcessed(acceptedIds);
+      // Remove Error label from Gmail for alerts that previously failed but now succeeded
+      const prevErrorIds = previouslyErrored.map(a => a.emailId).filter(Boolean);
+      if (prevErrorIds.length > 0) {
+        await unlabelAlertsError(prevErrorIds);
+        console.log(`[AutoAccept] Cleared Error label from ${prevErrorIds.length} previously-errored alert(s)`);
+      }
     } else if (acceptedIds.length === 0) {
       console.warn('[AutoAccept] No emailIds found on accepted alerts — label skipped. Try re-fetching Gmail alerts first.');
     } else if (!gmailOk) {

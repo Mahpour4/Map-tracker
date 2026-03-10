@@ -12,7 +12,30 @@ const path = require('path');
 const MESSAGES_FILE = path.join(__dirname, 'order-messages.json');
 const CONTACTS_FILE = path.join(__dirname, 'order-contacts.json');
 const GROUP_FILE = path.join(__dirname, 'order-group.json');
+const RESPONSES_FILE = path.join(__dirname, 'alert-responses.json');
+const BLAST_SENT_FILE = path.join(__dirname, 'blast-sent-refs.json');
+const SENT_MESSAGES_FILE = path.join(__dirname, 'sent-alert-messages.json');
 const MAX_MESSAGES = 1000;
+
+// Alert blast tracking — maps messageId -> refNumber for reply matching
+let sentAlertMessages = {}; // { messageId: refNumber }
+let alertResponses = [];
+let blastSentRefs = {}; // { refNumber: timestamp }
+try { alertResponses = JSON.parse(fs2.readFileSync(RESPONSES_FILE, 'utf8')) || []; } catch { }
+try { blastSentRefs = JSON.parse(fs2.readFileSync(BLAST_SENT_FILE, 'utf8')) || {}; } catch { }
+try { sentAlertMessages = JSON.parse(fs2.readFileSync(SENT_MESSAGES_FILE, 'utf8')) || {}; } catch { }
+
+function saveResponses() {
+  try { fs2.writeFileSync(RESPONSES_FILE, JSON.stringify(alertResponses, null, 2)); } catch (e) { console.error('Failed to save alert responses:', e.message); }
+}
+
+function saveBlastSentRefs() {
+  try { fs2.writeFileSync(BLAST_SENT_FILE, JSON.stringify(blastSentRefs, null, 2)); } catch (e) { console.error('Failed to save blast sent refs:', e.message); }
+}
+
+function saveSentAlertMessages() {
+  try { fs2.writeFileSync(SENT_MESSAGES_FILE, JSON.stringify(sentAlertMessages, null, 2)); } catch (e) { console.error('Failed to save sent alert messages:', e.message); }
+}
 
 // Load persisted state
 let orderGroupId = null;
@@ -101,10 +124,44 @@ function initialize() {
     scheduleReinitialize(10000);
   });
 
-  // Listen for incoming messages -- capture order group messages
+  // Listen for incoming messages -- capture order group messages + alert replies
   client.on('message', async (msg) => {
     try {
-      // Only capture if an order group is configured
+      // Check for alert reply (quoted message matching a sent alert)
+      if (msg.hasQuotedMsg) {
+        console.log(`[WA] Incoming quoted message from ${msg.author || msg.from}: "${(msg.body || '').substring(0, 40)}"`);
+
+        try {
+          const quoted = await msg.getQuotedMessage();
+          const quotedId = quoted.id._serialized;
+          // Check if the quoted message is one we sent as an alert blast
+          let refNumber = sentAlertMessages[quotedId] || null;
+          // Fallback: extract ref from quoted message caption/body text
+          if (!refNumber) {
+            const quotedText = quoted.body || '';
+            const refMatch = quotedText.match(/(?:ADUSA|DSD1)-\d+/);
+            if (refMatch) refNumber = refMatch[0];
+          }
+          if (refNumber) {
+            const contact = await msg.getContact();
+            const response = {
+              refNumber,
+              driverName: contact.pushname || contact.name || contact.number || msg.author || 'Unknown',
+              response: msg.body || '',
+              timestamp: msg.timestamp * 1000,
+              messageId: msg.id._serialized,
+              groupId: msg.from,
+            };
+            alertResponses.push(response);
+            saveResponses();
+            console.log(`\uD83D\uDCAC Alert reply for ${refNumber} from ${response.driverName}: "${msg.body.substring(0, 60)}"`);
+          }
+        } catch (qErr) {
+          console.error('[WA] Quote fetch error:', qErr.message);
+        }
+      }
+
+      // Only capture order messages if an order group is configured
       if (!orderGroupId) return;
       // Only capture messages from the configured order group
       if (msg.from !== orderGroupId) return;
@@ -282,22 +339,200 @@ async function sendAlertWithImage(groupId, alert, imageBase64, mimeType) {
   if (!client || client.info === undefined) {
     throw new Error('WhatsApp is not connected');
   }
-  const caption = [
-    '\uD83D\uDEA8 *Map Tracker Alert*',
-    '',
-    `*Route:* ${alert.route || 'N/A'}`,
-    `*Type:* ${alert.type || 'Alert'}`,
-    `*Store:* ${alert.store || 'N/A'}`,
-    `*Message:* ${alert.message || ''}`,
-    `*Time:* ${alert.timestamp || new Date().toLocaleString()}`,
-  ].join('\n');
+
+  // Build rich caption if new fields are present, otherwise fall back to legacy format
+  let caption;
+  if (alert.refNumber) {
+    const lines = [
+      `\uD83D\uDEA8 *Service Alert \u2014 ${alert.refNumber}*`,
+      '',
+    ];
+    if (alert.store) lines.push(`\uD83D\uDCCD *Store:* ${alert.store}`);
+    if (alert.city) lines.push(`\uD83C\uDFD9\uFE0F *Location:* ${alert.city}`);
+    if (alert.alertDate) lines.push(`\uD83D\uDCC5 *Alert Date:* ${alert.alertDate}`);
+    if (alert.createdBy) lines.push(`\uD83D\uDC64 *Created By:* ${alert.createdBy}`);
+    if (alert.alertType) lines.push(`\u26A0\uFE0F *Type:* ${alert.alertType}`);
+    if (alert.reason) lines.push(`\uD83D\uDCDD *Reason:* ${alert.reason}`);
+    lines.push(`\uD83D\uDD17 *Ref:* ${alert.refNumber}`);
+    lines.push('');
+    lines.push('\u21A9\uFE0F Reply to this message to update the system.');
+    caption = lines.join('\n');
+  } else {
+    caption = [
+      '\uD83D\uDEA8 *Map Tracker Alert*',
+      '',
+      `*Route:* ${alert.route || 'N/A'}`,
+      `*Type:* ${alert.type || 'Alert'}`,
+      `*Store:* ${alert.store || 'N/A'}`,
+      `*Message:* ${alert.message || ''}`,
+      `*Time:* ${alert.timestamp || new Date().toLocaleString()}`,
+    ].join('\n');
+  }
 
   // Strip data URI prefix if present (e.g. "data:image/jpeg;base64,...")
-  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-  const media = new MessageMedia(mimeType || 'image/jpeg', base64Data);
+  const base64Data = imageBase64 && imageBase64.length > 100
+    ? (imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64)
+    : null;
+
   const chat = await client.getChatById(groupId);
-  const result = await chat.sendMessage(media, { caption });
-  return { success: true, messageId: result.id._serialized };
+  let result;
+  if (base64Data) {
+    const media = new MessageMedia(mimeType || 'image/jpeg', base64Data);
+    result = await chat.sendMessage(media, { caption });
+  } else {
+    // No valid image — send as text-only message
+    result = await chat.sendMessage(caption);
+  }
+  const messageId = result.id._serialized;
+
+  // Track sent message for reply matching
+  if (alert.refNumber) {
+    sentAlertMessages[messageId] = alert.refNumber;
+    saveSentAlertMessages();
+  }
+
+  return { success: true, messageId };
+}
+
+// Send a batch of store-grouped alerts with images to a group
+// Each item in `storeGroups` is: { store, city, alerts: [{ refNumber, alertDate, createdBy, alertType, reason, imageBase64, mimeType }] }
+async function sendAlertBlast(groupId, storeGroups, summary) {
+  if (!client || client.info === undefined) {
+    throw new Error('WhatsApp is not connected');
+  }
+
+  const results = [];
+  const chat = await client.getChatById(groupId);
+  let storeIdx = 0;
+
+  for (const group of storeGroups) {
+    storeIdx++;
+    const alertList = group.alerts || [];
+    if (alertList.length === 0) continue;
+
+    // Build combined caption for all alerts at this store
+    const multi = alertList.length > 1;
+    const lines = [
+      `\uD83D\uDEA8 *Service Alert \u2014 ${group.store}${multi ? ` (${alertList.length} alerts)` : ''}*`,
+      `\uD83C\uDFD9\uFE0F *Location:* ${group.city || 'N/A'}`,
+      '',
+    ];
+
+    if (multi) {
+      // Compact format: collect and deduplicate fields
+      const refs = alertList.map(a => a.refNumber).filter(Boolean);
+      const dates = alertList.map(a => {
+        if (!a.alertDate) return null;
+        // Strip year if present (show MM/DD only)
+        const d = a.alertDate.replace(/\/20\d{2}$/, '').replace(/\/\d{4}$/, '');
+        return d;
+      }).filter(Boolean);
+      const creators = [...new Set(alertList.map(a => a.createdBy).filter(Boolean))];
+      const types = [...new Set(alertList.map(a => a.alertType).filter(Boolean))];
+      const reasons = [...new Set(alertList.map(a => a.reason).filter(Boolean))];
+
+      lines.push(`\uD83D\uDD17 *Refs:* ${refs.join(', ')}`);
+      if (dates.length) lines.push(`\uD83D\uDCC5 *Dates:* ${dates.join(', ')}`);
+      if (creators.length) lines.push(`\uD83D\uDC64 *Created By:* ${creators.join('; ')}`);
+      if (types.length) lines.push(`\u26A0\uFE0F *Type${types.length > 1 ? 's' : ''}:* ${types.join(', ')}`);
+      if (reasons.length) lines.push(`\uD83D\uDCDD *Reason${reasons.length > 1 ? 's' : ''}:* ${reasons.join('; ')}`);
+    } else {
+      // Single alert: clean single-entry format
+      const a = alertList[0];
+      lines.push(`\uD83D\uDD17 *Ref:* ${a.refNumber}`);
+      if (a.alertDate) lines.push(`\uD83D\uDCC5 *Date:* ${a.alertDate}`);
+      if (a.createdBy) lines.push(`\uD83D\uDC64 *Created By:* ${a.createdBy}`);
+      if (a.alertType) lines.push(`\u26A0\uFE0F *Type:* ${a.alertType}`);
+      if (a.reason) lines.push(`\uD83D\uDCDD *Reason:* ${a.reason}`);
+    }
+
+    lines.push('');
+    lines.push('\u21A9\uFE0F Reply to this message to update the system.');
+    const caption = lines.join('\n');
+
+    // Send first image with the full caption
+    const firstAlert = alertList[0];
+    try {
+      const base64Data = firstAlert.imageBase64 && firstAlert.imageBase64.length > 100
+        ? (firstAlert.imageBase64.includes(',') ? firstAlert.imageBase64.split(',')[1] : firstAlert.imageBase64)
+        : null;
+
+      let result;
+      if (base64Data) {
+        const media = new MessageMedia(firstAlert.mimeType || 'image/jpeg', base64Data);
+        result = await chat.sendMessage(media, { caption });
+      } else {
+        result = await chat.sendMessage(caption);
+      }
+      const messageId = result.id._serialized;
+      // Track all ref numbers in this group for reply matching
+      alertList.forEach(a => { sentAlertMessages[messageId] = a.refNumber; });
+      results.push({ refNumber: firstAlert.refNumber, success: true, messageId });
+      console.log(`[WA Blast] Sent store ${storeIdx}/${storeGroups.length}: ${group.store} (${alertList.length} alert${alertList.length > 1 ? 's' : ''})`);
+    } catch (err) {
+      console.error(`[WA Blast] Failed ${group.store}:`, err.message);
+      alertList.forEach(a => results.push({ refNumber: a.refNumber, success: false, error: err.message }));
+      continue;
+    }
+
+    // Send additional images (2nd, 3rd, etc.) with short captions
+    for (let i = 1; i < alertList.length; i++) {
+      const a = alertList[i];
+      await new Promise(r => setTimeout(r, 800));
+      try {
+        const base64Data = a.imageBase64 && a.imageBase64.length > 100
+          ? (a.imageBase64.includes(',') ? a.imageBase64.split(',')[1] : a.imageBase64)
+          : null;
+
+        if (base64Data) {
+          const media = new MessageMedia(a.mimeType || 'image/jpeg', base64Data);
+          const imgCaption = `\uD83D\uDCF7 ${group.store} \u2014 Ref: ${a.refNumber}`;
+          const result = await chat.sendMessage(media, { caption: imgCaption });
+          const msgId = result.id._serialized;
+          sentAlertMessages[msgId] = a.refNumber;
+          results.push({ refNumber: a.refNumber, success: true, messageId: msgId });
+        } else {
+          results.push({ refNumber: a.refNumber, success: true, messageId: null });
+        }
+      } catch (err) {
+        console.error(`[WA Blast] Failed image for ${a.refNumber}:`, err.message);
+        results.push({ refNumber: a.refNumber, success: false, error: err.message });
+      }
+    }
+
+    // Delay between stores
+    if (storeIdx < storeGroups.length) {
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+
+  // Send summary message at the end
+  if (summary) {
+    try {
+      await sendToGroup(groupId, summary);
+      console.log('[WA Blast] Summary sent');
+    } catch (err) {
+      console.error('[WA Blast] Failed to send summary:', err.message);
+    }
+  }
+
+  // Persist successful refs and message mappings to disk
+  const now = new Date().toISOString();
+  results.filter(r => r.success).forEach(r => { blastSentRefs[r.refNumber] = now; });
+  saveBlastSentRefs();
+  saveSentAlertMessages();
+
+  return { results };
+}
+
+// Get blast-sent refs (for frontend hydration)
+function getBlastSentRefs() {
+  return blastSentRefs;
+}
+
+// Get alert responses from drivers
+function getAlertResponses() {
+  return alertResponses;
 }
 
 // Send route report summary to a group
@@ -440,6 +675,7 @@ module.exports = {
   sendToGroup,
   sendAlertToGroup,
   sendAlertWithImage,
+  sendAlertBlast,
   sendReportToGroup,
   setOrderGroup,
   getOrderGroup,
@@ -449,4 +685,6 @@ module.exports = {
   setContact,
   getContacts,
   removeContact,
+  getAlertResponses,
+  getBlastSentRefs,
 };

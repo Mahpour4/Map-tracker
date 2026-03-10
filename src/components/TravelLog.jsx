@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
-import { fetchVehicleLocationHistory, fetchDrivingPeriods, fetchCardTransactions, fetchVehicles, isMotiveConnected } from '../services/motiveService';
+import { fetchVehicleLocationHistory, fetchVehicleLocations, fetchDrivingPeriods, fetchCardTransactions, fetchVehicles, isMotiveConnected } from '../services/motiveService';
 import { analyzeLocationHistory, findAddressMatch } from '../services/proximityService';
 import { haversineDistance } from '../utils/geoUtils';
 
@@ -109,8 +109,8 @@ function createStopIcon(type, index) {
 }
 
 export default function TravelLog() {
-  const { state, logTravelEntries, manualMatchEntries, unmatchEntry, bulkRecordVisits, setAddressOverride, removeAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useApp();
-  const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides, customLocations } = state;
+  const { state, logTravelEntries, manualMatchEntries, unmatchEntry, bulkRecordVisits, setAddressOverride, removeAddressOverride, addCustomLocation, updateCustomLocation, deleteCustomLocation, updateVehicleLocations } = useApp();
+  const { travelLog, vehicleLocations, fleetVehicles, stores, warehouses, addressOverrides, customLocations, visitHistory } = state;
 
   const today = localDateStr();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -149,7 +149,15 @@ export default function TravelLog() {
   const [showCardMapping, setShowCardMapping] = useState(false);
   const [cardMapVersion, setCardMapVersion] = useState(0); // bump to re-fetch fuel data after mapping changes
   // Right panel mode
-  const [rightPanelMode, setRightPanelMode] = useState('data'); // 'data' | 'search'
+  const [rightPanelMode, setRightPanelMode] = useState('data'); // 'data' | 'search' | 'activity'
+  // Activity panel date range
+  const [activityStartDate, setActivityStartDate] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7);
+    return localDateStr(d);
+  });
+  const [activityEndDate, setActivityEndDate] = useState(() => localDateStr());
+  const [activityProcessing, setActivityProcessing] = useState(false);
+  const [activityStatus, setActivityStatus] = useState(null);
   const [storeSearchQuery, setStoreSearchQuery] = useState('');
   const [selectedSearchStore, setSelectedSearchStore] = useState(null);
 
@@ -397,11 +405,13 @@ export default function TravelLog() {
   }, [stores, storeSearchQuery]);
 
   // Visit history for selected search store
-  // Group visits by date — one row per day (earliest arrive, latest depart, total dwell)
+  // Merges GPS travel log entries with visitHistory dates, showing up to 5 most recent visits
   const selectedStoreVisits = useMemo(() => {
     if (!selectedSearchStore) return [];
     const storeId = selectedSearchStore.id;
-    const byDate = {}; // { "2026-03-04": { date, arrive, depart, dwell, vehicle } }
+    const byDate = {}; // { "2026-03-04-vin": { date, arrive, depart, dwell, vehicle } }
+
+    // 1. Pull detailed visit data from travelLog (has arrival/departure/dwell)
     Object.entries(travelLog || {}).forEach(([dateKey, vehicles]) => {
       Object.entries(vehicles || {}).forEach(([vin, entries]) => {
         (entries || []).forEach(entry => {
@@ -427,10 +437,47 @@ export default function TravelLog() {
         });
       });
     });
+
+    // 2. Fill in dates from visitHistory that aren't already in travelLog
+    const allDates = new Set((visitHistory || {})[storeId] || []);
+    // Also include lastSaleDate and lastVisited from the store record
+    if (selectedSearchStore.lastSaleDate) allDates.add(selectedSearchStore.lastSaleDate.split('T')[0].split(' ')[0]);
+    if (selectedSearchStore.lastVisited) allDates.add(selectedSearchStore.lastVisited.split('T')[0].split(' ')[0]);
+    allDates.forEach(dateStr => {
+      const existing = Object.values(byDate).some(v => v.date === dateStr);
+      if (!existing) {
+        byDate['vh-' + dateStr] = {
+          date: dateStr,
+          arrivalTime: null,
+          departureTime: null,
+          dwellMinutes: null,
+          vehicle: '-',
+        };
+      }
+    });
+
     return Object.values(byDate)
       .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 3);
-  }, [selectedSearchStore, travelLog, vehicleList]);
+      .slice(0, 5);
+  }, [selectedSearchStore, travelLog, vehicleList, visitHistory]);
+
+  // Vehicle activity map: for each vehicle, which days had activity
+  const vehicleActivityMap = useMemo(() => {
+    const map = {};
+    vehicleList.forEach(v => { map[v.vin] = {}; });
+    Object.entries(travelLog || {}).forEach(([dateKey, vehicles]) => {
+      Object.entries(vehicles || {}).forEach(([vin, entries]) => {
+        if (!entries || entries.length === 0) return;
+        const storeStops = entries.filter(e => e.type !== 'driving');
+        const drivingEntries = entries.filter(e => e.type === 'driving');
+        const totalMiles = drivingEntries.reduce((sum, e) => sum + (e.distance || 0), 0);
+        const totalDwell = storeStops.reduce((sum, e) => sum + (e.dwellMinutes || 0), 0);
+        if (!map[vin]) map[vin] = {};
+        map[vin][dateKey] = { stops: storeStops.length, miles: Math.round(totalMiles * 10) / 10, dwell: totalDwell };
+      });
+    });
+    return map;
+  }, [travelLog, vehicleList]);
 
   // Purple marker icon for searched store
   const searchStoreIcon = useMemo(() => L.divIcon({
@@ -473,16 +520,46 @@ export default function TravelLog() {
       return;
     }
 
-    const allWithMotive = vehicleList.filter(v => v.motiveId);
+    setProcessing(true);
+
+    // Auto-fetch vehicle locations if no vehicles have motiveId yet
+    let currentVehicleList = vehicleList;
+    if (vehicleList.filter(v => v.motiveId).length === 0) {
+      setProcessStatus({ message: 'Fetching vehicle data from Motive...', type: 'info' });
+      try {
+        const locations = await fetchVehicleLocations();
+        const merged = fleetVehicles.map(fv => {
+          const fvVin = (fv.vin || '').toUpperCase().trim();
+          const apiMatch = locations.find(loc => {
+            if (fvVin && loc.vin && loc.vin.toUpperCase().trim() === fvVin) return true;
+            if (fv.vehicleId && loc.number && loc.number === fv.vehicleId) return true;
+            if (fv.licensePlate && loc.licensePlate && loc.licensePlate === fv.licensePlate) return true;
+            return false;
+          });
+          return apiMatch ? { ...fv, motiveId: apiMatch.id, lat: apiMatch.lat, lng: apiMatch.lng, matched: true } : { ...fv, matched: false };
+        });
+        updateVehicleLocations(merged);
+        currentVehicleList = merged.map(v => ({
+          vin: v.vin, vehicleId: v.vehicleId, routeNumber: v.routeNumber || null,
+          motiveId: v.motiveId || v.id || null,
+          label: `Rt ${v.routeNumber || '?'} - ${v.vehicleId} (${v.vin?.slice(-6) || '?'})`,
+        }));
+      } catch (err) {
+        setProcessStatus({ message: `Failed to fetch vehicle data: ${err.message}`, type: 'error' });
+        setProcessing(false);
+        return;
+      }
+    }
+
+    const allWithMotive = currentVehicleList.filter(v => v.motiveId);
     const vehiclesWithMotiveId = selectedVehicle === 'all'
       ? allWithMotive
       : allWithMotive.filter(v => v.vin === selectedVehicle);
     if (vehiclesWithMotiveId.length === 0) {
-      setProcessStatus({ message: 'No vehicles with Motive IDs found. Refresh Fleet Tracker first to get vehicle data.', type: 'error' });
+      setProcessStatus({ message: 'No vehicles matched from Motive API. Check Fleet Tracker vehicle VINs.', type: 'error' });
+      setProcessing(false);
       return;
     }
-
-    setProcessing(true);
     const label = selectedVehicle === 'all'
       ? `${vehiclesWithMotiveId.length} vehicles`
       : vehiclesWithMotiveId[0]?.label || 'selected vehicle';
@@ -723,7 +800,136 @@ export default function TravelLog() {
         type: 'success',
       });
     }
-  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, customLocations, addressOverrides, logTravelEntries, bulkRecordVisits, manualMatchEntries, setAddressOverride]);
+  }, [vehicleList, selectedVehicle, selectedDate, stores, warehouses, customLocations, addressOverrides, logTravelEntries, bulkRecordVisits, manualMatchEntries, setAddressOverride, fleetVehicles, updateVehicleLocations]);
+
+  // ---- Process date range for Activity panel ----
+  const handleProcessPeriod = useCallback(async () => {
+    if (!isMotiveConnected()) {
+      setActivityStatus({ message: 'Motive API not connected. Go to Fleet Tracker to connect.', type: 'error' });
+      return;
+    }
+    const activeVin = selectedVehicle === 'all' ? (vehicleList[0]?.vin || '') : selectedVehicle;
+    let currentVehicleList = vehicleList;
+    if (vehicleList.filter(v => v.motiveId).length === 0) {
+      setActivityStatus({ message: 'Fetching vehicle data from Motive...', type: 'info' });
+      try {
+        const locations = await fetchVehicleLocations();
+        const merged = fleetVehicles.map(fv => {
+          const fvVin = (fv.vin || '').toUpperCase().trim();
+          const apiMatch = locations.find(loc => {
+            if (fvVin && loc.vin && loc.vin.toUpperCase().trim() === fvVin) return true;
+            if (fv.vehicleId && loc.number && loc.number === fv.vehicleId) return true;
+            if (fv.licensePlate && loc.licensePlate && loc.licensePlate === fv.licensePlate) return true;
+            return false;
+          });
+          return apiMatch ? { ...fv, motiveId: apiMatch.id, lat: apiMatch.lat, lng: apiMatch.lng, matched: true } : { ...fv, matched: false };
+        });
+        updateVehicleLocations(merged);
+        currentVehicleList = merged.map(v => ({
+          vin: v.vin, vehicleId: v.vehicleId, routeNumber: v.routeNumber || null,
+          motiveId: v.motiveId || v.id || null,
+          label: `Rt ${v.routeNumber || '?'} - ${v.vehicleId} (${v.vin?.slice(-6) || '?'})`,
+        }));
+      } catch (err) {
+        setActivityStatus({ message: `Failed to fetch vehicle data: ${err.message}`, type: 'error' });
+        return;
+      }
+    }
+    const vehicle = currentVehicleList.find(v => v.vin === activeVin && v.motiveId);
+    if (!vehicle) {
+      setActivityStatus({ message: 'Selected vehicle has no Motive ID.', type: 'error' });
+      return;
+    }
+
+    setActivityProcessing(true);
+    // Build list of dates in range
+    const dates = [];
+    const start = new Date(activityStartDate + 'T00:00:00');
+    const end = new Date(activityEndDate + 'T00:00:00');
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(localDateStr(d));
+    }
+
+    let totalVisits = 0, totalDriving = 0;
+    for (let i = 0; i < dates.length; i++) {
+      const dateKey = dates[i];
+      setActivityStatus({ message: `Processing ${vehicle.label} — ${dateKey} (${i + 1}/${dates.length})...`, type: 'info' });
+
+      try {
+        // Fetch breadcrumbs for this vehicle on this day
+        const breadcrumbs = await fetchVehicleLocationHistory(vehicle.motiveId, dateKey, dateKey);
+        if (breadcrumbs.length > 0) {
+          const visits = analyzeLocationHistory(breadcrumbs, stores, warehouses, vehicle.routeNumber, customLocations);
+          if (visits.length > 0) {
+            const travelEntries = visits.map(v => ({
+              vehicleVin: vehicle.vin, vehicleId: vehicle.vehicleId,
+              type: v.type, locationId: v.locationId, locationName: v.locationName,
+              lat: v.lat, lng: v.lng, time: v.arrivalTime,
+              arrivalTime: v.arrivalTime, departureTime: v.departureTime, dwellMinutes: v.dwellMinutes,
+            }));
+            logTravelEntries(travelEntries);
+            const storeVisits = visits.filter(v => v.type === 'store').map(v => ({ storeId: v.locationId, date: dateKey }));
+            if (storeVisits.length > 0) bulkRecordVisits(storeVisits);
+            totalVisits += visits.length;
+          }
+        }
+
+        // Fetch driving periods for this day
+        const allDriving = await fetchDrivingPeriods({ startDate: dateKey, endDate: dateKey });
+        const periods = allDriving.filter(dp =>
+          String(dp.vehicleId) === String(vehicle.motiveId) || (dp.vehicleVin && dp.vehicleVin === vehicle.vin)
+        );
+        if (periods.length > 0) {
+          const drivingEntries = periods.map(dp => ({
+            vehicleVin: vehicle.vin, vehicleId: vehicle.vehicleId, type: 'driving',
+            locationId: `driving-${dp.id}`,
+            locationName: `${isGarbageLocation(dp.origin) ? 'Unknown' : dp.origin} \u2192 ${isGarbageLocation(dp.destination) ? 'Unknown' : dp.destination}`,
+            lat: dp.originLat, lng: dp.originLng, time: dp.startTime,
+            arrivalTime: dp.startTime, departureTime: dp.endTime,
+            dwellMinutes: Math.round((dp.duration || 0) / 60), distance: dp.distance,
+            driverName: dp.driverName, destinationLat: dp.destinationLat, destinationLng: dp.destinationLng,
+            destination: isGarbageLocation(dp.destination) ? '' : dp.destination,
+            origin: isGarbageLocation(dp.origin) ? '' : dp.origin,
+          }));
+          logTravelEntries(drivingEntries);
+          totalDriving += drivingEntries.length;
+
+          // Auto-match driving destinations using saved address overrides
+          const overrideVisits = [];
+          const overrideVisitRecords = [];
+          for (const dp of drivingEntries) {
+            const dest = (dp.destination || '').trim();
+            if (!dest || !addressOverrides[dest]) continue;
+            const overrideId = addressOverrides[dest];
+            const store = stores.find(s => s.id === overrideId);
+            const wh = !store ? warehouses.find(w => w.id === overrideId) : null;
+            const custom = !store && !wh ? customLocations.find(cl => cl.id === overrideId) : null;
+            const matched = store || wh || custom;
+            if (!matched) continue;
+            overrideVisits.push({
+              vehicleVin: vehicle.vin, vehicleId: vehicle.vehicleId,
+              type: store ? 'store' : wh ? 'warehouse' : (custom.type || 'custom'),
+              locationId: matched.id, locationName: matched.name,
+              lat: matched.lat, lng: matched.lng,
+              time: dp.departureTime || dp.arrivalTime || dp.time,
+              arrivalTime: dp.departureTime || dp.arrivalTime, departureTime: dp.departureTime, dwellMinutes: null,
+            });
+            if (store) overrideVisitRecords.push({ storeId: store.id, date: dateKey });
+          }
+          if (overrideVisits.length > 0) {
+            logTravelEntries(overrideVisits);
+            if (overrideVisitRecords.length > 0) bulkRecordVisits(overrideVisitRecords);
+            totalVisits += overrideVisits.length;
+          }
+        }
+      } catch (err) {
+        console.error(`[Activity] Error processing ${dateKey}:`, err);
+      }
+    }
+
+    setActivityProcessing(false);
+    setActivityStatus({ message: `Done — ${totalVisits} visits, ${totalDriving} driving segments across ${dates.length} days.`, type: 'success' });
+  }, [selectedVehicle, vehicleList, fleetVehicles, updateVehicleLocations, activityStartDate, activityEndDate, stores, warehouses, customLocations, addressOverrides, logTravelEntries, bulkRecordVisits]);
 
   // --- Manual matching ---
   const matchCandidates = useMemo(() => {
@@ -1248,6 +1454,7 @@ export default function TravelLog() {
           <div className="tl-mode-toggle">
             <button className={`tl-mode-btn${rightPanelMode === 'data' ? ' active' : ''}`} onClick={() => setRightPanelMode('data')}>Data</button>
             <button className={`tl-mode-btn${rightPanelMode === 'search' ? ' active' : ''}`} onClick={() => { setRightPanelMode('search'); setSelectedSearchStore(null); }}>Search</button>
+            <button className={`tl-mode-btn${rightPanelMode === 'activity' ? ' active' : ''}`} onClick={() => setRightPanelMode('activity')}>Activity</button>
           </div>
         </div>
       </div>
@@ -1564,7 +1771,7 @@ export default function TravelLog() {
         {!showBreadcrumbs && !showDrivingPeriods && (
           <div className="tl-empty" style={{ flex: 1 }}>Both panels are hidden — use the toggles above to show data.</div>
         )}
-        </>) : (
+        </>) : rightPanelMode === 'search' ? (
           <div className="tl-search-panel">
             <div className="tl-search-input-wrap">
               <input
@@ -1681,6 +1888,121 @@ export default function TravelLog() {
                 })()}
               </div>
             )}
+          </div>
+        ) : (
+          <div className="tl-activity-panel">
+            <div className="tl-activity-header">
+              <span className="tl-activity-title">Vehicle Activity</span>
+              <select
+                className="tl-activity-vehicle-select"
+                value={selectedVehicle === 'all' ? (vehicleList[0]?.vin || '') : selectedVehicle}
+                onChange={e => setSelectedVehicle(e.target.value)}
+              >
+                {vehicleList.map(v => (
+                  <option key={v.vin} value={v.vin}>{v.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="tl-activity-period">
+              <label>From</label>
+              <input type="date" value={activityStartDate} onChange={e => setActivityStartDate(e.target.value)} />
+              <label>To</label>
+              <input type="date" value={activityEndDate} onChange={e => setActivityEndDate(e.target.value)} />
+              <button
+                className="tl-activity-process-btn"
+                onClick={handleProcessPeriod}
+                disabled={activityProcessing}
+              >
+                {activityProcessing ? 'Processing...' : 'Process Period'}
+              </button>
+            </div>
+            {activityStatus && (
+              <div className={`tl-status ${activityStatus.type}`}>{activityStatus.message}</div>
+            )}
+            {(() => {
+              const activeVin = selectedVehicle === 'all' ? (vehicleList[0]?.vin || '') : selectedVehicle;
+              const activity = vehicleActivityMap[activeVin] || {};
+              const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+              const pad = n => String(n).padStart(2, '0');
+              const todayStr = localDateStr();
+
+              // Build list of months to display based on date range
+              const rangeStart = new Date(activityStartDate + 'T00:00:00');
+              const rangeEnd = new Date(activityEndDate + 'T00:00:00');
+              const months = [];
+              let cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+              const endMonth = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+              while (cur <= endMonth) {
+                months.push({ year: cur.getFullYear(), month: cur.getMonth() });
+                cur.setMonth(cur.getMonth() + 1);
+              }
+
+              // Stats for selected date range
+              let activeDays = 0, totalWeekdays = 0, totalStops = 0, totalMiles = 0;
+              for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+                const ds = localDateStr(d);
+                const dow = d.getDay();
+                if (dow === 0) continue;
+                if (ds > todayStr) continue;
+                totalWeekdays++;
+                if (activity[ds]) {
+                  activeDays++;
+                  totalStops += activity[ds].stops;
+                  totalMiles += activity[ds].miles;
+                }
+              }
+
+              const renderMonth = (y, m) => {
+                const dInM = new Date(y, m + 1, 0).getDate();
+                const fDay = new Date(y, m, 1).getDay();
+                const cells = [];
+                for (let i = 0; i < fDay; i++) cells.push(<td key={`e${i}`} className="tl-cal-empty"></td>);
+                for (let d = 1; d <= dInM; d++) {
+                  const ds = `${y}-${pad(m + 1)}-${pad(d)}`;
+                  const dayDate = new Date(y, m, d);
+                  const dow = dayDate.getDay();
+                  const isSunday = dow === 0;
+                  const isToday = ds === todayStr;
+                  const isFuture = ds > todayStr;
+                  const hasActivity = !!activity[ds];
+                  let cls = 'tl-cal-day';
+                  if (isToday) cls += ' today';
+                  if (isFuture || isSunday) {
+                    // neutral
+                  } else if (hasActivity) {
+                    cls += ' visit';
+                  } else {
+                    cls += ' inactive';
+                  }
+                  const clickable = !isFuture && !isSunday;
+                  cells.push(<td key={d} className={`${cls}${clickable ? ' clickable' : ''}`} title={hasActivity ? `${activity[ds].stops} stops, ${activity[ds].miles} mi` : isSunday ? 'Sunday' : isFuture ? '' : 'No activity'} onClick={clickable ? () => { setSelectedDate(ds); setSelectedSpan('day'); setRightPanelMode('data'); } : undefined}>{d}</td>);
+                }
+                const rows = [];
+                for (let i = 0; i < cells.length; i += 7) rows.push(<tr key={i}>{cells.slice(i, i + 7)}</tr>);
+                return rows;
+              };
+
+              return (
+                <>
+                  <div className="tl-activity-stats">
+                    <span className="tl-activity-stat"><strong>{activeDays}</strong>/{totalWeekdays} days active</span>
+                    <span className="tl-activity-stat"><strong>{totalStops}</strong> stops</span>
+                    <span className="tl-activity-stat"><strong>{Math.round(totalMiles)}</strong> miles</span>
+                  </div>
+                  <div className="tl-cal-wrap">
+                    {months.map(({ year: y, month: m }) => (
+                      <div key={`${y}-${m}`} className="tl-cal-box">
+                        <div className="tl-cal-title">{monthNames[m]} {y}</div>
+                        <table className="tl-cal-table">
+                          <thead><tr>{'SMTWTFS'.split('').map((d,i) => <th key={i}>{d}</th>)}</tr></thead>
+                          <tbody>{renderMonth(y, m)}</tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
         </div>
