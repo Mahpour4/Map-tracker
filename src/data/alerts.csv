@@ -151,4 +151,7 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-8973226","19cd4526fd7b8615","FLW00378","378","Food Lion","Warrenton","WISE FOODS","ADUSA","209","2026-03-09","","",""
 "ADUSA-8978067","19cd8137c185c4d9","FLW02630","2630","Food Lion","Perryville","WISE FOODS","ADUSA","214","2026-03-10","","",""
 "ADUSA-8978041","19cd80f3518b4e38","FLW00656","656","Food Lion","Leonardtown","WISE FOODS","ADUSA","207","2026-03-10","","",""
-"ADUSA-8980206","19cd9350b18131c4","FLW02566","2566","Food Lion","Laurel","WISE FOODS","ADUSA","207","2026-03-10","","",""
+"ADUSA-8980206","19cd9350b18131c4","FLW02566","2566","Food Lion","Laurel","WISE FOODS","ADUSA","207","2026-03-10","Randall, Michael","Excessive out of stocks","Ad items: 4 
+Non Ad items: 0 
+Total items: 4 
+Location: Shelf/In aisle"
