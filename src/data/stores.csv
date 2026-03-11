@@ -108,7 +108,7 @@ IND00107,IND00107,Ocean Exxon,324 Sunburst Hwy,Cambridge,MD,21613,210,Route 210 
 RDW00013,RDW00013,Redners 13,1388 SALT CREEK DR,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.161852568574055,-75.51963987995825,2026-02-28,2026-02-25,No
 RDW00056,RDW00056,Redners 56,24120 Zinfandel Ln,Lewes,DE,19958,206,Route 210 Driver,Delaware,Lewes,Lewes,38.7447928,-75.186878,,2026-02-21,No
 RDW00057,RDW00057,Redners 15,28253 LEXUS DR,Milford,DE,19963,206,Route 210 Driver,Delaware,Milford,Milford,38.8973253,-75.4412135,2026-03-04,2026-02-25,No
-RDW00044,RDW00044,Redners 16,25 GREENTREE DR,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1609269,-75.5567543,2026-02-25,2026-03-11,No
+RDW00044,RDW00044,Redners 16,25 GREENTREE DR,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1609269,-75.5567543,2026-02-25,2026-02-25,No
 IND00108,IND00108,Seaside Deli,7207 Coastal Hwy,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.3937273,-75.0639322,,,Yes
 AMW02679,AMW02679,Acme 2679,18578 Coastal Hwy,Lewes,DE,19958,210,Route 210 Driver,Delaware,Lewes,Lewes,38.774761467228245,-75.14238858409426,2026-02-28,2026-02-13,No
 IND00102,IND00102,Exxon,100 Dominion Rd,Cambridge,MD,21613,210,Route 210 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.566852568574056,-76.07413987995825,,,Yes
@@ -141,7 +141,7 @@ FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-03-04,2026-03-09,No
 FLW01442,FLW01442,Food Lion 1442,6920 Crestwood Blvd,Frederick,MD,21703,204,Route 204 Driver,Maryland Central,Maryland Central,Maryland Central,39.3907553,-77.4250267,2026-03-04,2026-03-04,No
 FLW02194,FLW02194,Food Lion Store 2194,78 Worchester Dr,Falling Waters,WV,25419,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.5664,-77.8352,2026-03-02,2026-03-09,No
-FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.7143841,-78.1751887,2026-03-05,2026-03-11,No
+FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.7143841,-78.1751887,2026-03-05,2026-03-09,No
 FLW02257,FLW02257,Food Lion 2257,130 Duella Dr,Inwood,WV,25428,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.3617259,-78.0340871,2026-03-04,2026-03-09,No
 GTW06104,GTW06104,Giant 6104,1729 Dual Hwy,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6153582,-77.6915555,2026-03-05,2026-03-10,No
 GTW06275,GTW06275,Giant 6275,1650 C Wesel Blvd,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6386737,-77.7374129,2026-02-17,2026-02-17,No
@@ -226,7 +226,7 @@ CASH0149,CASH0149,Five Brothers,801 North Glover St,Baltimore,MD,,203,Route 203 
 CASH0154,CASH0154,Food City Mart,1733 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3042716,-76.6351937,2026-02-04,2026-03-11,No
 CASH0162,CASH0162,Frederick Store,4110 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2819023,-76.6836883,2026-03-04,2026-03-04,No
 CASH0170,CASH0170,Garrison Deli And Grocery,2109 Garrison Blvd,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3114491,-76.6748017,2026-02-12,2026-03-02,No
-CASH0195,CASH0195,Harlem Grocery Store,901 Harlem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.296797,-76.633411,2026-02-27,2026-03-11,No
+CASH0195,CASH0195,Harlem Grocery Store,901 Harlem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.296797,-76.633411,2026-02-27,2026-02-27,No
 CASH0196,CASH0196,Harlem Mini Mart,1133 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2994831,-76.6293123,2026-03-02,2026-03-06,No
 CASH0217,CASH0217,Just Market,1813 Baker St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3064595,-76.6472693,,2026-03-09,No
 CASH0225,CASH0225,KK Grocery Store,1300 Poplar Grove St,Baltimore,MD,21216,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3021976,-76.6655087,,2025-12-19,No
