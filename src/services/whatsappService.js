@@ -178,3 +178,72 @@ export async function removeWaContact(phone) {
   });
   return res.json();
 }
+
+export async function getAdminConfig() {
+  try {
+    const res = await fetch(`${BASE}/admin-config`);
+    return await res.json();
+  } catch { return { groupId: null, phones: [] }; }
+}
+
+export async function saveAdminConfig(groupId, phones) {
+  const res = await fetch(`${BASE}/admin-config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId, phones }),
+  });
+  return res.json();
+}
+
+export async function testAdminQuery(query) {
+  const res = await fetch(`${BASE}/admin-query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  return res.json();
+}
+
+export async function getWhatsAppPhone() {
+  try {
+    const res = await fetch(`${BASE}/status`);
+    const data = await res.json();
+    return data.phone || null;
+  } catch { return null; }
+}
+
+export async function disconnectWhatsApp() {
+  const res = await fetch(`${BASE}/disconnect`, { method: 'POST' });
+  return res.json();
+}
+
+export async function reconnectWhatsApp() {
+  const res = await fetch(`${BASE}/reconnect`, { method: 'POST' });
+  return res.json();
+}
+
+export async function getRouteGroupMap() {
+  try {
+    const saved = localStorage.getItem('wa_route_group_names');
+    const nameMap = saved ? JSON.parse(saved) : {};
+    const saved2 = localStorage.getItem('wa_route_groups');
+    const groupMap = saved2 ? JSON.parse(saved2) : {};
+    return { nameMap, groupMap };
+  } catch { return { nameMap: {}, groupMap: {} }; }
+}
+
+export function saveRouteGroupMap(routeNumber, groupId, groupName) {
+  try {
+    const saved = localStorage.getItem('wa_route_groups');
+    const map = saved ? JSON.parse(saved) : {};
+    if (groupId) map[routeNumber] = groupId;
+    else delete map[routeNumber];
+    localStorage.setItem('wa_route_groups', JSON.stringify(map));
+
+    const savedNames = localStorage.getItem('wa_route_group_names');
+    const nameMap = savedNames ? JSON.parse(savedNames) : {};
+    if (groupName) nameMap[routeNumber] = groupName;
+    else delete nameMap[routeNumber];
+    localStorage.setItem('wa_route_group_names', JSON.stringify(nameMap));
+  } catch {}
+}

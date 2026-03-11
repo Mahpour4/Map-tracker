@@ -49,6 +49,26 @@ app.get('/api/whatsapp/status', (req, res) => {
   res.json(whatsapp.getStatus());
 });
 
+// Disconnect from WhatsApp (logs out + destroys session)
+app.post('/api/whatsapp/disconnect', async (req, res) => {
+  try {
+    await whatsapp.disconnect();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reconnect (re-initialize, will show QR if session gone)
+app.post('/api/whatsapp/reconnect', async (req, res) => {
+  try {
+    await whatsapp.reconnect();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // List all WhatsApp groups
 app.get('/api/whatsapp/groups', async (req, res) => {
   try {
@@ -288,6 +308,32 @@ app.post('/api/globalworx/check-status-batch', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('GlobalWorx batch check-status error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin Chat Config Endpoints ───────────────────────────────────────────────
+
+app.get('/api/whatsapp/admin-config', (req, res) => {
+  res.json(whatsapp.getAdminConfig());
+});
+
+app.post('/api/whatsapp/admin-config', (req, res) => {
+  const { groupId, phones } = req.body;
+  if (groupId !== undefined) whatsapp.setAdminGroup(groupId || null);
+  if (phones  !== undefined) whatsapp.setAdminPhones(phones || []);
+  res.json({ success: true, config: whatsapp.getAdminConfig() });
+});
+
+// Manual admin query (for testing from the UI)
+app.post('/api/whatsapp/admin-query', (req, res) => {
+  const adminChat = require('./adminChat');
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ error: 'query is required' });
+  try {
+    const reply = adminChat.processQuery(query);
+    res.json({ reply });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

@@ -42,7 +42,7 @@ export const fleetVehicles = [
     routeNumber: '210',
     licensePlate: '2GM4442 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120311',
-    vin: '1FDBF6P84RKB85153',
+    vin: '1FDBF6P84RKB55153',
     insuranceCardPage: 12,
     policyNumber: 'BAB1429825',
     expirationDate: '05/01/2026',

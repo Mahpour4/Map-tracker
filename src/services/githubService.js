@@ -12,6 +12,7 @@ const CUSTOM_LOCATIONS_FILE_PATH = 'src/data/customLocations.json';
 const TRANSACTIONS_FILE_PATH = 'src/data/transactions.json';
 const WAREHOUSE_ORDERS_FILE_PATH = 'src/data/warehouseOrders.json';
 const INVENTORY_FILE_PATH = 'src/data/inventoryData.json';
+const WA_CONFIG_FILE_PATH  = 'src/data/waConfig.json';
 const API_BASE = 'https://api.github.com';
 
 const TOKEN_KEY = 'github_pat';
@@ -26,7 +27,8 @@ const ADDRESS_OVERRIDES_SHA_KEY = 'github_addressoverrides_sha';
 const CUSTOM_LOCATIONS_SHA_KEY = 'github_customlocations_sha';
 const TRANSACTIONS_SHA_KEY = 'github_transactions_sha';
 const WAREHOUSE_ORDERS_SHA_KEY = 'github_warehouseorders_sha';
-const INVENTORY_SHA_KEY = 'github_inventory_sha';
+const INVENTORY_SHA_KEY   = 'github_inventory_sha';
+const WA_CONFIG_SHA_KEY   = 'github_waconfig_sha';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -694,6 +696,45 @@ export async function saveMapSnapshot(jsonContent, message) {
     sha,
     fetchFn: fetchMapSnapshot,
     saveShaFn: saveSnapshotSha,
+  });
+}
+
+// ---- WhatsApp Config JSON (GitHub sync, keyed by phone number) ----
+
+function getWaConfigSha() { return localStorage.getItem(WA_CONFIG_SHA_KEY) || ''; }
+function saveWaConfigSha(sha) { localStorage.setItem(WA_CONFIG_SHA_KEY, sha); }
+
+export async function fetchWaConfigJson() {
+  const token = getToken();
+  if (!token) return { content: '{}', sha: '' };
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WA_CONFIG_FILE_PATH}`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (res.status === 404) return { content: '{}', sha: '' };
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveWaConfigSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveWaConfigJson(jsonContent, message) {
+  let sha = getWaConfigSha();
+  if (!sha) {
+    try { sha = (await fetchWaConfigJson()).sha; } catch { /* new file */ }
+  }
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${WA_CONFIG_FILE_PATH}`,
+    encoded,
+    message: message || 'Update waConfig.json from Map Tracker app',
+    sha,
+    fetchFn: fetchWaConfigJson,
+    saveShaFn: saveWaConfigSha,
   });
 }
 

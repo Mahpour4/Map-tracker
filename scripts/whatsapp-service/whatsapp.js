@@ -1,9 +1,13 @@
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
+const adminChat = require('./adminChat');
 
 let client = null;
 let status = 'disconnected'; // disconnected | qr-pending | connected
-let qrCode = null;
+let qrCode = null;         // raw QR string
+let qrDataUrl = null;      // PNG data URL for browser display
+let manualDisconnect = false;
 
 // Order message buffer -- incoming messages from the order group
 const fs2 = require('fs');
@@ -15,8 +19,34 @@ const GROUP_FILE = path.join(__dirname, 'order-group.json');
 const RESPONSES_FILE = path.join(__dirname, 'alert-responses.json');
 const BLAST_SENT_FILE = path.join(__dirname, 'blast-sent-refs.json');
 const BLAST_SENT_APP_FILE = path.join(__dirname, '../../src/data/blastSentRefs.json');
-const SENT_MESSAGES_FILE = path.join(__dirname, 'sent-alert-messages.json');
+const SENT_MESSAGES_FILE  = path.join(__dirname, 'sent-alert-messages.json');
+const ADMIN_CONFIG_FILE   = path.join(__dirname, 'admin-chat.json');
 const MAX_MESSAGES = 1000;
+
+// Admin chat config
+let adminGroupId    = null;
+let adminPhones     = []; // authorized phone numbers (can query the bot)
+try {
+  const cfg = JSON.parse(fs2.readFileSync(ADMIN_CONFIG_FILE, 'utf8'));
+  adminGroupId = cfg.groupId || null;
+  adminPhones  = cfg.phones  || [];
+} catch { }
+
+function saveAdminConfig() {
+  try { fs2.writeFileSync(ADMIN_CONFIG_FILE, JSON.stringify({ groupId: adminGroupId, phones: adminPhones }, null, 2)); } catch (e) { console.error('Failed to save admin config:', e.message); }
+}
+
+function setAdminGroup(groupId) {
+  adminGroupId = groupId;
+  saveAdminConfig();
+}
+function setAdminPhones(phones) {
+  adminPhones = phones || [];
+  saveAdminConfig();
+}
+function getAdminConfig() {
+  return { groupId: adminGroupId, phones: adminPhones };
+}
 
 // Alert blast tracking — maps messageId -> refNumber for reply matching
 let sentAlertMessages = {}; // { messageId: refNumber }
@@ -63,10 +93,21 @@ function saveContacts() { fs2.writeFileSync(CONTACTS_FILE, JSON.stringify(contac
 function saveGroup() { fs2.writeFileSync(GROUP_FILE, JSON.stringify({ groupId: orderGroupId })); }
 
 function getStatus() {
-  return { status, qrCode: status === 'qr-pending' ? qrCode : null };
+  return {
+    status,
+    qrCode:    status === 'qr-pending' ? qrCode    : null,
+    qrDataUrl: status === 'qr-pending' ? qrDataUrl : null,
+    phone:     status === 'connected'  ? getPhoneNumber() : null,
+  };
+}
+
+function getPhoneNumber() {
+  try { return client?.info?.wid?.user || null; } catch { return null; }
 }
 
 function initialize() {
+  if (isInitializing) { console.log('[WA] initialize() skipped — already in progress'); return; }
+  isInitializing = true;
   // Find Chrome on Windows
   const fs = require('fs');
   const chromePaths = [
@@ -88,16 +129,20 @@ function initialize() {
     },
   });
 
-  client.on('qr', (qr) => {
+  client.on('qr', async (qr) => {
+    isInitializing = false; // QR received means init succeeded enough to show QR
     status = 'qr-pending';
     qrCode = qr;
+    try { qrDataUrl = await QRCode.toDataURL(qr, { width: 300, margin: 2 }); } catch { qrDataUrl = null; }
     console.log('\n\uD83D\uDCF1 Scan this QR code with WhatsApp:\n');
     qrcode.generate(qr, { small: true });
   });
 
   client.on('ready', async () => {
+    isInitializing = false;
     status = 'connected';
     qrCode = null;
+    qrDataUrl = null;
     cachedGroups = null; // clear stale cache on reconnect
     groupsCachedAt = 0;
     console.log('\u2705 WhatsApp client connected and ready!');
@@ -114,17 +159,21 @@ function initialize() {
   });
 
   client.on('auth_failure', (msg) => {
+    isInitializing = false;
     status = 'disconnected';
     console.error('\u274C WhatsApp auth failure:', msg);
   });
 
   client.on('disconnected', (reason) => {
     status = 'disconnected';
+    qrCode = null;
+    qrDataUrl = null;
     cachedGroups = null;
     groupsCachedAt = 0;
     console.log('\uD83D\uDD0C WhatsApp disconnected:', reason);
-    // Auto-reconnect after 10s (longer delay to let WhatsApp settle)
-    scheduleReinitialize(10000);
+    // Only auto-reconnect if this wasn't a manual disconnect
+    if (!manualDisconnect) scheduleReinitialize(10000);
+    manualDisconnect = false;
   });
 
   // Listen for incoming messages -- capture order group messages + alert replies
@@ -161,6 +210,26 @@ function initialize() {
           }
         } catch (qErr) {
           console.error('[WA] Quote fetch error:', qErr.message);
+        }
+      }
+
+      // ── Admin chat query handler ──────────────────────────────────────────
+      if (adminGroupId && msg.from === adminGroupId) {
+        const contact = await msg.getContact();
+        const phone   = contact.number || msg.author || msg.from;
+        // Check if sender is authorized
+        const isAuth  = adminPhones.length === 0 || adminPhones.includes(phone) || adminPhones.some(p => phone.endsWith(p.replace(/\D/g, '').slice(-10)));
+        if (isAuth && msg.body && !msg.body.startsWith('_BOT_')) {
+          console.log(`[AdminChat] Query from ${phone}: "${msg.body.substring(0, 60)}"`);
+          try {
+            const reply = adminChat.processQuery(msg.body.trim());
+            // Small delay so it feels natural
+            await new Promise(r => setTimeout(r, 600));
+            await client.sendMessage(adminGroupId, reply);
+            console.log(`[AdminChat] Replied: "${reply.substring(0, 60)}"`);
+          } catch (qErr) {
+            console.error('[AdminChat] Reply error:', qErr.message);
+          }
         }
       }
 
@@ -248,7 +317,10 @@ function initialize() {
 
   client.initialize().catch(err => {
     console.error('\u274C Failed to initialize WhatsApp client:', err.message);
+    isInitializing = false;
     status = 'disconnected';
+    // Schedule retry after failure (longer delay to let Chrome release lock)
+    scheduleReinitialize(15000);
   });
   console.log('\u23F3 Initializing WhatsApp client (this may take a moment)...');
 }
@@ -260,17 +332,56 @@ const GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Auto-reconnect scheduler -- avoids rapid reinit loops
 let reinitTimer = null;
-function scheduleReinitialize(delay = 8000) {
-  if (reinitTimer) return; // already scheduled
-  reinitTimer = setTimeout(() => {
+let isInitializing = false;
+
+function scheduleReinitialize(delay = 10000) {
+  if (reinitTimer || isInitializing) return; // already scheduled or in progress
+  reinitTimer = setTimeout(async () => {
     reinitTimer = null;
-    if (status === 'disconnected') {
-      console.log('[WA] Auto-reconnecting after detached frame / disconnect...');
-      try { if (client) client.destroy().catch(() => {}); } catch { }
-      client = null;
-      initialize();
+    if (status !== 'disconnected' || manualDisconnect || isInitializing) return;
+    isInitializing = true;
+    console.log('[WA] Auto-reconnecting after detached frame / disconnect...');
+    // Destroy old client and give Chrome time to fully exit
+    const old = client;
+    client = null;
+    if (old) {
+      try { await old.destroy(); } catch { }
+      // Extra pause so Chromium releases the userDataDir lock
+      await new Promise(r => setTimeout(r, 3000));
     }
+    isInitializing = false;
+    if (status === 'disconnected' && !manualDisconnect) initialize();
   }, delay);
+}
+
+// Manual disconnect — destroys session, stops auto-reconnect
+async function disconnect() {
+  manualDisconnect = true;
+  if (reinitTimer) { clearTimeout(reinitTimer); reinitTimer = null; }
+  status = 'disconnected';
+  qrCode = null;
+  qrDataUrl = null;
+  cachedGroups = null;
+  groupsCachedAt = 0;
+  if (client) {
+    try { await client.logout(); } catch { }
+    try { await client.destroy(); } catch { }
+    client = null;
+  }
+  console.log('[WA] Manually disconnected.');
+}
+
+// Reconnect after manual disconnect
+async function reconnect() {
+  manualDisconnect = false;
+  isInitializing = false;
+  const old = client;
+  client = null;
+  if (old) {
+    try { await old.destroy(); } catch { }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  initialize();
 }
 
 // Get all WhatsApp groups the user is a member of
@@ -673,7 +784,10 @@ function removeContact(phone) {
 
 module.exports = {
   initialize,
+  disconnect,
+  reconnect,
   getStatus,
+  getPhoneNumber,
   getGroups,
   sendToGroup,
   sendAlertToGroup,
@@ -690,4 +804,7 @@ module.exports = {
   removeContact,
   getAlertResponses,
   getBlastSentRefs,
+  setAdminGroup,
+  setAdminPhones,
+  getAdminConfig,
 };

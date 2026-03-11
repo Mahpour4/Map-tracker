@@ -179,6 +179,16 @@ function VehicleCard({ vehicle, connected, selected, onSelect, scheduleDeviation
                 onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
               />
+            ) : f.key === 'insuranceCardPage' && vehicle.insuranceCardPage ? (
+              <a
+                className="ft-card-ins-link"
+                href={`${import.meta.env.BASE_URL}fleet-docs/insurance/AUTO IDS -__ - Adobe cloud storage.pdf#page=${vehicle.insuranceCardPage}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View Card (pg {vehicle.insuranceCardPage})
+              </a>
             ) : (
               <span className="ft-card-readonly">{vehicle[f.key] || '—'}</span>
             )}

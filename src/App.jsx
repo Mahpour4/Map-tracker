@@ -1,6 +1,7 @@
 import { useState, Component, useEffect, useRef } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { version } from '../package.json';
+import TokenVault from './components/TokenVault';
 import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
 import RouteLeaderboard from './components/RouteLeaderboard';
@@ -18,6 +19,7 @@ import CustomLocations from './components/CustomLocations';
 import Transactions from './components/Transactions';
 import WarehouseOrders from './components/WarehouseOrders';
 import Inventory from './components/Inventory';
+import WhatsAppSettings from './components/WhatsAppSettings';
 import './App.css';
 
 // ── Global error boundary ─────────────────────────────────────────────────────
@@ -107,6 +109,13 @@ const NAV_GROUPS = [
       { id: 'customLocations', label: 'Custom Locations' },
     ],
   },
+  {
+    id: 'settings',
+    label: 'Settings',
+    items: [
+      { id: 'whatsappSettings', label: 'WhatsApp' },
+    ],
+  },
 ];
 
 function getActiveGroup(page) {
@@ -118,6 +127,7 @@ function AppContent() {
   const { state, setPage } = useApp();
   const page = state.currentPage;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [vaultOpen, setVaultOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 1200);
   const [openGroup, setOpenGroup] = useState(() => getActiveGroup(state.currentPage));
   const navRef = useRef(null);
@@ -170,9 +180,11 @@ function AppContent() {
         <header className="page-nav">
           {/* Brand — far left */}
           <div className="page-nav-brand">
-            <svg className="page-nav-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polygon points="3 11 22 2 13 21 11 13 3 11" />
-            </svg>
+            <button className="page-nav-logo-btn" onClick={() => setVaultOpen(true)} title="Load Token Vault">
+              <svg className="page-nav-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+              </svg>
+            </button>
             <span className="page-nav-brand-name">Map Tracker</span>
           </div>
 
@@ -272,8 +284,10 @@ function AppContent() {
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
         {page === 'customLocations' && <CustomLocations />}
+        {page === 'whatsappSettings' && <WhatsAppSettings />}
         <div className="app-version">v{version}</div>
       </main>
+      {vaultOpen && <TokenVault onClose={() => setVaultOpen(false)} />}
     </div>
   );
 }
