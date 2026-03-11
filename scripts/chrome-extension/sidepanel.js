@@ -24,6 +24,7 @@ const SITES = [
 
 let currentDetected = null;
 let currentTabId = null;
+let lastScrapedData = null; // Store last scrape for download fallback
 
 function addLog(msg, type) {
   const log = document.getElementById('log');
@@ -131,6 +132,35 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+function showDownloadButton() {
+  const buttonArea = document.getElementById('button-area');
+  // Don't add duplicate download buttons
+  if (document.getElementById('downloadBtn')) return;
+
+  const dlBtn = document.createElement('button');
+  dlBtn.id = 'downloadBtn';
+  dlBtn.className = 'btn btn-download';
+  dlBtn.textContent = 'Download Data (Fallback)';
+  dlBtn.addEventListener('click', downloadScrapedData);
+  buttonArea.appendChild(dlBtn);
+}
+
+function downloadScrapedData() {
+  if (!lastScrapedData) return;
+
+  const filename = `map-tracker-${lastScrapedData.source}-${new Date().toISOString().slice(0, 10)}.json`;
+  const blob = new Blob([JSON.stringify(lastScrapedData.data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  addLog(`Downloaded ${lastScrapedData.count} records as ${filename}`, 'success');
+}
+
 // Listen for messages from content scripts and background
 chrome.runtime.onMessage.addListener((msg) => {
   const btn = document.getElementById('importBtn');
@@ -140,6 +170,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 
   if (msg.type === 'scrape-done') {
+    // Store for download fallback
+    lastScrapedData = { source: msg.source, data: msg.data, count: msg.count, ts: Date.now() };
     addLog(`Scraped ${msg.count} records. Sending to Map Tracker...`, 'info');
 
     // Send to background to relay to the app
@@ -152,6 +184,9 @@ chrome.runtime.onMessage.addListener((msg) => {
 
   if (msg.type === 'import-complete') {
     addLog(`Done! ${msg.count} records imported into Map Tracker.`, 'success');
+    lastScrapedData = null;
+    const dlBtn = document.getElementById('downloadBtn');
+    if (dlBtn) dlBtn.remove();
     if (btn) {
       btn.disabled = false;
       btn.textContent = currentDetected ? currentDetected.btnText : 'Done!';
@@ -164,6 +199,8 @@ chrome.runtime.onMessage.addListener((msg) => {
       btn.disabled = false;
       if (currentDetected) btn.textContent = currentDetected.btnText;
     }
+    // Show download button as fallback
+    if (lastScrapedData) showDownloadButton();
   }
 
   if (msg.type === 'scrape-error') {

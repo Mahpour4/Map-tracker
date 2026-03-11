@@ -46,7 +46,20 @@ const initialState = {
   schedules: localSchedules, // { "route_weekOf": { monday: [...], ... } }
   visitHistory: localVisitHistory, // { storeId: ['YYYY-MM-DD', ...] }
   // Fleet tracking (Motive API)
-  fleetVehicles: fleetVehicles,
+  fleetVehicles: (() => {
+    try {
+      const saved = localStorage.getItem('fleetVehicles');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge saved edits over defaults (match by VIN)
+        return fleetVehicles.map(fv => {
+          const override = parsed.find(p => p.vin === fv.vin);
+          return override ? { ...fv, ...override } : fv;
+        });
+      }
+    } catch {}
+    return fleetVehicles;
+  })(),
   vehicleLocations: [],
   fleetSyncStatus: 'idle', // idle | loading | error | connected
   fleetSyncError: null,
@@ -347,6 +360,14 @@ function reducer(state, action) {
       return { ...state, showVehiclesOnMap: !state.showVehiclesOnMap };
     case 'SET_VEHICLES_ON_MAP':
       return { ...state, showVehiclesOnMap: action.payload };
+    case 'UPDATE_FLEET_VEHICLE': {
+      const { vin, updates } = action.payload;
+      const updated = state.fleetVehicles.map(v =>
+        v.vin === vin ? { ...v, ...updates } : v
+      );
+      try { localStorage.setItem('fleetVehicles', JSON.stringify(updated)); } catch {}
+      return { ...state, fleetVehicles: updated };
+    }
     // Warehouses
     case 'LOAD_WAREHOUSES':
       return { ...state, warehouses: action.payload };
@@ -1640,6 +1661,10 @@ export function AppProvider({ children }) {
     ),
     setVehiclesOnMap: useCallback(
       (show) => dispatch({ type: 'SET_VEHICLES_ON_MAP', payload: show }),
+      []
+    ),
+    updateFleetVehicle: useCallback(
+      (vin, updates) => dispatch({ type: 'UPDATE_FLEET_VEHICLE', payload: { vin, updates } }),
       []
     ),
     // Warehouses

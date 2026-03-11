@@ -4,8 +4,8 @@
 // Does NOT inject scripts into the app tab — uses localStorage instead
 
 const APP_URL_PATTERNS = [
-  'http://localhost:',
-  'http://127.0.0.1:',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
   'https://mahpour4.github.io/Map-tracker',
 ];
 
