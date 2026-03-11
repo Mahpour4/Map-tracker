@@ -36,10 +36,247 @@ function createTruckIcon(engineStatus, isSelected) {
   });
 }
 
+function VehicleCard({ vehicle, connected, selected, onSelect, scheduleDeviation, onUpdate, docs }) {
+  const [editing, setEditing] = useState(false);
+  const [edits, setEdits] = useState({});
+  const [saveStatus, setSaveStatus] = useState(null); // 'success' | 'error' | null
+  const [pendingUpdates, setPendingUpdates] = useState(null);
+  const flashTimer = useRef(null);
+
+  const val = (field) => field in edits ? edits[field] : (vehicle[field] || '');
+
+  const handleChange = (field, value) => {
+    setEdits(prev => ({ ...prev, [field]: value }));
+  };
+
+  const attemptSave = (updates) => {
+    try {
+      onUpdate(vehicle.vin, updates);
+      // Verify it persisted to localStorage
+      const saved = localStorage.getItem('fleetVehicles');
+      if (!saved) throw new Error('Not saved');
+      const parsed = JSON.parse(saved);
+      const found = parsed.find(v => v.vin === vehicle.vin);
+      if (!found) throw new Error('Not found');
+      // Check at least one updated field matches
+      const anyMatch = Object.entries(updates).some(([k, v]) => String(found[k]) === String(v));
+      if (!anyMatch) throw new Error('Mismatch');
+
+      setSaveStatus('success');
+      setPendingUpdates(null);
+      setEdits({});
+      setEditing(false);
+    } catch {
+      setSaveStatus('error');
+      setPendingUpdates(updates);
+    }
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setSaveStatus(null), 2000);
+  };
+
+  const handleSave = (e) => {
+    e.stopPropagation();
+    const updates = {};
+    for (const [field, value] of Object.entries(edits)) {
+      if (value !== (vehicle[field] || '')) updates[field] = value;
+    }
+    if (Object.keys(updates).length === 0) {
+      setEdits({});
+      setEditing(false);
+      return;
+    }
+    attemptSave(updates);
+  };
+
+  const handleRetry = (e) => {
+    e.stopPropagation();
+    if (pendingUpdates) attemptSave(pendingUpdates);
+  };
+
+  const handleCancel = (e) => {
+    e.stopPropagation();
+    setEdits({});
+    setPendingUpdates(null);
+    setSaveStatus(null);
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') e.target.blur();
+  };
+
+  const editableFields = [
+    { key: 'routeNumber', label: 'Route' },
+    { key: 'yearMakeModel', label: 'Year / Make / Model' },
+    { key: 'licensePlate', label: 'License Plate' },
+    { key: 'vin', label: 'VIN' },
+    { key: 'source', label: 'Gateway' },
+    { key: 'policyNumber', label: 'Policy #' },
+    { key: 'insuranceCardPage', label: 'Insurance Pg' },
+    { key: 'expirationDate', label: 'Ins. Expiration' },
+  ];
+
+  const dev = scheduleDeviation;
+  const devDotColor = dev?.status === 'on-track' ? '#22c55e'
+    : dev?.status === 'behind' ? '#ef4444' : '#9ca3af';
+
+  return (
+    <div
+      className={`ft-card${selected ? ' ft-card--selected' : ''}${vehicle.matched ? ' ft-card--matched' : ''}${saveStatus === 'success' ? ' ft-card--flash-green' : ''}${saveStatus === 'error' ? ' ft-card--flash-red' : ''}`}
+      onClick={() => onSelect(vehicle.vin)}
+    >
+      {/* Card Header */}
+      <div className="ft-card-header">
+        <div className="ft-card-route">
+          {vehicle.routeNumber ? `Route ${vehicle.routeNumber}` : 'Unassigned'}
+        </div>
+        <div className="ft-card-header-right">
+          {connected && (
+            <span className={`ft-engine-badge ${vehicle.engineStatus || 'unknown'}`}>
+              {vehicle.engineStatus || '—'}
+            </span>
+          )}
+          {!editing && saveStatus !== 'error' ? (
+            <button className="ft-card-edit-btn" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>Edit</button>
+          ) : saveStatus === 'error' ? (
+            <div className="ft-card-edit-actions">
+              <button className="ft-card-retry-btn" onClick={handleRetry}>Retry</button>
+              <button className="ft-card-cancel-btn" onClick={handleCancel}>Cancel</button>
+            </div>
+          ) : (
+            <div className="ft-card-edit-actions">
+              <button className="ft-card-save-btn" onClick={handleSave}>Save</button>
+              <button className="ft-card-cancel-btn" onClick={handleCancel}>Cancel</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Vehicle Name */}
+      {editing ? (
+        <input
+          className="ft-card-name ft-card-name--editing"
+          value={val('vehicleId')}
+          onChange={(e) => handleChange('vehicleId', e.target.value)}
+          onKeyDown={handleKeyDown}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <div className="ft-card-name">{vehicle.vehicleId}</div>
+      )}
+
+      {/* Vehicle Info */}
+      <div className="ft-card-section">
+        <div className="ft-card-section-label">Vehicle Info</div>
+        {editableFields.map(f => (
+          <div key={f.key} className="ft-card-field">
+            <span className="ft-card-field-label">{f.label}</span>
+            {editing ? (
+              <input
+                className="ft-card-input"
+                value={val(f.key)}
+                onChange={(e) => handleChange(f.key, e.target.value)}
+                onKeyDown={handleKeyDown}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span className="ft-card-readonly">{vehicle[f.key] || '—'}</span>
+            )}
+          </div>
+        ))}
+        <div className="ft-card-field">
+          <span className="ft-card-field-label">Reg. Expiration</span>
+          <span className="ft-card-readonly">
+            {vehicle.registration?.registrationExpires || '—'}
+            {vehicle.registration?.temporaryRegistration && <span className="ft-temp-reg-badge"> TEMP</span>}
+          </span>
+        </div>
+      </div>
+
+      {/* Documents */}
+      {docs && docs.length > 0 && (
+        <div className="ft-card-section ft-card-section--docs">
+          <div className="ft-card-section-label">Documents</div>
+          {docs.map((doc, i) => (
+            <a
+              key={i}
+              className="ft-card-doc-link"
+              href={`${import.meta.env.BASE_URL}fleet-docs/${vehicle.routeNumber}/${doc.file}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {doc.name}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* Live API Data (read-only) */}
+      {connected && (
+        <div className="ft-card-section ft-card-section--live">
+          <div className="ft-card-section-label">Live Data</div>
+          <div className="ft-card-field">
+            <span className="ft-card-field-label">Driver</span>
+            <span className="ft-card-readonly">{vehicle.driverName || '—'}</span>
+          </div>
+          <div className="ft-card-field">
+            <span className="ft-card-field-label">Location</span>
+            <span className="ft-card-readonly">
+              {vehicle.lat && vehicle.lng
+                ? `${vehicle.lat.toFixed(4)}, ${vehicle.lng.toFixed(4)}`
+                : '—'}
+              {vehicle.description && <div className="ft-card-desc">{vehicle.description}</div>}
+            </span>
+          </div>
+          <div className="ft-card-field">
+            <span className="ft-card-field-label">Speed</span>
+            <span className="ft-card-readonly">{vehicle.speed != null ? `${vehicle.speed} mph` : '—'}</span>
+          </div>
+          <div className="ft-card-field">
+            <span className="ft-card-field-label">Engine</span>
+            <span className="ft-card-readonly">
+              <span className={`ft-engine-badge ${vehicle.engineStatus || 'unknown'}`}>
+                {vehicle.engineStatus || '—'}
+              </span>
+            </span>
+          </div>
+          {dev && (
+            <div className="ft-card-field">
+              <span className="ft-card-field-label">Schedule</span>
+              <span className="ft-card-readonly">
+                <span className="ft-sched-badge" style={{ color: devDotColor }}>
+                  <span className="ft-sched-dot" style={{ background: devDotColor }} />
+                  {dev.message}
+                </span>
+              </span>
+            </div>
+          )}
+          <div className="ft-card-field">
+            <span className="ft-card-field-label">Updated</span>
+            <span className="ft-card-readonly">
+              {vehicle.lastUpdated ? new Date(vehicle.lastUpdated).toLocaleTimeString() : '—'}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FleetTracker() {
-  const { state, updateVehicleLocations, setFleetSyncStatus, setVehiclesOnMap, bulkRecordVisits, logTravelEntries, toggleAutoVisit } = useApp();
+  const { state, updateVehicleLocations, setFleetSyncStatus, setVehiclesOnMap, bulkRecordVisits, logTravelEntries, toggleAutoVisit, updateFleetVehicle } = useApp();
   const { fleetVehicles, vehicleLocations, fleetSyncStatus, fleetSyncError, showVehiclesOnMap, stores, warehouses, travelLog, autoVisitEnabled, schedules } = state;
   const [scheduleDeviations, setScheduleDeviations] = useState({});
+  const [fleetDocs, setFleetDocs] = useState({});
+
+  // Load fleet docs manifest
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}fleet-docs/manifest.json`)
+      .then(r => r.ok ? r.json() : {})
+      .then(setFleetDocs)
+      .catch(() => {});
+  }, []);
 
   const [showApiSetup, setShowApiSetup] = useState(!isMotiveConnected());
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -427,104 +664,23 @@ export default function FleetTracker() {
           </div>
         )}
 
-        {/* Fleet Table */}
+        {/* Fleet Cards */}
         {(viewMode === 'table' || viewMode === 'split') && (
-          <div className="ft-table-container">
-            <table className="ft-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Vehicle</th>
-                  <th>Route</th>
-                  <th>Year / Make / Model</th>
-                  <th>License Plate</th>
-                  <th>VIN</th>
-                  <th>Source / Gateway</th>
-                  <th>Policy #</th>
-                  <th>Insurance Pg</th>
-                  <th>Ins. Exp.</th>
-                  <th>Reg. Exp.</th>
-                  {connected && <th>Driver</th>}
-                  {connected && <th>Location</th>}
-                  {connected && <th>Speed</th>}
-                  {connected && <th>Engine</th>}
-                  {connected && <th>Updated</th>}
-                  {connected && <th>Schedule</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {displayVehicles.map(v => (
-                  <tr
-                    key={v.vin}
-                    className={`${selectedVehicle === v.vin ? 'selected' : ''} ${v.matched ? 'matched' : ''}`}
-                    onClick={() => setSelectedVehicle(v.vin === selectedVehicle ? null : v.vin)}
-                  >
-                    <td>{v.index}</td>
-                    <td className="ft-cell-vehicle">{v.vehicleId}</td>
-                    <td className="ft-cell-route">{v.routeNumber || '—'}</td>
-                    <td className="ft-cell-ymm">{v.yearMakeModel || '—'}</td>
-                    <td className="ft-cell-plate">{v.licensePlate}</td>
-                    <td className="ft-cell-vin">{v.vin}</td>
-                    <td className="ft-cell-source">{v.source}</td>
-                    <td className="ft-cell-policy">{v.policyNumber || '—'}</td>
-                    <td className="ft-cell-inspage">{v.insuranceCardPage || '—'}</td>
-                    <td className="ft-cell-expiry">{v.expirationDate || '—'}</td>
-                    <td className="ft-cell-regexpiry">
-                      {v.registration?.registrationExpires
-                        ? <span title={v.registration.temporaryRegistration ? `Temp reg — Conf: ${v.registration.temporaryRegistration.confirmationNumber}` : ''}>
-                            {v.registration.registrationExpires}
-                            {v.registration.temporaryRegistration && <span className="ft-temp-reg-badge"> TEMP</span>}
-                          </span>
-                        : '—'}
-                    </td>
-                    {connected && <td>{v.driverName || '—'}</td>}
-                    {connected && (
-                      <td className="ft-cell-location">
-                        {v.lat && v.lng
-                          ? `${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}`
-                          : '—'}
-                        {v.description && <div className="ft-cell-desc">{v.description}</div>}
-                      </td>
-                    )}
-                    {connected && (
-                      <td className="ft-cell-speed">
-                        {v.speed != null ? `${v.speed} mph` : '—'}
-                      </td>
-                    )}
-                    {connected && (
-                      <td>
-                        <span className={`ft-engine-badge ${v.engineStatus || 'unknown'}`}>
-                          {v.engineStatus || '—'}
-                        </span>
-                      </td>
-                    )}
-                    {connected && (
-                      <td className="ft-cell-updated">
-                        {v.lastUpdated
-                          ? new Date(v.lastUpdated).toLocaleTimeString()
-                          : '—'}
-                      </td>
-                    )}
-                    {connected && (
-                      <td className="ft-cell-sched">
-                        {(() => {
-                          const dev = scheduleDeviations[v.routeNumber];
-                          if (!dev) return '—';
-                          const dotColor = dev.status === 'on-track' ? '#22c55e'
-                            : dev.status === 'behind' ? '#ef4444' : '#9ca3af';
-                          return (
-                            <span className="ft-sched-badge" style={{ color: dotColor }}>
-                              <span className="ft-sched-dot" style={{ background: dotColor }} />
-                              {dev.message}
-                            </span>
-                          );
-                        })()}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="ft-cards-container">
+            <div className="ft-cards">
+              {displayVehicles.map(v => (
+                <VehicleCard
+                  key={v.vin}
+                  vehicle={v}
+                  connected={connected}
+                  selected={selectedVehicle === v.vin}
+                  onSelect={(vin) => setSelectedVehicle(vin === selectedVehicle ? null : vin)}
+                  scheduleDeviation={scheduleDeviations[v.routeNumber]}
+                  onUpdate={updateFleetVehicle}
+                  docs={v.routeNumber ? fleetDocs[v.routeNumber] || [] : []}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

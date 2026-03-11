@@ -8,6 +8,7 @@ import { labelAlertsCompleted } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport, sendAlertBlast, getAlertResponses, getBlastSentRefs } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
+import savedBlastSentRefs from '../data/blastSentRefs.json';
 
 function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -146,10 +147,13 @@ export default function AlertLog() {
   });
 
   // --- Blast sent tracking (individual ref numbers) ---
+  // Baseline from committed JSON file (works without WhatsApp service), merged with localStorage
   const BLAST_SENT_KEY = 'blast_sent_refs';
   const [blastSentRefs, setBlastSentRefs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(BLAST_SENT_KEY)) || {}; }
-    catch { return {}; }
+    try {
+      const local = JSON.parse(localStorage.getItem(BLAST_SENT_KEY)) || {};
+      return { ...savedBlastSentRefs, ...local };
+    } catch { return { ...savedBlastSentRefs }; }
   });
 
   function markBlastSent(refs) {

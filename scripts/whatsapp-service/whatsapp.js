@@ -14,6 +14,7 @@ const CONTACTS_FILE = path.join(__dirname, 'order-contacts.json');
 const GROUP_FILE = path.join(__dirname, 'order-group.json');
 const RESPONSES_FILE = path.join(__dirname, 'alert-responses.json');
 const BLAST_SENT_FILE = path.join(__dirname, 'blast-sent-refs.json');
+const BLAST_SENT_APP_FILE = path.join(__dirname, '../../src/data/blastSentRefs.json');
 const SENT_MESSAGES_FILE = path.join(__dirname, 'sent-alert-messages.json');
 const MAX_MESSAGES = 1000;
 
@@ -30,7 +31,9 @@ function saveResponses() {
 }
 
 function saveBlastSentRefs() {
-  try { fs2.writeFileSync(BLAST_SENT_FILE, JSON.stringify(blastSentRefs, null, 2)); } catch (e) { console.error('Failed to save blast sent refs:', e.message); }
+  const data = JSON.stringify(blastSentRefs, null, 2);
+  try { fs2.writeFileSync(BLAST_SENT_FILE, data); } catch (e) { console.error('Failed to save blast sent refs:', e.message); }
+  try { fs2.writeFileSync(BLAST_SENT_APP_FILE, data); } catch (e) { console.error('Failed to save blast sent refs to app:', e.message); }
 }
 
 function saveSentAlertMessages() {
