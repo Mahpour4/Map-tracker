@@ -171,7 +171,7 @@ GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,2
 MISC0121,MISC0121,Salisbury Storage,2309 E Naylor Mill Rd,Salisbury,MD,21804,210,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4034658,-75.5624319,,2026-02-25,No
 CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-02-23,2026-03-07,No
 CMW05235,05235,Comm Ft Belvoir 5235,6020 GORGAS RD,Fort Belvoir,VA,22060,209,Route 209 Driver,Northern Virginia,Fort Belvoir,Fort Belvoir,38.7194544,-77.145685,2026-03-03,2026-03-03,No
-CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-02-21,2026-03-06,No
+CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-02-21,2026-03-12,No
 FLW00378,00378,Food Lion 0378,613 FROST AVE,Warrenton,VA,20186,209,Route 209 Driver,Northern Virginia,Warrenton,Warrenton,38.7177885,-77.8133782,2026-02-19,2026-03-10,No
 FLW00738,00738,Food Lion 0738,6358 VILLAGE CENTER DR,Bealeton,VA,22712,209,Route 209 Driver,Northern Virginia,Bealeton,Bealeton,38.5718,-77.7639,2026-02-19,2026-03-10,No
 FLW00943,00943,Food Lion 0943,7760 GUNSTON PLZ,Lorton,VA,22079,209,Route 209 Driver,Northern Virginia,Lorton,Lorton,38.7037447,-77.2094807,2026-03-02,2026-03-09,No
@@ -709,7 +709,7 @@ SFW07533,SFW07533,SHOPPERS FOOD WHSE 7533 CLOSING,1200 EASTERN BLVD,ESSEX,MD,212
 CASH0353,CASH0353,Sg Convenience Store,1856 Wilkens Ave,Baltimore,MD,21223,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2823771,-76.6464382,2026-02-23,,No
 CASH0374,CASH0374,Sunnys Food Market,1739 N Payson,Baltimore,MD,,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3086267,-76.649551,2026-02-23,2026-02-12,No
 CASH0530,CASH0530,Basilica Place Cafe and Convenience,124 West Franklin St.,Baltimore,MD,21201,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2953943,-76.6175375,2026-02-23,,No
-WAW03588,WAW03588,WALMART 3588,17041 Richmond Hwy,Dumfries,VA,22026,209,Route 208 Driver,Northern Virginia,Prince William County,Prince William County,38.5766154,-77.3123432,2026-02-23,,No
+WAW03588,WAW03588,WALMART 3588,17041 Richmond Hwy,Dumfries,VA,22026,209,Route 208 Driver,Northern Virginia,Prince William County,Prince William County,38.5766154,-77.3123432,2026-02-23,2026-03-12,No
 CASH3029,CASH3029,Cheriton Quick Mart,20194 Charles M Lankford Jr Memorial HWY,Cheriton,VA,23316,210,Route 210 Driver,Unassigned,Unassigned,Unassigned,37.3046651,-75.967161,,,Yes
 CASH3030,CASH3030,Cheriton Quick Mart,20194 Charles M Lankford Jr Memorial HWY,Cheriton,VA,23316,210,Route 210 Driver,Unassigned,Unassigned,Unassigned,37.3046651,-75.967161,,,Yes
 CASH3031,CASH3031,B & B Conv,13001 Lankford Hwy,Machipongo,VA,23405,210,Route 210 Driver,Unassigned,Unassigned,Unassigned,37.4036234,-75.903877,,,Yes
