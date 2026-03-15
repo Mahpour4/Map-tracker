@@ -168,7 +168,7 @@ WMW03344,WMW03344,Walmart 3344,501 Walmart Dr,Winchester,VA,22603,201,Route 201 
 WMW05105,WMW05105,Walmart 5105,10 Riverton Commons Dr,Front Royal,VA,22630,0,,Unassigned,Unassigned,Unassigned,38.9601994,-78.187808,,,Yes
 IND00205,IND00205,Nothing Better LLC Cash,14882 Hardscrabble Rd,Seaford,DE,19973,206,Route 206 Driver,Delaware/Seaford,Seaford,Seaford,38.6192809,-75.4832676,,2025-10-22 16:49:23,Yes
 GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1588238,-76.5162013,,,Yes
-MISC0121,MISC0121,Salisbury Storage,2309 E Naylor Mill Rd,Salisbury,MD,21804,210,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4034658,-75.5624319,,2026-03-13,No
+MISC0121,MISC0121,Salisbury Storage,2309 E Naylor Mill Rd,Salisbury,MD,21804,210,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4034658,-75.5624319,,2026-03-15,No
 CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-03-07,2026-03-07,No
 CMW05235,05235,Comm Ft Belvoir 5235,6020 GORGAS RD,Fort Belvoir,VA,22060,209,Route 209 Driver,Northern Virginia,Fort Belvoir,Fort Belvoir,38.7194544,-77.145685,2026-03-06,2026-03-03,No
 CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-03-12,2026-03-12,No
@@ -382,7 +382,7 @@ KFW02754,KFW02754,KEY FOOD 02754,1205 W PRATT STREET,BALTIMORE,MD,21223,200,Rout
 CASH0009,CASH0009,A Grocery Store,1527 Pennsylvania Ave,Baltimore,MD,21217,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3025444,-76.6331096,,,Yes
 CASH0024,CASH0024,Always Grocery,1115 Reisterstown Rd,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.373853,-76.7222627,,,Yes
 CASH0028,CASH0028,Arpan Shrestha,4501 Falls Rd,Baltimore,MD,21209,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3436392,-76.6401184,,,Yes
-CASH0029,CASH0029,Artesanias Mi Casa,3305 Annapolis Rd,Baltimore,MD,21230,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2502164,-76.6393691,,2026-03-13,No
+CASH0029,CASH0029,Artesanias Mi Casa,3305 Annapolis Rd,Baltimore,MD,21230,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2502164,-76.6393691,,2026-03-15,No
 CASH0031,CASH0031,Avondale Mini Mart,505 N Avondale Rd,Dundalk,MD,21222,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2398717,-76.5070195,,,Yes
 CASH0033,CASH0033,Aziz,1419 East Baltimore,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.4265071,-76.5669053,,,Yes
 CASH0035,CASH0035,Baniya Grocery,2800 Huntington Ave,Baltimore,MD,21211,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3284,-76.637,,,Yes
