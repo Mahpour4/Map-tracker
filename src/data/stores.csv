@@ -141,7 +141,7 @@ FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-03-09,2026-03-09,No
 FLW01442,FLW01442,Food Lion 1442,6920 Crestwood Blvd,Frederick,MD,21703,204,Route 204 Driver,Maryland Central,Maryland Central,Maryland Central,39.3907553,-77.4250267,2026-03-11,2026-03-11,No
 FLW02194,FLW02194,Food Lion Store 2194,78 Worchester Dr,Falling Waters,WV,25419,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.5664,-77.8352,2026-03-09,2026-03-09,No
-FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.7143841,-78.1751887,2026-03-12,2026-03-11,No
+FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.7143841,-78.1751887,2026-03-12,2026-03-16,No
 FLW02257,FLW02257,Food Lion 2257,130 Duella Dr,Inwood,WV,25428,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.3617259,-78.0340871,2026-03-09,2026-03-09,No
 GTW06104,GTW06104,Giant 6104,1729 Dual Hwy,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6153582,-77.6915555,2026-03-05,2026-03-10,No
 GTW06275,GTW06275,Giant 6275,1650 C Wesel Blvd,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6386737,-77.7374129,2026-02-17,2026-02-17,No
@@ -170,7 +170,7 @@ IND00205,IND00205,Nothing Better LLC Cash,14882 Hardscrabble Rd,Seaford,DE,19973
 GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1588238,-76.5162013,,,Yes
 MISC0121,MISC0121,Salisbury Storage,2309 E Naylor Mill Rd,Salisbury,MD,21804,210,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4034658,-75.5624319,,2026-03-16,No
 CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-03-07,2026-03-07,No
-CMW05235,05235,Comm Ft Belvoir 5235,6020 GORGAS RD,Fort Belvoir,VA,22060,209,Route 209 Driver,Northern Virginia,Fort Belvoir,Fort Belvoir,38.7194544,-77.145685,2026-03-06,2026-03-03,No
+CMW05235,05235,Comm Ft Belvoir 5235,6020 GORGAS RD,Fort Belvoir,VA,22060,209,Route 209 Driver,Northern Virginia,Fort Belvoir,Fort Belvoir,38.7194544,-77.145685,2026-03-06,2026-03-16,No
 CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-03-12,2026-03-12,No
 FLW00378,00378,Food Lion 0378,613 FROST AVE,Warrenton,VA,20186,209,Route 209 Driver,Northern Virginia,Warrenton,Warrenton,38.7177885,-77.8133782,2026-03-10,2026-03-10,No
 FLW00738,00738,Food Lion 0738,6358 VILLAGE CENTER DR,Bealeton,VA,22712,209,Route 209 Driver,Northern Virginia,Bealeton,Bealeton,38.5718,-77.7639,2026-03-10,2026-03-10,No
@@ -199,7 +199,7 @@ CMW5024,CMW5024,Comm Ft Patuxent 5024,22155 Cuddihy Rd,Patuxent River,MD,20670,2
 WAW01985,WAW01985,Walmart 1985,3549 Russett Green East,Laurel,MD,20724,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.0986084,-76.8024718,2025-04-22,2025-04-22,Yes
 WAW03490,WAW03490,Walmart 3490,7081 Arundel Mills Circle,Hanover,MD,21076,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1556801,-76.7323706,2026-01-16,2026-01-16,No
 CASH0520,CASH0520,Dagmar Hotel,50 Summit Ave,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6419468,-77.72338,,2026-02-09,No
-CASH0545,CASH0545,Sandy Jaks LLC,14407 Hollow RD,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.69806146722824,-78.18268858409427,,2026-03-05,No
+CASH0545,CASH0545,Sandy Jaks LLC,14407 Hollow RD,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.69806146722824,-78.18268858409427,,2026-03-16,No
 CASH1111,CASH1111,40 West Deli,15142 National Pike,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6530127,-77.7425063,,,Yes
 SFW02674,SFW02674,Shoppers Food Whse 2674,4174 Fortuna Ctr Plaza,Dumfries,VA,22025,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.5966601,-77.3320979,,,Yes
 WMW00081,WMW00081,Weis Markets 081,31 Eastern Blvd N,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6341622,-77.6979267,2026-03-05,2026-03-05,No
