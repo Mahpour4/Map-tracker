@@ -172,9 +172,23 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-8993384","19ce8c8b22a658b1","FLW02566","2566","Food Lion","Laurel","WISE FOODS","ADUSA","207","2026-03-13","","","","03/13/2026 03:58 PM","Excessive out of stocks","Excessive out of stocks. Store needs service","Randall, Michael"
 "ADUSA-8993145","19ce8751cdbc74ee","FLW01322","1322","Food Lion","Herndon","WISE FOODS","ADUSA","209","2026-03-13","","","","03/13/2026 02:28 PM","Merchandising service","Merchandising service. I didnt get service delivery this week","Al-Nammari, Ziad"
 "ADUSA-8993141","19ce87385becaff7","FLW01322","1322","Food Lion","Herndon","WISE FOODS","ADUSA","209","2026-03-13","","","","03/13/2026 02:26 PM","Excessive out of stocks","Excessive out of stocks. 5 oos,I didnt get service/delivery this week","Al-Nammari, Ziad"
-"ADUSA-9000889","19cf688fe8f3bb1a","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-16","","","","03/16/2026 08:04 AM","Excessive out of stocks","Excessive out of stocks.","Valentin, Ashley"
-"ADUSA-9000754","19cf6872d0b6735d","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-16","","","","03/16/2026 08:02 AM","Failure processing credits","Failure processing credits. Just need credit next visit","King, Dishawn"
-"ADUSA-9000044","19cf661e11bc0e03","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-16","","","","03/16/2026 07:22 AM","Merchandising service","Merchandising service.","salgado zelaya, jacqueline"
-"ADUSA-8999672","19cf63dfa5e5da71","FLW01294","1294","Food Lion","Milford","WISE FOODS","ADUSA","206","2026-03-16","","","","03/16/2026 06:42 AM","Excessive out of stocks","Excessive out of stocks.","Booth, Pamela"
-"ADUSA-8999519","19cf6304add79591","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-16","","","","03/16/2026 06:28 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
-"ADUSA-8998081","19cf27435e277a51","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-15","","","","03/15/2026 01:03 PM","Excessive out of stocks","Excessive out of stocks. One hot sale and one non ad product is out of stock. Not enough product was left so had to kill the hutch to replenish the shelf.","Mellott, Courtney"
+"ADUSA-9000889","19cf688fe8f3bb1a","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-16","Valentin, Ashley","Excessive out of stocks","Ad items: 3 
+Non Ad items: 1 
+Total items: 4 
+Location: Shelf/In aisle","03/16/2026 08:04 AM","Excessive out of stocks","Excessive out of stocks.","Valentin, Ashley"
+"ADUSA-9000754","19cf6872d0b6735d","FLW02597","2597","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-16","King, Dishawn","Failure processing credits","Amount of unit(s) pending: 18 Units","03/16/2026 08:02 AM","Failure processing credits","Failure processing credits. Just need credit next visit","King, Dishawn"
+"ADUSA-9000044","19cf661e11bc0e03","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-16","salgado zelaya, jacqueline","Merchandising service","No service 
+Location: Shelf/In aisle 
+Store stocked: No","03/16/2026 07:22 AM","Merchandising service","Merchandising service.","salgado zelaya, jacqueline"
+"ADUSA-8999672","19cf63dfa5e5da71","FLW01294","1294","Food Lion","Milford","WISE FOODS","ADUSA","206","2026-03-16","Booth, Pamela","Excessive out of stocks","Ad items: 1 
+Non Ad items: 0 
+Total items: 1 
+Location: Shelf/In aisle","03/16/2026 06:42 AM","Excessive out of stocks","Excessive out of stocks.","Booth, Pamela"
+"ADUSA-8999519","19cf6304add79591","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-16","Roscoe, Anthony","Excessive out of stocks","Ad items: 1 
+Non Ad items: 3 
+Total items: 4 
+Location: Shelf/In aisle","03/16/2026 06:28 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
+"ADUSA-8998081","19cf27435e277a51","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-15","Mellott, Courtney","Excessive out of stocks","Ad items: 1 
+Non Ad items: 1 
+Total items: 2 
+Location: Shelf/In aisle, Off Shelf Displays/End Caps","03/15/2026 01:03 PM","Excessive out of stocks","Excessive out of stocks. One hot sale and one non ad product is out of stock. Not enough product was left so had to kill the hutch to replenish the shelf.","Mellott, Courtney"
