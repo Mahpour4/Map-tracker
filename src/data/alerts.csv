@@ -177,15 +177,47 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-9000044","19cf661e11bc0e03","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-16","","","","03/16/2026 07:22 AM","Merchandising service","Merchandising service.","salgado zelaya, jacqueline"
 "ADUSA-8999672","19cf63dfa5e5da71","FLW01294","1294","Food Lion","Milford","WISE FOODS","ADUSA","206","2026-03-16","","","","03/16/2026 06:42 AM","Excessive out of stocks","Excessive out of stocks.","Booth, Pamela"
 "ADUSA-8999519","19cf6304add79591","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-16","","","","03/16/2026 06:28 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
-"ADUSA-8998081","19cf27435e277a51","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-15","","","","03/15/2026 01:03 PM","Excessive out of stocks","Excessive out of stocks. One hot sale and one non ad product is out of stock. Not enough product was left so had to kill the hutch to replenish the shelf.","Mellott, Courtney"
-"ADUSA-9008130","19cfbd39fd0ac8cb","FLW00550","550","Food Lion","Strasburg","WISE FOODS","ADUSA","201","2026-03-17","","","","03/17/2026 08:44 AM","Housekeeping","Housekeeping.","Darr, Laurel"
-"ADUSA-9008117","19cfbd1a740f2df8","FLW00550","550","Food Lion","Strasburg","WISE FOODS","ADUSA","201","2026-03-17","","","","03/17/2026 08:42 AM","Excessive out of stocks","Excessive out of stocks. Please come in service the store Im hoping that you arrive tomorrow as it is at change over and your stuff is coming down off the pallet  area","Darr, Laurel"
-"ADUSA-9007679","19cfbb23fde55659","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-17","","","","03/17/2026 08:08 AM","Merchandising service","Merchandising service.","salgado zelaya, jacqueline"
-"ADUSA-9007284","19cfba8b3903b723","FLW01547","1547","Food Lion","Edgewood","WISE FOODS","ADUSA","214","2026-03-17","","","","03/17/2026 07:57 AM","Excessive out of stocks","Excessive out of stocks.","Tress, Anthony"
-"ADUSA-9006962","19cfb8834f2f1143","FLW01226","1226","Food Lion","Woodbridge","WISE FOODS","ADUSA","209","2026-03-17","","","","03/17/2026 07:22 AM","On shelf out of date","On shelf out of date. Our of date product on shelf.","James, Tierra"
-"ADUSA-9006823","19cfb75aad3d0ba1","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-17","","","","03/17/2026 07:01 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
-"ADUSA-9006794","19cfb7286c1824fa","FLW00656","656","Food Lion","Leonardtown","WISE FOODS","ADUSA","207","2026-03-17","","","","03/17/2026 06:58 AM","Excessive out of stocks","Excessive out of stocks. Butter PC,gldn org,","Coates, Shary"
-"ADUSA-9006590","19cfb57f26e6dafd","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-17","","","","03/17/2026 06:30 AM","Excessive out of stocks","Excessive out of stocks. Oos","Hudgins, Steven"
-"ADUSA-9006556","19cfb53617024a60","FLW02547","2547","Food Lion","Waldorf","WISE FOODS","ADUSA","207","2026-03-17","","","","03/17/2026 06:24 AM","Excessive out of stocks","Excessive out of stocks.","Daniels, Coleen"
-"ADUSA-9006549","19cfb5282a874efa","FLW01405","1405","Food Lion","Middle River","WISE FOODS","ADUSA","214","2026-03-17","","","","03/17/2026 06:23 AM","Excessive out of stocks","Excessive out of stocks.","Howard, Frederick"
-"ADUSA-9005238","19cf7c13c5151e1e","FLW01316","1316","Food Lion","Bryans Road","WISE FOODS","ADUSA","207","2026-03-16","","","","03/16/2026 01:45 PM","Excessive out of stocks","Excessive out of stocks. Stock service","PENFOLD, JAMES"
+"ADUSA-8998081","19cf27435e277a51","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-15","Mellott, Courtney","Excessive out of stocks","Ad items: 1 
+Non Ad items: 1 
+Total items: 2 
+Location: Shelf/In aisle, Off Shelf Displays/End Caps","03/15/2026 01:03 PM","Excessive out of stocks","Excessive out of stocks. One hot sale and one non ad product is out of stock. Not enough product was left so had to kill the hutch to replenish the shelf.","Mellott, Courtney"
+"ADUSA-9008130","19cfbd39fd0ac8cb","FLW00550","550","Food Lion","Strasburg","WISE FOODS","ADUSA","201","2026-03-17","Darr, Laurel","Excessive out of stocks","Ad items: 5 
+Non Ad items: 5 
+Total items: 10 
+Location: Shelf/In aisle","03/17/2026 08:44 AM","Housekeeping","Housekeeping.","Darr, Laurel"
+"ADUSA-9008117","19cfbd1a740f2df8","FLW00550","550","Food Lion","Strasburg","WISE FOODS","ADUSA","201","2026-03-17","Darr, Laurel","Excessive out of stocks","Ad items: 5 
+Non Ad items: 5 
+Total items: 10 
+Location: Shelf/In aisle","03/17/2026 08:42 AM","Excessive out of stocks","Excessive out of stocks. Please come in service the store Im hoping that you arrive tomorrow as it is at change over and your stuff is coming down off the pallet  area","Darr, Laurel"
+"ADUSA-9007679","19cfbb23fde55659","FLW01383","1383","Food Lion","Manassas","WISE FOODS","ADUSA","209","2026-03-17","salgado zelaya, jacqueline","Merchandising service","No service 
+Location: Shelf/In aisle 
+Store stocked: No","03/17/2026 08:08 AM","Merchandising service","Merchandising service.","salgado zelaya, jacqueline"
+"ADUSA-9007284","19cfba8b3903b723","FLW01547","1547","Food Lion","Edgewood","WISE FOODS","ADUSA","214","2026-03-17","Tress, Anthony","Excessive out of stocks","Ad items: 1 
+Non Ad items: 2 
+Total items: 3 
+Location: Shelf/In aisle","03/17/2026 07:57 AM","Excessive out of stocks","Excessive out of stocks.","Tress, Anthony"
+"ADUSA-9006962","19cfb8834f2f1143","FLW01226","1226","Food Lion","Woodbridge","WISE FOODS","ADUSA","209","2026-03-17","James, Tierra","On shelf out of date","Unit counts: 8","03/17/2026 07:22 AM","On shelf out of date","On shelf out of date. Our of date product on shelf.","James, Tierra"
+"ADUSA-9006823","19cfb75aad3d0ba1","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-17","Roscoe, Anthony","Excessive out of stocks","Ad items: 2 
+Non Ad items: 4 
+Total items: 6 
+Location: Shelf/In aisle","03/17/2026 07:01 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
+"ADUSA-9006794","19cfb7286c1824fa","FLW00656","656","Food Lion","Leonardtown","WISE FOODS","ADUSA","207","2026-03-17","Coates, Shary","Excessive out of stocks","Ad items: 2 
+Non Ad items: 0 
+Total items: 2 
+Location: Shelf/In aisle","03/17/2026 06:58 AM","Excessive out of stocks","Excessive out of stocks. Butter PC,gldn org,","Coates, Shary"
+"ADUSA-9006590","19cfb57f26e6dafd","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-17","Hudgins, Steven","Excessive out of stocks","Ad items: 5 
+Non Ad items: 0 
+Total items: 5 
+Location: Shelf/In aisle","03/17/2026 06:30 AM","Excessive out of stocks","Excessive out of stocks. Oos","Hudgins, Steven"
+"ADUSA-9006556","19cfb53617024a60","FLW02547","2547","Food Lion","Waldorf","WISE FOODS","ADUSA","207","2026-03-17","Daniels, Coleen","Excessive out of stocks","Ad items: 1 
+Non Ad items: 5 
+Total items: 6 
+Location: Shelf/In aisle","03/17/2026 06:24 AM","Excessive out of stocks","Excessive out of stocks.","Daniels, Coleen"
+"ADUSA-9006549","19cfb5282a874efa","FLW01405","1405","Food Lion","Middle River","WISE FOODS","ADUSA","214","2026-03-17","Howard, Frederick","Excessive out of stocks","Ad items: 5 
+Non Ad items: 3 
+Total items: 8 
+Location: Shelf/In aisle","03/17/2026 06:23 AM","Excessive out of stocks","Excessive out of stocks.","Howard, Frederick"
+"ADUSA-9005238","19cf7c13c5151e1e","FLW01316","1316","Food Lion","Bryans Road","WISE FOODS","ADUSA","207","2026-03-16","PENFOLD, JAMES","Excessive out of stocks","Ad items: 5 
+Non Ad items: 2 
+Total items: 7 
+Location: Shelf/In aisle","03/16/2026 01:45 PM","Excessive out of stocks","Excessive out of stocks. Stock service","PENFOLD, JAMES"
