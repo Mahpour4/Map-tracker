@@ -680,9 +680,32 @@ export default function AlertLog() {
       return;
     }
 
-    setBlastProgress({ route, current: 0, total: openAlerts.length });
+    setBlastProgress({ route, current: 0, total: openAlerts.length, phase: 'details' });
 
     try {
+      // Step 0: Scrape GW details (Created By, Alert Type, Reason) for alerts missing them
+      const needScrape = openAlerts.filter(a => a.acceptanceUrl && !a.gwCreatedBy);
+      if (needScrape.length > 0) {
+        try {
+          const payload = needScrape.map(a => ({ url: a.acceptanceUrl, refNumber: a.refNumber }));
+          const { results } = await gwScrapeDetails(payload);
+          results.forEach(r => {
+            if (r.alertDetails) {
+              const alert = openAlerts.find(a => a.refNumber === r.refNumber);
+              if (alert) {
+                const d = r.alertDetails.details || {};
+                if (d['Created By']) alert.gwCreatedBy = d['Created By'];
+                if (d['Alert Type']) alert.gwAlertType = d['Alert Type'];
+                if (d['Reason']) alert.gwReason = d['Reason'];
+              }
+            }
+          });
+          console.log(`[WA Blast] Scraped GW details for ${results.filter(r => r.alertDetails).length}/${needScrape.length} alerts`);
+        } catch (err) {
+          console.warn('[WA Blast] GW scrape unavailable — details will be empty:', err.message);
+        }
+      }
+
       // Step 1: Fetch and process images for all open alerts
       const blastPayload = [];
       const gmailOk = isGmailConnected();
@@ -692,10 +715,13 @@ export default function AlertLog() {
         if (!imgData || !imgData.dataUri) return null;
         // Already a base64 data URI
         if (imgData.dataUri.startsWith('data:image/')) return imgData.dataUri;
-        // External URL — fetch and convert
+        // External URL — fetch via backend proxy to avoid CORS
         if (imgData.isExternal || imgData.dataUri.startsWith('http')) {
           try {
-            const resp = await fetch(imgData.dataUri);
+            // Use our WhatsApp service backend as a proxy (no CORS issues)
+            const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imgData.dataUri)}`;
+            const resp = await fetch(proxyUrl);
+            if (!resp.ok) throw new Error(`Proxy ${resp.status}`);
             const blob = await resp.blob();
             return await new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -704,9 +730,9 @@ export default function AlertLog() {
               reader.readAsDataURL(blob);
             });
           } catch {
+            // Last resort: try direct fetch (works for same-origin or permissive CORS)
             try {
-              const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(imgData.dataUri)}`;
-              const resp = await fetch(proxyUrl);
+              const resp = await fetch(imgData.dataUri);
               const blob = await resp.blob();
               return await new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -760,9 +786,9 @@ export default function AlertLog() {
         storeGroupMap[storeKey].alerts.push({
           refNumber: a.refNumber,
           alertDate: formatDate(a.dateReceived),
-          createdBy: a.gwCreatedBy || '',
+          createdBy: a.gwCreatedBy || a.createdBy || '',
           alertType: a.gwAlertType || a.vendor || '',
-          reason: a.gwReason || '',
+          reason: a.gwReason || a.reason || '',
           imageBase64: a.imageBase64,
           mimeType: a.mimeType,
         });

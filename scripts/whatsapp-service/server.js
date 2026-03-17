@@ -87,6 +87,23 @@ app.post('/api/whatsapp/restart', (req, res) => {
   }, 300);
 });
 
+// Proxy external images (bypass CORS for goglobalworx etc.)
+app.get('/api/proxy-image', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).json({ error: 'url param required' });
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const contentType = resp.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    res.send(buffer);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // List all WhatsApp groups
 app.get('/api/whatsapp/groups', async (req, res) => {
   try {
