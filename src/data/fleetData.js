@@ -74,8 +74,8 @@ export const fleetVehicles = [
   },
   {
     index: 6,
-    vehicleId: 'Ford Truck Anthony Ford Transit',
-    routeNumber: '206',
+    vehicleId: 'UNASSIGNED — Ford Truck Anthony Ford Transit',
+    routeNumber: null,
     licensePlate: '2GM4416 Maryland United States',
     source: 'Vehicle Gateway S/N: AABL36ME120325',
     vin: '1FDBF6P86RKB32876',
@@ -176,8 +176,8 @@ export const fleetVehicles = [
   },
   {
     index: 13,
-    vehicleId: 'UNASSIGNED — 2016 ISUZU NPR HD',
-    routeNumber: null,
+    vehicleId: 'Rt 206 — 2016 ISUZU NPR HD',
+    routeNumber: '206',
     licensePlate: '2GG1791 Maryland United States',
     source: null,
     vin: 'JALC4W164G7001773',

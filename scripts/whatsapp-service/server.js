@@ -69,6 +69,24 @@ app.post('/api/whatsapp/reconnect', async (req, res) => {
   }
 });
 
+// Restart the entire server process
+app.post('/api/whatsapp/restart', (req, res) => {
+  console.log('\n🔄 Restart requested from Map Tracker UI...');
+  res.json({ success: true, message: 'Server restarting...' });
+  setTimeout(() => {
+    const { spawn } = require('child_process');
+    // Spawn a helper process that waits 3s then starts a fresh server.js
+    const restartCode = `setTimeout(()=>{require("child_process").spawn(${JSON.stringify(process.execPath)},[${JSON.stringify(__filename)}],{cwd:${JSON.stringify(__dirname)},stdio:"inherit"})},3000)`;
+    const child = spawn(process.execPath, ['-e', restartCode], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: __dirname,
+    });
+    child.unref();
+    process.exit(0);
+  }, 300);
+});
+
 // List all WhatsApp groups
 app.get('/api/whatsapp/groups', async (req, res) => {
   try {
@@ -319,19 +337,23 @@ app.get('/api/whatsapp/admin-config', (req, res) => {
 });
 
 app.post('/api/whatsapp/admin-config', (req, res) => {
-  const { groupId, phones } = req.body;
-  if (groupId !== undefined) whatsapp.setAdminGroup(groupId || null);
+  const { groupId, groups, phones, motiveApiKey } = req.body;
+  // New multi-group format
+  if (groups !== undefined) whatsapp.setAdminGroups(groups);
+  // Legacy single-group format (backwards compat)
+  else if (groupId !== undefined) whatsapp.setAdminGroup(groupId || null);
   if (phones  !== undefined) whatsapp.setAdminPhones(phones || []);
+  if (motiveApiKey !== undefined) whatsapp.setMotiveApiKey(motiveApiKey || null);
   res.json({ success: true, config: whatsapp.getAdminConfig() });
 });
 
 // Manual admin query (for testing from the UI)
-app.post('/api/whatsapp/admin-query', (req, res) => {
+app.post('/api/whatsapp/admin-query', async (req, res) => {
   const adminChat = require('./adminChat');
   const { query } = req.body;
   if (!query) return res.status(400).json({ error: 'query is required' });
   try {
-    const reply = adminChat.processQuery(query);
+    const reply = await adminChat.processQuery(query);
     res.json({ reply });
   } catch (err) {
     res.status(500).json({ error: err.message });

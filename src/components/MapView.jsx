@@ -400,8 +400,8 @@ export default function MapView() {
       });
     }
 
-    // Hidden tiers exclusion filter (hides dormant/never visited by default; always applies when no route selected, or when a sales day filter is active)
-    if (visitMode && hiddenTiers.size > 0 && (filterRoute === 'all' || salesDayFilter.size > 0)) {
+    // Hidden tiers exclusion filter (hides dormant/never visited by default)
+    if (visitMode && hiddenTiers.size > 0) {
       result = result.filter((s) => {
         const days = getDaysSinceVisit(getLatestDate(s));
         if (days === null) return !hiddenTiers.has(neverVisitedTier.label);

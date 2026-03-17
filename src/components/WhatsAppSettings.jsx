@@ -5,7 +5,7 @@ import {
   getWaContacts, setWaContact, removeWaContact,
   getAdminConfig, saveAdminConfig, testAdminQuery,
   saveRouteGroupMap,
-  disconnectWhatsApp, reconnectWhatsApp,
+  disconnectWhatsApp, reconnectWhatsApp, restartWhatsAppServer,
   getWhatsAppPhone,
 } from '../services/whatsappService';
 import { fetchWaConfigJson, saveWaConfigJson } from '../services/githubService';
@@ -23,6 +23,7 @@ export default function WhatsAppSettings() {
   const [groupsLoading, setGroupsLoading]     = useState(false);
   const [disconnecting, setDisconnecting]     = useState(false);
   const [reconnecting, setReconnecting]       = useState(false);
+  const [restarting, setRestarting]           = useState(false);
 
   // Order group
   const [orderGroupId, setOrderGroupIdState] = useState('');
@@ -32,10 +33,12 @@ export default function WhatsAppSettings() {
     try { return JSON.parse(localStorage.getItem('wa_route_groups') || '{}'); } catch { return {}; }
   });
 
-  // Admin chat
-  const [adminGroupId, setAdminGroupId]   = useState('');
+  // Admin chat (multi-group)
+  const [adminGroups, setAdminGroupsState] = useState([]); // [{ id, routes, destination }]
   const [adminPhones, setAdminPhones]     = useState([]);
   const [newPhone, setNewPhone]           = useState('');
+  const [addingGroup, setAddingGroup]     = useState(false);
+  const [newGroupId, setNewGroupId]       = useState('');
 
   // Test query
   const [testQuery, setTestQuery]   = useState('');
@@ -72,7 +75,7 @@ export default function WhatsAppSettings() {
       orderGroupId: snap?.orderGroupId  ?? orderGroupId,
       routeGroupMap: snap?.routeGroupMap ?? routeGroupMap,
       routeGroupNames: routeNames,
-      adminConfig:  { groupId: snap?.adminGroupId ?? adminGroupId, phones: snap?.adminPhones ?? adminPhones },
+      adminConfig:  { groups: snap?.adminGroups ?? adminGroups, phones: snap?.adminPhones ?? adminPhones },
       contacts:     snap?.contacts ?? contacts,
     };
   }
@@ -137,8 +140,9 @@ export default function WhatsAppSettings() {
     }
     // Admin config
     if (cfg.adminConfig) {
-      await saveAdminConfig(cfg.adminConfig.groupId || null, cfg.adminConfig.phones || []).catch(() => {});
-      setAdminGroupId(cfg.adminConfig.groupId || '');
+      const groups = cfg.adminConfig.groups || (cfg.adminConfig.groupId ? [{ id: cfg.adminConfig.groupId, routes: [] }] : []);
+      await saveAdminConfig(groups, cfg.adminConfig.phones || []).catch(() => {});
+      setAdminGroupsState(groups);
       setAdminPhones(cfg.adminConfig.phones || []);
     }
     // Contacts
@@ -198,7 +202,9 @@ export default function WhatsAppSettings() {
     ]);
     setOrderGroupIdState(gId || '');
     setContacts(contactData || {});
-    setAdminGroupId(adminCfg.groupId || '');
+    // Multi-group format: server returns { groups: [...], phones: [...] }
+    const loadedGroups = adminCfg.groups || (adminCfg.groupId ? [{ id: adminCfg.groupId, routes: [] }] : []);
+    setAdminGroupsState(loadedGroups);
     setAdminPhones(adminCfg.phones || []);
     return s;
   }, [loadStatus]);
@@ -241,6 +247,26 @@ export default function WhatsAppSettings() {
     setReconnecting(true);
     try { await reconnectWhatsApp(); await loadStatus(); }
     finally { setReconnecting(false); }
+  }
+
+  async function handleRestart() {
+    if (!window.confirm('Restart the WhatsApp server? It will be unavailable for a few seconds.')) return;
+    setRestarting(true);
+    setStatus('offline');
+    try { await restartWhatsAppServer(); } catch {}
+    // Poll until server comes back
+    const poll = setInterval(async () => {
+      try {
+        const s = await getWhatsAppStatus();
+        if (s.status && s.status !== 'offline') {
+          clearInterval(poll);
+          setRestarting(false);
+          await loadStatus();
+        }
+      } catch {}
+    }, 2000);
+    // Stop polling after 30s
+    setTimeout(() => { clearInterval(poll); setRestarting(false); }, 30000);
   }
 
   function handleRouteGroup(routeNum, groupId) {
@@ -359,11 +385,22 @@ export default function WhatsAppSettings() {
                 </button>
               )}
               {(status === 'disconnected' || status === 'offline') && (
-                <button className="was-btn-primary" onClick={handleReconnect} disabled={reconnecting}>
+                <button className="was-btn-primary" onClick={handleReconnect} disabled={reconnecting || restarting}>
                   {reconnecting ? 'Connecting...' : 'Connect'}
                 </button>
               )}
+              {status !== 'offline' && (
+                <button className="was-btn-warn" onClick={handleRestart} disabled={restarting || disconnecting}>
+                  {restarting ? 'Restarting...' : 'Restart Server'}
+                </button>
+              )}
             </div>
+
+            {restarting && (
+              <div className="was-hint" style={{ marginTop: 8, color: '#f59e0b' }}>
+                Server is restarting... waiting for it to come back online.
+              </div>
+            )}
 
             {status === 'qr-pending' && (
               <div className="was-qr-block">
@@ -451,16 +488,114 @@ export default function WhatsAppSettings() {
           <div className="was-section">
             <h2 className="was-section-title">Admin Chat Bot</h2>
             <p className="was-hint">
-              Select a WhatsApp group for admin queries. Authorized numbers can send commands like
-              <code> store food lion 1214</code>, <code>route 206</code>, <code>alerts open</code>, <code>order 206</code>.
+              Add WhatsApp groups where users can @mention the bot. Each group can be restricted to specific routes.
+              Commands: <code>alerts</code>, <code>truck [route]</code>, <code>store [name]</code>, <code>route [#]</code>, <code>order [route]</code>.
             </p>
 
-            <div className="was-field-row">
-              <label className="was-label">Admin Group</label>
-              <select className="was-select" value={adminGroupId} onChange={e => setAdminGroupId(e.target.value)}>
-                <option value="">— Select Group —</option>
-                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
+            {/* Configured admin groups */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label className="was-label">Bot Groups</label>
+              {adminGroups.length === 0 && <div className="was-hint">No groups configured. Add one below.</div>}
+              {adminGroups.map((ag, idx) => {
+                const groupName = groups.find(g => g.id === ag.id)?.name || ag.id;
+                return (
+                  <div key={ag.id} className="was-group-row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-start', padding: '12px 14px' }}>
+                    <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="was-group-name">{groupName}</span>
+                        {ag.routes && ag.routes.length > 0
+                          ? <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Routes: {ag.routes.join(', ')}</span>
+                          : <span style={{ fontSize: '0.75rem', color: '#22c55e' }}>All routes</span>}
+                      </div>
+                      {/* Route chips */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                        {ALERT_ROUTES.map(r => {
+                          const active = ag.routes && ag.routes.includes(r);
+                          return (
+                            <button key={r}
+                              style={{
+                                padding: '2px 8px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600,
+                                border: active ? '1px solid #2563eb' : '1px solid #d1d5db',
+                                background: active ? '#dbeafe' : '#f9fafb', color: active ? '#1e40af' : '#9ca3af',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => {
+                                setAdminGroupsState(prev => prev.map((g, i) => {
+                                  if (i !== idx) return g;
+                                  const routes = g.routes || [];
+                                  return { ...g, routes: active ? routes.filter(x => x !== r) : [...routes, r].sort() };
+                                }));
+                              }}
+                            >
+                              {r}
+                            </button>
+                          );
+                        })}
+                        <span style={{ fontSize: '0.7rem', color: '#9ca3af', marginLeft: 4 }}>(empty = all)</span>
+                      </div>
+                      {/* Destination */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Destination:</span>
+                        <input
+                          className="was-input"
+                          style={{ width: 130, fontSize: '0.78rem', padding: '3px 6px' }}
+                          placeholder="e.g. Salisbury, MD"
+                          value={ag.destination?.name || ''}
+                          onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                            i !== idx ? g : { ...g, destination: { ...g.destination, name: e.target.value, lat: g.destination?.lat || '', lng: g.destination?.lng || '' } }
+                          ))}
+                        />
+                        <input
+                          className="was-input"
+                          style={{ width: 70, fontSize: '0.78rem', padding: '3px 6px' }}
+                          placeholder="Lat"
+                          value={ag.destination?.lat || ''}
+                          onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                            i !== idx ? g : { ...g, destination: { ...g.destination, lat: parseFloat(e.target.value) || e.target.value } }
+                          ))}
+                        />
+                        <input
+                          className="was-input"
+                          style={{ width: 70, fontSize: '0.78rem', padding: '3px 6px' }}
+                          placeholder="Lng"
+                          value={ag.destination?.lng || ''}
+                          onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                            i !== idx ? g : { ...g, destination: { ...g.destination, lng: parseFloat(e.target.value) || e.target.value } }
+                          ))}
+                        />
+                      </div>
+                    </div>
+                    <button className="was-btn-danger" onClick={() => {
+                      if (window.confirm(`Remove ${groupName} from admin bot?`))
+                        setAdminGroupsState(prev => prev.filter((_, i) => i !== idx));
+                    }}>Remove</button>
+                  </div>
+                );
+              })}
+
+              {/* Add new group */}
+              {addingGroup ? (
+                <div className="was-field-row">
+                  <select className="was-select" value={newGroupId} onChange={e => setNewGroupId(e.target.value)}>
+                    <option value="">— Select Group —</option>
+                    {groups.filter(g => !adminGroups.some(ag => ag.id === g.id)).map(g =>
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    )}
+                  </select>
+                  <button className="was-btn-primary" disabled={!newGroupId} onClick={() => {
+                    if (newGroupId) {
+                      setAdminGroupsState(prev => [...prev, { id: newGroupId, routes: [] }]);
+                      setNewGroupId('');
+                      setAddingGroup(false);
+                    }
+                  }}>Add</button>
+                  <button className="was-btn-ghost" onClick={() => { setAddingGroup(false); setNewGroupId(''); }}>Cancel</button>
+                </div>
+              ) : (
+                <button className="was-btn-secondary" onClick={() => setAddingGroup(true)} disabled={status !== 'connected'}>
+                  + Add Group
+                </button>
+              )}
             </div>
 
             <div className="was-admin-phones">
@@ -487,9 +622,14 @@ export default function WhatsAppSettings() {
             </div>
 
             <SaveBtn tab="admin" label="Save Admin Config" onClick={() => saveTab('admin', async () => {
-              await saveAdminConfig(adminGroupId || null, adminPhones);
-              return { adminGroupId, adminPhones };
+              await saveAdminConfig(adminGroups, adminPhones);
+              return { adminGroups, adminPhones };
             })} />
+            {localStorage.getItem('motive_api_key') && (
+              <p className="was-hint-sm" style={{ marginTop: 8, color: '#22c55e' }}>
+                Motive API key will be synced to bot on save (for truck ETA command)
+              </p>
+            )}
 
             {/* Test query */}
             <div className="was-test-section">
@@ -498,7 +638,7 @@ export default function WhatsAppSettings() {
               <div className="was-test-row">
                 <input
                   className="was-input was-input--wide"
-                  placeholder="e.g. store food lion 1214"
+                  placeholder="e.g. store food lion 1214 | alerts | truck 211"
                   value={testQuery}
                   onChange={e => setTestQuery(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') runTestQuery(); }}
@@ -516,6 +656,7 @@ export default function WhatsAppSettings() {
                 <code>route [number]</code>
                 <code>alerts [open|today|route N]</code>
                 <code>order [route]</code>
+                <code>truck [route]</code>
                 <code>help</code>
               </div>
             </div>

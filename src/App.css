@@ -14249,6 +14249,9 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .was-btn-danger { background: none; color: #dc2626; border: 1px solid #fca5a5; border-radius: 5px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
 .was-btn-danger:hover { background: #fee2e2; }
 .was-btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+.was-btn-warn { background: none; color: #d97706; border: 1px solid #fcd34d; border-radius: 5px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+.was-btn-warn:hover { background: #fef3c7; }
+.was-btn-warn:disabled { opacity: 0.6; cursor: not-allowed; }
 .was-qr-block { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 0; }
 .was-qr-img { width: 220px; height: 220px; border: 3px solid #e5e7eb; border-radius: 8px; background: #fff; }
 .was-phone-badge { font-size: 0.78rem; font-family: monospace; background: #dbeafe; color: #1e40af; border-radius: 12px; padding: 2px 10px; font-weight: 600; }

@@ -183,14 +183,16 @@ export async function getAdminConfig() {
   try {
     const res = await fetch(`${BASE}/admin-config`);
     return await res.json();
-  } catch { return { groupId: null, phones: [] }; }
+  } catch { return { groups: [], phones: [] }; }
 }
 
-export async function saveAdminConfig(groupId, phones) {
+export async function saveAdminConfig(groups, phones) {
+  // Auto-include Motive API key from app's localStorage so the bot can use it
+  const motiveApiKey = localStorage.getItem('motive_api_key') || undefined;
   const res = await fetch(`${BASE}/admin-config`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ groupId, phones }),
+    body: JSON.stringify({ groups, phones, motiveApiKey }),
   });
   return res.json();
 }
@@ -219,6 +221,11 @@ export async function disconnectWhatsApp() {
 
 export async function reconnectWhatsApp() {
   const res = await fetch(`${BASE}/reconnect`, { method: 'POST' });
+  return res.json();
+}
+
+export async function restartWhatsAppServer() {
+  const res = await fetch(`${BASE}/restart`, { method: 'POST' });
   return res.json();
 }
 

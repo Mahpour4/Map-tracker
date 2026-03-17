@@ -10,6 +10,14 @@ const SITES = [
     btnClass: 'btn-websnak',
     btnText: 'Import WebSnak Stores',
     script: 'scrape-websnak.js',
+    extraButtons: [
+      {
+        key: 'invoices',
+        btnClass: 'btn-invoices',
+        btnText: 'Import Store Invoices',
+        script: 'scrape-invoices.js',
+      },
+    ],
   },
   {
     key: 'dao',
@@ -83,11 +91,20 @@ function updateUI(tab) {
     </div>
   `;
 
-  buttonArea.innerHTML = `
-    <button id="importBtn" class="btn ${currentDetected.btnClass}">${currentDetected.btnText}</button>
-  `;
+  let buttonsHtml = `<button id="importBtn" class="btn ${currentDetected.btnClass}">${currentDetected.btnText}</button>`;
+  if (currentDetected.extraButtons) {
+    currentDetected.extraButtons.forEach((eb, i) => {
+      buttonsHtml += `\n    <button id="extraBtn${i}" class="btn ${eb.btnClass}" data-script="${eb.script}" data-key="${eb.key}">${eb.btnText}</button>`;
+    });
+  }
+  buttonArea.innerHTML = buttonsHtml;
 
   document.getElementById('importBtn').addEventListener('click', handleImportClick);
+  if (currentDetected.extraButtons) {
+    currentDetected.extraButtons.forEach((eb, i) => {
+      document.getElementById(`extraBtn${i}`).addEventListener('click', () => handleExtraImport(eb, i));
+    });
+  }
 }
 
 function handleImportClick() {
@@ -108,6 +125,29 @@ function handleImportClick() {
         addLog('Error: ' + chrome.runtime.lastError.message, 'error');
         btn.disabled = false;
         btn.textContent = currentDetected.btnText;
+      }
+    }
+  );
+}
+
+function handleExtraImport(extraBtn, index) {
+  if (!currentTabId) return;
+
+  const btn = document.getElementById(`extraBtn${index}`);
+  btn.disabled = true;
+  btn.textContent = 'Scraping...';
+  addLog('Running ' + extraBtn.key + ' scraper...', 'info');
+
+  chrome.scripting.executeScript(
+    {
+      target: { tabId: currentTabId, allFrames: true },
+      files: [extraBtn.script],
+    },
+    (results) => {
+      if (chrome.runtime.lastError) {
+        addLog('Error: ' + chrome.runtime.lastError.message, 'error');
+        btn.disabled = false;
+        btn.textContent = extraBtn.btnText;
       }
     }
   );
@@ -191,6 +231,13 @@ chrome.runtime.onMessage.addListener((msg) => {
       btn.disabled = false;
       btn.textContent = currentDetected ? currentDetected.btnText : 'Done!';
     }
+    // Reset extra buttons too
+    if (currentDetected?.extraButtons) {
+      currentDetected.extraButtons.forEach((eb, i) => {
+        const eBtn = document.getElementById(`extraBtn${i}`);
+        if (eBtn) { eBtn.disabled = false; eBtn.textContent = eb.btnText; }
+      });
+    }
   }
 
   if (msg.type === 'import-error') {
@@ -208,6 +255,13 @@ chrome.runtime.onMessage.addListener((msg) => {
     if (btn) {
       btn.disabled = false;
       if (currentDetected) btn.textContent = currentDetected.btnText;
+    }
+    // Reset extra buttons too
+    if (currentDetected?.extraButtons) {
+      currentDetected.extraButtons.forEach((eb, i) => {
+        const eBtn = document.getElementById(`extraBtn${i}`);
+        if (eBtn) { eBtn.disabled = false; eBtn.textContent = eb.btnText; }
+      });
     }
   }
 });

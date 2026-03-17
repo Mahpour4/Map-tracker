@@ -216,7 +216,7 @@ function detectStoreType(name, id) {
 }
 
 export default function DataImport() {
-  const { state, bulkImportStores, addImportEntry, setTransactions } = useApp();
+  const { state, bulkImportStores, addImportEntry, setTransactions, bulkRecordVisits } = useApp();
   const { stores, importLog } = state;
   const transactions = state.transactions || [];
 
@@ -319,6 +319,66 @@ export default function DataImport() {
           });
         }
 
+        if (source === 'invoices') {
+          let invoiceData;
+          try {
+            invoiceData = typeof data === 'string' ? JSON.parse(data) : data;
+          } catch {
+            setExtImportResult({ ok: false, message: 'Invalid invoice data from extension.' });
+            return;
+          }
+          if (!Array.isArray(invoiceData) || invoiceData.length === 0) {
+            setExtImportResult({ ok: false, message: 'No invoice data received from extension.' });
+            return;
+          }
+
+          // Convert invoice dates (MM/DD/YYYY) to YYYY-MM-DD and group by storeId
+          const visitEntries = [];
+          const latestByStore = {};
+          for (const inv of invoiceData) {
+            const storeId = inv.storeId;
+            if (!storeId) continue;
+            const dateStr = inv.docDate || inv.postDate;
+            if (!dateStr) continue;
+            // Parse MM/DD/YYYY format
+            const parts = dateStr.split('/');
+            let isoDate;
+            if (parts.length === 3) {
+              const [m, d, y] = parts;
+              isoDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+            } else {
+              isoDate = dateStr; // already ISO?
+            }
+            visitEntries.push({ storeId, date: isoDate });
+            if (!latestByStore[storeId] || isoDate > latestByStore[storeId]) {
+              latestByStore[storeId] = isoDate;
+            }
+          }
+
+          // Bulk record visits (updates visitHistory + lastVisited)
+          if (visitEntries.length > 0) {
+            bulkRecordVisits(visitEntries);
+          }
+
+          // Also update lastSaleDate on stores if newer
+          const saleUpdates = [];
+          for (const [storeId, date] of Object.entries(latestByStore)) {
+            const store = stores.find(s => s.id === storeId);
+            if (!store) continue;
+            if (!store.lastSaleDate || date > store.lastSaleDate) {
+              saleUpdates.push({ id: storeId, lastSaleDate: date });
+            }
+          }
+          if (saleUpdates.length > 0) bulkImportStores(saleUpdates, []);
+
+          const storeCount = Object.keys(latestByStore).length;
+          const storeNames = [...new Set(invoiceData.map(r => r.storeName).filter(Boolean))];
+          setExtImportResult({
+            ok: true,
+            message: `Imported ${invoiceData.length} invoices for ${storeCount} store${storeCount !== 1 ? 's' : ''} (${storeNames.join(', ')}). Visit history and last sale dates updated.`,
+          });
+        }
+
         if (source === 'websnak') {
           const text = typeof data === 'string' ? data : JSON.stringify(data);
           setRawInput(text);
@@ -335,7 +395,7 @@ export default function DataImport() {
     }, 2000); // Check every 2 seconds
 
     return () => clearInterval(interval);
-  }, [transactions, stores, setTransactions, bulkImportStores, addImportEntry]);
+  }, [transactions, stores, setTransactions, bulkImportStores, bulkRecordVisits, addImportEntry]);
 
   async function handleParse() {
     setApplied(false);

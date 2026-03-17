@@ -8,6 +8,7 @@ let status = 'disconnected'; // disconnected | qr-pending | connected
 let qrCode = null;         // raw QR string
 let qrDataUrl = null;      // PNG data URL for browser display
 let manualDisconnect = false;
+let botWid = '';            // bot's own WhatsApp user ID (for @mention matching)
 
 // Order message buffer -- incoming messages from the order group
 const fs2 = require('fs');
@@ -24,20 +25,38 @@ const ADMIN_CONFIG_FILE   = path.join(__dirname, 'admin-chat.json');
 const MAX_MESSAGES = 1000;
 
 // Admin chat config
-let adminGroupId    = null;
+let adminGroups     = []; // array of { id, routes, destination } — routes [] = all routes
 let adminPhones     = []; // authorized phone numbers (can query the bot)
+let botPhone        = null;
+let motiveApiKey    = null;
 try {
   const cfg = JSON.parse(fs2.readFileSync(ADMIN_CONFIG_FILE, 'utf8'));
-  adminGroupId = cfg.groupId || null;
+  if (cfg.groups) {
+    adminGroups = cfg.groups;
+  } else if (cfg.groupIds) {
+    adminGroups = cfg.groupIds.map(id => ({ id, routes: [] }));
+  } else if (cfg.groupId) {
+    adminGroups = [{ id: cfg.groupId, routes: [] }];
+  }
   adminPhones  = cfg.phones  || [];
+  botPhone     = cfg.botPhone || null;
+  motiveApiKey = cfg.motiveApiKey || null;
 } catch { }
 
 function saveAdminConfig() {
-  try { fs2.writeFileSync(ADMIN_CONFIG_FILE, JSON.stringify({ groupId: adminGroupId, phones: adminPhones }, null, 2)); } catch (e) { console.error('Failed to save admin config:', e.message); }
+  try { fs2.writeFileSync(ADMIN_CONFIG_FILE, JSON.stringify({ motiveApiKey, groups: adminGroups, phones: adminPhones, botPhone }, null, 2)); } catch (e) { console.error('Failed to save admin config:', e.message); }
 }
 
 function setAdminGroup(groupId) {
-  adminGroupId = groupId;
+  if (!adminGroups.some(g => g.id === groupId)) adminGroups.push({ id: groupId, routes: [] });
+  saveAdminConfig();
+}
+function setAdminGroups(groups) {
+  adminGroups = (groups || []).map(g => ({
+    id: g.id,
+    routes: g.routes || [],
+    ...(g.destination ? { destination: g.destination } : {}),
+  }));
   saveAdminConfig();
 }
 function setAdminPhones(phones) {
@@ -45,7 +64,24 @@ function setAdminPhones(phones) {
   saveAdminConfig();
 }
 function getAdminConfig() {
-  return { groupId: adminGroupId, phones: adminPhones };
+  return { groups: adminGroups, phones: adminPhones, motiveApiKey: motiveApiKey || '' };
+}
+function setMotiveApiKey(key) {
+  motiveApiKey = key || null;
+  saveAdminConfig();
+}
+function getGroupConfig(groupId) {
+  const g = adminGroups.find(g => g.id === groupId);
+  if (!g) return null;
+  return {
+    routes: g.routes && g.routes.length > 0 ? g.routes : null,
+    destination: g.destination || null,
+    motiveApiKey,
+  };
+}
+function getGroupRoutes(groupId) {
+  const g = adminGroups.find(g => g.id === groupId);
+  return g && g.routes && g.routes.length > 0 ? g.routes : null; // null = all routes
 }
 
 // Alert blast tracking — maps messageId -> refNumber for reply matching
@@ -145,7 +181,15 @@ function initialize() {
     qrDataUrl = null;
     cachedGroups = null; // clear stale cache on reconnect
     groupsCachedAt = 0;
-    console.log('\u2705 WhatsApp client connected and ready!');
+
+    // Store the bot's own WhatsApp ID for @mention matching
+    try {
+      const me = client.info?.wid;
+      botWid = me ? (me.user || me._serialized || '') : '';
+      console.log(`\u2705 WhatsApp client connected and ready! (bot ID: ${botWid})`);
+    } catch {
+      console.log('\u2705 WhatsApp client connected and ready!');
+    }
 
     // Auto-fetch message history on startup if a group is configured
     if (orderGroupId) {
@@ -214,21 +258,42 @@ function initialize() {
       }
 
       // ── Admin chat query handler ──────────────────────────────────────────
-      if (adminGroupId && msg.from === adminGroupId) {
-        const contact = await msg.getContact();
-        const phone   = contact.number || msg.author || msg.from;
-        // Check if sender is authorized
-        const isAuth  = adminPhones.length === 0 || adminPhones.includes(phone) || adminPhones.some(p => phone.endsWith(p.replace(/\D/g, '').slice(-10)));
-        if (isAuth && msg.body && !msg.body.startsWith('_BOT_')) {
-          console.log(`[AdminChat] Query from ${phone}: "${msg.body.substring(0, 60)}"`);
-          try {
-            const reply = adminChat.processQuery(msg.body.trim());
-            // Small delay so it feels natural
-            await new Promise(r => setTimeout(r, 600));
-            await client.sendMessage(adminGroupId, reply);
-            console.log(`[AdminChat] Replied: "${reply.substring(0, 60)}"`);
-          } catch (qErr) {
-            console.error('[AdminChat] Reply error:', qErr.message);
+      const isAdminGroup = adminGroups.some(g => g.id === msg.from);
+      if (adminGroups.length > 0 && isAdminGroup) {
+        const body = (msg.body || '').trim();
+
+        // Check if message @mentions the bot
+        const mentionedIds = msg.mentionedIds || [];
+        const mentionsBot = mentionedIds.length > 0
+          || (botWid && body.includes(botWid))
+          || /[@＠]\d{5,}/.test(body);
+
+        // Strip @mention tokens from the body to get the actual command
+        // WhatsApp may use special unicode chars, so strip broadly
+        const queryText = body
+          .replace(/[@＠]\S+/g, '')          // standard and fullwidth @
+          .replace(/\u200b/g, '')            // zero-width spaces
+          .trim();
+
+        // Only process if bot was @mentioned
+        if (mentionsBot) {
+          const contact = await msg.getContact();
+          const phone   = contact.number || msg.author || msg.from;
+          // Check if sender is authorized
+          const isAuth  = adminPhones.length === 0 || adminPhones.includes(phone) || adminPhones.some(p => phone.endsWith(p.replace(/\D/g, '').slice(-10)));
+          if (isAuth && queryText && !queryText.startsWith('_BOT_')) {
+            console.log(`[AdminChat] Query from ${phone}: "${queryText.substring(0, 60)}"`);
+            try {
+              const routeFilter = getGroupRoutes(msg.from);
+              const groupConfig = getGroupConfig(msg.from);
+              const reply = await adminChat.processQuery(queryText, routeFilter, groupConfig);
+              // Small delay so it feels natural
+              await new Promise(r => setTimeout(r, 600));
+              await client.sendMessage(msg.from, reply);
+              console.log(`[AdminChat] Replied: "${reply.substring(0, 60)}"`);
+            } catch (qErr) {
+              console.error('[AdminChat] Reply error:', qErr.message);
+            }
           }
         }
       }
@@ -805,6 +870,8 @@ module.exports = {
   getAlertResponses,
   getBlastSentRefs,
   setAdminGroup,
+  setAdminGroups,
   setAdminPhones,
   getAdminConfig,
+  setMotiveApiKey,
 };
