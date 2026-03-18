@@ -81,7 +81,7 @@ FLW01297,FLW01297,Food Lion 1297,3344 Hayman Dr,Federalsburg,MD,21632,210,Route 
 FLW01313,FLW01313,Food Lion 1313,300 THOMPSON CREEK MALL,Stevensville,MD,21666,210,Route 210 Driver,Eastern Shore Maryland,Stevensville,Stevensville,38.9756668,-76.3145597,2026-03-06,2026-03-14,No
 FLW01369,01369,Food Lion 1369,501 W Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Dover,Dover,39.4516822,-75.723283,2026-03-07,2026-03-12,No
 FLW01385,01385,Food Lion,1030 FOREST AVE,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1582,-75.5244,2026-03-11,2026-02-11,No
-FLW01419,01419,Food Lion,250 GATEWAY SOUTH BLVD,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.1228365,-75.4985452,2026-03-04,2026-03-11,No
+FLW01419,01419,Food Lion,250 GATEWAY SOUTH BLVD,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.1228365,-75.4985452,2026-03-04,2026-03-18,No
 FLW01426,01426,Food Lion 1426,215 STADIUM ST,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Dover,Dover,39.2801631,-75.5909896,2026-03-12,2026-03-12,No
 FLW01458,01458,Food Lion 1458,30214 SUSSEX HWY UNIT 5,Laurel,DE,19956,210,Route 210 Driver,Delaware,Laurel,Laurel,38.5562,-75.5713,2026-03-17,2026-03-17,No
 FLW01560,01560,Food Lion 1560,206 N Fruitland Blvd,Fruitland,MD,21826,206,Route 210 Driver,Eastern Shore Maryland,Fruitland,Fruitland,38.3244654,-75.6177442,2026-03-10,2026-03-10,No
@@ -169,7 +169,7 @@ WMW05105,WMW05105,Walmart 5105,10 Riverton Commons Dr,Front Royal,VA,22630,0,,Un
 IND00205,IND00205,Nothing Better LLC Cash,14882 Hardscrabble Rd,Seaford,DE,19973,206,Route 206 Driver,Delaware/Seaford,Seaford,Seaford,38.6192809,-75.4832676,2026-03-16,2025-10-22 16:49:23,No
 GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1588238,-76.5162013,,,Yes
 MISC0121,MISC0121,Salisbury Storage,2309 E Naylor Mill Rd,Salisbury,MD,21804,210,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4034658,-75.5624319,,2026-03-16,No
-CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-03-07,2026-03-07,No
+CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-03-07,2026-03-18,No
 CMW05235,05235,Comm Ft Belvoir 5235,6020 GORGAS RD,Fort Belvoir,VA,22060,209,Route 209 Driver,Northern Virginia,Fort Belvoir,Fort Belvoir,38.7194544,-77.145685,2026-03-16,2026-03-16,No
 CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-03-12,2026-03-12,No
 FLW00378,00378,Food Lion 0378,613 FROST AVE,Warrenton,VA,20186,209,Route 209 Driver,Northern Virginia,Warrenton,Warrenton,38.7177885,-77.8133782,2026-03-10,2026-03-10,No
@@ -180,11 +180,11 @@ FLW01185,01185,Food Lion 1185,720 S KING ST,Leesburg,VA,20175,209,Route 209 Driv
 FLW01208,01208,Food Lion 1208,13490 DUMFRIES RD,Manassas,VA,20112,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.6598391,-77.4413949,2026-03-11,2026-03-11,No
 FLW01226,01226,Food Lion 1226,14641 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.6582,-77.2497,2026-03-17,2026-03-17,No
 FLW01249,01249,Food Lion 1249,5227 WATERWAY DR,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.5685,-77.3281,2026-03-12,2026-03-27,No
-FLW01261,01261,Food Lion 1261,13414 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.65846146722824,-77.25268858409427,2026-03-17,2026-02-13,No
+FLW01261,01261,Food Lion 1261,13414 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.65846146722824,-77.25268858409427,2026-03-17,2026-03-18,No
 FLW01322,01322,Food Lion 1322,3059 CENTERVILLE RD,Herndon,VA,20171,209,Route 209 Driver,Northern Virginia,Herndon,Herndon,38.9696,-77.3861,2026-03-16,2026-02-16,No
 FLW01337,01337,Food Lion 1337,20789 GREAT FALLS PLZ,Sterling,VA,20165,209,Route 209 Driver,Northern Virginia,Sterling,Sterling,39.040721,-77.3580689,2026-03-04,2026-03-04,No
 FLW01383,01383,Food Lion 1383,9121 CENTERVILLE RD,Manassas,VA,20110,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.75116146722824,-77.47828858409427,2026-03-10,2026-03-10,No
-FLW01471,01471,Food Lion 1471,17120 JEFFERSON DAVIS HWY,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.579892,-77.313254,2026-03-12,2026-03-12,No
+FLW01471,01471,Food Lion 1471,17120 JEFFERSON DAVIS HWY,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.579892,-77.313254,2026-03-12,2026-03-18,No
 FLW01572,01572,Food Lion 1572,14630 MINNEVILLE RD,Dale City,VA,22193,209,Route 209 Driver,Northern Virginia,Dale City,Dale City,38.637,-77.3109,2026-03-11,2026-02-11,No
 FLW01588,01588,Food Lion 1588,4195 WINCHESTER RD,Marshall,VA,20115,209,Route 209 Driver,Northern Virginia,Marshall,Marshall,38.8640017,-77.8474504,2026-03-11,2026-03-10,No
 FLW02518,02518,Food Lion 2518,12420 DILLINGHAM SQ,Lake Ridge,VA,22192,209,Route 209 Driver,Northern Virginia,Lake Ridge,Lake Ridge,38.682,-77.2996,2026-03-11,2026-03-10,No
@@ -709,7 +709,7 @@ SFW07533,SFW07533,SHOPPERS FOOD WHSE 7533 CLOSING,1200 EASTERN BLVD,ESSEX,MD,212
 CASH0353,CASH0353,Sg Convenience Store,1856 Wilkens Ave,Baltimore,MD,21223,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2823771,-76.6464382,2026-02-23,,No
 CASH0374,CASH0374,Sunnys Food Market,1739 N Payson,Baltimore,MD,,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3086267,-76.649551,2026-03-11,2026-02-12,No
 CASH0530,CASH0530,Basilica Place Cafe and Convenience,124 West Franklin St.,Baltimore,MD,21201,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2953943,-76.6175375,2026-02-23,,No
-WAW03588,WAW03588,WALMART 3588,17041 Richmond Hwy,Dumfries,VA,22026,209,Route 208 Driver,Northern Virginia,Prince William County,Prince William County,38.5766154,-77.3123432,2026-03-12,2026-03-12,No
+WAW03588,WAW03588,WALMART 3588,17041 Richmond Hwy,Dumfries,VA,22026,209,Route 208 Driver,Northern Virginia,Prince William County,Prince William County,38.5766154,-77.3123432,2026-03-12,2026-03-18,No
 CASH3029,CASH3029,Cheriton Quick Mart,20194 Charles M Lankford Jr Memorial HWY,Cheriton,VA,23316,210,Route 210 Driver,Unassigned,Unassigned,Unassigned,37.3046651,-75.967161,,,Yes
 CASH3030,CASH3030,Cheriton Quick Mart,20194 Charles M Lankford Jr Memorial HWY,Cheriton,VA,23316,210,Route 210 Driver,Unassigned,Unassigned,Unassigned,37.3046651,-75.967161,,,Yes
 CASH3031,CASH3031,B & B Conv,13001 Lankford Hwy,Machipongo,VA,23405,210,Route 210 Driver,Unassigned,Unassigned,Unassigned,37.4036234,-75.903877,,,Yes
