@@ -399,10 +399,28 @@ export default function DataImport() {
 
   async function handleParse() {
     setApplied(false);
+
+    // Auto-detect invoice JSON format (storeId + docDate)
+    const trimmed = rawInput.trim();
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const jsonData = JSON.parse(trimmed);
+        const arr = Array.isArray(jsonData) ? jsonData : [jsonData];
+        if (arr.length > 0 && arr[0].storeId && (arr[0].docDate || arr[0].postDate)) {
+          processInvoiceData(arr);
+          setRawInput('');
+          setParsed(null);
+          return;
+        }
+      } catch {
+        // Not valid JSON, fall through to Python parser
+      }
+    }
+
     const feedStores = parsePythonFeed(rawInput);
 
     if (feedStores.length === 0) {
-      setParsed({ error: 'No stores found. Make sure the data is in the Python dict format.' });
+      setParsed({ error: 'No stores found. Paste Python dict format or invoice JSON (with storeId + docDate fields).' });
       return;
     }
 
@@ -510,6 +528,15 @@ export default function DataImport() {
       setTxImporting(false);
       return;
     }
+
+    // Detect invoice format (has storeId + docDate fields) vs DAO transaction format
+    const isInvoiceFormat = data[0] && data[0].storeId && (data[0].docDate || data[0].postDate);
+    if (isInvoiceFormat) {
+      processInvoiceData(data);
+      setTxImporting(false);
+      return;
+    }
+
     const newIds = new Set(data.map(d => d.id).filter(Boolean));
     const kept = transactions.filter(t => !t.id || !newIds.has(t.id));
     const merged = [...kept, ...data];
@@ -531,6 +558,68 @@ export default function DataImport() {
 
     setTxImportError('');
     setTxImporting(false);
+  }
+
+  /** Process invoice-format data (storeId, docDate, postDate, amount, storeName) */
+  function processInvoiceData(invoiceData) {
+    const visitEntries = [];
+    const latestByStore = {};
+    for (const inv of invoiceData) {
+      const storeId = inv.storeId;
+      if (!storeId) continue;
+      // Skip negative amounts (returns/credits)
+      if (inv.amount != null && inv.amount < 0) continue;
+      const dateStr = inv.docDate || inv.postDate;
+      if (!dateStr) continue;
+      // Parse MM/DD/YYYY format
+      const parts = dateStr.split('/');
+      let isoDate;
+      if (parts.length === 3) {
+        const [m, d, y] = parts;
+        isoDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      } else {
+        isoDate = dateStr;
+      }
+      visitEntries.push({ storeId, date: isoDate });
+      if (!latestByStore[storeId] || isoDate > latestByStore[storeId]) {
+        latestByStore[storeId] = isoDate;
+      }
+    }
+
+    // Bulk record visits (updates visitHistory + lastVisited)
+    if (visitEntries.length > 0) {
+      bulkRecordVisits(visitEntries);
+    }
+
+    // Also update lastSaleDate on stores if newer
+    const saleUpdates = [];
+    for (const [storeId, date] of Object.entries(latestByStore)) {
+      const store = stores.find(s => s.id === storeId);
+      if (!store) continue;
+      if (!store.lastSaleDate || date > store.lastSaleDate) {
+        saleUpdates.push({ id: storeId, lastSaleDate: date });
+      }
+    }
+    if (saleUpdates.length > 0) bulkImportStores(saleUpdates, []);
+
+    const storeCount = Object.keys(latestByStore).length;
+    const storeNames = [...new Set(invoiceData.map(r => r.storeName).filter(Boolean))];
+    const dates = visitEntries.map(v => v.date).sort();
+
+    addImportEntry({
+      importType: 'invoices',
+      totalInFeed: invoiceData.length,
+      parsedCount: visitEntries.length,
+      newRecords: visitEntries.length,
+      duplicatesSkipped: 0,
+      dateRange: dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : '',
+      routes: [...new Set(invoiceData.map(r => r.jobber).filter(Boolean))].sort(),
+    });
+
+    setExtImportResult({
+      ok: true,
+      message: `Imported ${visitEntries.length} invoices for ${storeCount} store${storeCount !== 1 ? 's' : ''} (${storeNames.join(', ')}). Visit history and last sale dates updated.`,
+    });
   }
 
   function txHandleFileSelect(e) {
@@ -651,9 +740,9 @@ export default function DataImport() {
 
       {/* Transaction Import Section */}
       <div className="data-import-geocode-section">
-        <h3>Transaction Import (DAO Dashboard)</h3>
+        <h3>Transaction &amp; Invoice Import</h3>
         <p className="data-import-desc" style={{ margin: '4px 0 10px' }}>
-          Import weekly transaction data from the DAO Dashboard.
+          Import DAO transactions or invoice JSON files.
           {transactions.length > 0 && ` (${transactions.length} records, ${txParsed.length} parsed)`}
         </p>
         <input
@@ -736,12 +825,27 @@ export default function DataImport() {
         <input
           ref={storeFileInputRef}
           type="file"
-          accept=".txt"
+          accept=".txt,.json"
           onChange={e => {
             const file = e.target.files?.[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = () => { setRawInput(reader.result); setApplied(false); setParsed(null); };
+            reader.onload = () => {
+              const text = reader.result;
+              // Auto-detect invoice JSON and process immediately
+              const trimmed = text.trim();
+              if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                try {
+                  const jsonData = JSON.parse(trimmed);
+                  const arr = Array.isArray(jsonData) ? jsonData : [jsonData];
+                  if (arr.length > 0 && arr[0].storeId && (arr[0].docDate || arr[0].postDate)) {
+                    processInvoiceData(arr);
+                    return;
+                  }
+                } catch { /* fall through */ }
+              }
+              setRawInput(text); setApplied(false); setParsed(null);
+            };
             reader.readAsText(file);
             e.target.value = '';
           }}
@@ -756,7 +860,7 @@ export default function DataImport() {
           className="data-import-textarea"
           value={rawInput}
           onChange={(e) => setRawInput(e.target.value)}
-          placeholder={`Or paste Python store data here, e.g.:\n\n[\n    {'Store Id': 'FLW00246', 'Name': 'FOOD LION 0246', 'Route/Jobber': 206, 'Address': '11801 COASTAL HWY OCEAN CITY, MD. 21842', 'Last Sale': '02/12/2026', ...},\n    ...\n]`}
+          placeholder={`Paste data here — supports:\n\n• Invoice JSON: [{"storeId": "FLW00950", "docDate": "11/26/2025", "amount": 313.95, ...}]\n• Python store feed: [{'Store Id': 'FLW00246', 'Name': 'FOOD LION 0246', ...}]`}
           rows={10}
           disabled={applied}
         />
@@ -888,7 +992,7 @@ export default function DataImport() {
               const ts = new Date(entry.timestamp);
               const dateStr = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
               const timeStr = ts.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-              const isTxImport = entry.importType === 'transactions';
+              const isTxImport = entry.importType === 'transactions' || entry.importType === 'invoices';
               const lastStore = !isTxImport && entry.stores?.length > 0 ? entry.stores[entry.stores.length - 1] : null;
 
               return (
@@ -900,7 +1004,8 @@ export default function DataImport() {
                     <div className="di-log-entry-left">
                       <span className={`al-chevron ${isExpanded ? 'expanded' : ''}`}>&#9654;</span>
                       <span className="di-log-entry-date">{dateStr} {timeStr}</span>
-                      {isTxImport && <span className="di-log-pill" style={{ background: '#dbeafe', color: '#1e40af', marginLeft: 6 }}>Transactions</span>}
+                      {entry.importType === 'invoices' && <span className="di-log-pill" style={{ background: '#fef3c7', color: '#92400e', marginLeft: 6 }}>Invoices</span>}
+                      {entry.importType === 'transactions' && <span className="di-log-pill" style={{ background: '#dbeafe', color: '#1e40af', marginLeft: 6 }}>Transactions</span>}
                       {!isTxImport && <span className="di-log-pill" style={{ background: '#dcfce7', color: '#166534', marginLeft: 6 }}>Store Feed</span>}
                     </div>
                     <div className="di-log-entry-pills">

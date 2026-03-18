@@ -1543,6 +1543,16 @@ export function AppProvider({ children }) {
     return () => { if (inventorySaveTimer.current) clearTimeout(inventorySaveTimer.current); };
   }, [state.inventory]);
 
+  // Expose store list to localStorage for Chrome extension to read
+  useEffect(() => {
+    try {
+      const slim = state.stores.map(s => ({
+        id: s.id, name: s.name || s.storeName || '', routeNumber: s.routeNumber || '', dormant: s.dormant || 'No',
+      }));
+      localStorage.setItem('MAP_TRACKER_STORES', JSON.stringify(slim));
+    } catch { /* quota */ }
+  }, [state.stores]);
+
   const actions = {
     addStore: useCallback(
       (store) => dispatch({ type: 'ADD_STORE', payload: store }),

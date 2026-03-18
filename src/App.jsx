@@ -124,8 +124,55 @@ function getActiveGroup(page) {
 
 function AppContent() {
   useGlobalErrorLogging();
-  const { state, setPage } = useApp();
+  const { state, setPage, bulkRecordVisits, bulkImportStores } = useApp();
   const page = state.currentPage;
+
+  // Global extension import listener — runs on all pages, not just DataImport
+  const extImportRef = useRef(0);
+  useEffect(() => {
+    const CHECK_KEY = 'MAP_TRACKER_EXT_IMPORT';
+    const interval = setInterval(() => {
+      try {
+        const raw = localStorage.getItem(CHECK_KEY);
+        if (!raw) return;
+        const { source, data, ts } = JSON.parse(raw);
+        if (ts <= extImportRef.current) return;
+        extImportRef.current = ts;
+        // Only handle invoices here — other sources handled by DataImport when mounted
+        if (source !== 'invoices') return;
+        localStorage.removeItem(CHECK_KEY);
+        let invoiceData = typeof data === 'string' ? JSON.parse(data) : data;
+        if (!Array.isArray(invoiceData) || invoiceData.length === 0) return;
+        const visitEntries = [];
+        const latestByStore = {};
+        for (const inv of invoiceData) {
+          if (!inv.storeId) continue;
+          if (inv.amount != null && inv.amount < 0) continue;
+          const dateStr = inv.docDate || inv.postDate;
+          if (!dateStr) continue;
+          const parts = dateStr.split('/');
+          const isoDate = parts.length === 3
+            ? `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`
+            : dateStr;
+          visitEntries.push({ storeId: inv.storeId, date: isoDate });
+          if (!latestByStore[inv.storeId] || isoDate > latestByStore[inv.storeId]) {
+            latestByStore[inv.storeId] = isoDate;
+          }
+        }
+        if (visitEntries.length > 0) bulkRecordVisits(visitEntries);
+        const saleUpdates = [];
+        for (const [storeId, date] of Object.entries(latestByStore)) {
+          const store = state.stores.find(s => s.id === storeId);
+          if (store && (!store.lastSaleDate || date > store.lastSaleDate)) {
+            saleUpdates.push({ id: storeId, lastSaleDate: date });
+          }
+        }
+        if (saleUpdates.length > 0) bulkImportStores(saleUpdates, []);
+        console.log(`[App] Extension imported ${visitEntries.length} invoices for ${Object.keys(latestByStore).length} stores`);
+      } catch (e) { /* ignore */ }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [state.stores, bulkRecordVisits, bulkImportStores]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 1200);

@@ -79,6 +79,7 @@
     .btn-websnak { background: #22c55e; color: #fff; }
     .btn-download { background: #f59e0b; color: #fff; margin-top: 0; }
     .btn-invoices { background: #8b5cf6; color: #fff; margin-top: 0; }
+    .btn-stop { background: #ef4444; color: #fff; margin-top: 0; }
 
     /* Status log */
     .log-section {
@@ -157,6 +158,94 @@
       align-items: center;
       justify-content: space-between;
       margin: 16px 0 8px;
+    }
+
+    /* Route picker */
+    #routePicker {
+      margin: 0 20px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .route-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 10px;
+    }
+    .route-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .route-btn {
+      padding: 8px 4px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      text-align: center;
+      line-height: 1.3;
+      transition: all 0.15s;
+    }
+    .route-btn:hover {
+      background: #ede9fe;
+      border-color: #8b5cf6;
+      color: #6d28d9;
+    }
+    .route-btn.route-all {
+      background: #8b5cf6;
+      color: #fff;
+      border-color: #8b5cf6;
+    }
+    .route-btn.route-all:hover {
+      background: #7c3aed;
+    }
+    .route-btn.route-current {
+      background: #f1f5f9;
+      color: #64748b;
+      border-color: #cbd5e1;
+    }
+    .route-btn.route-current:hover {
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .route-count {
+      font-size: 10px;
+      font-weight: 400;
+      opacity: 0.8;
+    }
+    .route-cancel {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: none;
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .route-cancel:hover { background: #fef2f2; color: #ef4444; border-color: #fca5a5; }
+    .route-loading {
+      text-align: center;
+      color: #64748b;
+      font-size: 12px;
+      padding: 12px 0;
+    }
+    .route-error {
+      text-align: center;
+      color: #991b1b;
+      font-size: 12px;
+      padding: 12px 0;
+      background: #fef2f2;
+      border-radius: 6px;
     }
   </style>
 </head>

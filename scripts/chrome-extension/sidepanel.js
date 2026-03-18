@@ -16,6 +16,7 @@ const SITES = [
         btnClass: 'btn-invoices',
         btnText: 'Import Store Invoices',
         script: 'scrape-invoices.js',
+        needsRoute: true,
       },
     ],
   },
@@ -30,9 +31,15 @@ const SITES = [
   },
 ];
 
+const APP_URL_PATTERNS = [
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'https://mahpour4.github.io/Map-tracker',
+];
+
 let currentDetected = null;
 let currentTabId = null;
-let lastScrapedData = null; // Store last scrape for download fallback
+let lastScrapedData = null;
 
 function addLog(msg, type) {
   const log = document.getElementById('log');
@@ -42,14 +49,12 @@ function addLog(msg, type) {
   const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   entry.innerHTML = `<div>${msg}</div><div class="log-time">${time}</div>`;
 
-  // Insert at top
   if (log.firstChild) {
     log.insertBefore(entry, log.firstChild);
   } else {
     log.appendChild(entry);
   }
 
-  // Remove empty state
   const empty = log.querySelector('.empty-log');
   if (empty) empty.remove();
 }
@@ -68,6 +73,7 @@ function updateUI(tab) {
   currentTabId = tab?.id;
 
   currentDetected = detectSite(url);
+  hideRoutePicker();
 
   if (!currentDetected) {
     content.innerHTML = `
@@ -97,6 +103,7 @@ function updateUI(tab) {
       buttonsHtml += `\n    <button id="extraBtn${i}" class="btn ${eb.btnClass}" data-script="${eb.script}" data-key="${eb.key}">${eb.btnText}</button>`;
     });
   }
+  buttonsHtml += `<div id="routePicker" style="display:none"></div>`;
   buttonArea.innerHTML = buttonsHtml;
 
   document.getElementById('importBtn').addEventListener('click', handleImportClick);
@@ -133,48 +140,294 @@ function handleImportClick() {
 function handleExtraImport(extraBtn, index) {
   if (!currentTabId) return;
 
+  if (extraBtn.needsRoute) {
+    showRoutePicker(extraBtn, index);
+    return;
+  }
+
+  launchExtraScraper(extraBtn, index);
+}
+
+function launchExtraScraper(extraBtn, index, storeList) {
   const btn = document.getElementById(`extraBtn${index}`);
   btn.disabled = true;
   btn.textContent = 'Scraping...';
   addLog('Running ' + extraBtn.key + ' scraper...', 'info');
 
-  chrome.scripting.executeScript(
-    {
-      target: { tabId: currentTabId, allFrames: true },
-      files: [extraBtn.script],
-    },
-    (results) => {
-      if (chrome.runtime.lastError) {
-        addLog('Error: ' + chrome.runtime.lastError.message, 'error');
-        btn.disabled = false;
-        btn.textContent = extraBtn.btnText;
+  showStopButton();
+
+  const doInject = () => {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId: currentTabId, allFrames: true },
+        files: [extraBtn.script],
+      },
+      (results) => {
+        if (chrome.runtime.lastError) {
+          addLog('Error: ' + chrome.runtime.lastError.message, 'error');
+          btn.disabled = false;
+          btn.textContent = extraBtn.btnText;
+        }
       }
-    }
-  );
+    );
+  };
+
+  if (storeList && storeList.length > 0) {
+    // Set the store list in sessionStorage on the target tab before injecting the scraper
+    chrome.scripting.executeScript(
+      {
+        target: { tabId: currentTabId, allFrames: true },
+        world: 'MAIN',
+        func: (stores) => {
+          try {
+            localStorage.setItem('invoice-scraper-stores', JSON.stringify(stores));
+          } catch (e) { console.error('[Invoice Scraper] Failed to set store list', e); }
+        },
+        args: [storeList],
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          addLog('Error setting store list: ' + chrome.runtime.lastError.message, 'error');
+          btn.disabled = false;
+          btn.textContent = extraBtn.btnText;
+          return;
+        }
+        doInject();
+      }
+    );
+  } else {
+    doInject();
+  }
 }
 
-// Initial load — get active tab
+// ── Stop Button ───────────────────────────────────────────────────────────
+
+function showStopButton() {
+  const buttonArea = document.getElementById('button-area');
+  if (document.getElementById('stopBtn')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'stopBtn';
+  btn.className = 'btn btn-stop';
+  btn.textContent = 'Stop Scraping';
+  btn.addEventListener('click', () => {
+    addLog('Sending stop signal...', 'info');
+    // Set stop flag on the WebSnak tab via localStorage
+    chrome.scripting.executeScript({
+      target: { tabId: currentTabId, allFrames: true },
+      world: 'MAIN',
+      func: () => { try { localStorage.setItem('invoice-scraper-stop', '1'); } catch(e) {} },
+    });
+    btn.disabled = true;
+    btn.textContent = 'Stopping...';
+  });
+  buttonArea.appendChild(btn);
+}
+
+function hideStopButton() {
+  const btn = document.getElementById('stopBtn');
+  if (btn) btn.remove();
+}
+
+// ── Route Picker ──────────────────────────────────────────────────────────
+
+function hideRoutePicker() {
+  const picker = document.getElementById('routePicker');
+  if (picker) picker.style.display = 'none';
+}
+
+async function showRoutePicker(extraBtn, index) {
+  const picker = document.getElementById('routePicker');
+  if (!picker) return;
+
+  picker.style.display = 'block';
+  picker.innerHTML = '<div class="route-loading">Loading routes from Map Tracker...</div>';
+  addLog('Fetching store list from Map Tracker...', 'info');
+
+  try {
+    const storeData = await fetchStoresFromApp();
+    if (!storeData || storeData.length === 0) {
+      picker.innerHTML = '<div class="route-error">Could not load stores. Is Map Tracker open?</div>';
+      addLog('Could not fetch stores from Map Tracker', 'error');
+      return;
+    }
+
+    // Group by route
+    const routes = {};
+    for (const s of storeData) {
+      const route = s.route || 'Unassigned';
+      if (!routes[route]) routes[route] = [];
+      routes[route].push(s);
+    }
+
+    // Sort route numbers
+    const sortedRoutes = Object.keys(routes).sort((a, b) => {
+      const na = parseInt(a), nb = parseInt(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      if (!isNaN(na)) return -1;
+      if (!isNaN(nb)) return 1;
+      return a.localeCompare(b);
+    });
+
+    let html = '<div class="route-header">Select Route to Scrape</div>';
+    html += '<div class="route-grid">';
+    // "All Routes" button
+    const allActive = storeData.filter(s => s.route && s.route !== 'Unassigned' && !s.dormant);
+    html += `<button class="route-btn route-all" data-route="__ALL__">All<br><span class="route-count">${allActive.length} stores</span></button>`;
+    // "Current Page" button — scrape whatever is showing without searching
+    html += `<button class="route-btn route-current" data-route="__CURRENT__">Current<br><span class="route-count">page only</span></button>`;
+    for (const route of sortedRoutes) {
+      if (route === 'Unassigned' || !route) continue;
+      const stores = routes[route];
+      const activeStores = stores.filter(s => !s.dormant);
+      html += `<button class="route-btn" data-route="${route}">Rt ${route}<br><span class="route-count">${activeStores.length} active</span></button>`;
+    }
+    html += '</div>';
+    html += '<button class="route-cancel" id="routeCancel">Cancel</button>';
+
+    picker.innerHTML = html;
+
+    // Wire up buttons
+    picker.querySelectorAll('.route-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const route = btn.dataset.route;
+
+        if (route === '__CURRENT__') {
+          // Legacy mode — no store list, scrape current page
+          addLog('Scraping current page (no store search)', 'info');
+          hideRoutePicker();
+          launchExtraScraper(extraBtn, index, null);
+          return;
+        }
+
+        let selectedStores;
+        if (route === '__ALL__') {
+          selectedStores = storeData.filter(s => s.route && s.route !== 'Unassigned' && !s.dormant);
+        } else {
+          selectedStores = routes[route].filter(s => !s.dormant);
+        }
+
+        // Extract store numbers for searching
+        const storeList = selectedStores.map(s => {
+          // Extract numeric part from ID (e.g. FLW01668 → 01668)
+          const numMatch = (s.id || '').match(/\d+$/);
+          return {
+            storeId: s.id,
+            storeNum: numMatch ? numMatch[0] : s.id,
+          };
+        });
+
+        const routeLabel = route === '__ALL__' ? 'all routes' : `Route ${route}`;
+        addLog(`Selected ${routeLabel}: ${storeList.length} stores`, 'info');
+        hideRoutePicker();
+        launchExtraScraper(extraBtn, index, storeList);
+      });
+    });
+
+    document.getElementById('routeCancel').addEventListener('click', hideRoutePicker);
+
+  } catch (err) {
+    picker.innerHTML = `<div class="route-error">Error: ${err.message}</div>`;
+    addLog('Error fetching stores: ' + err.message, 'error');
+  }
+}
+
+/**
+ * Fetch store list from the Map Tracker app by reading its localStorage.
+ */
+async function fetchStoresFromApp() {
+  const tabs = await chrome.tabs.query({});
+  let appTab = null;
+
+  for (const tab of tabs) {
+    const url = (tab.url || '').toLowerCase();
+    for (const pattern of APP_URL_PATTERNS) {
+      if (url.startsWith(pattern.toLowerCase())) {
+        appTab = tab;
+        break;
+      }
+    }
+    if (appTab) break;
+  }
+
+  if (!appTab) {
+    throw new Error('Map Tracker is not open. Please open it first.');
+  }
+
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: appTab.id },
+    world: 'MAIN',
+    func: () => {
+      try {
+        // Try known keys
+        const tryKeys = ['MAP_TRACKER_STORES', 'map-tracker-stores'];
+        for (const key of tryKeys) {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          try {
+            const data = JSON.parse(raw);
+            if (Array.isArray(data) && data.length > 0 && data[0].id) {
+              return data.map(s => ({
+                id: s.id,
+                route: s.routeNumber || s.route || '',
+                dormant: s.dormant === 'Yes' || s.dormant === true,
+                name: s.name || s.storeName || '',
+              }));
+            }
+          } catch (e) { /* skip */ }
+        }
+        // Scan all keys for any that contain store data
+        for (const key of Object.keys(localStorage)) {
+          if (key.toLowerCase().includes('store')) {
+            try {
+              const data = JSON.parse(localStorage.getItem(key));
+              if (Array.isArray(data) && data.length > 5 && data[0].id) {
+                return data.map(s => ({
+                  id: s.id,
+                  route: s.routeNumber || s.route || '',
+                  dormant: s.dormant === 'Yes' || s.dormant === true,
+                  name: s.name || s.storeName || '',
+                }));
+              }
+            } catch (e) { /* skip */ }
+          }
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    },
+  });
+
+  if (results && results[0] && results[0].result) {
+    return results[0].result;
+  }
+
+  throw new Error('Could not read store data from Map Tracker.');
+}
+
+// ── Tab Events ────────────────────────────────────────────────────────────
+
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   if (tabs[0]) updateUI(tabs[0]);
 });
 
-// Update when user switches tabs
 chrome.tabs.onActivated.addListener((activeInfo) => {
   chrome.tabs.get(activeInfo.tabId, (tab) => {
     if (tab) updateUI(tab);
   });
 });
 
-// Update when tab URL changes (navigation)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && tabId === currentTabId) {
     updateUI(tab);
   }
 });
 
+// ── Download fallback ─────────────────────────────────────────────────────
+
 function showDownloadButton() {
   const buttonArea = document.getElementById('button-area');
-  // Don't add duplicate download buttons
   if (document.getElementById('downloadBtn')) return;
 
   const dlBtn = document.createElement('button');
@@ -201,7 +454,17 @@ function downloadScrapedData() {
   addLog(`Downloaded ${lastScrapedData.count} records as ${filename}`, 'success');
 }
 
-// Listen for messages from content scripts and background
+// ── Message listener ──────────────────────────────────────────────────────
+
+function resetExtraButtons() {
+  if (currentDetected?.extraButtons) {
+    currentDetected.extraButtons.forEach((eb, i) => {
+      const eBtn = document.getElementById(`extraBtn${i}`);
+      if (eBtn) { eBtn.disabled = false; eBtn.textContent = eb.btnText; }
+    });
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   const btn = document.getElementById('importBtn');
 
@@ -210,11 +473,10 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 
   if (msg.type === 'scrape-done') {
-    // Store for download fallback
+    hideStopButton();
     lastScrapedData = { source: msg.source, data: msg.data, count: msg.count, ts: Date.now() };
     addLog(`Scraped ${msg.count} records. Sending to Map Tracker...`, 'info');
 
-    // Send to background to relay to the app
     chrome.runtime.sendMessage({
       type: 'import-to-app',
       source: msg.source,
@@ -231,13 +493,7 @@ chrome.runtime.onMessage.addListener((msg) => {
       btn.disabled = false;
       btn.textContent = currentDetected ? currentDetected.btnText : 'Done!';
     }
-    // Reset extra buttons too
-    if (currentDetected?.extraButtons) {
-      currentDetected.extraButtons.forEach((eb, i) => {
-        const eBtn = document.getElementById(`extraBtn${i}`);
-        if (eBtn) { eBtn.disabled = false; eBtn.textContent = eb.btnText; }
-      });
-    }
+    resetExtraButtons();
   }
 
   if (msg.type === 'import-error') {
@@ -246,23 +502,18 @@ chrome.runtime.onMessage.addListener((msg) => {
       btn.disabled = false;
       if (currentDetected) btn.textContent = currentDetected.btnText;
     }
-    // Show download button as fallback
     if (lastScrapedData) showDownloadButton();
+    resetExtraButtons();
   }
 
   if (msg.type === 'scrape-error') {
+    hideStopButton();
     addLog('Scrape error: ' + msg.message, 'error');
     if (btn) {
       btn.disabled = false;
       if (currentDetected) btn.textContent = currentDetected.btnText;
     }
-    // Reset extra buttons too
-    if (currentDetected?.extraButtons) {
-      currentDetected.extraButtons.forEach((eb, i) => {
-        const eBtn = document.getElementById(`extraBtn${i}`);
-        if (eBtn) { eBtn.disabled = false; eBtn.textContent = eb.btnText; }
-      });
-    }
+    resetExtraButtons();
   }
 });
 
@@ -274,6 +525,7 @@ document.getElementById('clearBtn').addEventListener('click', () => {
     btn.disabled = false;
     btn.textContent = currentDetected.btnText;
   }
+  hideRoutePicker();
 });
 
 // Show empty state initially
