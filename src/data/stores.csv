@@ -1,5 +1,5 @@
 ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Sale,Last Visited,Dormant
-SFW02342,SFW02342,Shoppers 2342,6300 Coventry Way,Clinton,MD,20735,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.78232,-76.89871,2026-02-28,2026-03-09,No
+SFW02342,SFW02342,Shoppers 2342,6300 Coventry Way,Clinton,MD,20735,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.78232,-76.89871,2026-02-28,2026-03-18,No
 SFW02353,SFW02353,Shoppers 2353,806 Largo Center Dr,Largo,MD,20774,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.9012384,-76.8369686,2025-05-16,,Yes
 SFW02377,02377,Shoppers 2377,2950 Donnell Dr,Forestville,MD,20747,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8494676,-76.8846307,2026-02-26,2026-03-09,No
 SFW02379,SFW02379,Shoppers 2379,13600 Baltimore Ave Suite100,LAUREL,MD,20707,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,39.0993,-76.8483,,2025-07-15,Yes
@@ -62,7 +62,7 @@ FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Ro
 FLW01316,01316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.631106,-77.0720882,2026-03-11,2026-03-11,No
 WMW00278,00278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.547702,-76.9827263,2025-11-13,2025-11-19,Yes
 FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6231162,-76.9084658,2026-03-10,2026-03-10,No
-FLW02547,02547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6199195,-76.934075,2026-03-10,2026-03-10,No
+FLW02547,02547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6199195,-76.934075,2026-03-10,2026-03-18,No
 WGW00041,WGW00041,Wegmans 41,Ridge Square NW,Washington,DC,20016,200,Route 200 Driver,Washington DC,Washington DC,Washington DC,38.9404451,-77.077732,,,Yes
 FLW01405,01405,Food Lion 1405,1413 FUSELAGE AVE,MIDDLE RIVER,MD,21220,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3324547,-76.4458499,2026-03-17,2026-02-21,No
 GBW00002,GBW00002,Geresbecks Baltimore,2109 Eastern Blvd,Baltimore,MD,21220,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3277067,-76.4407055,,,Yes
