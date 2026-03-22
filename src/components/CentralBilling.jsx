@@ -71,6 +71,14 @@ export default function CentralBilling() {
 
   return (
     <div className="cb-page">
+      {/* Debug panel when metadata missing */}
+      {(!centralBilling.batchNumber || !centralBilling.endDate) && centralBilling._debugLines?.length > 0 && (
+        <details className="cb-debug">
+          <summary className="cb-debug-summary">Metadata not parsed — click to show raw PDF lines (for debugging)</summary>
+          <pre className="cb-debug-pre">{centralBilling._debugLines.map((l, i) => `${i + 1}: ${l}`).join('\n')}</pre>
+        </details>
+      )}
+
       {/* Header */}
       <div className="cb-header">
         <div className="cb-header-left">

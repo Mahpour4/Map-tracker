@@ -147,6 +147,7 @@ function parseLines(lines) {
     runDate: null,
     batchTotal: null,
     invoices: [],
+    _debugLines: lines.slice(0, 40), // first 40 lines for debugging
   };
 
   let currentChain = '';
