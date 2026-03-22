@@ -83,16 +83,23 @@ function handleImportClick() {
   btn.textContent = 'Scraping...';
   addLog('Running ' + tab.btnText + '...', 'info');
 
-  chrome.scripting.executeScript(
-    { target: { tabId: currentTabId, allFrames: true }, files: [tab.script] },
-    () => {
-      if (chrome.runtime.lastError) {
-        addLog('Error: ' + chrome.runtime.lastError.message, 'error');
-        btn.disabled = false;
-        btn.textContent = tab.btnText;
-      }
+  // CB inquiry must run in MAIN world to access ag-grid JS objects (__agComponent).
+  // In MAIN world chrome.runtime is unavailable, so progress messages come from here.
+  const execOptions = { target: { tabId: currentTabId, allFrames: true }, files: [tab.script] };
+  if (activeTab === 'cb') execOptions.world = 'MAIN';
+
+  chrome.scripting.executeScript(execOptions, () => {
+    if (chrome.runtime.lastError) {
+      addLog('Error: ' + chrome.runtime.lastError.message, 'error');
+      btn.disabled = false;
+      btn.textContent = tab.btnText;
+    } else if (activeTab === 'cb') {
+      // Script ran — download was triggered directly by the scraper
+      addLog('CB Invoice Inquiry: script injected, download should start shortly.', 'success');
+      btn.disabled = false;
+      btn.textContent = tab.btnText;
     }
-  );
+  });
 }
 
 function handleExtraImport(extra) {
