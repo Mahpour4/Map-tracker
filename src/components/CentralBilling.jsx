@@ -5,7 +5,12 @@ export default function CentralBilling() {
   const { state } = useApp();
   const { centralBilling, transactions } = state;
   const [routeFilter, setRouteFilter] = useState('all');
+  const [batchFilter, setBatchFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [showUnmatchedOnly, setShowUnmatchedOnly] = useState(false);
+
+  const batches = centralBilling?.batches || [];
+  const invoices = centralBilling?.invoices || [];
 
   // Build a set of all DAO transaction IDs for cross-reference
   const txIdSet = useMemo(() => {
@@ -14,18 +19,17 @@ export default function CentralBilling() {
     return s;
   }, [transactions]);
 
-  const invoices = centralBilling?.invoices || [];
-
-  // Unique routes for filter
+  // Unique routes
   const routes = useMemo(() => {
-    const r = [...new Set(invoices.map(i => i.route).filter(Boolean))].sort();
-    return r;
+    return [...new Set(invoices.map(i => i.route).filter(Boolean))].sort();
   }, [invoices]);
 
   // Filtered invoices
   const filtered = useMemo(() => {
     return invoices.filter(inv => {
+      if (batchFilter !== 'all' && String(inv.batchNumber) !== String(batchFilter)) return false;
       if (routeFilter !== 'all' && inv.route !== routeFilter) return false;
+      if (showUnmatchedOnly && txIdSet.has(String(inv.invoiceNumber))) return false;
       if (search) {
         const q = search.toLowerCase();
         return (
@@ -37,16 +41,16 @@ export default function CentralBilling() {
       }
       return true;
     });
-  }, [invoices, routeFilter, search]);
+  }, [invoices, routeFilter, batchFilter, search, showUnmatchedOnly, txIdSet]);
 
   // Stats
   const stats = useMemo(() => {
     const matched = filtered.filter(i => txIdSet.has(String(i.invoiceNumber)));
     const total = filtered.reduce((s, i) => s + (i.cbAmount || 0), 0);
-    return { count: filtered.length, matched: matched.length, total };
+    return { count: filtered.length, matched: matched.length, unmatched: filtered.length - matched.length, total };
   }, [filtered, txIdSet]);
 
-  // Route summary
+  // Route summary (across all invoices, not filtered)
   const routeSummary = useMemo(() => {
     const map = {};
     invoices.forEach(inv => {
@@ -59,24 +63,37 @@ export default function CentralBilling() {
     return Object.values(map).sort((a, b) => a.route.localeCompare(b.route));
   }, [invoices, txIdSet]);
 
-  if (!centralBilling) {
+  if (!invoices.length) {
     return (
       <div className="cb-empty">
         <div className="cb-empty-icon">📋</div>
-        <div className="cb-empty-title">No Central Bill Loaded</div>
-        <p className="cb-empty-desc">Go to Data Import and click "Import CB PDF" to load a Central Bill Transmit List.</p>
+        <div className="cb-empty-title">No Central Bill Data</div>
+        <p className="cb-empty-desc">Go to Data Import and click "Import CB PDF" to load a Central Bill Transmit List. Each import merges into history — old invoices are never deleted.</p>
       </div>
     );
   }
 
   return (
     <div className="cb-page">
-      {/* Debug panel when metadata missing */}
-      {(!centralBilling.batchNumber || !centralBilling.endDate) && centralBilling._debugLines?.length > 0 && (
-        <details className="cb-debug">
-          <summary className="cb-debug-summary">Metadata not parsed — click to show raw PDF lines (for debugging)</summary>
-          <pre className="cb-debug-pre">{centralBilling._debugLines.map((l, i) => `${i + 1}: ${l}`).join('\n')}</pre>
-        </details>
+      {/* Batch history bar */}
+      {batches.length > 0 && (
+        <div className="cb-batch-bar">
+          <span className="cb-batch-label">Batches imported:</span>
+          {batches.map((b, i) => (
+            <button
+              key={i}
+              className={`cb-batch-chip${batchFilter === String(b.batchNumber) ? ' active' : ''}`}
+              onClick={() => setBatchFilter(f => f === String(b.batchNumber) ? 'all' : String(b.batchNumber))}
+              title={`End Date: ${b.endDate || '?'} · ${b.invoiceCount} invoices (${b.newCount ?? b.invoiceCount} new) · Imported ${b.importedAt ? new Date(b.importedAt).toLocaleDateString() : '?'}`}
+            >
+              {b.batchNumber ? `Batch ${b.batchNumber}` : `Import ${i + 1}`}
+              {b.endDate ? <span className="cb-batch-chip-date"> · {b.endDate}</span> : null}
+            </button>
+          ))}
+          {batchFilter !== 'all' && (
+            <button className="cb-batch-chip-clear" onClick={() => setBatchFilter('all')}>Show All</button>
+          )}
+        </div>
       )}
 
       {/* Header */}
@@ -84,13 +101,8 @@ export default function CentralBilling() {
         <div className="cb-header-left">
           <h2 className="cb-title">Central Billing</h2>
           <div className="cb-meta">
-            {centralBilling.transmitFile && <span>File: <strong>{centralBilling.transmitFile}</strong></span>}
-            {centralBilling.batchNumber && <span>Batch: <strong>{centralBilling.batchNumber}</strong></span>}
-            {centralBilling.endDate && <span>End Date: <strong>{centralBilling.endDate}</strong></span>}
-            {centralBilling.runDate && <span>Run Date: <strong>{centralBilling.runDate}</strong></span>}
-            {centralBilling.batchTotal != null && (
-              <span>Total: <strong>${centralBilling.batchTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
-            )}
+            <span>{invoices.length} total invoices across {batches.length} batch{batches.length !== 1 ? 'es' : ''}</span>
+            <span className="cb-meta-unmatched">{invoices.filter(i => !txIdSet.has(String(i.invoiceNumber))).length} unmatched</span>
           </div>
         </div>
       </div>
@@ -105,7 +117,8 @@ export default function CentralBilling() {
           >
             <div className="cb-route-card-route">Rt {r.route}</div>
             <div className="cb-route-card-total">${Math.abs(r.total).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-            <div className="cb-route-card-sub">{r.count} invoices · {r.matched} matched</div>
+            <div className="cb-route-card-sub">{r.count} invoices</div>
+            <div className="cb-route-card-sub">{r.matched} matched · {r.count - r.matched} unmatched</div>
           </div>
         ))}
       </div>
@@ -122,7 +135,11 @@ export default function CentralBilling() {
           <option value="all">All Routes</option>
           {routes.map(r => <option key={r} value={r}>Route {r}</option>)}
         </select>
-        <span className="cb-count">{stats.count} invoices · {stats.matched} matched · ${Math.abs(stats.total).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+        <label className="cb-toggle">
+          <input type="checkbox" checked={showUnmatchedOnly} onChange={e => setShowUnmatchedOnly(e.target.checked)} />
+          Unmatched only
+        </label>
+        <span className="cb-count">{stats.count} shown · {stats.matched} matched · {stats.unmatched} unmatched</span>
       </div>
 
       {/* Invoice Table */}
@@ -130,6 +147,7 @@ export default function CentralBilling() {
         <table className="cb-table">
           <thead>
             <tr>
+              <th>Batch</th>
               <th>Route</th>
               <th>Store ID</th>
               <th>Store Name</th>
@@ -144,6 +162,7 @@ export default function CentralBilling() {
               const matched = txIdSet.has(String(inv.invoiceNumber));
               return (
                 <tr key={idx} className={matched ? 'cb-row-matched' : 'cb-row-unmatched'}>
+                  <td className="cb-cell-batch">{inv.batchNumber || '—'}</td>
                   <td>{inv.route}</td>
                   <td className="cb-cell-mono">{inv.storeId}</td>
                   <td>{inv.storeName}{inv.chain ? <span className="cb-chain"> ({inv.chain})</span> : null}</td>
@@ -160,7 +179,7 @@ export default function CentralBilling() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="cb-no-results">No invoices found</td></tr>
+              <tr><td colSpan={8} className="cb-no-results">No invoices found</td></tr>
             )}
           </tbody>
         </table>

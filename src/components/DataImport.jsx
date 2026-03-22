@@ -217,7 +217,7 @@ function detectStoreType(name, id) {
 }
 
 export default function DataImport() {
-  const { state, bulkImportStores, addImportEntry, setTransactions, bulkRecordVisits, setCentralBilling } = useApp();
+  const { state, bulkImportStores, addImportEntry, setTransactions, bulkRecordVisits, mergeCentralBilling } = useApp();
   const { stores, importLog } = state;
   const transactions = state.transactions || [];
 
@@ -1098,10 +1098,10 @@ export default function DataImport() {
               setCbResult(null);
               try {
                 const data = await parseCentralBillingPdf(file);
-                setCentralBilling(data);
+                mergeCentralBilling(data);
                 setCbResult({
                   ok: true,
-                  message: `Imported ${data.invoices.length} invoices — Batch ${data.batchNumber || '?'}, End Date ${data.endDate || '?'}`,
+                  message: `Merged ${data.invoices.length} invoices from Batch ${data.batchNumber || '?'} (End Date ${data.endDate || '?'}) — duplicates skipped`,
                 });
               } catch (err) {
                 setCbResult({ ok: false, message: `Failed to parse PDF: ${err.message}` });

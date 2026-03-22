@@ -13963,3 +13963,13 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .cb-debug { background: #fef9c3; border: 1px solid #fbbf24; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.8rem; }
 .cb-debug-summary { cursor: pointer; font-weight: 600; color: #92400e; }
 .cb-debug-pre { margin-top: 8px; font-size: 0.75rem; font-family: monospace; white-space: pre-wrap; color: #374151; max-height: 300px; overflow-y: auto; }
+.cb-batch-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; padding: 10px 14px; background: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0; }
+.cb-batch-label { font-size: 0.78rem; font-weight: 600; color: #64748b; margin-right: 4px; }
+.cb-batch-chip { background: #fff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 3px 12px; font-size: 0.78rem; font-weight: 600; color: #475569; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.cb-batch-chip:hover { border-color: #3b82f6; color: #1e40af; }
+.cb-batch-chip.active { border-color: #3b82f6; background: #dbeafe; color: #1e40af; }
+.cb-batch-chip-date { font-weight: 400; color: #94a3b8; }
+.cb-batch-chip-clear { background: none; border: none; color: #3b82f6; font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 3px 6px; }
+.cb-meta-unmatched { color: #dc2626; font-weight: 600; }
+.cb-toggle { display: flex; align-items: center; gap: 5px; font-size: 0.82rem; color: #475569; cursor: pointer; white-space: nowrap; }
+.cb-cell-batch { font-size: 0.76rem; color: #94a3b8; font-family: monospace; }

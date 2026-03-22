@@ -92,10 +92,17 @@ const initialState = {
   centralBilling: (() => {
     try {
       const saved = localStorage.getItem('centralBilling');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Migrate old single-batch format (had invoices[] but no batches[])
+        if (parsed && Array.isArray(parsed.invoices) && !Array.isArray(parsed.batches)) {
+          return { batches: [], invoices: [] }; // start fresh, old format unusable
+        }
+        if (parsed && Array.isArray(parsed.batches)) return parsed;
+      }
     } catch { /* ignore */ }
-    return null;
-  })(), // Parsed Central Bill PDF { batchNumber, transmitFile, endDate, runDate, batchTotal, invoices[] }
+    return { batches: [], invoices: [] };
+  })(), // { batches: [{ batchNumber, transmitFile, endDate, runDate, batchTotal, importedAt, invoiceCount }], invoices: [...all merged invoices] }
 };
 
 const easternShoreSubsections = {
@@ -543,7 +550,38 @@ function reducer(state, action) {
       const updated = { ...existing, sold: (existing.sold || 0) + units };
       return { ...state, inventory: { ...state.inventory, items: { ...state.inventory.items, [sku]: updated }, lastUpdated: new Date().toISOString().split('T')[0] } };
     }
-    // Central Billing
+    // Central Billing — merge new batch into persistent history
+    case 'MERGE_CENTRAL_BILLING': {
+      const newData = action.payload; // parsed PDF result
+      const existing = state.centralBilling || { batches: [], invoices: [] };
+      const importedAt = new Date().toISOString();
+
+      // Dedup invoices by invoiceNumber — keep existing, add new ones
+      const existingNums = new Set(existing.invoices.map(i => i.invoiceNumber));
+      const newInvoices = (newData.invoices || []).filter(i => !existingNums.has(i.invoiceNumber));
+      const taggedNew = newInvoices.map(i => ({ ...i, batchNumber: newData.batchNumber, importedAt }));
+
+      const merged = {
+        batches: [
+          ...existing.batches,
+          {
+            batchNumber: newData.batchNumber,
+            transmitFile: newData.transmitFile,
+            endDate: newData.endDate,
+            runDate: newData.runDate,
+            batchTotal: newData.batchTotal,
+            importedAt,
+            invoiceCount: (newData.invoices || []).length,
+            newCount: newInvoices.length,
+          },
+        ],
+        invoices: [...existing.invoices, ...taggedNew],
+      };
+
+      try { localStorage.setItem('centralBilling', JSON.stringify(merged)); } catch { /* ignore */ }
+      return { ...state, centralBilling: merged };
+    }
+    // Keep SET_CENTRAL_BILLING for direct overwrite if ever needed
     case 'SET_CENTRAL_BILLING': {
       try { localStorage.setItem('centralBilling', JSON.stringify(action.payload)); } catch { /* ignore */ }
       return { ...state, centralBilling: action.payload };
@@ -1768,6 +1806,10 @@ export function AppProvider({ children }) {
     ),
     setCentralBilling: useCallback(
       (data) => dispatch({ type: 'SET_CENTRAL_BILLING', payload: data }),
+      []
+    ),
+    mergeCentralBilling: useCallback(
+      (data) => dispatch({ type: 'MERGE_CENTRAL_BILLING', payload: data }),
       []
     ),
   };
