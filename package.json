@@ -1,7 +1,7 @@
 {
   "name": "map-tracker",
   "private": true,
-  "version": "2.55.3",
+  "version": "2.55.4",
   "type": "module",
   "scripts": {
     "dev": "vite --open",

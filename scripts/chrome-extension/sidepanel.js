@@ -25,17 +25,7 @@ const SITES = [
     match: (url) => url.includes('daogroup.com') || url.includes('dao-group.com'),
     label: 'DAO Dashboard',
     badgeClass: 'site-dao',
-    btnClass: 'btn-dao',
-    btnText: 'Import DAO Dashboard',
-    script: 'scrape-dao.js',
-    extraButtons: [
-      {
-        key: 'cb-inquiry',
-        btnClass: 'btn-cb-inquiry',
-        btnText: 'Download CB Invoice Inquiry',
-        script: 'scrape-cb-inquiry.js',
-      },
-    ],
+    // btnClass / btnText / script are mode-dependent — see daoModes below
   },
 ];
 
@@ -45,9 +35,23 @@ const APP_URL_PATTERNS = [
   'https://mahpour4.github.io/Map-tracker',
 ];
 
+const DAO_MODES = {
+  dao: {
+    btnClass: 'btn-dao',
+    btnText: 'Import DAO Dashboard',
+    script: 'scrape-dao.js',
+  },
+  cb: {
+    btnClass: 'btn-cb-inquiry',
+    btnText: 'Download CB Invoice Inquiry',
+    script: 'scrape-cb-inquiry.js',
+  },
+};
+
 let currentDetected = null;
 let currentTabId = null;
 let lastScrapedData = null;
+let daoMode = 'dao'; // 'dao' | 'cb'
 
 function addLog(msg, type) {
   const log = document.getElementById('log');
@@ -105,41 +109,68 @@ function updateUI(tab) {
     </div>
   `;
 
-  let buttonsHtml = `<button id="importBtn" class="btn ${currentDetected.btnClass}">${currentDetected.btnText}</button>`;
-  if (currentDetected.extraButtons) {
-    currentDetected.extraButtons.forEach((eb, i) => {
-      buttonsHtml += `\n    <button id="extraBtn${i}" class="btn ${eb.btnClass}" data-script="${eb.script}" data-key="${eb.key}">${eb.btnText}</button>`;
-    });
-  }
-  buttonsHtml += `<div id="routePicker" style="display:none"></div>`;
-  buttonArea.innerHTML = buttonsHtml;
+  if (currentDetected.key === 'dao') {
+    renderDaoButtons(buttonArea);
+  } else {
+    const eb = currentDetected.extraButtons;
+    let buttonsHtml = `<button id="importBtn" class="btn ${currentDetected.btnClass}">${currentDetected.btnText}</button>`;
+    if (eb) {
+      eb.forEach((b, i) => {
+        buttonsHtml += `\n    <button id="extraBtn${i}" class="btn ${b.btnClass}" data-script="${b.script}" data-key="${b.key}">${b.btnText}</button>`;
+      });
+    }
+    buttonsHtml += `<div id="routePicker" style="display:none"></div>`;
+    buttonArea.innerHTML = buttonsHtml;
 
-  document.getElementById('importBtn').addEventListener('click', handleImportClick);
-  if (currentDetected.extraButtons) {
-    currentDetected.extraButtons.forEach((eb, i) => {
-      document.getElementById(`extraBtn${i}`).addEventListener('click', () => handleExtraImport(eb, i));
-    });
+    document.getElementById('importBtn').addEventListener('click', handleImportClick);
+    if (eb) {
+      eb.forEach((b, i) => {
+        document.getElementById(`extraBtn${i}`).addEventListener('click', () => handleExtraImport(b, i));
+      });
+    }
   }
+}
+
+function renderDaoButtons(buttonArea) {
+  const mode = DAO_MODES[daoMode];
+  buttonArea.innerHTML = `
+    <div class="mode-toggle">
+      <button class="mode-btn mode-dao${daoMode === 'dao' ? ' active' : ''}" data-mode="dao">DAO Import</button>
+      <button class="mode-btn mode-cb${daoMode === 'cb' ? ' active' : ''}" data-mode="cb">CB Inquiry</button>
+    </div>
+    <button id="importBtn" class="btn ${mode.btnClass}">${mode.btnText}</button>
+    <div id="routePicker" style="display:none"></div>
+  `;
+
+  buttonArea.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.mode === daoMode) return;
+      daoMode = btn.dataset.mode;
+      renderDaoButtons(buttonArea);
+    });
+  });
+  document.getElementById('importBtn').addEventListener('click', handleImportClick);
 }
 
 function handleImportClick() {
   if (!currentDetected || !currentTabId) return;
 
+  const modeConfig = currentDetected.key === 'dao' ? DAO_MODES[daoMode] : currentDetected;
   const btn = document.getElementById('importBtn');
   btn.disabled = true;
   btn.textContent = 'Scraping...';
-  addLog('Running ' + currentDetected.label + ' scraper...', 'info');
+  addLog('Running ' + modeConfig.btnText + '...', 'info');
 
   chrome.scripting.executeScript(
     {
       target: { tabId: currentTabId, allFrames: true },
-      files: [currentDetected.script],
+      files: [modeConfig.script],
     },
     (results) => {
       if (chrome.runtime.lastError) {
         addLog('Error: ' + chrome.runtime.lastError.message, 'error');
         btn.disabled = false;
-        btn.textContent = currentDetected.btnText;
+        btn.textContent = modeConfig.btnText;
       }
     }
   );
@@ -477,6 +508,12 @@ function downloadScrapedData() {
 
 // ── Message listener ──────────────────────────────────────────────────────
 
+function getActiveBtnText() {
+  if (!currentDetected) return 'Done!';
+  if (currentDetected.key === 'dao') return DAO_MODES[daoMode].btnText;
+  return currentDetected.btnText;
+}
+
 function resetExtraButtons() {
   if (currentDetected?.extraButtons) {
     currentDetected.extraButtons.forEach((eb, i) => {
@@ -503,7 +540,7 @@ chrome.runtime.onMessage.addListener((msg) => {
       downloadScrapedData();
       if (btn) {
         btn.disabled = false;
-        btn.textContent = currentDetected ? currentDetected.btnText : 'Done!';
+        btn.textContent = getActiveBtnText();
       }
       resetExtraButtons();
       return;
@@ -524,7 +561,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     if (dlBtn) dlBtn.remove();
     if (btn) {
       btn.disabled = false;
-      btn.textContent = currentDetected ? currentDetected.btnText : 'Done!';
+      btn.textContent = getActiveBtnText();
     }
     resetExtraButtons();
   }
@@ -533,7 +570,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     addLog('Import error: ' + msg.message, 'error');
     if (btn) {
       btn.disabled = false;
-      if (currentDetected) btn.textContent = currentDetected.btnText;
+      if (currentDetected) btn.textContent = getActiveBtnText();
     }
     if (lastScrapedData) showDownloadButton();
     resetExtraButtons();
@@ -544,7 +581,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     addLog('Scrape error: ' + msg.message, 'error');
     if (btn) {
       btn.disabled = false;
-      if (currentDetected) btn.textContent = currentDetected.btnText;
+      if (currentDetected) btn.textContent = getActiveBtnText();
     }
     resetExtraButtons();
   }
@@ -556,7 +593,7 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   const btn = document.getElementById('importBtn');
   if (btn && currentDetected) {
     btn.disabled = false;
-    btn.textContent = currentDetected.btnText;
+    btn.textContent = getActiveBtnText();
   }
   hideRoutePicker();
 });

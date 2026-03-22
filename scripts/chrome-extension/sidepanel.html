@@ -80,7 +80,32 @@
     .btn-download { background: #f59e0b; color: #fff; margin-top: 0; }
     .btn-invoices { background: #8b5cf6; color: #fff; margin-top: 0; }
     .btn-stop { background: #ef4444; color: #fff; margin-top: 0; }
-    .btn-cb-inquiry { background: #0891b2; color: #fff; margin-top: 0; }
+    .btn-cb-inquiry { background: #0891b2; color: #fff; }
+
+    /* Mode toggle (DAO / CB) */
+    .mode-toggle {
+      display: flex;
+      margin: 16px 20px 0;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: transparent;
+      color: #64748b;
+    }
+    .mode-btn:hover { background: #e2e8f0; color: #334155; }
+    .mode-btn.active.mode-dao { background: #3b82f6; color: #fff; box-shadow: 0 1px 4px rgba(59,130,246,0.4); }
+    .mode-btn.active.mode-cb  { background: #0891b2; color: #fff; box-shadow: 0 1px 4px rgba(8,145,178,0.4); }
 
     /* Status log */
     .log-section {
