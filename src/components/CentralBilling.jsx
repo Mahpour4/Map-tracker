@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 export default function CentralBilling() {
-  const { state, setCentralBilling } = useApp();
+  const { state } = useApp();
   const { centralBilling, transactions } = state;
   const [routeFilter, setRouteFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -93,7 +93,6 @@ export default function CentralBilling() {
             )}
           </div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={() => setCentralBilling(null)}>Clear</button>
       </div>
 
       {/* Route Summary Cards */}

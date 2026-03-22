@@ -89,7 +89,13 @@ const initialState = {
   })(), // { items: { sku: { incoming, sold, caseCount, ... } }, lastUpdated }
   autoVisitEnabled: true,
   language: localStorage.getItem('app_language') || 'en',
-  centralBilling: null, // Parsed Central Bill PDF { batchNumber, transmitFile, endDate, runDate, batchTotal, invoices[] }
+  centralBilling: (() => {
+    try {
+      const saved = localStorage.getItem('centralBilling');
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return null;
+  })(), // Parsed Central Bill PDF { batchNumber, transmitFile, endDate, runDate, batchTotal, invoices[] }
 };
 
 const easternShoreSubsections = {
@@ -538,8 +544,10 @@ function reducer(state, action) {
       return { ...state, inventory: { ...state.inventory, items: { ...state.inventory.items, [sku]: updated }, lastUpdated: new Date().toISOString().split('T')[0] } };
     }
     // Central Billing
-    case 'SET_CENTRAL_BILLING':
+    case 'SET_CENTRAL_BILLING': {
+      try { localStorage.setItem('centralBilling', JSON.stringify(action.payload)); } catch { /* ignore */ }
       return { ...state, centralBilling: action.payload };
+    }
     // Language
     case 'SET_LANGUAGE':
       localStorage.setItem('app_language', action.payload);
