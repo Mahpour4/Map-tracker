@@ -1099,9 +1099,16 @@ export default function DataImport() {
               try {
                 const data = await parseCentralBillingPdf(file);
                 mergeCentralBilling(data);
+                const pdfTotal = data.batchTotal;
+                const parsedTotal = data.invoiceTotal || 0;
+                const diff = pdfTotal != null ? Math.abs(pdfTotal - parsedTotal) : null;
+                const ok = diff === null || diff < 0.05;
                 setCbResult({
-                  ok: true,
-                  message: `Merged ${data.invoices.length} invoices from Batch ${data.batchNumber || '?'} (End Date ${data.endDate || '?'}) — duplicates skipped`,
+                  ok,
+                  reconciliation: { pdfTotal, parsedTotal, diff, invoiceCount: data.invoices.length },
+                  message: ok
+                    ? `Imported ${data.invoices.length} invoices — Batch ${data.batchNumber || '?'}${pdfTotal != null ? ` · PDF total $${pdfTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} matches ✓` : ''}`
+                    : `Imported ${data.invoices.length} invoices — but PDF total $${pdfTotal?.toLocaleString('en-US', { minimumFractionDigits: 2 })} vs parsed $${parsedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} — difference $${diff?.toFixed(2)} (some invoices may be missing)`,
                 });
               } catch (err) {
                 setCbResult({ ok: false, message: `Failed to parse PDF: ${err.message}` });

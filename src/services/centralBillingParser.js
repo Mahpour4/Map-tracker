@@ -218,5 +218,7 @@ function parseLines(lines) {
 export async function parseCentralBillingPdf(file) {
   const lines = await extractTextLines(file);
   const parsed = parseLines(lines);
+  // Compute sum of all parsed invoice cbAmounts for reconciliation
+  parsed.invoiceTotal = parsed.invoices.reduce((s, i) => s + Math.abs(i.cbAmount || 0), 0);
   return parsed;
 }

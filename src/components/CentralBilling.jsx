@@ -106,12 +106,24 @@ export default function CentralBilling() {
               {batches.map((b, i) => (
                 <button
                   key={i}
-                  className={`cb-batch-chip${batchFilter === String(b.batchNumber) ? ' active' : ''}`}
+                  className={`cb-batch-chip${batchFilter === String(b.batchNumber) ? ' active' : ''}${b.batchTotal != null && b.invoiceTotal != null && Math.abs(b.batchTotal - b.invoiceTotal) >= 0.05 ? ' warn' : ''}`}
                   onClick={() => setBatchFilter(f => f === String(b.batchNumber) ? 'all' : String(b.batchNumber))}
-                  title={`End Date: ${b.endDate || '?'} · ${b.invoiceCount} invoices (${b.newCount ?? b.invoiceCount} new) · Imported ${b.importedAt ? new Date(b.importedAt).toLocaleDateString() : '?'}`}
+                  title={[
+                    `End Date: ${b.endDate || '?'}`,
+                    `${b.invoiceCount} invoices (${b.newCount ?? b.invoiceCount} new)`,
+                    `Imported: ${b.importedAt ? new Date(b.importedAt).toLocaleDateString() : '?'}`,
+                    b.batchTotal != null && b.invoiceTotal != null
+                      ? Math.abs(b.batchTotal - b.invoiceTotal) < 0.05
+                        ? `✓ Totals match: $${b.batchTotal.toFixed(2)}`
+                        : `⚠ PDF total $${b.batchTotal.toFixed(2)} vs parsed $${b.invoiceTotal.toFixed(2)} — diff $${Math.abs(b.batchTotal - b.invoiceTotal).toFixed(2)}`
+                      : null,
+                  ].filter(Boolean).join('\n')}
                 >
                   {b.batchNumber ? `Batch ${b.batchNumber}` : `Import ${i + 1}`}
                   {b.endDate ? <span className="cb-batch-chip-date"> · {b.endDate}</span> : null}
+                  {b.batchTotal != null && b.invoiceTotal != null && Math.abs(b.batchTotal - b.invoiceTotal) >= 0.05 && (
+                    <span className="cb-batch-chip-warn"> ⚠</span>
+                  )}
                 </button>
               ))}
               {batchFilter !== 'all' && (

@@ -13996,3 +13996,6 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .cb-unpaid-date { font-size: 0.7rem; color: #94a3b8; }
 .cb-unpaid-amt { font-size: 0.75rem; font-weight: 700; color: #dc2626; margin-left: auto; }
 .cb-unpaid-empty { padding: 24px; text-align: center; color: #16a34a; font-weight: 600; font-size: 0.85rem; }
+.cb-batch-chip.warn { border-color: #f59e0b; color: #92400e; background: #fef3c7; }
+.cb-batch-chip.warn:hover { border-color: #d97706; }
+.cb-batch-chip-warn { color: #d97706; margin-left: 2px; }
