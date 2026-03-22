@@ -28,6 +28,14 @@ const SITES = [
     btnClass: 'btn-dao',
     btnText: 'Import DAO Dashboard',
     script: 'scrape-dao.js',
+    extraButtons: [
+      {
+        key: 'cb-inquiry',
+        btnClass: 'btn-cb-inquiry',
+        btnText: 'Download CB Invoice Inquiry',
+        script: 'scrape-cb-inquiry.js',
+      },
+    ],
   },
 ];
 
@@ -489,9 +497,9 @@ chrome.runtime.onMessage.addListener((msg) => {
     hideStopButton();
     lastScrapedData = { source: msg.source, data: msg.data, count: msg.count, ts: Date.now() };
 
-    // Invoices: always download as JSON — no Map Tracker required
-    if (msg.source === 'invoices') {
-      addLog(`Scraped ${msg.count} invoices. Downloading JSON...`, 'info');
+    // Invoices / CB inquiry: always download as JSON — no Map Tracker required
+    if (msg.source === 'invoices' || msg.source === 'cb-inquiry') {
+      addLog(`Scraped ${msg.count} records. Downloading JSON...`, 'info');
       downloadScrapedData();
       if (btn) {
         btn.disabled = false;
