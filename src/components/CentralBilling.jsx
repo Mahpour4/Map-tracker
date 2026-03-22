@@ -5,12 +5,15 @@ export default function CentralBilling() {
   const { state } = useApp();
   const { centralBilling, transactions } = state;
   const [routeFilter, setRouteFilter] = useState('all');
-  const [batchFilter, setBatchFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showUnmatchedOnly, setShowUnmatchedOnly] = useState(false);
 
   const batches = centralBilling?.batches || [];
   const invoices = centralBilling?.invoices || [];
+
+  // Default to latest batch; 'all' only when explicitly chosen
+  const latestBatchKey = batches.length > 0 ? String(batches[batches.length - 1].batchNumber ?? `import-${batches.length - 1}`) : 'all';
+  const [batchFilter, setBatchFilter] = useState(latestBatchKey);
 
   // Build a set of all DAO transaction IDs for cross-reference
   const txIdSet = useMemo(() => {
@@ -45,10 +48,24 @@ export default function CentralBilling() {
     return [...new Set(invoices.map(i => i.route).filter(Boolean))].sort();
   }, [invoices]);
 
+  // Map import-N keys back to the batch's importedAt for null-batchNumber filtering
+  const batchKeyToImportedAt = useMemo(() => {
+    const m = {};
+    batches.forEach((b, i) => { m[String(b.batchNumber ?? `import-${i}`)] = b.importedAt; });
+    return m;
+  }, [batches]);
+
   // Filtered invoices (main table)
   const filtered = useMemo(() => {
     return invoices.filter(inv => {
-      if (batchFilter !== 'all' && String(inv.batchNumber) !== String(batchFilter)) return false;
+      if (batchFilter !== 'all') {
+        if (batchFilter.startsWith('import-')) {
+          // null batchNumber batches — match by importedAt
+          if (inv.importedAt !== batchKeyToImportedAt[batchFilter]) return false;
+        } else {
+          if (String(inv.batchNumber) !== batchFilter) return false;
+        }
+      }
       if (routeFilter !== 'all' && inv.route !== routeFilter) return false;
       if (showUnmatchedOnly && txIdSet.has(String(inv.invoiceNumber))) return false;
       if (search) {
@@ -107,7 +124,7 @@ export default function CentralBilling() {
                 <button
                   key={i}
                   className={`cb-batch-chip${batchFilter === String(b.batchNumber) ? ' active' : ''}${b.batchTotal != null && b.invoiceTotal != null && Math.abs(b.batchTotal - b.invoiceTotal) >= 0.05 ? ' warn' : ''}`}
-                  onClick={() => setBatchFilter(f => f === String(b.batchNumber) ? 'all' : String(b.batchNumber))}
+                  onClick={() => setBatchFilter(String(b.batchNumber ?? `import-${i}`))}
                   title={[
                     `End Date: ${b.endDate || '?'}`,
                     `${b.invoiceCount} invoices (${b.newCount ?? b.invoiceCount} new)`,
