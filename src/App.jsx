@@ -20,6 +20,7 @@ import Transactions from './components/Transactions';
 import WarehouseOrders from './components/WarehouseOrders';
 import Inventory from './components/Inventory';
 import WhatsAppSettings from './components/WhatsAppSettings';
+import CentralBilling from './components/CentralBilling';
 import './App.css';
 
 // ── Global error boundary ─────────────────────────────────────────────────────
@@ -96,6 +97,7 @@ const NAV_GROUPS = [
       { id: 'warehouseOrders', label: 'Orders' },
       { id: 'inventory', label: 'Inventory' },
       { id: 'transactions', label: 'Transactions' },
+      { id: 'centralBilling', label: 'Central Billing' },
       { id: 'import', label: 'Data Import' },
       { id: 'alerts', label: 'Alert Log' },
       { id: 'visits', label: 'Visit History' },
@@ -328,6 +330,7 @@ function AppContent() {
         {page === 'transactions' && <Transactions />}
         {page === 'warehouseOrders' && <WarehouseOrders />}
         {page === 'inventory' && <Inventory />}
+        {page === 'centralBilling' && <CentralBilling />}
         {page === 'travelLog' && <TravelLog />}
         {page === 'warehouses' && <WarehouseSettings />}
         {page === 'customLocations' && <CustomLocations />}

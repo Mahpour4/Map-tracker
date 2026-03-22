@@ -247,8 +247,21 @@ async function showRoutePicker(extraBtn, index) {
   try {
     const storeData = await fetchStoresFromApp();
     if (!storeData || storeData.length === 0) {
-      picker.innerHTML = '<div class="route-error">Could not load stores. Is Map Tracker open?</div>';
-      addLog('Could not fetch stores from Map Tracker', 'error');
+      // Map Tracker not open — offer scrape current search only
+      picker.innerHTML = `
+        <div class="route-error" style="margin-bottom:8px">Map Tracker not open — no store list available.</div>
+        <div class="route-grid">
+          <button class="route-btn route-current">Scrape Current Search</button>
+          <button class="route-btn route-cancel">Cancel</button>
+        </div>`;
+      picker.querySelector('.route-current').addEventListener('click', () => {
+        picker.style.display = 'none';
+        launchExtraScraper(extraBtn, index, null);
+      });
+      picker.querySelector('.route-cancel').addEventListener('click', () => {
+        picker.style.display = 'none';
+      });
+      addLog('Map Tracker not open — will scrape current page only', 'info');
       return;
     }
 
@@ -351,7 +364,7 @@ async function fetchStoresFromApp() {
   }
 
   if (!appTab) {
-    throw new Error('Map Tracker is not open. Please open it first.');
+    return null; // Map Tracker not open — caller handles fallback
   }
 
   const results = await chrome.scripting.executeScript({
@@ -475,8 +488,20 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'scrape-done') {
     hideStopButton();
     lastScrapedData = { source: msg.source, data: msg.data, count: msg.count, ts: Date.now() };
-    addLog(`Scraped ${msg.count} records. Sending to Map Tracker...`, 'info');
 
+    // Invoices: always download as JSON — no Map Tracker required
+    if (msg.source === 'invoices') {
+      addLog(`Scraped ${msg.count} invoices. Downloading JSON...`, 'info');
+      downloadScrapedData();
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = currentDetected ? currentDetected.btnText : 'Done!';
+      }
+      resetExtraButtons();
+      return;
+    }
+
+    addLog(`Scraped ${msg.count} records. Sending to Map Tracker...`, 'info');
     chrome.runtime.sendMessage({
       type: 'import-to-app',
       source: msg.source,

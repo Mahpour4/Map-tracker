@@ -595,6 +595,7 @@ export default function AlertLog() {
       try {
         await sendWhatsAppAlert(groupId, alertData);
         setWaSending(null);
+        if (alert.refNumber) markBlastSent([alert.refNumber]);
         return;
       } catch (err) {
         console.warn('WhatsApp API send failed, falling back to wa.me:', err.message);

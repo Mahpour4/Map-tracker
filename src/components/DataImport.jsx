@@ -5,6 +5,7 @@ import { geocodeAddress } from '../utils/geocodeAddress';
 import { parseTransactions, matchCustomerToStore } from '../services/daoTransactionParser';
 import { saveMapSnapshot } from '../services/githubService';
 import { getGrade, getLatestDate, getDaysSinceVisit, getStatusCounts } from '../utils/driverMetrics';
+import { parseCentralBillingPdf } from '../services/centralBillingParser';
 
 // Known city names from cityCoords for address parsing
 const KNOWN_CITIES = Object.keys(cityCoords).map(k => {
@@ -216,9 +217,14 @@ function detectStoreType(name, id) {
 }
 
 export default function DataImport() {
-  const { state, bulkImportStores, addImportEntry, setTransactions, bulkRecordVisits } = useApp();
+  const { state, bulkImportStores, addImportEntry, setTransactions, bulkRecordVisits, setCentralBilling } = useApp();
   const { stores, importLog } = state;
   const transactions = state.transactions || [];
+
+  // Central Billing state
+  const [cbImporting, setCbImporting] = useState(false);
+  const [cbResult, setCbResult] = useState(null);
+  const cbFileRef = useRef(null);
 
   const [rawInput, setRawInput] = useState('');
   const [parsed, setParsed] = useState(null);
@@ -1072,6 +1078,58 @@ export default function DataImport() {
           </div>
         </div>
       )}
+
+      {/* Central Billing Import */}
+      <div className="data-import-geocode-section" style={{ marginTop: 16 }}>
+        <h3>Central Billing Import</h3>
+        <p className="data-import-desc" style={{ margin: '4px 0 10px' }}>
+          Import a Central Bill Transmit List PDF from DAO to track which invoices were submitted for central billing.
+        </p>
+        <div className="data-import-actions">
+          <input
+            ref={cbFileRef}
+            type="file"
+            accept=".pdf"
+            style={{ display: 'none' }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setCbImporting(true);
+              setCbResult(null);
+              try {
+                const data = await parseCentralBillingPdf(file);
+                setCentralBilling(data);
+                setCbResult({
+                  ok: true,
+                  message: `Imported ${data.invoices.length} invoices — Batch ${data.batchNumber || '?'}, End Date ${data.endDate || '?'}`,
+                });
+              } catch (err) {
+                setCbResult({ ok: false, message: `Failed to parse PDF: ${err.message}` });
+              } finally {
+                setCbImporting(false);
+                e.target.value = '';
+              }
+            }}
+          />
+          <button
+            className="btn btn-primary"
+            disabled={cbImporting}
+            onClick={() => cbFileRef.current?.click()}
+          >
+            {cbImporting ? 'Parsing PDF…' : 'Import CB PDF'}
+          </button>
+        </div>
+        {cbResult && cbResult.ok && (
+          <div className="data-import-success" style={{ marginTop: 8, cursor: 'pointer' }} onClick={() => setCbResult(null)}>
+            {cbResult.message}
+          </div>
+        )}
+        {cbResult && !cbResult.ok && (
+          <div className="data-import-error" style={{ marginTop: 8 }}>
+            {cbResult.message}
+          </div>
+        )}
+      </div>
 
       {/* Publish Map Section */}
       <div className="data-import-geocode-section" style={{ marginTop: 16 }}>

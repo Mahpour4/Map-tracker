@@ -233,13 +233,14 @@ function MiniCalendar({ visitDates, alerts, targetDays }) {
 
 export default function VisitHistory() {
   const { state, syncFromGithub, recordVisit, loadAlertImage } = useApp();
-  const { stores, syncStatus } = state;
+  const { stores, syncStatus, travelLog, fleetVehicles, visitHistory } = state;
 
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editDate, setEditDate] = useState('');
+  const [selectedCalDay, setSelectedCalDay] = useState(null); // { date, gpsStops, visitedStores }
   const [editPos, setEditPos] = useState(null);
   const [expandedStore, setExpandedStore] = useState(null);
   const [expandedAlert, setExpandedAlert] = useState(null);
@@ -1004,6 +1005,151 @@ export default function VisitHistory() {
             Showing {routeStores.length} stores for Route {selectedRoute}
             {' '}| Regular: 7-day cycle | CASH: 14-day cycle
           </div>
+
+          {/* ── Route Work Calendar ── */}
+          {selectedRoute && (() => {
+            // Build VIN → routeNumber map from fleetVehicles
+            const vinToRoute = {};
+            (fleetVehicles || []).forEach(v => {
+              if (v.vin && v.routeNumber) vinToRoute[v.vin] = String(v.routeNumber);
+            });
+
+            // Collect GPS days + stops per day for this route
+            const gpsDays = new Set();
+            const gpsStopsByDay = {}; // date → [{ locationName, time }]
+            Object.entries(travelLog || {}).forEach(([date, byVin]) => {
+              Object.entries(byVin).forEach(([vin, stops]) => {
+                if (vinToRoute[vin] === String(selectedRoute)) {
+                  gpsDays.add(date);
+                  if (!gpsStopsByDay[date]) gpsStopsByDay[date] = [];
+                  gpsStopsByDay[date].push(...(stops || []));
+                }
+              });
+            });
+
+            // Collect visit days + which stores per day for this route
+            const visitDays = new Set();
+            const visitsByDay = {}; // date → [storeName]
+            const routeStoreIds = new Set(stores.filter(s => String(s.routeNumber) === String(selectedRoute)).map(s => s.id));
+            const storeNameById = {};
+            stores.forEach(s => { storeNameById[s.id] = s.name || s.storeName || s.id; });
+            Object.entries(visitHistory || {}).forEach(([storeId, dates]) => {
+              if (!routeStoreIds.has(storeId)) return;
+              (Array.isArray(dates) ? dates : []).forEach(d => {
+                const ds = typeof d === 'string' ? d : d.date;
+                visitDays.add(ds);
+                if (!visitsByDay[ds]) visitsByDay[ds] = [];
+                visitsByDay[ds].push(storeNameById[storeId] || storeId);
+              });
+            });
+
+            if (gpsDays.size === 0 && visitDays.size === 0) return null;
+
+            const allDates = [...gpsDays, ...visitDays].sort();
+            const firstDate = new Date(allDates[0] + 'T00:00:00');
+            const today = new Date(); today.setHours(0,0,0,0);
+
+            const months = [];
+            let cur = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+            while (cur <= today) { months.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1); }
+
+            const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const DAY_NAMES = ['S','M','T','W','T','F','S'];
+
+            const handleDayClick = (ds, hasGps, hasVisit) => {
+              if (!hasGps && !hasVisit) return;
+              setSelectedCalDay({
+                date: ds,
+                gpsStops: gpsStopsByDay[ds] || [],
+                visitedStores: visitsByDay[ds] || [],
+              });
+            };
+
+            return (
+              <div className="vh-route-calendar">
+                <div className="vh-rc-title">
+                  Route {selectedRoute} — Work Days Calendar
+                  <span className="vh-rc-legend">
+                    <span className="vh-rc-dot gps" /> GPS
+                    <span className="vh-rc-dot visit" /> Visit
+                    <span className="vh-rc-dot both" /> Both
+                  </span>
+                </div>
+                <div className="vh-rc-months">
+                  {months.map(monthStart => {
+                    const yr = monthStart.getFullYear();
+                    const mo = monthStart.getMonth();
+                    const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+                    const firstDow = monthStart.getDay();
+                    return (
+                      <div key={`${yr}-${mo}`} className="vh-rc-month">
+                        <div className="vh-rc-month-label">{MONTH_NAMES[mo]} {yr}</div>
+                        <div className="vh-rc-days-header">
+                          {DAY_NAMES.map((d, i) => <span key={i} className="vh-rc-dow">{d}</span>)}
+                        </div>
+                        <div className="vh-rc-days-grid">
+                          {Array.from({ length: firstDow }).map((_, i) => <span key={`e${i}`} className="vh-rc-day empty" />)}
+                          {Array.from({ length: daysInMonth }).map((_, i) => {
+                            const day = i + 1;
+                            const ds = `${yr}-${String(mo+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                            const hasGps = gpsDays.has(ds);
+                            const hasVisit = visitDays.has(ds);
+                            const dt = new Date(ds + 'T00:00:00');
+                            const isFuture = dt > today;
+                            const isSelected = selectedCalDay?.date === ds;
+                            let cls = 'vh-rc-day';
+                            if (isFuture) cls += ' future';
+                            else if (hasGps && hasVisit) cls += ' both';
+                            else if (hasGps) cls += ' gps';
+                            else if (hasVisit) cls += ' visit';
+                            if (isSelected) cls += ' selected';
+                            if (!isFuture && (hasGps || hasVisit)) cls += ' clickable';
+                            return <span key={day} className={cls} title={ds} onClick={() => handleDayClick(ds, hasGps, hasVisit)}>{day}</span>;
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Day detail panel */}
+                {selectedCalDay && (
+                  <div className="vh-rc-detail">
+                    <div className="vh-rc-detail-header">
+                      <span className="vh-rc-detail-date">{selectedCalDay.date}</span>
+                      <button className="vh-rc-detail-close" onClick={() => setSelectedCalDay(null)}>✕</button>
+                    </div>
+                    <div className="vh-rc-detail-cols">
+                      {selectedCalDay.gpsStops.length > 0 && (
+                        <div className="vh-rc-detail-col">
+                          <div className="vh-rc-detail-col-title gps">GPS Stops ({selectedCalDay.gpsStops.length})</div>
+                          {selectedCalDay.gpsStops.map((s, i) => (
+                            <div key={i} className="vh-rc-detail-stop">
+                              <span className="vh-rc-detail-stop-name">{s.locationName || s.locationId || '—'}</span>
+                              <span className="vh-rc-detail-stop-time">{s.time ? new Date(s.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {selectedCalDay.visitedStores.length > 0 && (
+                        <div className="vh-rc-detail-col">
+                          <div className="vh-rc-detail-col-title visit">Visits Recorded ({selectedCalDay.visitedStores.length})</div>
+                          {selectedCalDay.visitedStores.map((name, i) => (
+                            <div key={i} className="vh-rc-detail-stop">
+                              <span className="vh-rc-detail-stop-name">{name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {selectedCalDay.gpsStops.length === 0 && selectedCalDay.visitedStores.length === 0 && (
+                        <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No activity data for this day.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
 

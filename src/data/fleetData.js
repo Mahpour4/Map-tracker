@@ -167,7 +167,7 @@ export const fleetVehicles = [
     vehicleId: 'route 207 Andre ford Transit',
     routeNumber: '207',
     licensePlate: '2GM4443 Maryland United States',
-    source: 'Vehicle Gateway S/N: AABL36ME120322',
+    source: 'Vehicle Gateway S/N: AABL36SE283925',
     vin: '1FDBF6P84RKB46372',
     insuranceCardPage: 11,
     policyNumber: 'BAB1429825',

@@ -316,9 +316,9 @@
 
         console.log('[Invoice Scraper] Page scraped:', pageData.length, 'rows,', newCount, 'new');
 
-        // Check for Next page
+        // Check for Next page — continue as long as Next button is enabled
         const nextBtn = findNextButton();
-        if (nextBtn && newCount > 0) {
+        if (nextBtn) {
           nextBtn.click();
           setTimeout(scrapePage, DELAY_PAGE);
         } else {
