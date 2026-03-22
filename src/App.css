@@ -13928,7 +13928,7 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .cb-empty-icon { font-size: 3rem; }
 .cb-empty-title { font-size: 1.2rem; font-weight: 700; color: #64748b; }
 .cb-empty-desc { font-size: 0.9rem; text-align: center; max-width: 360px; }
-.cb-page { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+.cb-page { padding: 24px 28px 48px; max-width: 1200px; margin: 0 auto; height: calc(100vh - 56px); overflow-y: auto; box-sizing: border-box; }
 .cb-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .cb-title { font-size: 1.3rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
 .cb-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.83rem; color: #64748b; }
