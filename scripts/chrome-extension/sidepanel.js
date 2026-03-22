@@ -137,7 +137,7 @@ function renderDaoButtons(buttonArea) {
 }
 
 function handleImportClick() {
-  if (!currentDetected || !currentTabId) return;
+  if (!currentTabId) return;
 
   const modeConfig = (currentDetected?.key === 'websnak') ? currentDetected : DAO_MODES[daoMode];
   const btn = document.getElementById('importBtn');
@@ -589,8 +589,8 @@ document.querySelectorAll('.mode-toggle .mode-btn').forEach(btn => {
     // Update active state
     document.querySelectorAll('.mode-toggle .mode-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    // Re-render button area if currently on a DAO page
-    if (currentDetected?.key === 'dao') {
+    // Re-render button area (any non-WebSnak page)
+    if (currentDetected?.key !== 'websnak') {
       renderDaoButtons(document.getElementById('button-area'));
     }
   });
