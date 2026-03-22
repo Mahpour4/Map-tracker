@@ -5,6 +5,8 @@ export default function CentralBilling() {
   const { state } = useApp();
   const { centralBilling, transactions } = state;
   const [routeFilter, setRouteFilter] = useState('all');
+  const [chainFilter, setChainFilter] = useState('all');
+  const [storeFilter, setStoreFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showUnmatchedOnly, setShowUnmatchedOnly] = useState(false);
 
@@ -43,10 +45,17 @@ export default function CentralBilling() {
     [unpaidInvoices]
   );
 
-  // Unique routes
-  const routes = useMemo(() => {
-    return [...new Set(invoices.map(i => i.route).filter(Boolean))].sort();
-  }, [invoices]);
+  // Unique routes, chains, stores
+  const routes = useMemo(() => [...new Set(invoices.map(i => i.route).filter(Boolean))].sort(), [invoices]);
+  const chains = useMemo(() => [...new Set(invoices.map(i => i.chain).filter(Boolean))].sort(), [invoices]);
+  const stores = useMemo(() => {
+    const seen = new Set();
+    return invoices
+      .filter(i => i.storeName && (chainFilter === 'all' || i.chain === chainFilter))
+      .map(i => ({ id: i.storeId, name: i.storeName }))
+      .filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [invoices, chainFilter]);
 
   // Map import-N keys back to the batch's importedAt for null-batchNumber filtering
   const batchKeyToImportedAt = useMemo(() => {
@@ -67,6 +76,8 @@ export default function CentralBilling() {
         }
       }
       if (routeFilter !== 'all' && inv.route !== routeFilter) return false;
+      if (chainFilter !== 'all' && inv.chain !== chainFilter) return false;
+      if (storeFilter !== 'all' && inv.storeId !== storeFilter) return false;
       if (showUnmatchedOnly && txIdSet.has(String(inv.invoiceNumber))) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -187,10 +198,25 @@ export default function CentralBilling() {
               <option value="all">All Routes</option>
               {routes.map(r => <option key={r} value={r}>Route {r}</option>)}
             </select>
+            {chains.length > 0 && (
+              <select className="cb-select" value={chainFilter} onChange={e => { setChainFilter(e.target.value); setStoreFilter('all'); }}>
+                <option value="all">All Chains</option>
+                {chains.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            )}
+            <select className="cb-select" value={storeFilter} onChange={e => setStoreFilter(e.target.value)}>
+              <option value="all">All Stores</option>
+              {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
             <label className="cb-toggle">
               <input type="checkbox" checked={showUnmatchedOnly} onChange={e => setShowUnmatchedOnly(e.target.checked)} />
               Unpaid only
             </label>
+            {showUnmatchedOnly && stats.unmatched > 0 && (
+              <span className="cb-unpaid-total-badge">
+                Total unpaid: <strong>${Math.abs(stats.total).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+              </span>
+            )}
             <span className="cb-count">{stats.count} shown · {stats.matched} matched · {stats.unmatched} unpaid</span>
           </div>
 

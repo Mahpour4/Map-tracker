@@ -13999,3 +13999,5 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .cb-batch-chip.warn { border-color: #f59e0b; color: #92400e; background: #fef3c7; }
 .cb-batch-chip.warn:hover { border-color: #d97706; }
 .cb-batch-chip-warn { color: #d97706; margin-left: 2px; }
+.cb-unpaid-total-badge { background: #fee2e2; color: #dc2626; border: 1.5px solid #fca5a5; border-radius: 8px; padding: 3px 12px; font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
+.cb-unpaid-total-badge strong { font-size: 0.9rem; }
