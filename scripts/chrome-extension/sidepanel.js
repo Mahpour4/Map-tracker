@@ -73,6 +73,51 @@ function renderTab() {
   }
 }
 
+// ── CB inquiry extractor (runs in MAIN world, returns data to panel) ──────
+
+async function cbInquiryExtractor() {
+  const gridNames = ['Chain_List', 'Store_List', 'Invoice_List', 'Invoice_Detail'];
+  const grids = document.querySelectorAll('[role="grid"]');
+  if (!grids.length) return null;
+
+  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function findNextBtn(agEl) {
+    return agEl.querySelector('[ref="btNext"]') ||
+           agEl.querySelector('button[aria-label="Next Page"]') ||
+           agEl.querySelector('.ag-paging-button:last-of-type') || null;
+  }
+
+  const output = {};
+  for (let i = 0; i < grids.length; i++) {
+    const name = gridNames[i] || `Grid_${i + 1}`;
+    const agEl = grids[i].closest('.ag-root-wrapper') || grids[i].parentElement;
+    const comp = agEl.__agComponent;
+    if (!comp) { output[name] = []; continue; }
+
+    const api = comp.gridOptions.api;
+    const colDefs = (comp.gridOptions.columnDefs || []).map(c => c.field).filter(Boolean);
+    const allRows = [];
+
+    if (!agEl.querySelector('.ag-paging-panel')) {
+      api.forEachNode(node => {
+        if (node.data) { const r = {}; colDefs.forEach(f => { r[f] = node.data[f] ?? null; }); allRows.push(r); }
+      });
+    } else {
+      if (typeof api.paginationGoToFirstPage === 'function') { api.paginationGoToFirstPage(); await wait(400); }
+      for (let page = 1; page <= 500; page++) {
+        api.forEachNodeAfterFilter(node => {
+          if (node.data) { const r = {}; colDefs.forEach(f => { r[f] = node.data[f] ?? null; }); allRows.push(r); }
+        });
+        const nextBtn = findNextBtn(agEl);
+        if (!nextBtn || nextBtn.disabled || nextBtn.classList.contains('ag-disabled') || nextBtn.getAttribute('aria-disabled') === 'true') break;
+        nextBtn.click(); await wait(600);
+      }
+    }
+    output[name] = allRows;
+  }
+  return output;
+}
+
 // ── Import handlers ───────────────────────────────────────────────────────
 
 function handleImportClick() {
@@ -83,23 +128,48 @@ function handleImportClick() {
   btn.textContent = 'Scraping...';
   addLog('Running ' + tab.btnText + '...', 'info');
 
-  // CB inquiry must run in MAIN world to access ag-grid JS objects (__agComponent).
-  // In MAIN world chrome.runtime is unavailable, so progress messages come from here.
-  const execOptions = { target: { tabId: currentTabId, allFrames: true }, files: [tab.script] };
-  if (activeTab === 'cb') execOptions.world = 'MAIN';
+  if (activeTab === 'cb') {
+    // Run extractor in MAIN world, get data back, download from panel
+    chrome.scripting.executeScript(
+      { target: { tabId: currentTabId }, world: 'MAIN', func: cbInquiryExtractor },
+      (results) => {
+        btn.disabled = false;
+        btn.textContent = tab.btnText;
+        if (chrome.runtime.lastError) {
+          addLog('Error: ' + chrome.runtime.lastError.message, 'error');
+          return;
+        }
+        const data = results?.[0]?.result;
+        if (!data) {
+          addLog('No ag-grid tables found on this page. Navigate to Invoice Inquiry first.', 'error');
+          return;
+        }
+        const date = new Date().toISOString().slice(0, 10);
+        const filename = `map-tracker-invoices-${date}.json`;
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        const total = Object.values(data).reduce((s, v) => s + v.length, 0);
+        const summary = Object.entries(data).map(([k, v]) => `${k}: ${v.length}`).join(', ');
+        addLog(`Downloaded ${filename} — ${total} rows (${summary})`, 'success');
+      }
+    );
+    return;
+  }
 
-  chrome.scripting.executeScript(execOptions, () => {
-    if (chrome.runtime.lastError) {
-      addLog('Error: ' + chrome.runtime.lastError.message, 'error');
-      btn.disabled = false;
-      btn.textContent = tab.btnText;
-    } else if (activeTab === 'cb') {
-      // Script ran — download was triggered directly by the scraper
-      addLog('CB Invoice Inquiry: script injected, download should start shortly.', 'success');
-      btn.disabled = false;
-      btn.textContent = tab.btnText;
+  chrome.scripting.executeScript(
+    { target: { tabId: currentTabId, allFrames: true }, files: [tab.script] },
+    () => {
+      if (chrome.runtime.lastError) {
+        addLog('Error: ' + chrome.runtime.lastError.message, 'error');
+        btn.disabled = false;
+        btn.textContent = tab.btnText;
+      }
     }
-  });
+  );
 }
 
 function handleExtraImport(extra) {
