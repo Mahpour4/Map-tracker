@@ -14,18 +14,23 @@
 
     /* Header */
     .header {
-      padding: 16px 20px;
+      padding: 12px 20px 14px;
       background: #fff;
       border-bottom: 1px solid #e2e8f0;
     }
+    .header-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
     .header h1 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       color: #0f172a;
-      margin-bottom: 2px;
     }
     .header .subtitle {
-      font-size: 12px;
+      font-size: 11px;
       color: #94a3b8;
     }
 
@@ -82,30 +87,30 @@
     .btn-stop { background: #ef4444; color: #fff; margin-top: 0; }
     .btn-cb-inquiry { background: #0891b2; color: #fff; }
 
-    /* Mode toggle (DAO / CB) */
+    /* Mode toggle (DAO / CB) — lives in header */
     .mode-toggle {
       display: flex;
-      margin: 16px 20px 0;
       background: #f1f5f9;
-      border-radius: 10px;
-      padding: 4px;
-      gap: 4px;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
     }
     .mode-btn {
       flex: 1;
-      padding: 8px 12px;
+      padding: 6px 14px;
       border: none;
-      border-radius: 7px;
-      font-size: 12px;
+      border-radius: 6px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s;
       background: transparent;
       color: #64748b;
+      white-space: nowrap;
     }
     .mode-btn:hover { background: #e2e8f0; color: #334155; }
-    .mode-btn.active.mode-dao { background: #3b82f6; color: #fff; box-shadow: 0 1px 4px rgba(59,130,246,0.4); }
-    .mode-btn.active.mode-cb  { background: #0891b2; color: #fff; box-shadow: 0 1px 4px rgba(8,145,178,0.4); }
+    .mode-btn.active.mode-dao { background: #3b82f6; color: #fff; box-shadow: 0 1px 4px rgba(59,130,246,0.35); }
+    .mode-btn.active.mode-cb  { background: #0891b2; color: #fff; box-shadow: 0 1px 4px rgba(8,145,178,0.35); }
 
     /* Status log */
     .log-section {
@@ -277,8 +282,14 @@
 </head>
 <body>
   <div class="header">
-    <h1>Map Tracker Importer</h1>
-    <p class="subtitle">Import data into Map Tracker</p>
+    <div class="header-top">
+      <h1>Map Tracker Importer</h1>
+      <span class="subtitle">v2.55.4</span>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn mode-dao active" data-mode="dao">DAO Import</button>
+      <button class="mode-btn mode-cb" data-mode="cb">CB Inquiry</button>
+    </div>
   </div>
 
   <div id="content"></div>

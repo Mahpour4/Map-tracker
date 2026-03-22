@@ -134,21 +134,9 @@ function updateUI(tab) {
 function renderDaoButtons(buttonArea) {
   const mode = DAO_MODES[daoMode];
   buttonArea.innerHTML = `
-    <div class="mode-toggle">
-      <button class="mode-btn mode-dao${daoMode === 'dao' ? ' active' : ''}" data-mode="dao">DAO Import</button>
-      <button class="mode-btn mode-cb${daoMode === 'cb' ? ' active' : ''}" data-mode="cb">CB Inquiry</button>
-    </div>
     <button id="importBtn" class="btn ${mode.btnClass}">${mode.btnText}</button>
     <div id="routePicker" style="display:none"></div>
   `;
-
-  buttonArea.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.mode === daoMode) return;
-      daoMode = btn.dataset.mode;
-      renderDaoButtons(buttonArea);
-    });
-  });
   document.getElementById('importBtn').addEventListener('click', handleImportClick);
 }
 
@@ -596,6 +584,21 @@ document.getElementById('clearBtn').addEventListener('click', () => {
     btn.textContent = getActiveBtnText();
   }
   hideRoutePicker();
+});
+
+// ── Mode toggle (header) ──────────────────────────────────────────────────
+document.querySelectorAll('.mode-toggle .mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.mode === daoMode) return;
+    daoMode = btn.dataset.mode;
+    // Update active state
+    document.querySelectorAll('.mode-toggle .mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Re-render button area if currently on a DAO page
+    if (currentDetected?.key === 'dao') {
+      renderDaoButtons(document.getElementById('button-area'));
+    }
+  });
 });
 
 // Show empty state initially
