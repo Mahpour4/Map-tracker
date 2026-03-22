@@ -99,6 +99,12 @@ export default function CentralBilling() {
     return { count: filtered.length, matched: matched.length, unmatched: filtered.length - matched.length, total };
   }, [filtered, txIdSet]);
 
+  // Selected batch object (for debug panel)
+  const selectedBatch = useMemo(() =>
+    batches.find((b, i) => String(b.batchNumber ?? `import-${i}`) === batchFilter) || null,
+    [batches, batchFilter]
+  );
+
   // Route summary cards (all invoices, not filtered)
   const routeSummary = useMemo(() => {
     const map = {};
@@ -158,6 +164,25 @@ export default function CentralBilling() {
                 <button className="cb-batch-chip-clear" onClick={() => setBatchFilter('all')}>Show All</button>
               )}
             </div>
+          )}
+
+          {/* Debug panel for selected batch */}
+          {selectedBatch && selectedBatch._debugLines?.length > 0 && (
+            <details className="cb-debug">
+              <summary className="cb-debug-summary">
+                Raw PDF lines for this import ({selectedBatch._debugLines.length} lines captured)
+                {(!selectedBatch.batchNumber || !selectedBatch.endDate) && ' — metadata not fully parsed'}
+              </summary>
+              <div className="cb-debug-meta">
+                <span>Batch #: <strong>{selectedBatch.batchNumber ?? 'not found'}</strong></span>
+                <span>End Date: <strong>{selectedBatch.endDate ?? 'not found'}</strong></span>
+                <span>Transmit File: <strong>{selectedBatch.transmitFile ?? 'not found'}</strong></span>
+                <span>PDF Total: <strong>{selectedBatch.batchTotal != null ? `$${selectedBatch.batchTotal.toFixed(2)}` : 'not found'}</strong></span>
+                <span>Parsed Total: <strong>{selectedBatch.invoiceTotal != null ? `$${selectedBatch.invoiceTotal.toFixed(2)}` : '—'}</strong></span>
+                <span>Invoices parsed: <strong>{selectedBatch.invoiceCount}</strong></span>
+              </div>
+              <pre className="cb-debug-pre">{selectedBatch._debugLines.map((l, i) => `${i + 1}: ${l}`).join('\n')}</pre>
+            </details>
           )}
 
           {/* Header */}

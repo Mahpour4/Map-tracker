@@ -13962,6 +13962,8 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .cb-no-results { text-align: center; color: #94a3b8; padding: 24px; font-style: italic; }
 .cb-debug { background: #fef9c3; border: 1px solid #fbbf24; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.8rem; }
 .cb-debug-summary { cursor: pointer; font-weight: 600; color: #92400e; }
+.cb-debug-meta { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 0 4px; font-size: 0.78rem; color: #374151; }
+.cb-debug-meta span strong { color: #1e293b; }
 .cb-debug-pre { margin-top: 8px; font-size: 0.75rem; font-family: monospace; white-space: pre-wrap; color: #374151; max-height: 300px; overflow-y: auto; }
 .cb-batch-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; padding: 10px 14px; background: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0; }
 .cb-batch-label { font-size: 0.78rem; font-weight: 600; color: #64748b; margin-right: 4px; }

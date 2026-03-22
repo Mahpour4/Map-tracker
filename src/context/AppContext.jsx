@@ -569,11 +569,12 @@ function reducer(state, action) {
             transmitFile: newData.transmitFile,
             endDate: newData.endDate,
             runDate: newData.runDate,
-            batchTotal: newData.batchTotal,       // total stated in PDF header
-            invoiceTotal: newData.invoiceTotal,   // sum of parsed invoice amounts
+            batchTotal: newData.batchTotal,
+            invoiceTotal: newData.invoiceTotal,
             importedAt,
             invoiceCount: (newData.invoices || []).length,
             newCount: newInvoices.length,
+            _debugLines: newData._debugLines || [],
           },
         ],
         invoices: [...existing.invoices, ...taggedNew],
