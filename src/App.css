@@ -13973,3 +13973,26 @@ td.wo-conflict-val.wo-conflict-picked:nth-child(3) { background: #bbf7d0; }
 .cb-meta-unmatched { color: #dc2626; font-weight: 600; }
 .cb-toggle { display: flex; align-items: center; gap: 5px; font-size: 0.82rem; color: #475569; cursor: pointer; white-space: nowrap; }
 .cb-cell-batch { font-size: 0.76rem; color: #94a3b8; font-family: monospace; }
+
+/* CB two-column layout */
+.cb-layout { display: flex; gap: 20px; align-items: flex-start; }
+.cb-main { flex: 1; min-width: 0; }
+
+/* Unpaid panel */
+.cb-unpaid-panel { width: 280px; flex-shrink: 0; background: #fff7f7; border: 1.5px solid #fecaca; border-radius: 10px; position: sticky; top: 0; max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow: hidden; }
+.cb-unpaid-header { padding: 14px 16px 10px; border-bottom: 1px solid #fecaca; background: #fee2e2; border-radius: 10px 10px 0 0; }
+.cb-unpaid-title { font-size: 0.8rem; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.cb-unpaid-total { font-size: 1.3rem; font-weight: 800; color: #dc2626; }
+.cb-unpaid-count { font-size: 0.74rem; color: #b91c1c; margin-top: 2px; }
+.cb-unpaid-list { overflow-y: auto; flex: 1; padding: 8px 0; }
+.cb-unpaid-group { margin-bottom: 4px; }
+.cb-unpaid-group-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 14px 4px; font-size: 0.74rem; font-weight: 700; color: #7f1d1d; background: #fee2e2; }
+.cb-unpaid-group-total { font-weight: 700; color: #dc2626; }
+.cb-unpaid-row { padding: 5px 14px; border-bottom: 1px solid #fff1f1; }
+.cb-unpaid-row:last-child { border-bottom: none; }
+.cb-unpaid-store { font-size: 0.78rem; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-unpaid-meta { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap; }
+.cb-unpaid-inv { font-size: 0.7rem; font-family: monospace; color: #94a3b8; }
+.cb-unpaid-date { font-size: 0.7rem; color: #94a3b8; }
+.cb-unpaid-amt { font-size: 0.75rem; font-weight: 700; color: #dc2626; margin-left: auto; }
+.cb-unpaid-empty { padding: 24px; text-align: center; color: #16a34a; font-weight: 600; font-size: 0.85rem; }
