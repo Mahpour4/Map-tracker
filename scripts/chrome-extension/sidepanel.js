@@ -87,31 +87,25 @@ function updateUI(tab) {
   currentDetected = detectSite(url);
   hideRoutePicker();
 
-  if (!currentDetected) {
+  // Site card — always show (informational only)
+  if (currentDetected) {
+    content.innerHTML = `
+      <div class="site-card">
+        <span class="site-badge ${currentDetected.badgeClass}">${currentDetected.label}</span>
+        <div class="site-url">${tab?.url || ''}</div>
+      </div>
+    `;
+  } else {
     content.innerHTML = `
       <div class="site-card">
         <span class="site-badge site-unknown">Unknown Site</span>
         <div class="site-url">${tab?.url || 'No URL'}</div>
       </div>
     `;
-    buttonArea.innerHTML = `
-      <p class="unknown-msg">
-        Navigate to the <strong>DAO Dashboard</strong> or <strong>WebSnak</strong> to import data.
-      </p>
-    `;
-    return;
   }
 
-  content.innerHTML = `
-    <div class="site-card">
-      <span class="site-badge ${currentDetected.badgeClass}">${currentDetected.label}</span>
-      <div class="site-url">${tab?.url || ''}</div>
-    </div>
-  `;
-
-  if (currentDetected.key === 'dao') {
-    renderDaoButtons(buttonArea);
-  } else {
+  // Buttons — always render based on mode; WebSnak gets its own set
+  if (currentDetected?.key === 'websnak') {
     const eb = currentDetected.extraButtons;
     let buttonsHtml = `<button id="importBtn" class="btn ${currentDetected.btnClass}">${currentDetected.btnText}</button>`;
     if (eb) {
@@ -121,13 +115,15 @@ function updateUI(tab) {
     }
     buttonsHtml += `<div id="routePicker" style="display:none"></div>`;
     buttonArea.innerHTML = buttonsHtml;
-
     document.getElementById('importBtn').addEventListener('click', handleImportClick);
     if (eb) {
       eb.forEach((b, i) => {
         document.getElementById(`extraBtn${i}`).addEventListener('click', () => handleExtraImport(b, i));
       });
     }
+  } else {
+    // DAO mode or unknown site — always show DAO/CB button based on toggle
+    renderDaoButtons(buttonArea);
   }
 }
 
@@ -143,7 +139,7 @@ function renderDaoButtons(buttonArea) {
 function handleImportClick() {
   if (!currentDetected || !currentTabId) return;
 
-  const modeConfig = currentDetected.key === 'dao' ? DAO_MODES[daoMode] : currentDetected;
+  const modeConfig = (currentDetected?.key === 'websnak') ? currentDetected : DAO_MODES[daoMode];
   const btn = document.getElementById('importBtn');
   btn.disabled = true;
   btn.textContent = 'Scraping...';
@@ -497,9 +493,8 @@ function downloadScrapedData() {
 // ── Message listener ──────────────────────────────────────────────────────
 
 function getActiveBtnText() {
-  if (!currentDetected) return 'Done!';
-  if (currentDetected.key === 'dao') return DAO_MODES[daoMode].btnText;
-  return currentDetected.btnText;
+  if (currentDetected?.key === 'websnak') return currentDetected.btnText;
+  return DAO_MODES[daoMode].btnText;
 }
 
 function resetExtraButtons() {
