@@ -123,7 +123,7 @@ export default function CentralBilling() {
               {batches.map((b, i) => (
                 <button
                   key={i}
-                  className={`cb-batch-chip${batchFilter === String(b.batchNumber) ? ' active' : ''}${b.batchTotal != null && b.invoiceTotal != null && Math.abs(b.batchTotal - b.invoiceTotal) >= 0.05 ? ' warn' : ''}`}
+                  className={`cb-batch-chip${batchFilter === String(b.batchNumber ?? `import-${i}`) ? ' active' : ''}${b.batchTotal != null && b.invoiceTotal != null && Math.abs(b.batchTotal - b.invoiceTotal) >= 0.05 ? ' warn' : ''}`}
                   onClick={() => setBatchFilter(String(b.batchNumber ?? `import-${i}`))}
                   title={[
                     `End Date: ${b.endDate || '?'}`,
