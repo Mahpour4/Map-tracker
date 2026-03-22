@@ -1102,13 +1102,32 @@ export default function DataImport() {
                 const pdfTotal = data.batchTotal;
                 const parsedTotal = data.invoiceTotal || 0;
                 const diff = pdfTotal != null ? Math.abs(pdfTotal - parsedTotal) : null;
-                const ok = diff === null || diff < 0.05;
+                const totalsMismatch = diff !== null && diff >= 0.05;
+
+                // Build detailed status lines
+                const statusLines = [];
+                statusLines.push(`Invoices parsed: ${data.invoices.length}`);
+                statusLines.push(`Batch number: ${data.batchNumber ?? 'not found in PDF'}`);
+                statusLines.push(`End date: ${data.endDate ?? 'not found in PDF'}`);
+                statusLines.push(`Transmit file: ${data.transmitFile ?? 'not found in PDF'}`);
+                if (pdfTotal != null) {
+                  statusLines.push(`PDF stated total: $${pdfTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`);
+                  statusLines.push(`Parsed total: $${parsedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`);
+                  statusLines.push(totalsMismatch
+                    ? `⚠ Difference: $${diff.toFixed(2)} — some invoices may be missing`
+                    : `✓ Totals match`);
+                } else {
+                  statusLines.push(`PDF total: not found — cannot verify completeness`);
+                  statusLines.push(`Parsed total: $${parsedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`);
+                }
+                const missingFields = [!data.batchNumber && 'batch number', !data.endDate && 'end date', !data.transmitFile && 'transmit file'].filter(Boolean);
+                if (missingFields.length) {
+                  statusLines.push(`Note: ${missingFields.join(', ')} could not be read from PDF header. Go to Central Billing page to see raw debug lines.`);
+                }
+
                 setCbResult({
-                  ok,
-                  reconciliation: { pdfTotal, parsedTotal, diff, invoiceCount: data.invoices.length },
-                  message: ok
-                    ? `Imported ${data.invoices.length} invoices — Batch ${data.batchNumber || '?'}${pdfTotal != null ? ` · PDF total $${pdfTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} matches ✓` : ''}`
-                    : `Imported ${data.invoices.length} invoices — but PDF total $${pdfTotal?.toLocaleString('en-US', { minimumFractionDigits: 2 })} vs parsed $${parsedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} — difference $${diff?.toFixed(2)} (some invoices may be missing)`,
+                  ok: !totalsMismatch,
+                  statusLines,
                 });
               } catch (err) {
                 setCbResult({ ok: false, message: `Failed to parse PDF: ${err.message}` });
@@ -1126,14 +1145,15 @@ export default function DataImport() {
             {cbImporting ? 'Parsing PDF…' : 'Import CB PDF'}
           </button>
         </div>
-        {cbResult && cbResult.ok && (
-          <div className="data-import-success" style={{ marginTop: 8, cursor: 'pointer' }} onClick={() => setCbResult(null)}>
-            {cbResult.message}
-          </div>
-        )}
-        {cbResult && !cbResult.ok && (
-          <div className="data-import-error" style={{ marginTop: 8 }}>
-            {cbResult.message}
+        {cbResult && (
+          <div
+            className={cbResult.ok ? 'data-import-success' : 'data-import-error'}
+            style={{ marginTop: 8, cursor: 'pointer' }}
+            onClick={() => setCbResult(null)}
+          >
+            {cbResult.statusLines
+              ? cbResult.statusLines.map((l, i) => <div key={i}>{l}</div>)
+              : cbResult.message}
           </div>
         )}
       </div>

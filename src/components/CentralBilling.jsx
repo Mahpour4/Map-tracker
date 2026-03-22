@@ -119,8 +119,8 @@ export default function CentralBilling() {
                       : null,
                   ].filter(Boolean).join('\n')}
                 >
-                  {b.batchNumber ? `Batch ${b.batchNumber}` : `Import ${i + 1}`}
-                  {b.endDate ? <span className="cb-batch-chip-date"> · {b.endDate}</span> : null}
+                  {b.batchNumber ? `Batch ${b.batchNumber}` : `Import ${i + 1}${b.importedAt ? ' · ' + new Date(b.importedAt).toLocaleDateString() : ''}`}
+                  {b.batchNumber && b.endDate ? <span className="cb-batch-chip-date"> · {b.endDate}</span> : null}
                   {b.batchTotal != null && b.invoiceTotal != null && Math.abs(b.batchTotal - b.invoiceTotal) >= 0.05 && (
                     <span className="cb-batch-chip-warn"> ⚠</span>
                   )}
