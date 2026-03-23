@@ -140,9 +140,9 @@ FLW00663,FLW00663,Food Lion Store 663,96 Somerset Blvd,Charles Town,WV,25414,201
 FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.6263,-78.2271,2026-03-16,2026-03-16,No
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-03-17,2026-03-17,No
 FLW01442,FLW01442,Food Lion 1442,6920 Crestwood Blvd,Frederick,MD,21703,204,Route 204 Driver,Maryland Central,Maryland Central,Maryland Central,39.3907553,-77.4250267,2026-03-20,2026-03-11,No
-FLW02194,FLW02194,Food Lion Store 2194,78 Worchester Dr,Falling Waters,WV,25419,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.5664,-77.8352,2026-03-17,2026-03-17,No
+FLW02194,FLW02194,Food Lion Store 2194,78 Worchester Dr,Falling Waters,WV,25419,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.5664,-77.8352,2026-03-20,2026-03-17,No
 FLW02233,FLW02233,Food Lion Store 2233,345 N Pennsylvania Ave,Hancock,MD,21750,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.7143841,-78.1751887,2026-03-16,2026-03-16,No
-FLW02257,FLW02257,Food Lion 2257,130 Duella Dr,Inwood,WV,25428,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.3617259,-78.0340871,2026-03-18,2026-03-18,No
+FLW02257,FLW02257,Food Lion 2257,130 Duella Dr,Inwood,WV,25428,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.3617259,-78.0340871,2026-03-20,2026-03-18,No
 GTW06104,GTW06104,Giant 6104,1729 Dual Hwy,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6153582,-77.6915555,2026-03-05,2026-03-17,No
 GTW06275,GTW06275,Giant 6275,1650 C Wesel Blvd,Hagerstown,MD,21740,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.6386737,-77.7374129,2026-02-17,2026-02-17,No
 GTW06444,GTW06444,Giant 6444,18726 N Pointe Dr,Hagerstown,MD,21742,201,Route 201 Driver,Maryland Western,Maryland Western,Maryland Western,39.64545256857406,-77.71523987995825,2026-02-17,2026-03-17,No
@@ -347,7 +347,7 @@ MISC0207,MISC0207,Misc Cash 207,,,,20784,207,Route 207 Driver,Prince George's Co
 WGW00056,00056,Wegmans 056,20600 SENECA MEADOWS PKWY,Germantown,MD,20876,207,Route 207 Driver,Montgomery County,Montgomery County,Montgomery County,39.1994609,-77.2565105,2025-12-06,2025-12-06,Yes
 CMW05217,05217,Comm Dover AFB 5217,268 GALAXY ST,Dover AFB,DE,19902,206,Route 206 Driver,Delaware,Dover,Dover,39.1582,-75.5244,,,Yes
 CMW05720,05720,Comm Aberdeen Navy 5720,3400 SPRINGFIELD ST,Aberdeen Proving Ground,MD,21005,200,Route 200 Driver,Harford County,Aberdeen,Aberdeen,39.5093,-76.1641,,,Yes
-CMW06264,06264,Comm Ft Detrick 6264,1510 PORTER ST,Frederick,MD,21702,201,Route 201 Driver,Frederick County,Frederick,Frederick,39.4362646,-77.4240179,2026-02-13,2026-03-20,No
+CMW06264,06264,Comm Ft Detrick 6264,1510 PORTER ST,Frederick,MD,21702,201,Route 201 Driver,Frederick County,Frederick,Frederick,39.4362646,-77.4240179,2026-03-20,2026-03-20,No
 IND20001,IND20001,Hocker's Supercenter,34960 Atlantic Ave,Ocean View,DE,19970,206,Route 206 Driver,Delaware,Ocean View,Ocean View,38.5432866,-75.085131,2026-02-27,2026-02-27,No
 IND20002,IND20002,Ocean Waves,2 Dorchester St unit 108/109,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3284,-75.087,2025-07-16,2025-07-16,Yes
 RDW00091,RDW00091,REDNERS MARKET 91,24120 Zinfandel Ln,Lewes,DE,19958,206,Route 206 Driver,Unassigned,Unassigned,Unassigned,38.7447928,-75.186878,2026-03-06,2026-03-06,No
