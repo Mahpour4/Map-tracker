@@ -213,10 +213,10 @@ CASH0003,CASH0003,50 Star Deli & Grocery,2300 E Monument St,Baltimore,MD,21205,2
 CASH0017,CASH0017,Aden Deli,2300 Orem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.31611,-76.647657,,2026-03-10,No
 CASH0020,CASH0020,Ali's Snack Shop,1737 West North Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3096851,-76.6461025,,2026-03-09,No
 CASH0021,CASH0021,All Brothers Carryout,1039 East Curry St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.300520697349754,-76.61864759530016,2026-02-23,2026-02-05,No
-CASH0027,CASH0027,Apple One Mini Mart,1388 Taylor Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3831727,-76.5710038,2026-02-04,2026-03-19,No
+CASH0027,CASH0027,Apple One Mini Mart,1388 Taylor Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3831727,-76.5710038,2026-02-25,2026-03-19,No
 CASH0034,CASH0034,B&B Convenience,336 S Monroe St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2835144,-76.6467874,2026-03-02,2026-03-16,No
 CASH0050,CASH0050,BP Slade,524 Reisterstown Rd,Pikesville,MD,21208,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3681255,-76.7175643,,2026-03-02,No
-CASH0061,CASH0061,Carol Food Mart,3333 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2803933,-76.6730622,,2026-03-16,No
+CASH0061,CASH0061,Carol Food Mart,3333 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2803933,-76.6730622,2026-02-24,2026-03-16,No
 CASH0094,CASH0094,Dollar Plus Sper Marquet,2004 W Pratt St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2852493,-76.6488,,2026-03-05,No
 CASH0095,CASH0095,Dollar Plus,108 Broadway St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3011779,-76.5945794,,2026-03-06,No
 CASH0098,CASH0098,Dr Grocery Store,1100 N Sticker St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.299421173985124,-76.58358849147756,2026-03-06,2026-03-05,No
@@ -553,7 +553,7 @@ CASH0358,CASH0358,Shop Express,5010 Frederick Ave,Baltimore,MD,21229,200,Route 2
 CASH0359,CASH0359,Shop Express Food Stores,2335 Orleans St,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.295474,-76.5839203,,2026-01-19,No
 CASH0360,CASH0360,Shop Express Market,1000 Dundalk Ave,Dundalk,MD,,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2873064,-76.5091236,,,Yes
 CASH0361,CASH0361,Sicilis,1702 Yakima Rd,Parkville,MD,21234,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.3841,-76.5394,,,Yes
-CASH0362,CASH0362,Sicily's,1702 Yakona Rd,Parkville,MD,21234,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.3960947,-76.5624811,,,Yes
+CASH0362,CASH0362,Sicily's,1702 Yakona Rd,Parkville,MD,21234,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.3960947,-76.5624811,2026-02-24,,No
 CASH0363,CASH0363,Smile Deli,2219 Barford Rd,Baltimore,MD,21218,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3228,-76.6044,,,Yes
 CASH0364,CASH0364,Smoke Vape And Easy Mart,6929 Holabird Ave,Dundalk,MD,,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2724985,-76.5233284,,,Yes
 CASH0365,CASH0365,Soda Pop,7715 West Field Rd,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2694,-76.6572,,,Yes
@@ -591,7 +591,7 @@ CASH0428,CASH0428,One Stop Convenience Stemmers Run,321 Stemmers Run Rd,Essex,MD
 CASH0439,CASH0439,Liberty Gas and Mart,100 South Main St,Bridgeville,DE,19922,200,Route 200 Driver,Eastern Shore Delaware,Bridgeville,Central Delaware,38.7437672,-75.5993549,,,Yes
 CASH0443,CASH0443,Pep-Up Express,2910 Ocean Gateway,Cambridge,MD,21613,200,Route 200 Driver,Eastern Shore Maryland,Cambridge,Mid Shore,38.5586593,-76.0611847,,,Yes
 CASH0445,CASH0445,Sozach Convenience Inc,202 Park Rd,Rockville,MD,20850,200,Route 200 Driver,Montgomery County,Montgomery County,Montgomery County,39.085961,-77.145526,,,Yes
-CASH0449,CASH0449,Geresbecks,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.1588238,-76.5162013,2026-02-02,,No
+CASH0449,CASH0449,Geresbecks,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.1588238,-76.5162013,2026-02-23,,No
 CASH0453,CASH0453,7/11 Henderson,21040 Henderson Corner Rd,Germantown,MD,20876,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.2047035,-77.2438341,,,Yes
 CASH0454,CASH0454,Candy Quickstop Beer and Wine,21101 Frederick Rd,Germantown,MD,20876,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.203398,-77.2449156,,,Yes
 CASH0501,CASH0501,R&R Convenience Deli,812 Guilford Rd,Baltimore,MD,21207,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3108,-76.6836,,,Yes
@@ -706,7 +706,7 @@ CASH0139,CASH0139,Family Food Deli,1543,Poplar,,,204,Route 204 Driver,Unassigned
 CASH2222,CASH2222,Badan Grocery,1001 N Broadway,Baltimore,MD,21205,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.301991,-76.5941612,2026-03-17,2025-10-17,No
 FLW02527,FLW02527,FOOD LION 2527,15201 WASHINGTON ST,HAYMARKET,VA,20169,209,Route 209 Driver,Unassigned,Unassigned,Unassigned,38.813361,-77.6389767,2025-08-12,,Yes
 SFW07533,SFW07533,SHOPPERS FOOD WHSE 7533 CLOSING,1200 EASTERN BLVD,ESSEX,MD,21221,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3154582,-76.4635203,2025-08-26,,Yes
-CASH0353,CASH0353,Sg Convenience Store,1856 Wilkens Ave,Baltimore,MD,21223,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2823771,-76.6464382,2026-02-23,2025-10-29,No
+CASH0353,CASH0353,Sg Convenience Store,1856 Wilkens Ave,Baltimore,MD,21223,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2823771,-76.6464382,2026-02-26,2025-10-29,No
 CASH0374,CASH0374,Sunnys Food Market,1739 N Payson,Baltimore,MD,,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3086267,-76.649551,2026-03-11,2026-02-12,No
 CASH0530,CASH0530,Basilica Place Cafe and Convenience,124 West Franklin St.,Baltimore,MD,21201,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2953943,-76.6175375,2026-03-18,2025-10-23,No
 WAW03588,WAW03588,WALMART 3588,17041 Richmond Hwy,Dumfries,VA,22026,209,Route 208 Driver,Northern Virginia,Prince William County,Prince William County,38.5766154,-77.3123432,2026-03-12,2026-03-18,No
