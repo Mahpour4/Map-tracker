@@ -7,7 +7,7 @@ SFW02383,02383,Shoppers 2383,10501 Martin Luther King Jr. Hwy,Bowie,MD,20720,207
 SFW02650,SFW02650,Shoppers 2650,4720 CHERRY HILL RD,COLLEGE PARK,MD,20740,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,39.0166845,-76.9323964,,2025-09-16,Yes
 WGW00007,WGW00007,Wegmans 07,45131 COLUMBIA PLACE,STERLING,VA,20166,,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.0069806,-77.4407079,,2025-09-17 13:05:57,Yes
 SFW07540,SFW07540,Shoppers 7540,5457 BALTIMORE NATIONAL PIKE,BALTIMORE,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2897973,-76.7184422,,,Yes
-FLW01668,01668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1305901,-76.5571402,2026-03-20,2026-03-20,No
+FLW01668,01668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1305901,-76.5571402,2026-03-20,2026-03-23,No
 GBW00001,GBW00001,Geresbecks G-1,7931 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.135998,-76.585533,,2025-10-30 10:55:44,Yes
 WGW00053,WGW00053,Wegmans 53,21 Wegmans Blvd,Abingdon,MD,21009,214,Route 204 Driver,Harford County,Harford County,Harford County,39.4661496,-76.3094519,2026-01-09,2025-10-22 21:10:04,No
 FLW01547,FLW01547,Food Lion 1547,2250 HANSON RD,EDGEWOOD,MD,21040,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4282968,-76.2981246,2026-03-19,2026-03-19,No
@@ -67,7 +67,7 @@ WGW00041,WGW00041,Wegmans 41,Ridge Square NW,Washington,DC,20016,200,Route 200 D
 FLW01405,01405,Food Lion 1405,1413 FUSELAGE AVE,MIDDLE RIVER,MD,21220,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3324547,-76.4458499,2026-03-17,2026-03-17,No
 GBW00002,GBW00002,Geresbecks Baltimore,2109 Eastern Blvd,Baltimore,MD,21220,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3277067,-76.4407055,,,Yes
 FLW01653,FLW01653,Food Lion 1653,1565 HYDE PARK RD,ESSEX,MD,21221,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.2988149,-76.4370235,2026-03-17,2026-03-17,No
-RDW00096,RDW00096,Redners 96,7938 EASTERN AVE,BALTIMORE,MD,21224,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2965631,-76.507546,2026-03-16,2026-03-16,No
+RDW00096,RDW00096,Redners 96,7938 EASTERN AVE,BALTIMORE,MD,21224,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2965631,-76.507546,2026-03-16,2026-03-23,No
 WAW00098,WAW00098,Walmart Glen Burnie,6721 Chesapeake Center Dr,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1899534,-76.6059009,,2026-03-08,No
 FLW01543,01543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1273757,-76.6415943,2026-03-17,2026-03-17,No
 FLW01153,01153,Food Lion 1153,12158 BRITTINGHAM LN,Princess Anne,MD,21853,206,Route 206 Driver,Eastern Shore Maryland,Princess Anne,Princess Anne,38.2160415,-75.7009628,2026-03-18,2026-03-18,No
@@ -374,7 +374,7 @@ FLW01413,FLW01413,FOOD LION 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,204,Route
 FLW01423,FLW01423,FOOD LION 1423,2458 CHURCHVILLE RD,BEL AIR,MD,21015,214,Route 204 Driver,Harford County,Harford County,Harford County,39.5568664,-76.2718674,2026-03-13,2026-03-13,No
 FLW01465,FLW01465,FOOD LION 1465,1312 S MAIN ST STE 4,MOUNT AIRY,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,2026-03-20,2026-03-11,No
 FLW02193,FLW02193,FOOD LION 2193,3000 GAMBER RD,FINKSBURG,MD,21048,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4941814,-76.8942659,2026-03-19,2026-03-19,No
-FLW02559,FLW02559,FOOD LION 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1997303,-76.6399835,2026-03-17,2026-03-17,No
+FLW02559,FLW02559,FOOD LION 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1997303,-76.6399835,2026-03-17,2026-03-23,No
 FLW02560,FLW02560,FOOD LION 2560,7514 N POINT RD,EDGEMERE,MD,21219,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2364809,-76.4408967,2026-03-16,2026-03-16,No
 CASH0522,CASH0522,One Stop Mini Mart,578 Old Town Mall,Baltimore,MD,21202,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2969014,-76.6030464,2026-03-16,2026-02-14,No
 CASH3000,CASH3000,Old Town Market,624 Aisquith St.,Baltimore,MD,21202,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2978622,-76.6020825,2026-03-17,2026-02-14,No
@@ -747,7 +747,7 @@ CASH0515,CASH0515,Fairhaven Mini Market,4015 Fairhaven Ave,Baltimore,MD,21226,20
 CASH0519,CASH0519,Mega Tobacco and Convenience,5211 York Rd,Baltimore,MD,21212,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.16400266688537,-76.50614004440172,2026-03-05,2025-10-11,No
 CASH0521,CASH0521,Family Food Market,5129 Reisterstown Rd,Baltimore,MD,21215,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.443686496469844,-76.7007,2026-03-09,,No
 CASH0527,CASH0527,OG Convenience and Smoke,8301 Harford Rd,Baltimore,MD,21234,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.23627295608923,-76.44053094886532,2026-01-21,2025-10-23,No
-GS000001,GS000001,Geresbeck\,7931 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.16625256857405,-76.61993987995825,2025-10-30,2026-03-17,No
+GS000001,GS000001,Geresbeck\,7931 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.16625256857405,-76.61993987995825,2025-10-30,2026-03-23,No
 GS000002,GS000002,Geresbeck\,8489 Fort Smallwood Rd,Pasadena,MD,21122,204,Route 204 Driver,Unassigned,Unassigned,Unassigned,39.110952568574056,-76.56663987995825,2025-11-17,,Yes
 GS000003,GS000003,Geresbeck\,2109 Eastern Blvd,Middle River,MD,21220,204,Route 204 Driver,Unassigned,Unassigned,Unassigned,39.33795256857405,-76.43463987995825,2025-02-18,,Yes
 IND00021,IND00021,Charming Grocery Store,1600 Druid Hill Ave,Baltimore,MD,21212,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.11279809467146,-76.54755819291145,2025-07-08,,Yes
