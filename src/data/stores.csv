@@ -248,7 +248,7 @@ CASH0350,CASH0350,Sanaa Grocery And Deli,2923 West Belvedere Ave,Baltimore,MD,21
 CASH0357,CASH0357,Shons Food Market,4709 Garrison Blvd,Baltimore,MD,21215,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3402565,-76.6836725,2026-02-10,2026-03-19,No
 CASH0392,CASH0392,Torres Grocery,1832 Mosher St,Baltimore,MD,21217,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3000273,-76.6474416,,2026-01-09,No
 CASH0403,CASH0403,West Carry Out,1837 Edmonton Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.380842280793196,-76.68159880290699,2026-03-09,2026-01-15,No
-CASH0429,CASH0429,Jose R Grocery Mart,1701 W North Ave,Baltimore,MD,21217,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3097189,-76.6451191,,2026-03-06,No
+CASH0429,CASH0429,Jose R Grocery Mart,1701 W North Ave,Baltimore,MD,21217,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3097189,-76.6451191,2026-01-29,2026-03-06,No
 CASH0437,CASH0437,Jimmy D's Mart,5910 Radecke Ave,Baltimore,MD,21206,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3309623,-76.5321538,2026-03-10,2026-03-10,No
 CASH0504,CASH0504,Whitelock City Food Market,705 Whitelock St,Baltimore,MD,21217,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3146314,-76.630188,2026-03-17,2026-02-19,No
 CASH0546,CASH0546,Cherry Hill Mart,661 Cherry Hill rd,Baltimore,MD,21225,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2495515,-76.6231672,2026-03-13,2026-03-19,No
@@ -625,7 +625,7 @@ CASH3015,CASH3015,OC Convenience,1201 Atlantic Ave.,Ocean City,MD,21842,200,Rout
 CASH3016,CASH3016,Village Market Beer and Wine,1816 Philadelphia Ave,Ocean City,MD,21842,200,Route 200 Driver,Eastern Shore Maryland,Ocean City,Ocean City & Coastal,38.3482875,-75.0790323,,2025-05-16,Yes
 CASH3020,CASH3020,Exxon Friendship Food Mart,"10709 Grays Corner Rd,",Berlin,MD,21811-2821,200,Route 200 Driver,Eastern Shore Maryland,Berlin,Ocean City & Coastal,38.3451673,-75.1869051,,,Yes
 CASH3028,CASH3028,H & P,3859 Elmley Ave,Baltimore,MD,21213,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3177292,-76.5637471,2026-03-04,2026-02-05,No
-CASH3036,CASH3036,Royal Tobacco Deli and Grocery,5310 Edmonson Ave,Baltimore,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2826,-76.6821,,2026-01-28,No
+CASH3036,CASH3036,Royal Tobacco Deli and Grocery,5310 Edmonson Ave,Baltimore,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2826,-76.6821,2026-01-28,2026-01-28,No
 FS000002,FS000002,Food Star Glebe Rd,206 W Glebe Rd,Alexandria,VA,22305,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,38.8366638,-77.0623106,,,Yes
 GOW00773,GOW00773,GROCERY OUTLET 773,200 CLIFTON BLVD,WESTMINSTER,MD,21157,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.584564,-76.9870395,,,Yes
 IND00001,IND00001,Accents Grill,Greenspring Shopping Cent,Baltimore,MD,21209,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,38.71337909068044,-76.53623375612794,,,Yes
