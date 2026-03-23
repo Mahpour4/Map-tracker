@@ -217,7 +217,7 @@ function detectStoreType(name, id) {
 }
 
 export default function DataImport() {
-  const { state, bulkImportStores, addImportEntry, setTransactions, bulkRecordVisits, mergeCentralBilling } = useApp();
+  const { state, bulkImportStores, addImportEntry, setTransactions, bulkRecordVisits, mergeCentralBilling, mergeCbInquiry } = useApp();
   const { stores, importLog } = state;
   const transactions = state.transactions || [];
 
@@ -225,6 +225,8 @@ export default function DataImport() {
   const [cbImporting, setCbImporting] = useState(false);
   const [cbResult, setCbResult] = useState(null);
   const cbFileRef = useRef(null);
+  const cbInquiryFileRef = useRef(null);
+  const [cbInquiryResult, setCbInquiryResult] = useState(null);
 
   const [rawInput, setRawInput] = useState('');
   const [parsed, setParsed] = useState(null);
@@ -1144,7 +1146,53 @@ export default function DataImport() {
           >
             {cbImporting ? 'Parsing PDF…' : 'Import CB PDF'}
           </button>
+          <input
+            ref={cbInquiryFileRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setCbInquiryResult(null);
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                try {
+                  const parsed = JSON.parse(ev.target.result);
+                  // Support both plain array (invoice_data.json) and wrapped object ({ Store_List, Chain_List })
+                  const stores = Array.isArray(parsed) ? parsed : (parsed.Store_List || []);
+                  const chains = Array.isArray(parsed) ? [] : (parsed.Chain_List || []);
+                  if (!stores.length && !chains.length) {
+                    setCbInquiryResult({ ok: false, message: 'No store data found in file.' });
+                    return;
+                  }
+                  mergeCbInquiry({ stores, chains });
+                  setCbInquiryResult({ ok: true, message: `Imported ${stores.length} stores, ${chains.length} chains. View in Central Billing → AR Aging.` });
+                } catch {
+                  setCbInquiryResult({ ok: false, message: 'Invalid JSON file.' });
+                } finally {
+                  e.target.value = '';
+                }
+              };
+              reader.readAsText(file);
+            }}
+          />
+          <button
+            className="btn btn-secondary"
+            onClick={() => cbInquiryFileRef.current?.click()}
+          >
+            Import CB Inquiry JSON
+          </button>
         </div>
+        {cbInquiryResult && (
+          <div
+            className={cbInquiryResult.ok ? 'data-import-success' : 'data-import-error'}
+            style={{ marginTop: 8, cursor: 'pointer' }}
+            onClick={() => setCbInquiryResult(null)}
+          >
+            {cbInquiryResult.message}
+          </div>
+        )}
         {cbResult && (
           <div
             className={cbResult.ok ? 'data-import-success' : 'data-import-error'}

@@ -76,46 +76,70 @@ function renderTab() {
 // ── CB inquiry extractor (runs in MAIN world, returns data to panel) ──────
 
 async function cbInquiryExtractor() {
-  const gridNames = ['Chain_List', 'Store_List', 'Invoice_List', 'Invoice_Detail'];
-  const grids = document.querySelectorAll('[role="grid"]');
-  if (!grids.length) return null;
+  const allData = [];
+  const DELAY_MS = 2500;
 
-  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
-  function findNextBtn(agEl) {
-    return agEl.querySelector('[ref="btNext"]') ||
-           agEl.querySelector('button[aria-label="Next Page"]') ||
-           agEl.querySelector('.ag-paging-button:last-of-type') || null;
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  function getPageNumber() {
+    const el = document.querySelector('.page');
+    return el ? el.textContent.trim() : '';
   }
 
-  const output = {};
-  for (let i = 0; i < grids.length; i++) {
-    const name = gridNames[i] || `Grid_${i + 1}`;
-    const agEl = grids[i].closest('.ag-root-wrapper') || grids[i].parentElement;
-    const comp = agEl.__agComponent;
-    if (!comp) { output[name] = []; continue; }
+  function isNextPageEnabled() {
+    const img = document.getElementById('cmdNxtS');
+    return img && img.style.visibility === 'visible' && img.src.includes('next_page_up');
+  }
 
-    const api = comp.gridOptions.api;
-    const colDefs = (comp.gridOptions.columnDefs || []).map(c => c.field).filter(Boolean);
-    const allRows = [];
-
-    if (!agEl.querySelector('.ag-paging-panel')) {
-      api.forEachNode(node => {
-        if (node.data) { const r = {}; colDefs.forEach(f => { r[f] = node.data[f] ?? null; }); allRows.push(r); }
-      });
-    } else {
-      if (typeof api.paginationGoToFirstPage === 'function') { api.paginationGoToFirstPage(); await wait(400); }
-      for (let page = 1; page <= 500; page++) {
-        api.forEachNodeAfterFilter(node => {
-          if (node.data) { const r = {}; colDefs.forEach(f => { r[f] = node.data[f] ?? null; }); allRows.push(r); }
+  function getCurrentPageData() {
+    const grid = document.querySelectorAll('.ag-root-wrapper')[1];
+    if (!grid) return [];
+    const rows = grid.querySelectorAll('.ag-center-cols-container [role="row"]');
+    const data = [];
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('[role="gridcell"]');
+      const vals = Array.from(cells).map(c => c.textContent.trim());
+      if (vals.length > 1 && vals.some(v => v)) {
+        data.push({
+          BranchId:     vals[1],
+          ChainId:      vals[2],
+          StoreId:      vals[3],
+          StoreName:    vals[4],
+          TotalBalance: vals[5],
+          Current:      vals[6],
+          Days30:       vals[7],
+          Days60:       vals[8],
+          Days90:       vals[9],
+          Over90Days:   vals[10]
         });
-        const nextBtn = findNextBtn(agEl);
-        if (!nextBtn || nextBtn.disabled || nextBtn.classList.contains('ag-disabled') || nextBtn.getAttribute('aria-disabled') === 'true') break;
-        nextBtn.click(); await wait(600);
       }
-    }
-    output[name] = allRows;
+    });
+    return data;
   }
-  return output;
+
+  let pageNum = 0;
+  while (true) {
+    pageNum++;
+    const rows = getCurrentPageData();
+    if (rows.length === 0) break;
+    allData.push(...rows);
+    if (!isNextPageEnabled()) break;
+    await document.WSStore.performAction('next');
+    await wait(DELAY_MS);
+  }
+
+  // Auto-download as .json file
+  const json = JSON.stringify(allData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'invoice_data.json';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  window.__scrapedData = allData;
+  return { Store_List: allData, _pages: pageNum };
 }
 
 // ── Import handlers ───────────────────────────────────────────────────────
@@ -144,17 +168,7 @@ function handleImportClick() {
           addLog('No ag-grid tables found on this page. Navigate to Invoice Inquiry first.', 'error');
           return;
         }
-        const date = new Date().toISOString().slice(0, 10);
-        const filename = `map-tracker-invoices-${date}.json`;
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        const total = Object.values(data).reduce((s, v) => s + v.length, 0);
-        const summary = Object.entries(data).map(([k, v]) => `${k}: ${v.length}`).join(', ');
-        addLog(`Downloaded ${filename} — ${total} rows (${summary})`, 'success');
+        addLog(`Done — ${data.Store_List?.length ?? 0} stores across ${data._pages} page(s). File downloaded as invoice_data.json`, 'success');
       }
     );
     return;

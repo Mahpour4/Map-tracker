@@ -123,11 +123,7 @@
     if (score > bestScore) { bestScore = score; bestOffset = off; }
   }
 
-  /* Step 5: Scrape page 1 */
-  let allData = extractRows(getDataRows(), bestOffset);
-  notify('Page 1: ' + allData.length + ' rows');
-
-  /* Step 6: Detect total pages */
+  /* Step 5: Detect total pages */
   let totalPages = 0;
   const pageInfoMatch = document.body.innerText.match(/(\d+)\s*items?\s*in\s*(\d+)\s*pages?/i);
   if (pageInfoMatch) totalPages = parseInt(pageInfoMatch[2]);
@@ -150,9 +146,8 @@
     }
     totalPages = hasMore ? maxVisible * 10 : maxVisible;
   }
-  showToast('Page 1/' + (totalPages > 50 ? '?' : totalPages) + ' \u2014 ' + allData.length + ' rows', '#3b82f6');
 
-  /* Step 7: Paginate */
+  /* Step 6: Paginate — scrape current page FIRST, then navigate to next */
   function getFirstRowText() {
     const rows = getDataRows();
     if (rows.length === 0) return '';
@@ -168,10 +163,7 @@
     return false;
   }
 
-  // Find a clickable "next page" element — prefer Next Page button over page numbers
-  // because Telerik RadGrid re-renders page number links after each click
-  function findNextPageLink(targetPage) {
-    // Strategy A: Direct "Next Page" buttons (most reliable — always present if not last page)
+  function findNextPageLink() {
     const nextSelectors = [
       '.rgArrPart2 a[title="Next Page"]',
       'a[title="Next Page"]',
@@ -184,91 +176,54 @@
     ];
     for (const sel of nextSelectors) {
       const el = document.querySelector(sel);
-      if (el && !el.classList.contains('rgDisabled') && !el.disabled &&
-          el.offsetParent !== null) {
+      if (el && !el.classList.contains('rgDisabled') && !el.disabled && el.offsetParent !== null) {
         return el;
       }
     }
-
-    // Strategy B: Direct page number link
-    let link = document.querySelector('a[title="Page ' + targetPage + '"]');
-    if (link) return link;
-
-    // Strategy C: Page number in pager area
-    for (const a of document.querySelectorAll('.rgNumPart a, .rgPager a')) {
-      if (a.textContent.trim() === String(targetPage)) return a;
-    }
-
-    // Strategy D: href-based page link
-    for (const a of document.querySelectorAll('a[href*="Page"]')) {
-      if (a.href?.includes('Page$' + targetPage + "'") || a.href?.includes('Page%24' + targetPage)) return a;
-    }
-
-    // Strategy E: Click "..." ellipsis to reveal more page numbers, then find page
-    for (const a of document.querySelectorAll('.rgNumPart a, .rgPager a, a')) {
-      const txt = a.textContent.trim();
-      if (txt === '...' || txt === '\u2026') {
-        a.click();
-        // Can't await here (sync search), but we'll retry after
-        return null;
-      }
-    }
-
-    // Strategy F: > or >> buttons
+    // > or >> buttons
     for (const el of document.querySelectorAll('input[type="submit"], input[type="button"], button')) {
       const val = (el.textContent || el.value || '').trim();
       if (!el.disabled && (val === '>' || val === '\u203A' || val === '\u00BB' || val === '>>')) return el;
     }
-
     return null;
   }
 
-  for (let p = 2; p <= totalPages; p++) {
-    const oldText = getFirstRowText();
-    const pagesLabel = totalPages > 50 ? '?' : totalPages;
-    showToast('Loading page ' + p + '/' + pagesLabel + '...', '#3b82f6');
-    notify('Loading page ' + p + '/' + pagesLabel + '...');
+  let allData = [];
+  let pageNum = 0;
+  const pagesLabel = totalPages > 50 ? '?' : totalPages;
 
-    let link = findNextPageLink(p);
+  while (true) {
+    pageNum++;
 
-    // If no link found, maybe "..." was clicked — wait and retry
+    // Scrape the current page first
+    const pageData = extractRows(getDataRows(), bestOffset);
+    allData = allData.concat(pageData);
+    showToast('Page ' + pageNum + '/' + pagesLabel + ' \u2014 ' + allData.length + ' rows', '#3b82f6');
+    notify('Page ' + pageNum + ': ' + allData.length + ' total rows');
+
+    // Then look for a next page button
+    let link = findNextPageLink();
+
+    // If not found, try clicking "..." ellipsis and retry once
     if (!link) {
-      await new Promise(r => setTimeout(r, 2500));
-      link = findNextPageLink(p);
-    }
-    if (!link) break;
-
-    link.click();
-
-    let changed = await waitForChange(oldText, 15000);
-
-    // If didn't change, try clicking the specific page number (the Next button might have revealed it)
-    if (!changed) {
-      const pageLink = document.querySelector('a[title="Page ' + p + '"]');
-      if (pageLink) {
-        pageLink.click();
-        changed = await waitForChange(oldText, 10000);
-      } else {
-        for (const a2 of document.querySelectorAll('.rgNumPart a, .rgPager a, a')) {
-          if (a2.textContent.trim() === String(p)) {
-            a2.click();
-            changed = await waitForChange(oldText, 10000);
-            break;
-          }
-        }
+      for (const a of document.querySelectorAll('.rgNumPart a, .rgPager a, a')) {
+        const txt = a.textContent.trim();
+        if (txt === '...' || txt === '\u2026') { a.click(); break; }
       }
+      await new Promise(r => setTimeout(r, 2500));
+      link = findNextPageLink();
     }
+
+    if (!link) break; // No next page — we're done
+
+    const oldText = getFirstRowText();
+    link.click();
+    const changed = await waitForChange(oldText, 15000);
     if (!changed) {
-      notify('Page ' + p + ': timed out waiting for data. Stopping.');
+      notify('Page ' + pageNum + ': timed out waiting for next page. Stopping.');
       break;
     }
 
-    const pageData = extractRows(getDataRows(), bestOffset);
-    allData = allData.concat(pageData);
-    showToast('Page ' + p + '/' + pagesLabel + ' \u2014 ' + allData.length + ' total', '#3b82f6');
-    notify('Page ' + p + ': ' + allData.length + ' total rows');
-
-    // Small delay between pages to let the UI settle
     await new Promise(r => setTimeout(r, 300));
   }
 

@@ -649,6 +649,86 @@ export async function saveInventoryJson(jsonContent, message) {
   });
 }
 
+// ---- CB Inquiry JSON (GitHub sync) ----
+
+// ---- Central Billing JSON ----
+
+const CENTRAL_BILLING_FILE_PATH = 'src/data/centralBilling.json';
+const CENTRAL_BILLING_SHA_KEY = 'github_centralbilling_sha';
+
+function getCentralBillingSha() { return localStorage.getItem(CENTRAL_BILLING_SHA_KEY) || ''; }
+function saveCentralBillingSha(sha) { localStorage.setItem(CENTRAL_BILLING_SHA_KEY, sha); }
+
+export async function fetchCentralBillingJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CENTRAL_BILLING_FILE_PATH}`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (res.status === 404) return { content: 'null', sha: '' };
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveCentralBillingSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveCentralBillingJson(jsonContent, message) {
+  let sha = getCentralBillingSha();
+  if (!sha) {
+    try { sha = (await fetchCentralBillingJson()).sha; } catch { /* file may not exist */ }
+  }
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CENTRAL_BILLING_FILE_PATH}`,
+    encoded,
+    message: message || 'Update centralBilling.json from Map Tracker app',
+    sha,
+    fetchFn: fetchCentralBillingJson,
+    saveShaFn: saveCentralBillingSha,
+  });
+}
+
+const CB_INQUIRY_FILE_PATH = 'src/data/cbInquiry.json';
+const CB_INQUIRY_SHA_KEY = 'github_cbinquiry_sha';
+
+function getCbInquirySha() { return localStorage.getItem(CB_INQUIRY_SHA_KEY) || ''; }
+function saveCbInquirySha(sha) { localStorage.setItem(CB_INQUIRY_SHA_KEY, sha); }
+
+export async function fetchCbInquiryJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CB_INQUIRY_FILE_PATH}`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (res.status === 404) return { content: 'null', sha: '' };
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveCbInquirySha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveCbInquiryJson(jsonContent, message) {
+  let sha = getCbInquirySha();
+  if (!sha) {
+    try { sha = (await fetchCbInquiryJson()).sha; } catch { /* file may not exist */ }
+  }
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CB_INQUIRY_FILE_PATH}`,
+    encoded,
+    message: message || 'Update cbInquiry.json from Map Tracker app',
+    sha,
+    fetchFn: fetchCbInquiryJson,
+    saveShaFn: saveCbInquirySha,
+  });
+}
+
 // ---- Map Snapshot JSON (GitHub Pages publish) ----
 
 const SNAPSHOT_FILE_PATH = 'docs/data/map-snapshot.json';

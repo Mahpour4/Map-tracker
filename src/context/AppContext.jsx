@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useRef }
 import { v4 as uuidv4 } from 'uuid';
 import { sampleStores, sampleZones, processStoresFromCsv, storesToCsv } from '../data/sampleData';
 import { fleetVehicles } from '../data/fleetData';
-import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, fetchWarehouseOrdersJson, saveWarehouseOrdersJson, fetchInventoryJson, saveInventoryJson, getToken } from '../services/githubService';
+import { fetchStoresCsv, saveStoresCsv, fetchAlertsCsv, saveAlertsCsv, fetchSchedulesJson, saveSchedulesJson, fetchImportLog, saveImportLog, fetchVisitHistoryJson, saveVisitHistoryJson, fetchWarehousesJson, saveWarehousesJson, fetchTravelLogJson, saveTravelLogJson, fetchAddressOverridesJson, saveAddressOverridesJson, fetchCustomLocationsJson, saveCustomLocationsJson, fetchTransactionsJson, saveTransactionsJson, fetchWarehouseOrdersJson, saveWarehouseOrdersJson, fetchInventoryJson, saveInventoryJson, fetchCbInquiryJson, saveCbInquiryJson, fetchCentralBillingJson, saveCentralBillingJson, getToken } from '../services/githubService';
 import { loadLocalData, saveLocalData } from '../services/localDataService';
 import { parseAlertsCsv, alertsToCsv, matchAlertToStore, fetchAlertEmails, isGmailConnected, fetchAlertImage as fetchAlertImageApi, labelAlertMessages, labelAlertsDone, labelAlertsProcessed, labelAlertsCompleted, labelAlertsError, unlabelAlertsError, unlabelAlertsDoneAndCompleted } from '../services/gmailAlertService';
 import { acceptAlerts as gwAcceptAlerts, completeAlerts as gwCompleteAlerts } from '../services/globalworxService';
@@ -89,6 +89,9 @@ const initialState = {
   })(), // { items: { sku: { incoming, sold, caseCount, ... } }, lastUpdated }
   autoVisitEnabled: true,
   language: localStorage.getItem('app_language') || 'en',
+  cbInquiry: (() => {
+    try { const s = localStorage.getItem('cbInquiry'); return s ? JSON.parse(s) : null; } catch { return null; }
+  })(),
   centralBilling: (() => {
     try {
       const saved = localStorage.getItem('centralBilling');
@@ -582,6 +585,13 @@ function reducer(state, action) {
 
       try { localStorage.setItem('centralBilling', JSON.stringify(merged)); } catch { /* ignore */ }
       return { ...state, centralBilling: merged };
+    }
+    case 'MERGE_CB_INQUIRY': {
+      const { stores, chains } = action.payload;
+      const importedAt = new Date().toISOString();
+      const saved = { importedAt, stores: stores || [], chains: chains || [] };
+      try { localStorage.setItem('cbInquiry', JSON.stringify(saved)); } catch { /* ignore */ }
+      return { ...state, cbInquiry: saved };
     }
     // Keep SET_CENTRAL_BILLING for direct overwrite if ever needed
     case 'SET_CENTRAL_BILLING': {
@@ -1595,6 +1605,68 @@ export function AppProvider({ children }) {
     return () => { if (inventorySaveTimer.current) clearTimeout(inventorySaveTimer.current); };
   }, [state.inventory]);
 
+  // Load cbInquiry from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchCbInquiryJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (data && data.stores) {
+            dispatch({ type: 'MERGE_CB_INQUIRY', payload: data });
+          }
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => console.error('Failed to load cbInquiry:', err));
+  }, []);
+
+  // Auto-save cbInquiry to GitHub when it changes
+  const prevCbInquiryRef = useRef(state.cbInquiry);
+  const cbInquirySaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevCbInquiryRef.current === state.cbInquiry) return;
+    prevCbInquiryRef.current = state.cbInquiry;
+    if (!state.cbInquiry) return;
+    if (cbInquirySaveTimer.current) clearTimeout(cbInquirySaveTimer.current);
+    cbInquirySaveTimer.current = setTimeout(() => {
+      saveCbInquiryJson(JSON.stringify(state.cbInquiry))
+        .catch((err) => console.error('Failed to save cbInquiry:', err));
+    }, 2000);
+    return () => { if (cbInquirySaveTimer.current) clearTimeout(cbInquirySaveTimer.current); };
+  }, [state.cbInquiry]);
+
+  // Load centralBilling from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchCentralBillingJson()
+      .then(({ content }) => {
+        try {
+          const data = JSON.parse(content);
+          if (data && (data.invoices || data.batches)) {
+            dispatch({ type: 'SET_CENTRAL_BILLING', payload: data });
+          }
+        } catch { /* empty or invalid */ }
+      })
+      .catch((err) => console.error('Failed to load centralBilling:', err));
+  }, []);
+
+  // Auto-save centralBilling to GitHub when it changes
+  const prevCentralBillingRef = useRef(state.centralBilling);
+  const centralBillingSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!getToken()) return;
+    if (prevCentralBillingRef.current === state.centralBilling) return;
+    prevCentralBillingRef.current = state.centralBilling;
+    if (!state.centralBilling) return;
+    if (centralBillingSaveTimer.current) clearTimeout(centralBillingSaveTimer.current);
+    centralBillingSaveTimer.current = setTimeout(() => {
+      saveCentralBillingJson(JSON.stringify(state.centralBilling))
+        .catch((err) => console.error('Failed to save centralBilling:', err));
+    }, 2000);
+    return () => { if (centralBillingSaveTimer.current) clearTimeout(centralBillingSaveTimer.current); };
+  }, [state.centralBilling]);
+
   // Expose store list to localStorage for Chrome extension to read
   useEffect(() => {
     try {
@@ -1812,6 +1884,10 @@ export function AppProvider({ children }) {
     ),
     mergeCentralBilling: useCallback(
       (data) => dispatch({ type: 'MERGE_CENTRAL_BILLING', payload: data }),
+      []
+    ),
+    mergeCbInquiry: useCallback(
+      (data) => dispatch({ type: 'MERGE_CB_INQUIRY', payload: data }),
       []
     ),
   };
