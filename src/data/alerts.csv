@@ -142,14 +142,44 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-9034100","19d1b3bfbba38d2b","FLW00658","658","Food Lion","Berlin","WISE FOODS","ADUSA","206","2026-03-23","","","","03/23/2026 11:06 AM","On shelf out of date","On shelf out of date. Out dated on sales floor","Vazqueztell, Wilson"
 "ADUSA-9033929","19d1b308fb964e73","FLW02194","2194","Food Lion","Falling Waters","WISE FOODS","ADUSA","201","2026-03-23","","","","03/23/2026 10:54 AM","Excessive out of stocks","Excessive out of stocks.","Anderson, Laura"
 "ADUSA-9033767","19d1b23f7091b73f","FLW01547","1547","Food Lion","Edgewood","WISE FOODS","ADUSA","214","2026-03-23","","","","03/23/2026 10:40 AM","Excessive out of stocks","Excessive out of stocks.","Tress, Anthony"
-"ADUSA-9039121","19d20418d242504e","FLW02518","2518","Food Lion","Lake Ridge","WISE FOODS","ADUSA","209","2026-03-24","","","","03/24/2026 10:30 AM","On shelf out of date","On shelf out of date.","Wilson, Nickcole"
-"ADUSA-9038635","19d200939a9c86e8","FLW01261","1261","Food Lion","Woodbridge","WISE FOODS","ADUSA","209","2026-03-24","","","","03/24/2026 09:30 AM","Excessive out of stocks","Excessive out of stocks.","Steinback, Lisa"
-"ADUSA-9038614","19d20044e0200604","FLW01184","1184","Food Lion","Waldorf","WISE FOODS","ADUSA","207","2026-03-24","","","","03/24/2026 09:24 AM","Excessive out of stocks","Excessive out of stocks. Need product","Phillips, Mary"
-"ADUSA-9038086","19d1fd6d1b0e9f5a","FLW00807","807","Food Lion","Berkeley Springs","WISE FOODS","ADUSA","201","2026-03-24","","","","03/24/2026 08:34 AM","Excessive out of stocks","Excessive out of stocks.","Rosensteel, Nathan"
-"ADUSA-9038029","19d1fce80f3bf4ad","FLW02630","2630","Food Lion","Perryville","WISE FOODS","ADUSA","214","2026-03-24","","","","03/24/2026 08:25 AM","Excessive out of stocks","Excessive out of stocks. Sale items in need of products","May, Mycalah"
-"ADUSA-9037389","19d1fad4dee6ac9b","FLW00331","331","Food Lion","Woodstock","WISE FOODS","ADUSA","201","2026-03-24","","","","03/24/2026 07:48 AM","Excessive out of stocks","Excessive out of stocks.","Buchsenschutz, Lorie"
-"ADUSA-9037369","19d1faabc86764a5","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-24","","","","03/24/2026 07:46 AM","Excessive out of stocks","Excessive out of stocks.","Reyna, Lauryn"
-"ADUSA-9036811","19d1f677e7dc0a94","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-24","","","","03/24/2026 06:32 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
-"ADUSA-9036797","19d1f65857542d89","FLW01405","1405","Food Lion","Middle River","WISE FOODS","ADUSA","214","2026-03-24","","","","03/24/2026 06:30 AM","Excessive out of stocks","Excessive out of stocks.","Howard, Frederick"
-"ADUSA-9036678","19d1f4693335d614","FLW01319","1319","Food Lion","Charlotte Hall","WISE FOODS","ADUSA","207","2026-03-24","","","","03/24/2026 05:56 AM","Excessive out of stocks","Excessive out of stocks.","Gaines, Aliyah"
-"ADUSA-9036362","19d1c278e64d7fb5","FLW02566","2566","Food Lion","Laurel","WISE FOODS","ADUSA","207","2026-03-23","","","","03/23/2026 03:24 PM","Excessive out of stocks","Excessive out of stocks. Store needs service","Randall, Michael"
+"ADUSA-9039121","19d20418d242504e","FLW02518","2518","Food Lion","Lake Ridge","WISE FOODS","ADUSA","209","2026-03-24","Wilson, Nickcole","On shelf out of date","Unit counts: 12","03/24/2026 10:30 AM","On shelf out of date","On shelf out of date.","Wilson, Nickcole"
+"ADUSA-9038635","19d200939a9c86e8","FLW01261","1261","Food Lion","Woodbridge","WISE FOODS","ADUSA","209","2026-03-24","Steinback, Lisa","Excessive out of stocks","Ad items: 1 
+Non Ad items: 3 
+Total items: 4 
+Location: Shelf/In aisle","03/24/2026 09:30 AM","Excessive out of stocks","Excessive out of stocks.","Steinback, Lisa"
+"ADUSA-9038614","19d20044e0200604","FLW01184","1184","Food Lion","Waldorf","WISE FOODS","ADUSA","207","2026-03-24","Phillips, Mary","Excessive out of stocks","Ad items: 1 
+Non Ad items: 0 
+Total items: 1 
+Location: Shelf/In aisle","03/24/2026 09:24 AM","Excessive out of stocks","Excessive out of stocks. Need product","Phillips, Mary"
+"ADUSA-9038086","19d1fd6d1b0e9f5a","FLW00807","807","Food Lion","Berkeley Springs","WISE FOODS","ADUSA","201","2026-03-24","Rosensteel, Nathan","Excessive out of stocks","Ad items: 5 
+Non Ad items: 0 
+Total items: 5 
+Location: Shelf/In aisle","03/24/2026 08:34 AM","Excessive out of stocks","Excessive out of stocks.","Rosensteel, Nathan"
+"ADUSA-9038029","19d1fce80f3bf4ad","FLW02630","2630","Food Lion","Perryville","WISE FOODS","ADUSA","214","2026-03-24","May, Mycalah","Excessive out of stocks","Ad items: 5 
+Non Ad items: 4 
+Total items: 9 
+Location: Shelf/In aisle","03/24/2026 08:25 AM","Excessive out of stocks","Excessive out of stocks. Sale items in need of products","May, Mycalah"
+"ADUSA-9037389","19d1fad4dee6ac9b","FLW00331","331","Food Lion","Woodstock","WISE FOODS","ADUSA","201","2026-03-24","Buchsenschutz, Lorie","Excessive out of stocks","Ad items: 3 
+Non Ad items: 1 
+Total items: 4 
+Location: Shelf/In aisle","03/24/2026 07:48 AM","Excessive out of stocks","Excessive out of stocks.","Buchsenschutz, Lorie"
+"ADUSA-9037369","19d1faabc86764a5","FLW02233","2233","Food Lion","Hancock","WISE FOODS","ADUSA","201","2026-03-24","Reyna, Lauryn","Excessive out of stocks","Ad items: 4 
+Non Ad items: 0 
+Total items: 4 
+Location: Shelf/In aisle","03/24/2026 07:46 AM","Excessive out of stocks","Excessive out of stocks.","Reyna, Lauryn"
+"ADUSA-9036811","19d1f677e7dc0a94","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-24","Roscoe, Anthony","Excessive out of stocks","Ad items: 1 
+Non Ad items: 0 
+Total items: 1 
+Location: Shelf/In aisle","03/24/2026 06:32 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
+"ADUSA-9036797","19d1f65857542d89","FLW01405","1405","Food Lion","Middle River","WISE FOODS","ADUSA","214","2026-03-24","Howard, Frederick","Excessive out of stocks","Ad items: 7 
+Non Ad items: 3 
+Total items: 10 
+Location: Shelf/In aisle","03/24/2026 06:30 AM","Excessive out of stocks","Excessive out of stocks.","Howard, Frederick"
+"ADUSA-9036678","19d1f4693335d614","FLW01319","1319","Food Lion","Charlotte Hall","WISE FOODS","ADUSA","207","2026-03-24","Gaines, Aliyah","Excessive out of stocks","Ad items: 4 
+Non Ad items: 0 
+Total items: 4 
+Location: Shelf/In aisle","03/24/2026 05:56 AM","Excessive out of stocks","Excessive out of stocks.","Gaines, Aliyah"
+"ADUSA-9036362","19d1c278e64d7fb5","FLW02566","2566","Food Lion","Laurel","WISE FOODS","ADUSA","207","2026-03-23","Randall, Michael","Excessive out of stocks","Ad items: 3 
+Non Ad items: 0 
+Total items: 3 
+Location: Shelf/In aisle, Off Shelf Displays/End Caps","03/23/2026 03:24 PM","Excessive out of stocks","Excessive out of stocks. Store needs service","Randall, Michael"
