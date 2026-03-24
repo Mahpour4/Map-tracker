@@ -649,6 +649,46 @@ export async function saveInventoryJson(jsonContent, message) {
   });
 }
 
+// ---- Blast Sent Refs JSON ----
+
+const BLAST_SENT_FILE_PATH = 'src/data/blastSentRefs.json';
+const BLAST_SENT_SHA_KEY = 'github_blastsentrefs_sha';
+
+function getBlastSentSha() { return localStorage.getItem(BLAST_SENT_SHA_KEY) || ''; }
+function saveBlastSentSha(sha) { localStorage.setItem(BLAST_SENT_SHA_KEY, sha); }
+
+export async function fetchBlastSentRefsJson() {
+  const res = await fetch(
+    `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BLAST_SENT_FILE_PATH}`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (res.status === 404) return { content: '{}', sha: '' };
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${res.status}`);
+  }
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ''));
+  saveBlastSentSha(data.sha);
+  return { content, sha: data.sha };
+}
+
+export async function saveBlastSentRefsJson(jsonContent, message) {
+  let sha = getBlastSentSha();
+  if (!sha) {
+    try { sha = (await fetchBlastSentRefsJson()).sha; } catch { /* file may not exist */ }
+  }
+  const encoded = btoa(unescape(encodeURIComponent(jsonContent)));
+  return githubPutWithRetry({
+    url: `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BLAST_SENT_FILE_PATH}`,
+    encoded,
+    message: message || 'Update blastSentRefs.json from Map Tracker app',
+    sha,
+    fetchFn: fetchBlastSentRefsJson,
+    saveShaFn: saveBlastSentSha,
+  });
+}
+
 // ---- CB Inquiry JSON (GitHub sync) ----
 
 // ---- Central Billing JSON ----

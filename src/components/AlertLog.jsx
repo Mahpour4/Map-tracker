@@ -8,6 +8,7 @@ import { labelAlertsCompleted } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
 import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport, sendAlertBlast, getAlertResponses, getBlastSentRefs } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
+import { fetchBlastSentRefsJson, saveBlastSentRefsJson, getToken } from '../services/githubService';
 import savedBlastSentRefs from '../data/blastSentRefs.json';
 
 function localDateStr(d = new Date()) {
@@ -147,7 +148,7 @@ export default function AlertLog() {
   });
 
   // --- Blast sent tracking (individual ref numbers) ---
-  // Baseline from committed JSON file (works without WhatsApp service), merged with localStorage
+  // Baseline from committed JSON file, merged with localStorage, synced to GitHub
   const BLAST_SENT_KEY = 'blast_sent_refs';
   const [blastSentRefs, setBlastSentRefs] = useState(() => {
     try {
@@ -156,12 +157,31 @@ export default function AlertLog() {
     } catch { return { ...savedBlastSentRefs }; }
   });
 
+  // Load latest blast sent refs from GitHub on mount
+  useEffect(() => {
+    if (!getToken()) return;
+    fetchBlastSentRefsJson().then(({ content }) => {
+      try {
+        const remote = JSON.parse(content) || {};
+        setBlastSentRefs(prev => {
+          const merged = { ...prev, ...remote };
+          localStorage.setItem(BLAST_SENT_KEY, JSON.stringify(merged));
+          return merged;
+        });
+      } catch { /* ignore parse errors */ }
+    }).catch(() => { /* offline or no token */ });
+  }, []);
+
   function markBlastSent(refs) {
     const now = new Date().toISOString();
     const updated = { ...blastSentRefs };
     refs.forEach(ref => { updated[ref] = now; });
     setBlastSentRefs(updated);
     localStorage.setItem(BLAST_SENT_KEY, JSON.stringify(updated));
+    if (getToken()) {
+      saveBlastSentRefsJson(JSON.stringify(updated))
+        .catch(err => console.error('Failed to save blastSentRefs:', err));
+    }
   }
 
   function isBlastSent(refNumber) {
