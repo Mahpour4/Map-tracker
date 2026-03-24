@@ -15,9 +15,12 @@ dist-ssr
 # Local launcher script
 # start.bat is now tracked in the repo
 
-# WhatsApp service session data
+# Auth tokens — NEVER commit these (machine-specific, security sensitive)
+.wwebjs_auth/
+.wwebjs_cache/
 scripts/whatsapp-service/.wwebjs_auth/
 scripts/whatsapp-service/.wwebjs_cache/
+token/
 
 # Local disk cache (written by WhatsApp service, outside src/ to avoid Vite HMR)
 local-data/

@@ -1,0 +1,52 @@
+[
+  {
+    "jobber": "204",
+    "storeId": "FLW00950",
+    "storeName": "FOOD LION 0950",
+    "docNum": "2040458",
+    "docDate": "11/26/2025",
+    "postDate": "11/26/2025",
+    "amount": 313.95,
+    "address": "511 E BALTIMORE ST & GRAND DR TANEYTOWN, MD. 21787"
+  },
+  {
+    "jobber": "204",
+    "storeId": "FLW00950",
+    "storeName": "FOOD LION 0950",
+    "docNum": "2040369",
+    "docDate": "11/12/2025",
+    "postDate": "11/12/2025",
+    "amount": 87.7,
+    "address": "511 E BALTIMORE ST & GRAND DR TANEYTOWN, MD. 21787"
+  },
+  {
+    "jobber": "204",
+    "storeId": "FLW00950",
+    "storeName": "FOOD LION 0950",
+    "docNum": "2040332",
+    "docDate": "11/05/2025",
+    "postDate": "11/05/2025",
+    "amount": 220.24,
+    "address": "511 E BALTIMORE ST & GRAND DR TANEYTOWN, MD. 21787"
+  },
+  {
+    "jobber": "204",
+    "storeId": "FLW00950",
+    "storeName": "FOOD LION 0950",
+    "docNum": "2040331",
+    "docDate": "11/05/2025",
+    "postDate": "11/05/2025",
+    "amount": -18.15,
+    "address": "511 E BALTIMORE ST & GRAND DR TANEYTOWN, MD. 21787"
+  },
+  {
+    "jobber": "204",
+    "storeId": "FLW00950",
+    "storeName": "FOOD LION 0950",
+    "docNum": "2040248",
+    "docDate": "10/24/2025",
+    "postDate": "10/24/2025",
+    "amount": 141.2,
+    "address": "511 E BALTIMORE ST & GRAND DR TANEYTOWN, MD. 21787"
+  }
+]

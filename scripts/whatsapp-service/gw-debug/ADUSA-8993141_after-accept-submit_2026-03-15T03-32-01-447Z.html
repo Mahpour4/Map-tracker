@@ -1,0 +1,5416 @@
+<!-- Schedule base page --><!-- Include components styles --><html slick-uniqueid="3"><head><link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/message/broadcast/broadcastNotification.less?v=1.0.0"><style type="text/css" id="less:Mobility-resources-less-core-message-broadcast-broadcastNotification:less-v-1:0:0">/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.broadcastNotification {
+  z-index: 6000;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 20%;
+  background: #ffffff;
+  border: 5px solid #2266aa;
+  border-radius: 4px;
+  color: #222222;
+  margin: 1.5em;
+  padding: 2em 1.5em 1.5em;
+}
+.broadcastNotification .broadcastNotificationContent {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.7em;
+}
+.broadcastNotification .broadcastNotificationContent .broadcastIcon {
+  display: block;
+  width: 1.5em;
+  height: 1.5em;
+  background: url('/Mobility/resources/images/icons/broadcast-icon-blue.png') no-repeat top left;
+  background-size: 1.5em;
+}
+.broadcastNotification .broadcastNotificationContent .broadcastNotificationMessage span {
+  color: #2266aa;
+  font-weight: 700;
+}
+.broadcastNotification .broadcastNotificationButtons {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 1em;
+  padding-top: 1.5em;
+}
+.broadcastNotification .broadcastNotificationButtons button {
+  flex-grow: 1;
+}
+.broadcastNotification .broadcastNotificationButtons button.dismiss {
+  background-color: #555555;
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/schedule/vendorFilter.less?v=1.0.0"><style type="text/css" id="less:Mobility-resources-less-core-schedule-vendorFilter:less-v-1:0:0">/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.vf-filter-form {
+  background-color: #222222;
+  color: #ffffff;
+  padding: 20px;
+  font-family: 'Open Sans', sans-serif;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 300px;
+}
+.vf-filter-form .vf-form-description {
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #cccccc;
+  line-height: 1.4;
+}
+.vf-filter-form .vf-form-description.vf-note {
+  margin-bottom: 20px;
+}
+.vf-filter-form .vf-form-group {
+  margin-bottom: 20px;
+}
+.vf-filter-form .vf-form-group.vf-checkbox-group {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.vf-filter-form .vf-form-group.vf-checkbox-group input[type="checkbox"] {
+  display: block !important;
+  -webkit-appearance: checkbox !important;
+  appearance: checkbox !important;
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  accent-color: #2266aa;
+  flex-shrink: 0;
+  border: 1px solid #555555;
+  background-color: #ffffff;
+  cursor: pointer;
+}
+.vf-filter-form .vf-form-group.vf-checkbox-group label {
+  font-size: 16px;
+  color: #ffffff;
+  cursor: pointer;
+  margin: 0;
+  line-height: 1.4;
+}
+.vf-filter-form .vf-form-group.vf-buttons {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 40px;
+}
+.vf-filter-form .vf-form-group.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.vf-filter-form .vf-form-group.disabled .vf-form-label {
+  color: #555555;
+}
+.vf-filter-form .vf-form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: left;
+  transition: color 0.3s ease;
+}
+.vf-filter-form .vf-form-input,
+.vf-filter-form .vf-form-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: 'Open Sans', sans-serif;
+  background-color: #ffffff;
+  box-sizing: border-box;
+  height: 48px;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+  vertical-align: top;
+}
+.vf-filter-form .vf-form-input::placeholder,
+.vf-filter-form .vf-form-select::placeholder {
+  color: #555555;
+}
+.vf-filter-form .vf-form-input:focus,
+.vf-filter-form .vf-form-select:focus {
+  outline: 2px solid #2266aa;
+  outline-offset: 2px;
+}
+.vf-filter-form .vf-form-input:disabled,
+.vf-filter-form .vf-form-select:disabled {
+  background-color: #555555;
+  color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.vf-filter-form .vf-form-input:disabled::placeholder,
+.vf-filter-form .vf-form-select:disabled::placeholder {
+  color: #cccccc;
+}
+.vf-filter-form .vf-form-input:disabled:focus,
+.vf-filter-form .vf-form-select:disabled:focus {
+  outline: none;
+}
+@media (max-width: 767px) {
+  .vf-filter-form .vf-form-input,
+  .vf-filter-form .vf-form-select {
+    height: 52px;
+    font-size: 16px;
+  }
+}
+.vf-filter-form .vf-form-input {
+  color: #222222;
+}
+.vf-filter-form .vf-form-input:disabled {
+  color: #cccccc;
+}
+.vf-filter-form .vf-form-select {
+  color: #555555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.vf-filter-form .vf-form-select option {
+  color: #222222;
+  white-space: normal;
+}
+.vf-filter-form .vf-form-select:focus {
+  color: #222222;
+}
+.vf-filter-form .vf-form-select:disabled {
+  cursor: not-allowed;
+  color: #cccccc;
+}
+.vf-filter-form .vf-form-select:disabled option {
+  color: #cccccc;
+}
+.vf-filter-form .vf-form-button {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'Open Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 767px) {
+  .vf-filter-form .vf-form-button {
+    min-height: 52px;
+    padding: 16px;
+  }
+}
+.vf-filter-form .vf-form-button.vf-primary {
+  background-color: #2266aa;
+  color: #ffffff;
+}
+.vf-filter-form .vf-form-button.vf-primary:hover {
+  background-color: #084b88;
+}
+.vf-filter-form .vf-form-button.vf-primary:active {
+  background-color: #174777;
+}
+.vf-filter-form .vf-form-button.vf-primary:focus {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+.vf-filter-form .vf-form-button.vf-secondary {
+  background-color: transparent;
+  color: #2266aa;
+  border: 2px solid #2266aa;
+}
+.vf-filter-form .vf-form-button.vf-secondary:hover {
+  background-color: #2266aa;
+  color: #ffffff;
+}
+.vf-filter-form .vf-form-button.vf-secondary:active {
+  background-color: #084b88;
+  border-color: #084b88;
+}
+.vf-filter-form .vf-form-button.vf-secondary:focus {
+  outline: 2px solid #2266aa;
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .vf-filter-form {
+    padding: 16px;
+  }
+  .vf-filter-form .vf-form-description {
+    font-size: 13px;
+  }
+  .vf-filter-form .vf-form-group {
+    margin-bottom: 18px;
+  }
+  .vf-filter-form .vf-form-label {
+    font-size: 13px;
+  }
+}
+@media (min-width: 768px) {
+  .vf-filter-form {
+    padding: 24px;
+  }
+  .vf-filter-form .vf-form-description {
+    font-size: 15px;
+  }
+}
+@media (min-width: 1200px) {
+  .vf-filter-form {
+    max-width: 100%;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/schedule/pagination.less?v=1.0.5"><style type="text/css" id="less:Mobility-resources-less-core-schedule-pagination:less-v-1:0:5">/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+/* Dynamic bottom padding based on pagination state */
+body:has( .pagination-controls:not(.hidden)) #schedlist {
+  padding-bottom: 80px !important;
+}
+body:has( .pagination-controls.position-above-elements:not(.hidden)) #schedlist {
+  padding-bottom: 150px !important;
+}
+/* Fallback for older browsers */
+.pagination-active #schedlist {
+  padding-bottom: 80px !important;
+}
+.pagination-above-elements #schedlist {
+  padding-bottom: 150px !important;
+}
+/* Pagination Controls - Dynamically positioned */
+.pagination-controls {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  background: #222222 !important;
+  backdrop-filter: blur(10px) !important;
+  border-top: 1px solid #555555 !important;
+  border-bottom: 1px solid #555555 !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3) !important;
+  z-index: 500 !important;
+  /* Lower z-index to go behind slideout filter */
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: bottom 0.3s ease !important;
+  /* Responsive adjustments */
+
+}
+.pagination-controls.hidden {
+  display: none !important;
+}
+.pagination-controls.position-bottom {
+  bottom: 0px !important;
+}
+.pagination-controls.position-above-elements {
+  bottom: 70px !important;
+}
+.pagination-controls .page-numbers {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+}
+.pagination-controls .page-number {
+  background: #ffffff !important;
+  border: 2px solid #2266aa !important;
+  border-radius: 8px !important;
+  color: #2266aa !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+.pagination-controls .page-number:hover:not(.ellipsis) {
+  background: #2266aa !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+.pagination-controls .page-number.active {
+  background: #2266aa !important;
+  color: #ffffff !important;
+  font-weight: bold !important;
+  box-shadow: 0 4px 8px rgba(34, 102, 170, 0.3) !important;
+}
+.pagination-controls .page-number.ellipsis {
+  background: transparent !important;
+  border: none !important;
+  cursor: default !important;
+  color: #777777 !important;
+  box-shadow: none !important;
+  font-weight: bold !important;
+}
+.pagination-controls .page-number.ellipsis:hover {
+  background: transparent !important;
+  color: #777777 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.pagination-controls .page-nav-btn {
+  background: #ffffff !important;
+  border: 2px solid #2266aa !important;
+  border-radius: 8px !important;
+  color: #2266aa !important;
+  padding: 8px 12px !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  min-width: 40px !important;
+  height: 36px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+.pagination-controls .page-nav-btn:hover:not(:disabled) {
+  background: #2266aa !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+.pagination-controls .page-nav-btn:disabled {
+  background: #555555 !important;
+  color: #cccccc !important;
+  border-color: #777777 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 768px) {
+  .pagination-controls {
+    padding: 8px 12px !important;
+    gap: 4px !important;
+  }
+  .pagination-controls.position-bottom {
+    bottom: 8px !important;
+  }
+  .pagination-controls.position-above-elements {
+    bottom: 60px !important;
+  }
+  .pagination-controls .page-numbers {
+    gap: 4px !important;
+  }
+  .pagination-controls .page-number {
+    font-size: 12px !important;
+    padding: 6px 8px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    border-width: 1px !important;
+  }
+  .pagination-controls .page-nav-btn {
+    font-size: 14px !important;
+    padding: 6px 8px !important;
+    min-width: 32px !important;
+    height: 28px !important;
+    border-width: 1px !important;
+  }
+}
+@media (max-width: 480px) {
+  .pagination-controls {
+    padding: 6px 8px !important;
+    gap: 2px !important;
+  }
+  .pagination-controls.position-bottom {
+    bottom: 6px !important;
+  }
+  .pagination-controls.position-above-elements {
+    bottom: 55px !important;
+  }
+  .pagination-controls .page-numbers {
+    gap: 2px !important;
+  }
+  .pagination-controls .page-number {
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+  }
+  .pagination-controls .page-nav-btn {
+    font-size: 12px !important;
+    padding: 4px 6px !important;
+    min-width: 28px !important;
+    height: 24px !important;
+  }
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/schedule/vendorPagination.less?v=1.0.0"><style type="text/css" id="less:Mobility-resources-less-core-schedule-vendorPagination:less-v-1:0:0">/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+/* Vendor Pagination Manager Styles - Isolated and Self-Contained */
+.vendor-pagination-controls {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  background: #222222 !important;
+  backdrop-filter: blur(10px) !important;
+  border-top: 1px solid #555555 !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3) !important;
+  z-index: 490 !important;
+  /* Slightly lower than existing pagination */
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: bottom 0.3s ease !important;
+  font-family: 'Open Sans', sans-serif !important;
+  /* Responsive adjustments */
+
+}
+.vendor-pagination-controls.hidden {
+  display: none !important;
+}
+.vendor-pagination-controls .vendor-page-numbers {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+}
+.vendor-pagination-controls .vendor-page-number {
+  background: #ffffff !important;
+  border: 2px solid #2266aa !important;
+  border-radius: 8px !important;
+  color: #2266aa !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  font-family: 'Open Sans', sans-serif !important;
+}
+.vendor-pagination-controls .vendor-page-number:hover:not(.ellipsis) {
+  background: #2266aa !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+.vendor-pagination-controls .vendor-page-number.active {
+  background: #2266aa !important;
+  color: #ffffff !important;
+  font-weight: bold !important;
+  box-shadow: 0 4px 8px rgba(34, 102, 170, 0.3) !important;
+}
+.vendor-pagination-controls .vendor-page-number.ellipsis {
+  background: transparent !important;
+  border: none !important;
+  cursor: default !important;
+  color: #777777 !important;
+  box-shadow: none !important;
+  font-weight: bold !important;
+}
+.vendor-pagination-controls .vendor-page-number.ellipsis:hover {
+  background: transparent !important;
+  color: #777777 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.vendor-pagination-controls .vendor-page-nav-btn {
+  background: #ffffff !important;
+  border: 2px solid #2266aa !important;
+  border-radius: 8px !important;
+  color: #2266aa !important;
+  padding: 8px 12px !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  min-width: 40px !important;
+  height: 36px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  font-family: 'Open Sans', sans-serif !important;
+}
+.vendor-pagination-controls .vendor-page-nav-btn:hover:not(:disabled) {
+  background: #2266aa !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+.vendor-pagination-controls .vendor-page-nav-btn:disabled {
+  background: #555555 !important;
+  color: #cccccc !important;
+  border-color: #777777 !important;
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 768px) {
+  .vendor-pagination-controls {
+    padding: 8px 12px !important;
+    gap: 4px !important;
+  }
+  .vendor-pagination-controls .vendor-page-numbers {
+    gap: 4px !important;
+  }
+  .vendor-pagination-controls .vendor-page-number {
+    font-size: 12px !important;
+    padding: 6px 8px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    border-width: 1px !important;
+  }
+  .vendor-pagination-controls .vendor-page-nav-btn {
+    font-size: 14px !important;
+    padding: 6px 8px !important;
+    min-width: 32px !important;
+    height: 28px !important;
+    border-width: 1px !important;
+  }
+}
+@media (max-width: 480px) {
+  .vendor-pagination-controls {
+    padding: 6px 8px !important;
+    gap: 2px !important;
+  }
+  .vendor-pagination-controls .vendor-page-numbers {
+    gap: 2px !important;
+  }
+  .vendor-pagination-controls .vendor-page-number {
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+  }
+  .vendor-pagination-controls .vendor-page-nav-btn {
+    font-size: 12px !important;
+    padding: 4px 6px !important;
+    min-width: 28px !important;
+    height: 24px !important;
+  }
+}
+/* Vendor view specific body padding when pagination is active */
+body:has( .vendor-pagination-controls:not(.hidden)) #schedlist {
+  padding-bottom: 80px !important;
+}
+/* Fallback for older browsers */
+body.vendor-pagination-active #schedlist {
+  padding-bottom: 80px !important;
+}
+</style>
+
+<!-- Include default header... -->
+<!-- Default header wrapper -->
+
+
+<!-- load site tag extenstions  -->
+
+
+
+
+<!-- html manifest="resources/appcache/gwx.appcache" -->
+
+
+<title>GlobalWorx Mobile</title>
+
+<!-- Include global includes... -->
+<!-- This file contains all commmon includes across all areas of the app -->
+
+<meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=0, maximum-scale = 1.0, minimum-scale = 1.0">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- no url bar present as bookmark -->
+<meta name="mobile-web-app-capable" content="yes">
+
+<meta name="robots" content="noindex">
+
+<!-- google font include -->
+
+
+
+<!-- iPhone and Android homescreen icons (PNG format) -->
+
+<!-- android --><link rel="apple-touch-icon-precomposed" href="/Mobility/resources/images/icons/homescreen/icon-launcher.png">
+<!-- older iDevice --><link rel="apple-touch-icon" sizes="72x72" href="/Mobility/resources/images/icons/homescreen/iOS_72x72/icon-launcher.png">
+<!-- iPhone --><link rel="apple-touch-icon" sizes="114x114" href="/Mobility/resources/images/icons/homescreen/iOS_114x114/icon-launcher.png">
+<!-- iPad --><link rel="apple-touch-icon" href="/Mobility/resources/images/icons/homescreen/iOS_144x144/icon-launcher.png">
+<!-- favicon --><link rel="icon" type="image/png" href="/Mobility/resources/images/icons/homescreen/icon-launcher.png">
+<link rel="shortcut icon" href="/Mobility/resources/images/icons/favicon.ico">
+
+<!-- Fonts CSS -->
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/fonts/fonts.css"><style type="text/css" id="less:Mobility-resources-fonts-fonts">@font-face {
+  font-family: 'Open Sans';
+  src: url('https://adusa.goglobalworx.com/Mobility/resources/fonts/Open_Sans/static/OpenSans/OpenSans-Regular.ttf');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Open Sans Condensed';
+  src: url('https://adusa.goglobalworx.com/Mobility/resources/fonts/Open_Sans/static/OpenSans_Condensed/OpenSans_Condensed-Light.ttf');
+  font-weight: normal;
+  font-style: normal;
+}
+</style>
+
+<!-- less includes -->
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/js/select2/select2.css?v=0.1.0"><style type="text/css" id="less:Mobility-resources-js-select2-select2:css-v-0:1:0">.select2-container {
+  box-sizing: border-box;
+  display: inline-block;
+  margin: 0;
+  position: relative;
+  vertical-align: middle;
+}
+.select2-container .select2-selection--single {
+  box-sizing: border-box;
+  cursor: pointer;
+  display: block;
+  height: 28px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.select2-container .select2-selection--single .select2-selection__rendered {
+  display: block;
+  padding-left: 8px;
+  padding-right: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select2-container .select2-selection--single .select2-selection__clear {
+  background-color: transparent;
+  border: none;
+  font-size: 1em;
+}
+.select2-container[dir="rtl"] .select2-selection--single .select2-selection__rendered {
+  padding-right: 8px;
+  padding-left: 20px;
+}
+.select2-container .select2-selection--multiple {
+  box-sizing: border-box;
+  cursor: pointer;
+  display: block;
+  min-height: 32px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.select2-container .select2-selection--multiple .select2-selection__rendered {
+  display: inline;
+  list-style: none;
+  padding: 0;
+}
+.select2-container .select2-selection--multiple .select2-selection__clear {
+  background-color: transparent;
+  border: none;
+  font-size: 1em;
+}
+.select2-container .select2-search--inline .select2-search__field {
+  box-sizing: border-box;
+  border: none;
+  font-size: 100%;
+  margin-top: 5px;
+  margin-left: 5px;
+  padding: 0;
+  max-width: 100%;
+  resize: none;
+  height: 18px;
+  vertical-align: bottom;
+  font-family: sans-serif;
+  overflow: hidden;
+  word-break: keep-all;
+}
+.select2-container .select2-search--inline .select2-search__field::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.select2-dropdown {
+  background-color: white;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  left: -100000px;
+  width: 100%;
+  z-index: 1051;
+}
+.select2-results {
+  display: block;
+}
+.select2-results__options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.select2-results__option {
+  padding: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.select2-results__option--selectable {
+  cursor: pointer;
+}
+.select2-container--open .select2-dropdown {
+  left: 0;
+}
+.select2-container--open .select2-dropdown--above {
+  border-bottom: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.select2-container--open .select2-dropdown--below {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.select2-search--dropdown {
+  display: block;
+  padding: 4px;
+}
+.select2-search--dropdown .select2-search__field {
+  padding: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.select2-search--dropdown .select2-search__field::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.select2-search--dropdown.select2-search--hide {
+  display: none;
+}
+.select2-close-mask {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: block;
+  position: fixed;
+  left: 0;
+  top: 0;
+  min-height: 100%;
+  min-width: 100%;
+  height: auto;
+  width: auto;
+  opacity: 0;
+  z-index: 99;
+  background-color: #fff;
+  filter: alpha(opacity=0);
+}
+.select2-hidden-accessible {
+  border: 0 !important;
+  clip: rect(0 0 0 0) !important;
+  -webkit-clip-path: inset(50%) !important;
+  clip-path: inset(50%) !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  position: absolute !important;
+  width: 1px !important;
+  white-space: nowrap !important;
+}
+.select2-container--default .select2-selection--single {
+  /*background-color: #fff;*/
+
+  /*border: 1px solid #aaa;*/
+
+  /*border-radius: 4px; */
+
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  /*color: #444;*/
+
+  /*line-height: 28px;*/
+
+}
+.select2-container--default .select2-selection--single .select2-selection__clear {
+  cursor: pointer;
+  float: right;
+  font-weight: bold;
+  height: 26px;
+  margin-right: 20px;
+  padding-right: 0px;
+}
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+  color: #999;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 26px;
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 20px;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow b {
+  border-color: #888 transparent transparent transparent;
+  border-style: solid;
+  border-width: 5px 4px 0 4px;
+  height: 0;
+  left: 50%;
+  margin-left: -4px;
+  margin-top: -2px;
+  position: absolute;
+  top: 50%;
+  width: 0;
+}
+.select2-container--default[dir="rtl"] .select2-selection--single .select2-selection__clear {
+  float: left;
+}
+.select2-container--default[dir="rtl"] .select2-selection--single .select2-selection__arrow {
+  left: 1px;
+  right: auto;
+}
+.select2-container--default.select2-container--disabled .select2-selection--single {
+  background-color: #eee;
+  cursor: default;
+}
+.select2-container--default.select2-container--disabled .select2-selection--single .select2-selection__clear {
+  display: none;
+}
+.select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+  border-color: transparent transparent #888 transparent;
+  border-width: 0 4px 5px 4px;
+}
+.select2-container--default .select2-selection--multiple {
+  background-color: white;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  cursor: text;
+  padding-bottom: 5px;
+  padding-right: 5px;
+  position: relative;
+}
+.select2-container--default .select2-selection--multiple.select2-selection--clearable {
+  padding-right: 25px;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__clear {
+  cursor: pointer;
+  font-weight: bold;
+  height: 20px;
+  margin-right: 10px;
+  margin-top: 5px;
+  position: absolute;
+  right: 0;
+  padding: 1px;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+  background-color: #e4e4e4;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: inline-block;
+  margin-left: 5px;
+  margin-top: 5px;
+  padding: 0;
+  padding-left: 20px;
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__display {
+  cursor: default;
+  padding-left: 2px;
+  padding-right: 5px;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+  background-color: transparent;
+  border: none;
+  border-right: 1px solid #aaa;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  color: #999;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  padding: 0 4px;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover,
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:focus {
+  background-color: #f1f1f1;
+  color: #333;
+  outline: none;
+}
+.select2-container--default[dir="rtl"] .select2-selection--multiple .select2-selection__choice {
+  margin-left: 5px;
+  margin-right: auto;
+}
+.select2-container--default[dir="rtl"] .select2-selection--multiple .select2-selection__choice__display {
+  padding-left: 5px;
+  padding-right: 2px;
+}
+.select2-container--default[dir="rtl"] .select2-selection--multiple .select2-selection__choice__remove {
+  border-left: 1px solid #aaa;
+  border-right: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.select2-container--default[dir="rtl"] .select2-selection--multiple .select2-selection__clear {
+  float: left;
+  margin-left: 10px;
+  margin-right: auto;
+}
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+  border: solid black 1px;
+  outline: 0;
+}
+.select2-container--default.select2-container--disabled .select2-selection--multiple {
+  background-color: #eee;
+  cursor: default;
+}
+.select2-container--default.select2-container--disabled .select2-selection__choice__remove {
+  display: none;
+}
+.select2-container--default.select2-container--open.select2-container--above .select2-selection--single,
+.select2-container--default.select2-container--open.select2-container--above .select2-selection--multiple {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.select2-container--default.select2-container--open.select2-container--below .select2-selection--single,
+.select2-container--default.select2-container--open.select2-container--below .select2-selection--multiple {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field {
+  border: 1px solid #aaa;
+}
+.select2-container--default .select2-search--inline .select2-search__field {
+  background: transparent;
+  border: none;
+  outline: 0;
+  box-shadow: none;
+  -webkit-appearance: textfield;
+}
+.select2-container--default .select2-results > .select2-results__options {
+  max-height: 10em;
+  overflow-y: auto;
+}
+.select2-container--default .select2-results__option .select2-results__option {
+  padding-left: 1em;
+}
+.select2-container--default .select2-results__option .select2-results__option .select2-results__group {
+  padding-left: 0;
+}
+.select2-container--default .select2-results__option .select2-results__option .select2-results__option {
+  margin-left: -1em;
+  padding-left: 2em;
+}
+.select2-container--default .select2-results__option .select2-results__option .select2-results__option .select2-results__option {
+  margin-left: -2em;
+  padding-left: 3em;
+}
+.select2-container--default .select2-results__option .select2-results__option .select2-results__option .select2-results__option .select2-results__option {
+  margin-left: -3em;
+  padding-left: 4em;
+}
+.select2-container--default .select2-results__option .select2-results__option .select2-results__option .select2-results__option .select2-results__option .select2-results__option {
+  margin-left: -4em;
+  padding-left: 5em;
+}
+.select2-container--default .select2-results__option .select2-results__option .select2-results__option .select2-results__option .select2-results__option .select2-results__option .select2-results__option {
+  margin-left: -5em;
+  padding-left: 6em;
+}
+.select2-container--default .select2-results__option--group {
+  padding: 0;
+}
+.select2-container--default .select2-results__option--disabled {
+  color: #999;
+}
+.select2-container--default .select2-results__option--selected {
+  background-color: #ddd;
+}
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+  background-color: #5897fb;
+  color: white;
+}
+.select2-container--default .select2-results__group {
+  cursor: default;
+  display: block;
+  padding: 6px;
+}
+.select2-container--classic .select2-selection--single {
+  background-color: #f7f7f7;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  outline: 0;
+  background-image: -webkit-linear-gradient(top, #ffffff 50%, #eeeeee 100%);
+  background-image: -o-linear-gradient(top, #ffffff 50%, #eeeeee 100%);
+  background-image: linear-gradient(to bottom, #ffffff 50%, #eeeeee 100%);
+  background-repeat: repeat-x;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#FFFFFFFF', endColorstr='#FFEEEEEE', GradientType=0);
+}
+.select2-container--classic .select2-selection--single:focus {
+  border: 1px solid #5897fb;
+}
+.select2-container--classic .select2-selection--single .select2-selection__rendered {
+  /*color: #444;*/
+
+  /*line-height: 28px;*/
+
+}
+.select2-container--classic .select2-selection--single .select2-selection__clear {
+  cursor: pointer;
+  float: right;
+  font-weight: bold;
+  height: 26px;
+  margin-right: 20px;
+}
+.select2-container--classic .select2-selection--single .select2-selection__placeholder {
+  color: #999;
+}
+.select2-container--classic .select2-selection--single .select2-selection__arrow {
+  background-color: #ddd;
+  border: none;
+  border-left: 1px solid #aaa;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  height: 26px;
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 20px;
+  background-image: -webkit-linear-gradient(top, #eeeeee 50%, #cccccc 100%);
+  background-image: -o-linear-gradient(top, #eeeeee 50%, #cccccc 100%);
+  background-image: linear-gradient(to bottom, #eeeeee 50%, #cccccc 100%);
+  background-repeat: repeat-x;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#FFEEEEEE', endColorstr='#FFCCCCCC', GradientType=0);
+}
+.select2-container--classic .select2-selection--single .select2-selection__arrow b {
+  border-color: #888 transparent transparent transparent;
+  border-style: solid;
+  border-width: 5px 4px 0 4px;
+  height: 0;
+  left: 50%;
+  margin-left: -4px;
+  margin-top: -2px;
+  position: absolute;
+  top: 50%;
+  width: 0;
+}
+.select2-container--classic[dir="rtl"] .select2-selection--single .select2-selection__clear {
+  float: left;
+}
+.select2-container--classic[dir="rtl"] .select2-selection--single .select2-selection__arrow {
+  border: none;
+  border-right: 1px solid #aaa;
+  border-radius: 0;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  left: 1px;
+  right: auto;
+}
+.select2-container--classic.select2-container--open .select2-selection--single {
+  border: 1px solid #5897fb;
+}
+.select2-container--classic.select2-container--open .select2-selection--single .select2-selection__arrow {
+  background: transparent;
+  border: none;
+}
+.select2-container--classic.select2-container--open .select2-selection--single .select2-selection__arrow b {
+  border-color: transparent transparent #888 transparent;
+  border-width: 0 4px 5px 4px;
+}
+.select2-container--classic.select2-container--open.select2-container--above .select2-selection--single {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  background-image: -webkit-linear-gradient(top, #ffffff 0%, #eeeeee 50%);
+  background-image: -o-linear-gradient(top, #ffffff 0%, #eeeeee 50%);
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeeeee 50%);
+  background-repeat: repeat-x;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#FFFFFFFF', endColorstr='#FFEEEEEE', GradientType=0);
+}
+.select2-container--classic.select2-container--open.select2-container--below .select2-selection--single {
+  border-bottom: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background-image: -webkit-linear-gradient(top, #eeeeee 50%, #ffffff 100%);
+  background-image: -o-linear-gradient(top, #eeeeee 50%, #ffffff 100%);
+  background-image: linear-gradient(to bottom, #eeeeee 50%, #ffffff 100%);
+  background-repeat: repeat-x;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#FFEEEEEE', endColorstr='#FFFFFFFF', GradientType=0);
+}
+.select2-container--classic .select2-selection--multiple {
+  background-color: white;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  cursor: text;
+  outline: 0;
+  padding-bottom: 5px;
+  padding-right: 5px;
+}
+.select2-container--classic .select2-selection--multiple:focus {
+  border: 1px solid #5897fb;
+}
+.select2-container--classic .select2-selection--multiple .select2-selection__clear {
+  display: none;
+}
+.select2-container--classic .select2-selection--multiple .select2-selection__choice {
+  background-color: #e4e4e4;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  display: inline-block;
+  margin-left: 5px;
+  margin-top: 5px;
+  padding: 0;
+}
+.select2-container--classic .select2-selection--multiple .select2-selection__choice__display {
+  cursor: default;
+  padding-left: 2px;
+  padding-right: 5px;
+}
+.select2-container--classic .select2-selection--multiple .select2-selection__choice__remove {
+  background-color: transparent;
+  border: none;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  padding: 0 4px;
+}
+.select2-container--classic .select2-selection--multiple .select2-selection__choice__remove:hover {
+  color: #555;
+  outline: none;
+}
+.select2-container--classic[dir="rtl"] .select2-selection--multiple .select2-selection__choice {
+  margin-left: 5px;
+  margin-right: auto;
+}
+.select2-container--classic[dir="rtl"] .select2-selection--multiple .select2-selection__choice__display {
+  padding-left: 5px;
+  padding-right: 2px;
+}
+.select2-container--classic[dir="rtl"] .select2-selection--multiple .select2-selection__choice__remove {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.select2-container--classic.select2-container--open .select2-selection--multiple {
+  border: 1px solid #5897fb;
+}
+.select2-container--classic.select2-container--open.select2-container--above .select2-selection--multiple {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.select2-container--classic.select2-container--open.select2-container--below .select2-selection--multiple {
+  border-bottom: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.select2-container--classic .select2-search--dropdown .select2-search__field {
+  border: 1px solid #aaa;
+  outline: 0;
+}
+.select2-container--classic .select2-search--inline .select2-search__field {
+  outline: 0;
+  box-shadow: none;
+}
+.select2-container--classic .select2-dropdown {
+  background-color: white;
+  border: 1px solid transparent;
+}
+.select2-container--classic .select2-dropdown--above {
+  border-bottom: none;
+}
+.select2-container--classic .select2-dropdown--below {
+  border-top: none;
+}
+.select2-container--classic .select2-results > .select2-results__options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.select2-container--classic .select2-results__option--group {
+  padding: 0;
+}
+.select2-container--classic .select2-results__option--disabled {
+  color: grey;
+}
+.select2-container--classic .select2-results__option--highlighted.select2-results__option--selectable {
+  background-color: #3875d7;
+  color: white;
+}
+.select2-container--classic .select2-results__group {
+  cursor: default;
+  display: block;
+  padding: 6px;
+}
+.select2-container--classic.select2-container--open .select2-dropdown {
+  border-color: #5897fb;
+}
+</style>
+
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/variables.less"><style type="text/css" id="less:Mobility-resources-less-core-variables">/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+</style>
+
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/gwx.less?v=1.2.13"><style type="text/css" id="less:Mobility-resources-less-core-gwx:less-v-1:2:13">/* Global less file. */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+html {
+  background: #222222 url(/Mobility/resources/images/core/backdrop.jpg) repeat-y center;
+  font-family: 'Open Sans', sans-serif;
+  background-size: 98% 100%;
+  color: #ffffff;
+  -webkit-text-size-adjust: none;
+}
+span.schedule-role {
+  color: currentColor;
+  float: right;
+  font-size: smaller;
+  margin-right: 1%;
+  transform: translateY(15%);
+}
+span.duration {
+  color: #ffffff;
+  float: left;
+  font-family: "Open Sans Condensed", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0em;
+  font-size: 127%;
+  width: 100%;
+  text-align: left;
+}
+h2.unscheduled-button {
+  background-color: white;
+  color: #2266aa;
+  height: 111.111px;
+  padding-top: 25px;
+  width: 100%;
+  text-align: center;
+  letter-spacing: 0em;
+  cursor: pointer;
+  background-size: 100% 50%;
+  font-family: "Open Sans Condensed", sans-serif;
+  vertical-align: middle;
+  text-transform: uppercase;
+  font-size: 200%;
+  -webkit-margin-after: 0px;
+  white-space: nowrap;
+  overflow: hidden;
+  border: 4px solid #2266aa;
+  border-radius: 30px;
+}
+img.plus-white {
+  height: 100%;
+  float: left;
+  margin-top: -6px;
+  margin-left: 15px;
+}
+@media all and (orientation: landscape) {
+  html {
+    width: 100%;
+    height: 100%;
+    -webkit-text-size-adjust: none;
+  }
+}
+@media all and (orientation: portrait) {
+  html {
+    width: 100%;
+    height: 100%;
+    -webkit-text-size-adjust: none;
+  }
+}
+table {
+  width: 100%;
+  font-size: 1.3em;
+  border-spacing: 0px;
+  margin: 0;
+}
+h2 {
+  color: #084b88;
+  font-family: 'Open Sans Condensed', sans-serif;
+  vertical-align: middle;
+  text-transform: uppercase;
+  font-weight: lighter;
+  letter-spacing: -0.07em;
+}
+select {
+  border-radius: 4px;
+  white-space: nowrap;
+  word-break: break-word;
+  width: 96%;
+  font-size: 110% !important;
+  font-family: 'Open Sans Condensed', sans-serif !important;
+  font: inherit;
+  background: #ffffff url('/Mobility/resources/images/icons/selectbox.png') no-repeat 97% 50%;
+  color: #222222;
+  border: 0;
+  padding: 0.3em;
+  background-size: 0.6em;
+  margin: 1% 2%;
+  outline-color: rgba(0, 0, 0, 0);
+  -webkit-appearance: none;
+}
+select option {
+  font-size: inherit !important;
+  font-family: 'Open Sans Condensed', sans-serif !important;
+}
+.select2-selection {
+  border-radius: 4px;
+  white-space: nowrap;
+  word-break: break-word;
+  font-size: 110% !important;
+  font-family: "Open Sans Condensed", sans-serif !important;
+  font: inherit;
+  background: #ffffff url("/Mobility/resources/images/icons/selectbox.png") no-repeat 97% 50%;
+  color: #222;
+  border: 0;
+  padding: 0.2em;
+  background-size: 0.6em;
+  outline-color: rgba(0, 0, 0, 0);
+  -webkit-appearance: none;
+}
+.select2-results {
+  white-space: nowrap;
+  word-break: break-word;
+  width: 96%;
+  font-size: 150% !important;
+  font-family: "Open Sans Condensed", sans-serif !important;
+  font: inherit;
+  /*background: #FFF url('resources/images/icons/selectbox.png') no-repeat 97% 50%;*/
+
+  border: 0;
+  padding: 0.3em;
+  background-size: 0.6em;
+  outline-color: rgba(0, 0, 0, 0);
+  -webkit-appearance: none;
+}
+.select2-container {
+  white-space: nowrap;
+  word-break: break-word;
+  width: 96% !important;
+  font-size: 100% !important;
+  font-family: "Open Sans Condensed", sans-serif !important;
+  font: inherit;
+  /*background: #FFF url('resources/images/icons/selectbox.png') no-repeat 97% 50%;*/
+
+  border: 0;
+  /*padding: 0.3em;*/
+
+  background-size: 0.6em;
+  margin: 1% 2%;
+  outline-color: rgba(0, 0, 0, 0);
+  -webkit-appearance: none;
+}
+.select2-dropdown {
+  background-color: #666;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  left: -100000px;
+  width: 100%;
+  z-index: 1051;
+  font-size: 100%;
+  margin: -1% -2%;
+  padding-top: 0.5em;
+}
+.select2-selection--single {
+  box-sizing: inherit;
+  cursor: pointer;
+  display: block;
+  height: auto !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.select2-selection__arrow {
+  display: none;
+}
+.select2-container--default .select2-selection--single {
+  /* background-color: #fff; */
+
+  /* border: 1px solid #aaa; */
+
+  /* border-radius: 4px; */
+
+}
+.select2-search__field {
+  font-size: 130%;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 0.1em solid #bfbdbd;
+  color: #979797;
+  height: 2em;
+  padding: 0.3em;
+  width: 96%;
+  /* margin: 1% 2%; */
+
+  box-shadow: 1px 1px 0 #828181 inset;
+  border-width: 0.1em;
+  margin-bottom: 0.2em;
+}
+textarea {
+  font-size: 1em;
+}
+.dummy {
+  margin-top: 150%;
+}
+.main-content {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+}
+.main-content .loaderimg {
+  width: 98%;
+  text-align: center;
+}
+@media all and (orientation: portrait) {
+  .main-content {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+}
+@media all and (orientation: landscape) {
+  .main-content {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+}
+.processing {
+  width: 40%;
+  margin-left: 30%;
+  margin-top: 1em;
+}
+.button {
+  margin-bottom: 3em;
+}
+.center {
+  margin: auto;
+  position: static;
+  background-color: #222222;
+}
+.button-service {
+  background: #4477cc url(/Mobility/resources/images/core/highlightblue.gif) repeat-x;
+  background-size: 100% 50%;
+  border-radius: 1em;
+  color: white;
+  padding: 1.25em;
+  width: 14%;
+  display: inline-block;
+  font-size: 100%;
+  overflow: hidden;
+  -webkit-margin-after: 0;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  letter-spacing: 0em;
+  font-family: "Open Sans Condensed", sans-serif;
+}
+.button-service:hover {
+  border: 0.2em solid #4477cc;
+}
+.button-service-active {
+  border: 0.2em solid #4477cc;
+}
+.button-open {
+  border-radius: 1em;
+  color: white;
+  background: #fc5b2f url(/Mobility/resources/images/core/highlightorange.gif) repeat-x;
+  background-size: 100% 50%;
+  padding: 1.25em;
+  width: 14%;
+  display: inline-block;
+  font-size: 100%;
+  margin: -0.1em 0 0 0;
+  overflow: hidden;
+  -webkit-margin-after: 0px;
+  white-space: nowrap;
+  cursor: pointer;
+  letter-spacing: 0em;
+  font-family: "Open Sans Condensed", sans-serif;
+  vertical-align: middle;
+}
+.button-open:hover {
+  border: 0.2em solid #fc5b2f;
+}
+.button-open-active {
+  border: 0.2em solid #fc5b2f;
+}
+.button-accepted {
+  background: #eeeeee url(/Mobility/resources/images/core/highlightwhite.gif) repeat-x;
+  background-size: 100% 50%;
+  border-radius: 1em;
+  color: black;
+  padding: 1.25em;
+  width: 14%;
+  display: inline-block;
+  font-size: 100%;
+  overflow: hidden;
+  -webkit-margin-after: 0;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  letter-spacing: 0em;
+  font-family: "Open Sans Condensed", sans-serif;
+}
+.button-accepted:hover {
+  border: 0.2em solid #eeeeee;
+}
+.button-accepted-active {
+  border: 0.2em solid #eeeeee;
+}
+.button-verified {
+  background: #555555 url('/Mobility/resources/images/core/highlightgray.png') repeat-x;
+  background-size: 100% 50%;
+  border-radius: 1em;
+  color: white;
+  padding: 1.25em;
+  width: 14%;
+  display: inline-block;
+  font-size: 100%;
+  overflow: hidden;
+  -webkit-margin-after: 0px;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  letter-spacing: 0em;
+  font-family: "Open Sans Condensed", sans-serif;
+}
+.button-verified:hover {
+  border: 0.2em solid #555555;
+}
+.button-verified-active {
+  border: 0.2em solid #555555;
+}
+.button-completed {
+  background: #fe9d20 url(/Mobility/resources/images/core/highlightgold.gif) repeat-x;
+  background-size: 100% 50%;
+  border-radius: 1em;
+  color: white;
+  padding: 1.25em;
+  width: 14%;
+  display: inline-block;
+  font-size: 100%;
+  overflow: hidden;
+  -webkit-margin-after: 0px;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  letter-spacing: 0em;
+  font-family: "Open Sans Condensed", sans-serif;
+}
+.button-completed:hover {
+  border: 0.2em solid #fe9d20;
+}
+.button-completed-active {
+  border: 0.2em solid #fe9d20;
+}
+@media screen and (max-width: 740em) {
+  .center {
+    left: -5em;
+    text-align: center;
+    right: -5em;
+  }
+}
+@media screen and (max-width: 740em) {
+  .button {
+    bottom: 3em;
+  }
+}
+.spinner {
+  height: 2em;
+  width: 2em;
+}
+input {
+  -webkit-appearance: none;
+  -webkit-border-radius: 0px;
+  border-radius: 0px;
+  /* Prevent iOS from rounding button corners, throwing off layout */
+
+  outline-color: rgba(0, 0, 0, 0);
+}
+h2 {
+  margin: 1% 2% 2% 2%;
+  vertical-align: middle;
+}
+body {
+  margin: 0;
+}
+#container {
+  display: inline-block;
+  position: relative;
+  width: 98%;
+  margin-left: 1%;
+  margin-right: 1%;
+  margin-top: 1%;
+}
+#maincontent {
+  width: 100%;
+  height: 100%;
+  border-collapse: collapse;
+  border-spacing: 0px;
+  background: #222222;
+  vertical-align: top;
+}
+#headsplash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 5em;
+  background: url("/Mobility/resources/images/core/login/headsplash.png") 50% no-repeat;
+  background-size: 29em;
+}
+#topmenu {
+  position: fixed;
+  top: 0%;
+  left: 0;
+  transition: margin-left 0.5s ease-out;
+  -webkit-transition: margin-left 0.5s ease-out;
+  /* Safari */
+
+  z-index: 1000;
+  height: 4.2em;
+}
+#topmenu table {
+  background: #777777;
+  border-top: #2266aa 0.2em solid;
+}
+@media all and (orientation: portrait) {
+  #topmenu {
+    background: #cccccc;
+    background-size: 22em;
+    width: 100%;
+    position: fixed;
+    top: 0%;
+    left: 0;
+    height: 4.2em;
+  }
+  #topmenu table {
+    background: #777777;
+    margin-top: 3.1em;
+    width: 100%;
+    border-top: #2266aa 0.2em solid;
+  }
+}
+@media all and (orientation: landscape) {
+  #topmenu {
+    background: #cccccc;
+    background-size: 25em;
+    width: 100%;
+    position: fixed;
+    top: 0%;
+    left: 0;
+    height: 4.2em;
+  }
+  #topmenu table {
+    background: #777777;
+    background-size: 2.8em;
+    margin-top: 3.1em;
+    width: 100%;
+    border-top: #2266aa 0.2em solid;
+  }
+}
+.logoutcontainer {
+  position: fixed;
+  right: 0.3em;
+  width: 3.2em;
+  top: 0.4em;
+  z-index: 1001;
+}
+#globalworxletters {
+  position: fixed;
+  margin: 0.5em 0;
+  width: 100%;
+  text-align: center;
+}
+#globalworxletters img {
+  width: 22em;
+}
+#menubutton {
+  z-index: 1001;
+  position: fixed;
+  left: 0.3em;
+  width: 3.2em;
+  height: 3.2em;
+  top: 0.4em;
+  background: url("/Mobility/resources/images/core/menu/globe.png") no-repeat 50% 50%;
+  background-size: 3em;
+}
+#menuslider {
+  z-index: 1002;
+  width: 20em;
+  margin-left: -20em;
+  background: #ddd;
+  color: #555555;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 70em;
+  transition: margin-left 0.5s ease-out;
+  -webkit-transition: margin-left 0.5s ease-out;
+  /* Safari */
+
+}
+#menuslider p {
+  -webkit-margin-start: 0;
+  -webkit-margin-before: 0;
+  -webkit-margin-after: 0;
+  -webkit-margin-end: 0;
+  padding: 0.3em 0.4em;
+  font-family: 'Open Sans Condensed', sans-serif;
+  font-size: 1.7em;
+}
+#menuslider > :first-child {
+  border-bottom: 0.17em solid #2266aa;
+  background: #555555;
+  color: #ffffff;
+  text-transform: uppercase;
+  font-size: 1.81em;
+}
+#menuslider > :last-child {
+  color: white;
+  background: #26a;
+}
+.logoutbutton {
+  background: url("/Mobility/resources/images/icons/logout.png") no-repeat 50% 10%;
+  border: 0;
+  padding: 0.9em;
+  width: 100%;
+  font-size: 100%;
+  background-size: 2.5em;
+  border-radius: 2em;
+  -webkit-border-radius: 2em;
+}
+.hide {
+  display: none;
+}
+.show {
+  display: block;
+}
+.pageheader {
+  width: 98%;
+  height: 7.8em;
+}
+@media all and (orientation: landscape) {
+  .pageheader {
+    width: 98%;
+    height: 7.8em;
+  }
+}
+@media all and (orientation: portrait) {
+  .pageheader {
+    width: 98%;
+    height: 7.8em;
+  }
+}
+#globalhead {
+  width: 98%;
+  margin: auto;
+  -webkit-margin-before: 0px;
+  -webkit-margin-after: 0px;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  text-align: center;
+  padding: 0%;
+  position: relative;
+  z-index: 0;
+}
+#logincontent {
+  width: 23em;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+#logincontent form {
+  margin-top: 1.6em;
+}
+#logincontent .mobilebutton {
+  border: 0;
+}
+#logincontent img.processing {
+  width: 15em;
+  margin-left: 0%;
+  margin-top: 0%;
+}
+#logintable {
+  background: url("/Mobility/resources/images/core/login/globe.png") no-repeat 50% 0em;
+  background-size: 7em;
+}
+@media all and (orientation: portrait) {
+  #logincontent {
+    width: 23em;
+    padding: 1.5em;
+    margin-top: 3em;
+  }
+}
+@media all and (orientation: landscape) {
+  #logincontent {
+    width: 23em;
+    padding: 1.5em;
+    margin-top: 2em;
+  }
+}
+.mobilelabel {
+  font-size: 100%;
+  color: #ffffff;
+}
+.mobileinput {
+  font-size: 130%;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 0.1em solid #bfbdbd;
+  color: #979797;
+  height: 2em;
+  padding: 0.3em;
+  width: 96%;
+  margin: 1% 2%;
+  box-shadow: 1px 1px 0 #828181 inset;
+  border-width: 0.1em;
+  margin-bottom: 0.2em;
+}
+[contentEditable="true"]:empty:not(:focus):before {
+  content: attr(data-text);
+}
+.uid {
+  border: 0;
+  box-shadow: 0em 0em 3em 1em rgba(255, 255, 255, 0.2);
+  margin-bottom: 0.5em;
+  border-width: 0;
+  border-radius: 0.3em 0.3em 0.3em 0.3em;
+  border-left: 0.5em solid #cccccc;
+}
+.pwd {
+  border: 0;
+  box-shadow: 0em 0em 3em 1em rgba(255, 255, 255, 0.2);
+  margin-bottom: 0;
+  border-width: 0;
+  border-radius: 0.3em 0.3em 0.3em 0.3em;
+  border-left: 0.5em solid #cccccc;
+}
+.mobilebutton {
+  margin: -0.1em 0 0 0;
+  background-color: #2266aa;
+  border: 0;
+  color: #ffffff;
+  font-size: 150%;
+  text-align: center;
+  /* border-bottom: solid .1em #084B66;
+    border-right: solid .1em #084B66;
+    border-top: solid .1em #269ff0;
+    border-left: solid .1em #269ff0; */
+
+  cursor: pointer;
+  padding: 0.25em 0.3em;
+  border-radius: 4px;
+}
+.mobilebutton:disabled {
+  background-color: #555555;
+  cursor: not-allowed;
+}
+#loginbutton {
+  width: 100%;
+}
+/*
+@media all and (orientation:portrait) {
+  #loginbutton {
+    background:green;
+  }
+}
+@media all and (orientation:landscape) {
+  #loginbutton {
+    background:red;
+  }
+}
+*/
+.event-button {
+  width: 48%;
+  margin: -0.1em 0 0 0;
+  background-color: #2266aa;
+  border: 0;
+  color: #ffffff;
+  font-size: 150%;
+  text-align: center;
+  /* border-bottom: solid .1em #084B66;
+    border-right: solid .1em #084B66;
+    border-top: solid .1em #269ff0;
+    border-left: solid .1em #269ff0; */
+
+  cursor: pointer;
+  padding: 0.25em 0.3em;
+  border-radius: 4px;
+}
+.event-button:disabled {
+  background-color: #555555;
+  cursor: not-allowed;
+}
+.nav-button {
+  font-family: 'Open Sans', sans-serif;
+  background: #2266aa;
+  margin: -0.1em 0 0 0;
+  background-color: #2266aa;
+  border: 0;
+  color: #ffffff;
+  font-size: 150%;
+  text-align: center;
+  /* border-bottom: solid .1em #084B66;
+    border-right: solid .1em #084B66;
+    border-top: solid .1em #269ff0;
+    border-left: solid .1em #269ff0; */
+
+  cursor: pointer;
+  padding: 0.25em 0.3em;
+  border-radius: 4px;
+  width: 2.3em;
+}
+.nav-button:disabled {
+  background-color: #555555;
+  cursor: not-allowed;
+}
+.superuser-parent:has(#superuser-filter-toggle) {
+  text-decoration: underline;
+}
+#superuser-filter-toggle {
+  display: block;
+  width: 1em;
+  height: 1em;
+  background: url('/Mobility/resources/images/icons/edit-white.png') no-repeat top left;
+  background-size: 1em;
+  cursor: pointer;
+}
+#filter-toggle {
+  background: url("/Mobility/resources/images/filter-128-white.png") no-repeat center 50%;
+  background-size: 1.5em;
+  float: left;
+}
+#back-day {
+  background: url("/Mobility/resources/images/core/schednav/back.png") no-repeat center 50%;
+  background-size: 1em;
+  float: right;
+  margin: 0;
+}
+#forward-day {
+  background: url("/Mobility/resources/images/core/schednav/forward.png") no-repeat center 50%;
+  background-size: 1em;
+  float: left;
+  margin: 0;
+}
+/* 
+input[type="checkbox"]:checked{
+    background:url(/Mobility/resources/images/core/login/checkbox.png) center no-repeat;
+    background-size:2em;
+
+}
+input[type="checkbox"] {
+    display:inline-block;
+    width:2em;
+    float:left;
+    height:2em;
+    margin:-1px 4px 0 0;
+    vertical-align:middle;
+    background:url(/Mobility/resources/images/core/login/checkboxclear.png) center no-repeat;
+    cursor:pointer;
+    background-size:2em;
+}
+ */
+input[type="checkbox"] {
+  display: none;
+}
+input[type="checkbox"] + label span {
+  display: inline-block;
+  width: 2em;
+  height: 2em;
+  margin: -1px 4px 0 0;
+  vertical-align: middle;
+  background: url(/Mobility/resources/images/core/login/checkboxclear.png) center no-repeat;
+  cursor: pointer;
+  background-size: 2em;
+}
+input[type="checkbox"]:checked + label span {
+  background: url(/Mobility/resources/images/core/login/checkbox.png) center no-repeat;
+  background-size: 2em;
+}
+form .validation-failed {
+  border-color: #ff0000;
+  background-color: rgba(255, 220, 220, 0.95);
+}
+form .validation-advice {
+  padding-top: 10px;
+  padding-bottom: 5px;
+  font-weight: bold;
+  color: #ff0000;
+}
+.overlay {
+  opacity: 0.85;
+  position: absolute;
+  z-index: 5000;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  vertical-align: middle;
+}
+.overlay-wait {
+  opacity: 0.85;
+  position: fixed;
+  z-index: 99000;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  vertical-align: middle;
+  background-color: #ffffff;
+  top: 0;
+  left: 0;
+  height: 100em;
+  width: 100%;
+}
+@media all and (orientation: portrait) {
+  .overlay-wait img {
+    max-height: 10em;
+    margin-top: 50%;
+  }
+}
+@media all and (orientation: landscape) {
+  .overlay-wait img {
+    max-height: 10em;
+    margin-top: 5em;
+  }
+}
+.overlay-light {
+  opacity: 0.85;
+  position: absolute;
+  z-index: 5000;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  vertical-align: middle;
+  background-color: #ffffff;
+}
+.overlay-light img {
+  max-height: 10em;
+  margin-top: 50%;
+}
+.overlay-dark {
+  opacity: 0.85;
+  position: absolute;
+  z-index: 5000;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  vertical-align: middle;
+  background-color: #333;
+}
+.overlay-new {
+  opacity: 0.85;
+  position: absolute;
+  z-index: 5000;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  vertical-align: middle;
+  background-color: black;
+}
+.overlay-text {
+  color: #2266aa;
+  text-transform: lowercase;
+  letter-spacing: 0em;
+}
+.bold-overlay-text {
+  color: #2266aa;
+  letter-spacing: 0em;
+  font-size: 2em;
+  font-weight: bold;
+}
+.proc-overlay {
+  opacity: 0.85;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  vertical-align: middle;
+  height: 100%;
+  width: 100%;
+}
+.unsupported-browser {
+  padding: 0.5em;
+  background: rgba(35, 75, 135, 0.9);
+  text-align: left;
+  color: #ffffff;
+}
+.unsupported-browser p {
+  -webkit-margin-before: 0;
+}
+.unsupported-browser ul {
+  font-weight: 700;
+}
+.no-home-options {
+  padding: 3%;
+  background: rgba(35, 75, 135, 0.9);
+  text-align: left;
+  color: #ffffff;
+  font-size: 1.5em;
+}
+.uid-confirmation {
+  z-index: 60001;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 20%;
+  overflow-y: auto;
+  height: 70%;
+  padding: 1.5em;
+  /* tr:first-child > td {
+      padding:1% 2%;
+      font-size:120%;
+  }*/
+
+}
+.uid-conf-container {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 5px solid #2266aa;
+  color: #000;
+  padding-top: 2em;
+}
+.uid-list {
+  width: 100%;
+  background: #eeeeee url("/Mobility/resources/images/core/highlightwhite.gif") repeat-x;
+  color: #084b88;
+  cursor: pointer;
+  font-family: 'Open Sans Condensed', sans-serif;
+  vertical-align: middle;
+  text-transform: uppercase;
+  background-size: 100% 50%;
+  letter-spacing: 0em;
+  font-size: 160%;
+  -webkit-margin-after: 0px;
+  white-space: nowrap;
+  overflow: hidden;
+  margin: 1% 2% 2% 2%;
+  padding: 0.5em;
+  border: 1px solid #084b88;
+}
+</style>
+
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/schedule/schedlist.less?v=1.2.8"><style type="text/css" id="less:Mobility-resources-less-core-schedule-schedlist:less-v-1:2:8">/* Schedlist CSS */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+#menu {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0px;
+  background: #222222;
+  vertical-align: top;
+  text-align: center;
+  float: right;
+}
+#menu tr {
+  border-spacing: 0px;
+}
+#menu td {
+  border-spacing: 0px;
+}
+#menu .option {
+  background-color: #888;
+  border: 0;
+  color: #ffffff;
+  font-size: 130%;
+  text-align: center;
+  border-bottom: solid 0.1em #555555;
+  border-right: solid 0.1em #222222;
+  width: 98%;
+}
+tr {
+  /*  height: 20%;  */
+
+}
+tbody {
+  vertical-align: top;
+}
+.status {
+  display: flex;
+  justify-content: space-between;
+  letter-spacing: .2em;
+  font-size: 80%;
+  line-height: .7em;
+  color: #444;
+  font-style: italic;
+}
+.status-symbol {
+  height: auto;
+}
+.datetime {
+  white-space: wrap;
+  float: right;
+  text-align: right;
+  font-size: 75%;
+  color: black;
+  font-style: normal;
+  letter-spacing: 0.5em;
+}
+#date-display {
+  font-family: 'Open Sans Condensed', sans-serif;
+  text-align: center;
+  color: #ffffff;
+  padding-left: 0px;
+  font-size: 185%;
+}
+.sched-navigation {
+  position: fixed;
+  top: 0%;
+  left: 0;
+  transition: margin-left 0.5s ease-out;
+  -webkit-transition: margin-left 0.5s ease-out;
+  /* Safari */
+
+  z-index: 1000;
+}
+.sched-navigation #vendorSelect {
+  text-align: left;
+}
+.sched-navigation table {
+  background: #777777;
+  background-size: 3.1em;
+  border-top: #2266aa 0.2em solid;
+}
+@media all and (orientation: portrait) {
+  .sched-navigation {
+    width: 100%;
+    position: fixed;
+    top: 0%;
+    left: 0;
+  }
+  .sched-navigation table {
+    background: #777777;
+    background-size: 2.8em;
+    margin-top: 3.1em;
+    width: 100%;
+  }
+}
+@media all and (orientation: landscape) {
+  .sched-navigation {
+    width: 100%;
+    position: fixed;
+    top: 0%;
+    left: 0;
+  }
+  .sched-navigation table {
+    background: #777777;
+    background-size: 2.8em;
+    margin-top: 3.1em;
+    width: 100%;
+  }
+}
+.schedlist {
+  width: 100%;
+  /*   
+@media only screen and (min-width: 767px) {
+  .serviceissue {
+    border-left: ridge 10px #f44;
+  }
+  
+  .serviceissue+.schedcontent {
+    border-left: ridge 10px #f44;
+  }
+}  
+
+
+@media only screen and (max-width: 766px) {
+  .serviceissue {
+    border-left: ridge 6px #f44;
+  }
+  
+  .serviceissue+.schedcontent {
+    border-left: ridge 6px #f44;
+  }
+}  
+*/
+
+}
+@media all and (orientation: portrait) {
+  .schedlist #schedlist {
+    width: 100%;
+  }
+}
+@media all and (orientation: landscape) {
+  .schedlist #schedlist {
+    width: 100%;
+  }
+}
+@media all and (orientation: portrait) {
+  .schedlist #schedlist {
+    width: 100%;
+  }
+}
+@media all and (orientation: landscape) {
+  .schedlist #schedlist {
+    width: 100%;
+  }
+}
+.schedlist h2 {
+  background: #eeeeee url('/Mobility/resources/images/core/highlightwhite.gif') repeat-x;
+  color: #084b88;
+  cursor: pointer;
+  font-family: 'Open Sans Condensed', sans-serif;
+  vertical-align: middle;
+  text-transform: uppercase;
+  background-size: 100% 50%;
+  letter-spacing: 0.0em;
+  font-size: 160%;
+  -webkit-margin-after: 0px;
+  white-space: nowrap;
+  overflow: hidden;
+  display: flex;
+  margin-top: .3em;
+}
+.schedlist h2 .event-info {
+  width: 100%;
+  padding-bottom: .2em;
+}
+.schedlist h2 .event-info .event-title-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.schedlist h2 .event-info .event-title-container .tier {
+  white-space: wrap;
+  margin-bottom: -5px;
+  line-height: 1em;
+  padding: 0.2em 0;
+}
+.schedlist .eventcontrols {
+  max-height: 13em;
+  text-align: right;
+  margin-top: 0.5em;
+}
+.schedlist #gpsimage {
+  width: 2.8em;
+  height: 2.8em;
+  margin: -0.15em 0.5em 0 0;
+  float: left;
+  /*    
+    -webkit-animation-name: wobble; 
+    -webkit-animation-duration: 4000ms; 
+    -webkit-animation-iteration-count: infinite; 
+    -webkit-animation-timing-function: ease-in-out;
+      
+    -moz-animation-name: wobble; 
+    -moz-animation-duration: 4000ms; 
+    -moz-animation-iteration-count: infinite; 
+    -moz-animation-timing-function: ease-in-out;
+      
+    -ms-animation-name: wobble; 
+    -ms-animation-duration: 4000ms; 
+    -ms-animation-iteration-count: infinite; 
+    -ms-animation-timing-function: ease-in-out;
+      
+    -o-transition: rotate(3600deg);
+    */
+
+}
+.schedlist .event-address {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0.1em 0.3em 0.2em rgba(0, 0, 0, 0.8);
+  margin: 0.5em 0;
+  padding: 0.5em 0.9em 0.5em 0.5em;
+  color: #ffffff;
+  border-radius: 0.6em;
+  font-size: 110%;
+}
+.schedlist .serviceissue .status-symbol {
+  background: url('/Mobility/resources/images/icons/flag_issue.png') 50% 50% no-repeat #ff4400;
+  background-size: 100%;
+}
+.schedlist .serviceissue .unassigned .status-symbol {
+  background: url('/Mobility/resources/images/icons/flag_issue.png') 50% 50% no-repeat #ff4400;
+  background-size: 100%;
+}
+.schedlist .event-checked-in {
+  background: #5ac425 url('/Mobility/resources/images/core/highlightgreen.gif') repeat-x;
+  background-size: 100% 50%;
+  color: #ffffff;
+}
+.schedlist .event-checked-out {
+  background: #fe9d20 url('/Mobility/resources/images/core/highlightgold.gif') repeat-x;
+  background-size: 100% 50%;
+  color: #ffffff;
+}
+.schedlist .event-communicated {
+  background: #203d63 url('/Mobility/resources/images/core/highlightdarkblue.gif') repeat-x;
+  background-size: 100% 50%;
+  color: #ffffff;
+}
+.schedlist .event-communicated .status {
+  color: #ffffff;
+}
+.schedlist .event-communicated .datetime {
+  color: #aaa;
+}
+.schedlist .event-verified {
+  background: #555555 url('/Mobility/resources/images/core/highlightgray.png') repeat-x;
+  background-size: 100% 50%;
+  color: #aaa;
+}
+.schedlist .event-verified .status {
+  color: #ffffff;
+}
+.schedlist .event-verified .datetime {
+  color: #aaa;
+}
+.schedlist .event-closed {
+  background: #555555 url('/Mobility/resources/images/core/highlightgray.png') repeat-x;
+  background-size: 100% 50%;
+  color: #aaa;
+}
+.schedlist .event-closed .status {
+  color: #aaa;
+}
+.schedlist .event-closed .datetime {
+  color: #aaa;
+}
+.schedlist .event-open {
+  background-image: url('/Mobility/resources/images/core/highlightblue.gif'), url('/Mobility/resources/images/icons/collapse.png');
+  background-size: 100% 50%, 1em 1em;
+  background-position-y: 100%, 0;
+  background-position-x: 100%, 100%;
+  background-repeat: repeat-x, no-repeat;
+  background-color: #4477cc;
+  color: #ffffff;
+}
+.schedlist .event-open .datetime {
+  color: #7df;
+}
+.schedlist .event-open .status {
+  color: #7df;
+}
+.schedlist .unassigned {
+  background: #fc5b2f url('/Mobility/resources/images/core/highlightorange.gif') repeat-x;
+  background-size: 100% 50%;
+  color: #ffffff;
+}
+.schedlist .unassigned .status {
+  color: #FC0;
+}
+.schedlist .schedcontent {
+  background: #2266aa;
+  color: #222222;
+  padding: 0 0.6em;
+}
+.schedlist .schedcontent .phone {
+  border-bottom: solid white 1em;
+  background: #00aa44 url('/Mobility/resources/images/icons/phone.png') no-repeat 0.9em;
+  background-size: 1.8em;
+  padding: 1em .3em 1em 3.4em;
+}
+.schedlist .event-detail {
+  margin: 1em 0;
+  font-size: 75%;
+}
+.schedlist .event-detail table {
+  background: #ffffff;
+  color: #555555;
+  padding: 0.5em;
+}
+.schedlist .event-detail-label {
+  color: #2266aa;
+  font-weight: bold;
+}
+.schedlist .event-detail-data {
+  border-bottom: solid 0.1em #cccccc;
+  padding: 0 0 0.5em 1em;
+}
+.schedlist tr:last-child > td.event-detail-data {
+  border-bottom: solid 0;
+}
+.schedlist .survey-btn,
+.schedlist .signature-btn,
+.schedlist .verify-btn,
+.schedlist .escalate-btn,
+.schedlist .photo-btn,
+.schedlist .attach-photo-btn,
+.schedlist .photo-gallery-btn,
+.schedlist .view-photo-btn,
+.schedlist .expense-btn,
+.schedlist .oos-btn,
+.schedlist .delete-btn,
+.schedlist .internal-contact-btn,
+.schedlist .internal-contact-btn-contacted {
+  color: #ffffff;
+  border: 0px;
+  width: 4em;
+  height: 4em;
+  font-family: 'Open Sans Condensed', sans-serif;
+  padding: 2.4em 0 0 0;
+  vertical-align: top;
+  font-size: 110%;
+}
+.schedlist .timelog-btn,
+.schedlist .accept-btn {
+  color: #ffffff;
+  border: 0px;
+  width: 5em;
+  height: 4em;
+  font-family: 'Open Sans Condensed', sans-serif;
+  padding: 2.4em 0 0 0;
+  vertical-align: top;
+  font-size: 110%;
+}
+.schedlist .delete-btn {
+  background: url('/Mobility/resources/images/icons/trash.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  float: left;
+}
+.schedlist .internal-contact-btn {
+  background: url('/Mobility/resources/images/icons/mail_outline.svg') no-repeat 50% -35%;
+  background-size: 3.2em;
+  width: 5.2em;
+}
+.schedlist .internal-contact-btn-contacted {
+  background: url('/Mobility/resources/images/icons/mark_email_read.svg') no-repeat 50% -35%;
+  background-size: 3.2em;
+  width: 5.2em;
+}
+.schedlist .survey-btn {
+  background: url('/Mobility/resources/images/icons/survey.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.schedlist .verify-btn {
+  background: url('/Mobility/resources/images/icons/verify.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.schedlist .escalate-btn {
+  background: url('/Mobility/resources/images/icons/escalate.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.schedlist .expense-btn {
+  background: url('/Mobility/resources/images/icons/expenseicon.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.schedlist .timelog-btn {
+  background: url('/Mobility/resources/images/icons/timelog.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.schedlist .photo-btn {
+  background: url('/Mobility/resources/images/icons/photo.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.schedlist .view-photo-btn {
+  background: url('/Mobility/resources/images/icons/photo.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  width: 6.3em;
+}
+.schedlist .attach-photo-btn {
+  background: url('/Mobility/resources/images/icons/attach.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  width: 6.3em;
+}
+.schedlist .signature-btn {
+  background: url('/Mobility/resources/images/icons/signature.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.schedlist .oos-btn {
+  background: url('/Mobility/resources/images/icons/oos.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  float: left !important;
+}
+.csiprompt {
+  width: 100%;
+  z-index: 6001;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+.csiprompt .event-detail {
+  margin: 1em 0;
+  font-size: 80%;
+}
+.csiprompt .event-detail table {
+  background: #ffffff;
+  color: #555555;
+  padding: 0.5em;
+}
+.csiprompt .event-detail-label {
+  color: #2266aa;
+  font-weight: bold;
+}
+.csiprompt .event-detail-data {
+  border-bottom: solid 0.1em #cccccc;
+  padding: 0 0 0.5em 1em;
+}
+.csi-prompt-confirm {
+  text-align: right;
+  padding-left: 1em;
+  padding-right: 1em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.5em 50%;
+  background-size: 1.5em;
+  font-size: 200%;
+}
+.csi-prompt-cancel {
+  text-align: right;
+  padding-left: 1em;
+  padding-right: 1em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #ff0100 url('/Mobility/resources/images/icons/cancel.png') no-repeat 0.5em 50%;
+  background-size: 1.5em;
+  font-size: 200%;
+}
+.no-events {
+  color: #ffffff;
+  text-align: center;
+  font-size: 2.5em;
+  margin-top: 3em;
+  font-family: 'Open Sans Condensed', sans-serif;
+}
+.image-options-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5em;
+  background: #ffffff url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 50%;
+  position: fixed;
+  background-size: 2em;
+  border-bottom: solid 0.1em #555555;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 1em 0.1em #555555;
+  opacity: 0.9;
+  text-align: center;
+}
+.image-options {
+  width: 90%;
+  font-family: 'Open Sans Condensed', sans-serif;
+  background-color: #2266aa;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  -ms-border-radius: 5px;
+  -o-border-radius: 5px;
+  border-radius: 5px;
+  z-index: 6000;
+  position: fixed;
+  top: 40%;
+  left: 5%;
+}
+.image-options a:link {
+  text-decoration: none;
+  color: #ffffff;
+}
+.image-options a:visited {
+  text-decoration: none;
+  color: #ffffff;
+}
+.image-options a:hover {
+  text-decoration: none;
+  color: #ffffff;
+}
+.image-options a:active {
+  text-decoration: none;
+  color: #ffffff;
+}
+@media all and (orientation: portrait) {
+  .image-options a {
+    margin-left: 1em;
+  }
+}
+@media all and (orientation: landscape) {
+  .image-options a {
+    margin-left: 3.1em;
+  }
+}
+.date-display {
+  position: relative;
+}
+.date-select {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgba(0, 0, 0, 0);
+  color: rgba(0, 0, 0, 0);
+  z-index: 500;
+}
+.project {
+  color: black;
+  background: #eeeeee url('/Mobility/resources/images/core/highlightwhite.gif') repeat-x;
+  background-size: 0 50%;
+  font-family: 'Open Sans Condensed', sans-serif;
+  border-top: .1em solid;
+  border-bottom: .1em solid;
+  font-size: 110%;
+  letter-spacing: .05em;
+}
+/*
+
+h2.event-open+div {
+  color: white;
+  background: #26abe2;
+}
+
+*/
+.group-checkout-div {
+  z-index: 6000;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5%;
+}
+.group-checkout-div tr:first-child > td {
+  padding: 1% 2%;
+  font-size: 120%;
+}
+.group-checkout-div tr:last-child > td {
+  text-align: center;
+  padding: 0 2%;
+}
+.group-checkout-label {
+  color: #ffffff;
+  display: inline-block;
+  width: 2em;
+  padding-right: 1em;
+  text-align: right;
+}
+.group-member-label {
+  color: #ffffff;
+  font-size: 120%;
+  font-weight: bold;
+  border-bottom: 0.1em #ffffff solid;
+}
+.group-checkin-label-div {
+  margin: 1% 2%;
+  background: #777777;
+}
+.group-in-time {
+  font-size: 120%;
+  width: 60%;
+}
+.group-member-div {
+  background-color: #555555;
+  margin-bottom: 1em;
+  padding: 1em;
+}
+.group-checkout-absent-label {
+  font-size: 100%;
+  color: #ffffff;
+}
+.group-checkout-div-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 50000;
+  cursor: pointer;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+.group-checkout-div-submit {
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  cursor: pointer;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 2.25em;
+  font-size: 200%;
+}
+.si-escalate,
+.si-accept {
+  z-index: 6000;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 20%;
+}
+.si-escalate tr:first-child > td,
+.si-accept tr:first-child > td {
+  padding: 1% 2%;
+  font-size: 120%;
+}
+.si-escalate tr:last-child > td,
+.si-accept tr:last-child > td {
+  text-align: center;
+  padding: 0 2%;
+}
+.si-accept-text {
+  margin: 1% 2%;
+  width: 96%;
+  background: #dfdfd0;
+  font-size: 1em;
+}
+.si-accept-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+.si-accept-confirm {
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 2.25em;
+  font-size: 200%;
+}
+.accept-btn {
+  background: url('/Mobility/resources/images/icons/acceptissue.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  width: 5em;
+}
+.comment-div {
+  z-index: 45000;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 20%;
+}
+.comment-div tr:first-child > td {
+  padding: 1% 2%;
+  font-size: 120%;
+}
+.comment-div tr:last-child > td {
+  text-align: center;
+  padding: 0 2%;
+}
+.comment-div-label {
+  color: #DFDFD0;
+}
+.comment-div-text {
+  margin: 1% 0%;
+  width: 92%;
+  background: #dfdfd0;
+  font-size: 1em;
+}
+select#unscheduled-site {
+  padding: 1%;
+  margin-left: 4%;
+  width: 92%;
+}
+.unscheduled-div-text {
+  margin: 1% 4%;
+  width: 92%;
+  background: #dfdfd0;
+  font-size: 1em;
+}
+.comment-div-save {
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 2.25em;
+  font-size: 200%;
+}
+.comment-div-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+#comment-button {
+  background: url('/Mobility/resources/images/comment2.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  border: 0px;
+  width: 5.3em;
+  float: right;
+  height: 4em;
+  font-family: 'Open Sans Condensed', sans-serif;
+  padding: 2.4em 0 0 0;
+  vertical-align: top;
+  font-size: 110%;
+}
+/*
+.oos-div {
+	z-index: 60001;
+	//position: fixed;
+	left:0;
+	right:0;
+	top:20%;
+	overflow-y: auto;
+	height: 70%;
+	/* tr:first-child > td {
+		padding:1% 2%;
+		font-size:120%;
+	}
+}
+*/
+.oos-table-th {
+  color: black;
+  text-align: left;
+  /*font-size: 1.5rem;*/
+
+  margin: 1% 2%;
+  text-decoration: underline;
+}
+.oos-table-td {
+  margin: 1% 2%;
+  text-align: left;
+}
+.uid-div {
+  z-index: 60001;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 5em;
+  overflow-y: auto;
+  height: 70%;
+  padding: .5em;
+  /* tr:first-child > td {
+		padding:1% 2%;
+		font-size:120%;
+	}*/
+
+}
+.uid-table {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 5px solid #2266aa;
+  font-size: 70%;
+}
+.uid-table-th {
+  color: black;
+  padding: .2em;
+  text-align: left;
+  /*font-size: 1.5rem;*/
+
+  text-decoration: underline;
+}
+.uid-table-td {
+  color: black;
+  padding: .2em;
+  text-align: left;
+  border-bottom: 1px solid #666666;
+}
+.uid-div-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 90000;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+.oos-div-save {
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 2.25em;
+  font-size: 200%;
+}
+.oos-div-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 60005;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+.expense-refactor-div {
+  z-index: 60001;
+  position: fixed;
+  left: 0;
+  right: 0;
+  overflow: scroll;
+  top: 20%;
+}
+.expense-refactor-div tr:last-child > td {
+  text-align: center;
+  padding: 0 2%;
+}
+.expense-col {
+  margin: 1% 2%;
+  font-size: 100%;
+  padding: 1% 2%;
+  width: 120%;
+}
+.expense-row {
+  margin: 1% 2%;
+  padding: 1% 2%;
+  background: #dfdfd0;
+  font-size: 100%;
+  width: 120%;
+}
+.expense-span {
+  margin: 1% 2%;
+  color: #ffffff;
+  font-size: 120%;
+  font-weight: bold;
+}
+.expense-refactor-div-submit {
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 5em;
+  cursor: pointer;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 2.25em;
+  font-size: 200%;
+}
+.expense-refactor-div-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  cursor: pointer;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+.si-verify {
+  z-index: 6000;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 20%;
+}
+.unscheduled {
+  z-index: 6000;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 20%;
+}
+.unscheduled tr:first-child > td {
+  padding: 1% 2%;
+  font-size: 120%;
+}
+.unscheduled tr:last-child > td {
+  text-align: center;
+  padding: 0 2%;
+}
+.si-verify-text {
+  margin: 1% 2%;
+  width: 96%;
+  background: #dfdfd0;
+  font-size: 1em;
+}
+.si-verify-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+.unscheduled-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2em;
+  background: rgba(255, 255, 255, 0.9) url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 60%;
+  position: fixed;
+  background-size: 1.0em;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 0.4em 0.1em #000;
+  opacity: 0.9;
+}
+.si-verify-confirm {
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 2.25em;
+  font-size: 200%;
+}
+.si-verify-reopen {
+  text-align: left;
+  padding-left: 2.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 1.25em;
+}
+.si-verify-no-reopen {
+  text-align: left;
+  padding-left: 2.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 100%;
+  height: 200%;
+  background: #ff0100 url('/Mobility/resources/images/icons/cancel.png') no-repeat 0.5em 50%;
+  background-size: 1em;
+}
+.unscheduled-confirm {
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #246800 solid;
+  margin: 1% 0;
+  width: 95%;
+  height: 200%;
+  background: #47bc00 url('/Mobility/resources/images/icons/confirm.png') no-repeat 0.65em 50%;
+  background-size: 2.25em;
+  font-size: 200%;
+}
+.schedLoad input {
+  margin-top: 20px;
+  padding-top: 20px;
+  background: #eeeeee url('/Mobility/resources/images/core/highlightwhite.gif') repeat-x;
+  color: #084b88;
+  cursor: pointer;
+  font-family: 'Open Sans Condensed', sans-serif;
+  vertical-align: middle;
+  text-transform: uppercase;
+  background-size: 100% 50%;
+  letter-spacing: 0.0em;
+  font-size: 160%;
+  -webkit-margin-after: 0px;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 100%;
+}
+.csi-date {
+  color: #DFDFD0;
+  letter-spacing: .1em;
+  text-align: center;
+  padding-top: 1em;
+  width: 100%;
+  font-size: 1.4em;
+}
+.service-issues {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: #222222;
+  padding: 10px 0;
+  gap: 10px;
+}
+.service-issues button {
+  font-size: 1.5em;
+  color: #ffffff;
+  border: 0;
+  border-radius: 5px;
+  box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.4);
+  padding: 10px 20px;
+  text-shadow: 2px 2px #777777;
+  margin: 0 1rem;
+}
+.service-issues button:active {
+  box-shadow: 0 5px 10px rbga(0, 0, 0, 0.4);
+}
+.service-issues .view-nearby {
+  background: #2266aa;
+}
+.service-issues .view-all {
+  background-color: #47bc00;
+}
+.service-issues-hidden {
+  display: none !important;
+}
+</style>
+
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/modules/toast/gwxToast.less?v=1.1.2"><style type="text/css" id="less:Mobility-resources-less-modules-toast-gwxToast:less-v-1:1:2">/* Toast object CSS */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.GWXToastContainer {
+  z-index: 49000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 1em;
+}
+.GWXToastContainer html {
+  position: absolute;
+}
+.GWXToastContainer > div {
+  margin: 0 !important;
+  height: initial !important;
+}
+.GWXToast {
+  width: auto;
+  opacity: 1;
+  -moz-border-radius: 0.6em;
+  -webkit-border-radius: 0.6em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  padding-left: 0.7em;
+  padding-right: 2.5em;
+  font-size: 115%;
+  display: block;
+  position: relative;
+  margin: 0 0 0.5em 0 !important;
+  vertical-align: middle;
+  font-family: 'Open Sans', sans-serif;
+  border-bottom: solid 0.3em;
+  border-right: solid 0.2em;
+  border-radius: 0.6em;
+  border-color: #28a;
+}
+.GWXToast-info {
+  width: auto;
+  opacity: 1;
+  -moz-border-radius: 0.6em;
+  -webkit-border-radius: 0.6em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  padding-left: 0.7em;
+  padding-right: 2.5em;
+  font-size: 115%;
+  display: block;
+  position: relative;
+  margin: 0 0 0.5em 0 !important;
+  vertical-align: middle;
+  font-family: 'Open Sans', sans-serif;
+  border-bottom: solid 0.3em;
+  border-right: solid 0.2em;
+  border-radius: 0.6em;
+  border-color: #28a;
+  color: #ffffff;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-info.png) no-repeat 3% center #26abe2;
+  background-size: 2em;
+}
+.GWXToast-notice {
+  width: auto;
+  opacity: 1;
+  -moz-border-radius: 0.6em;
+  -webkit-border-radius: 0.6em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  padding-left: 0.7em;
+  padding-right: 2.5em;
+  font-size: 115%;
+  display: block;
+  position: relative;
+  margin: 0 0 0.5em 0 !important;
+  vertical-align: middle;
+  font-family: 'Open Sans', sans-serif;
+  border-bottom: solid 0.3em;
+  border-right: solid 0.2em;
+  border-radius: 0.6em;
+  border-color: #28a;
+  color: #ffffff;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-info.png) no-repeat 3% center #26abe2;
+  background-size: 2em;
+}
+.GWXToast-success {
+  width: auto;
+  opacity: 1;
+  -moz-border-radius: 0.6em;
+  -webkit-border-radius: 0.6em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  padding-left: 0.7em;
+  padding-right: 2.5em;
+  font-size: 115%;
+  display: block;
+  position: relative;
+  margin: 0 0 0.5em 0 !important;
+  vertical-align: middle;
+  font-family: 'Open Sans', sans-serif;
+  border-bottom: solid 0.3em;
+  border-right: solid 0.2em;
+  border-radius: 0.6em;
+  border-color: #28a;
+  color: #ffffff;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-success.png) no-repeat 3% center #2c9c24;
+  background-size: 2em;
+}
+.GWXToast-warning {
+  width: auto;
+  opacity: 1;
+  -moz-border-radius: 0.6em;
+  -webkit-border-radius: 0.6em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  padding-left: 0.7em;
+  padding-right: 2.5em;
+  font-size: 115%;
+  display: block;
+  position: relative;
+  margin: 0 0 0.5em 0 !important;
+  vertical-align: middle;
+  font-family: 'Open Sans', sans-serif;
+  border-bottom: solid 0.3em;
+  border-right: solid 0.2em;
+  border-radius: 0.6em;
+  border-color: #28a;
+  color: #ffffff;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-warning.png) no-repeat 3% center #ffa747;
+  border-color: #E71;
+  background-size: 2em;
+}
+.GWXToast-error {
+  width: auto;
+  opacity: 1;
+  -moz-border-radius: 0.6em;
+  -webkit-border-radius: 0.6em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  padding-left: 0.7em;
+  padding-right: 2.5em;
+  font-size: 115%;
+  display: block;
+  position: relative;
+  margin: 0 0 0.5em 0 !important;
+  vertical-align: middle;
+  font-family: 'Open Sans', sans-serif;
+  border-bottom: solid 0.3em;
+  border-right: solid 0.2em;
+  border-radius: 0.6em;
+  border-color: #28a;
+  color: #ffffff;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-error.png) no-repeat 3% center #b32b2b;
+  border-color: #700;
+  background-size: 2em;
+}
+.GWXToast-info-icon {
+  width: 32px;
+  height: 32px;
+  margin-left: 10px;
+  margin-top: 10px;
+  margin-right: 10px;
+  float: left;
+  background-repeat: no-repeat;
+  background: url(/Mobility/resources/images/icons/modules/alerts/notice.png);
+}
+.GWXToast-notice-icon {
+  width: 32px;
+  height: 32px;
+  margin-left: 10px;
+  margin-top: 10px;
+  margin-right: 10px;
+  float: left;
+  background-repeat: no-repeat;
+  background: url(/Mobility/resources/images/icons/modules/alerts/notice.png);
+}
+.GWXToast-success-icon {
+  width: 32px;
+  height: 32px;
+  margin-left: 10px;
+  margin-top: 10px;
+  margin-right: 10px;
+  float: left;
+  background-repeat: no-repeat;
+  background: url(/Mobility/resources/images/icons/modules/alerts/success.png);
+}
+.GWXToast-warning-icon {
+  width: 32px;
+  height: 32px;
+  margin-left: 10px;
+  margin-top: 10px;
+  margin-right: 10px;
+  float: left;
+  background-repeat: no-repeat;
+}
+.GWXToast-error-icon {
+  width: 32px;
+  height: 32px;
+  margin-left: 10px;
+  margin-top: 10px;
+  margin-right: 10px;
+  float: left;
+  background-repeat: no-repeat;
+}
+.GWXToastClose {
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-close.png) no-repeat;
+  width: 1.5em;
+  height: 1.5em;
+  position: absolute;
+  top: 0.3em;
+  right: 0.3em;
+  cursor: pointer;
+  background-size: 1.5em;
+}
+@media all and (orientation: landscape) {
+  .GWXToastContent {
+    width: 100%;
+    height: 3em;
+    padding-left: 4em;
+  }
+}
+@media all and (orientation: portrait) {
+  .GWXToastContent {
+    width: 95%;
+    height: 3em;
+    padding-left: 4em;
+  }
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/modules/dialog/gwxdialog.less"><style type="text/css" id="less:Mobility-resources-less-modules-dialog-gwxdialog">/* Dialog Box CSS. */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+form {
+  margin: 0;
+}
+.MooDialogTitle {
+  padding-top: 30px;
+}
+.MooDialog {
+  position: fixed;
+  width: 90%;
+  height: auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 1em;
+  padding: 1em;
+  z-index: 45000;
+  font-family: 'Open Sans', sans-serif;
+  background: #ffffff;
+  color: #555555;
+  -moz-border-radius: 0.5em;
+  -webkit-border-radius: 0.5em;
+  border-radius: 0.5em;
+  border: 0.3em solid #084b88;
+}
+.MooDialog .iframe {
+  width: 100%;
+  height: 100%;
+}
+.MooDialog .buttons {
+  position: absolute;
+  right: 0;
+  bottom: 1em;
+  width: auto;
+  float: right;
+}
+.MooDialog input {
+  background: #2266aa;
+  color: #ffffff;
+  border: 0;
+  margin: 0 5;
+  padding: 5 15;
+  font-family: 'Open Sans', sans-serif;
+}
+.MooDialog .textInput {
+  background: #ffffff;
+  color: black;
+  border: 0;
+  margin: 0 5 0 5;
+  padding: 5 15 5 15;
+  font-family: 'Open Sans', sans-serif;
+}
+.MooDialog button {
+  background: #555555;
+  color: #ffffff;
+  border: 0;
+  margin: 0 .6em 0 0;
+  padding: 0.5em 1em;
+  font-size: 130%;
+  font-family: 'Open Sans', sans-serif;
+}
+.MooDialog .MooDialogError {
+  padding-left: 3em;
+  min-height: 3em;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-error.png) no-repeat;
+}
+.MooDialog .MooDialogConfirm {
+  padding-left: 6.5em;
+  color: white;
+  font-size: 1em;
+  min-height: 6em;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-question.png) no-repeat;
+}
+.MooDialog .MooDialogAlert {
+  padding-left: 3em;
+  min-height: 3em;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-warning.png) no-repeat;
+}
+.MooDialog .MooDialogPrompt {
+  padding-left: 3em;
+  min-height: 3em;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-question.png) no-repeat;
+}
+.MooDialog .content {
+  height: auto;
+}
+.MooDialog .title {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 3px 20px;
+  background: #b7c4dc;
+  border-bottom: 1px solid #a1aec5;
+  font-weight: bold;
+  text-shadow: 1px 1px 0 #ffffff;
+  color: black;
+  border-radius: 0.5em;
+  -moz-border-radius: 0.5em;
+  -webkit-border-radius: 0.5em;
+}
+.MooDialog .close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: .2em;
+  background: url(/Mobility/resources/images/icons/modules/alerts/dialog-close.png) no-repeat;
+  background-size: 1.5em;
+  padding: 0.75em;
+  display: block;
+  cursor: pointer;
+}
+.MooDialog .textInput {
+  width: 200px;
+  float: left;
+}
+</style>
+
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/modules/signature/signature.less"><style type="text/css" id="less:Mobility-resources-less-modules-signature-signature">/* Signature capture.*/
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.sig-container {
+  z-index: 35000;
+  background: rgba(0, 0, 0, 0.8);
+  text-align: center;
+}
+.sig-container input {
+  height: 4em;
+  border: 0;
+  margin-top: 2%;
+  font-size: 1.5em;
+}
+.sig-container input[type="text"] {
+  float: left;
+  padding: 0 2%;
+}
+.sig-save-btn {
+  background: #2266aa url('/Mobility/resources/images/icons/save.png') no-repeat 50% 50%;
+  background-size: 3em;
+}
+.sig-clear-btn {
+  background: url('/Mobility/resources/images/icons/trash.png') no-repeat 50% 50%;
+  background-size: 3em;
+}
+.sig-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5em;
+  background: #ffffff url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 50%;
+  position: fixed;
+  background-size: 2em;
+  border-bottom: solid 0.1em #555555;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 1em 0.1em #555555;
+  opacity: 0.9;
+  text-align: center;
+}
+@media all and (orientation: landscape) {
+  .sig-container {
+    padding: 4em 3% 50% 3%;
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+  }
+  .sig-container input {
+    width: 25%;
+  }
+  .sig-container input[type="text"] {
+    width: 50%;
+  }
+  .sig-canvas {
+    background: #ffffff;
+    width: 100%;
+    height: 12em;
+  }
+}
+@media all and (orientation: portrait) {
+  .sig-container {
+    padding: 30% 3% 100% 3%;
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+  }
+  input {
+    width: 33%;
+  }
+  input[type="text"] {
+    width: 100%;
+  }
+  .sig-canvas {
+    background: #ffffff;
+    width: 100%;
+    height: 10em;
+  }
+}
+</style>
+
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/modules/mooupload/mooupload.less?v=1.0.4"><style type="text/css" id="less:Mobility-resources-less-modules-mooupload-mooupload:less-v-1:0:4">/* MooUpload CSS */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.half {
+  position: fixed;
+  left: 5%;
+  bottom: 1em;
+  width: 90%;
+  height: 80%;
+  z-index: 6000;
+  background: #ffffff;
+}
+.half form {
+  margin-bottom: 0px;
+}
+.mooupload_error {
+  color: #FF0000;
+}
+.mooupload_noerror {
+  color: #008000;
+}
+.mooupload_progressbar {
+  text-align: center;
+  font-size: 50%;
+  width: 100%;
+  display: block;
+  height: inherit;
+}
+.mooupload_off {
+  background: #ffffff url(/Mobility/resources/images/icons/modules/mooupload/progress_grey.gif) center left repeat-x;
+}
+.mooupload_on {
+  background: #ffffff url(/Mobility/resources/images/icons/modules/mooupload/progress.gif) center left repeat-x;
+}
+.mooupload_btncontainer {
+  padding: 0 0 .5em 0;
+  margin: 0.5em;
+  text-align: right;
+  min-height: 5em;
+}
+.mooupload_btncontainer input[type="button"] {
+  color: #212121;
+  border: 0px;
+  width: 5.3em;
+  height: 4em;
+  font-family: 'Open Sans Condensed', sans-serif;
+  padding: 2.4em 0 0 0;
+  vertical-align: top;
+  font-size: 110%;
+}
+.mooupload_btncontainer button:active {
+  background-color: #26abe2;
+}
+.mooupload_btncontainer div.progresscont {
+  display: none;
+  width: 100%;
+  height: 0.8em;
+  border: inset .1em;
+  background: #cccccc;
+  margin-top: 0.3em;
+  color: green;
+  font-size: 130%;
+  font-weight: bold;
+}
+.addfile {
+  background: #ffffff url('/Mobility/resources/images/icons/upload.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.cancelfileupld {
+  width: 100% !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5em !important;
+  background: #ffffff url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 50%;
+  position: fixed;
+  background-size: 2em;
+  border-bottom: solid 0.1em #555555 !important;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 1em 0.1em #555555;
+  opacity: 0.9;
+  text-align: center;
+}
+.camera-btn {
+  background: #ffffff url('/Mobility/resources/images/icons/takephoto.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.mooupload_listview {
+  background: #dfdfd0;
+  font-size: 100%;
+  margin: 1em;
+  padding: 0 0 1em 0;
+  box-shadow: 0.1em 0.3em 0.2em gray;
+  color: #aaa;
+}
+.mooupload_listview ul {
+  margin: 0;
+  padding: 0.3em 0 1.3em 0;
+}
+.mooupload_listview li {
+  list-style-type: none;
+  clear: both;
+  padding-left: 0.3em;
+}
+.mooupload_listview li div {
+  display: block;
+  margin-right: 0.4em;
+  float: left;
+}
+.mooupload_listview li div.optionsel {
+  width: 0px;
+  margin-right: 0px;
+}
+.mooupload_listview li div.filename {
+  width: 11em;
+  color: #555555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mooupload_listview li div.filetype {
+  width: 35%;
+}
+.mooupload_listview li div.filesize {
+  width: 5em;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.mooupload_listview li div.result {
+  margin-left: .1em;
+  text-transform: uppercase;
+  font-style: normal;
+}
+.mooupload_listview li.header {
+  margin-bottom: 0.3em;
+  color: #dfdfd0;
+}
+.mooupload_listview a.delete {
+  display: block;
+  height: 1.7em;
+  width: 1.7em;
+  margin: -0.1em 0 1em -2em;
+  background: #ee3300 url(/Mobility/resources/images/icons/modules/mooupload/cancel.png) center center no-repeat;
+}
+.mooupload_readonly {
+  color: #555555;
+  font-family: 'Open Sans Condensed', sans-serif;
+  font-style: italic;
+  font-size: 125%;
+}
+@media all and (orientation: portrait) {
+  li.item {
+    font-size: 100%;
+  }
+}
+@media all and (orientation: landscape) {
+  li.item {
+    font-size: 120%;
+  }
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/dashboard/dash.less?v=1.0.3"><style type="text/css" id="less:Mobility-resources-less-core-dashboard-dash:less-v-1:0:3">/* Dashboard / post-login landing page CSS. */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.widget {
+  color: #ffffff;
+  background: #2266aa;
+  padding-top: 0.6em !important;
+  padding-left: 2.6em !important;
+  font-size: 180%;
+  letter-spacing: .1em;
+  /*prevent chrome and other browsers search*/
+
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.submit-issue {
+  background: #2266aa url('/Mobility/resources/images/icons/serviceissue.png') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+.broadcast {
+  background: #2266aa url('/Mobility/resources/images/icons/broadcast-icon.svg') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+.csi-status {
+  background: #2266aa url('/Mobility/resources/images/icons/csi_status.png') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+.view-contacts {
+  background: #2266aa url('/Mobility/resources/images/icons/contactlist.png') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+.schedule {
+  background: #2266aa url('/Mobility/resources/images/icons/timelog.png') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+.reports {
+  background: #2266aa url('/Mobility/resources/images/icons/reports.png') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+.oos {
+  background: #2266aa url('/Mobility/resources/images/icons/oos.png') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+.report-inactive {
+  background: #555555 url('/Mobility/resources/images/icons/reports.png') no-repeat 0.5em;
+  background-size: 1.5em;
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/issue/issue.less?v=1.0.1"><style type="text/css" id="less:Mobility-resources-less-core-issue-issue:less-v-1:0:1">/* Service Issue Submission CSS.*/
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+#vendordisp {
+  width: 92%;
+  float: left;
+  margin: 1% 2%;
+  padding: 2%;
+  font-family: 'Open Sans Condensed', sans-serif;
+  background: url('/Mobility/resources/images/core/highlightblue.gif') repeat-x 0 70%;
+  background-size: 0.2em;
+}
+.inline {
+  border-radius: 4px;
+  background: #ffffff;
+  padding-bottom: .3em;
+  margin: 1% 2%;
+  font-size: 80% !important;
+}
+.inline .mooupload_btncontainer {
+  margin: 0;
+}
+.inline .mooupload_btncontainer button {
+  margin-top: 0.3em;
+  margin: 1%;
+}
+.inline .mooupload_btncontainer p {
+  color: #222222;
+  letter-spacing: 0;
+  margin: 1%;
+}
+.mooupload_messagebtncontainer {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-right: 10px;
+}
+.mooupload_messagebtncontainer button {
+  margin-top: 0.3em;
+  margin: 1%;
+}
+.mooupload_messagebtncontainer p {
+  color: #222222;
+  letter-spacing: 0;
+  margin: 1%;
+  text-wrap: pretty;
+}
+#photoicon {
+  background: #2266aa url('/Mobility/resources/images/icons/photo.png') no-repeat 10% 50%;
+  background-size: 3em;
+}
+#commentsel {
+  border-radius: 4px;
+  margin: 1% 2%;
+  background: #777777;
+}
+#commentsel p {
+  -webkit-margin-before: 0;
+  -webkit-margin-after: 0;
+  margin-left: 2%;
+  color: #ffffff;
+  letter-spacing: 0;
+}
+#commentsel #sicomment {
+  border: 0;
+  width: 96%;
+  margin: 2%;
+  box-shadow: 0.2em 0.3em 0.2 #222222 inset;
+}
+#submitissuebtn {
+  margin: 1% 2%;
+  width: 96%;
+  height: 200%;
+  background: #2266aa url('/Mobility/resources/images/icons/submitissue.png') no-repeat 0.5em 50%;
+  background-size: 2.5em;
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #174777 solid;
+}
+#submitissuebtn:disabled {
+  background-color: #555555;
+  cursor: not-allowed;
+}
+.guest_data {
+  margin: 1% 2%;
+  font-size: 80% !important;
+}
+.extra_data {
+  margin: 1% 2%;
+  font-size: 80% !important;
+  display: none;
+}
+input[type="checkbox"] {
+  display: none;
+}
+input[type="checkbox"] + label span {
+  display: inline-block;
+  width: 2em;
+  height: 2em;
+  margin: -1px 4px 0 0;
+  vertical-align: middle;
+  background: url(/Mobility/resources/images/core/login/checkboxclear.png) center no-repeat;
+  cursor: pointer;
+  background-size: 2em;
+}
+input[type="checkbox"]:checked + label span {
+  background: url(/Mobility/resources/images/core/login/checkbox.png) center no-repeat;
+  background-size: 2em;
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/contactlist/contactlist.less"><style type="text/css" id="less:Mobility-resources-less-core-contactlist-contactlist">/* Contact / protocol list CSS. */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.protocol {
+  background: #ffffff;
+  margin: 1% 2% 2.5% 2%;
+  padding: 0.5em 0.5em 0 0.5em;
+  font-size: 0.9em;
+}
+.protocol table {
+  color: #2266aa;
+}
+.label {
+  color: #aaa;
+  border-bottom: solid 0.2em;
+  padding: 0 0 0.4em 0.2em;
+  font-size: 70%;
+  text-transform: uppercase;
+}
+.name {
+  padding: 0.4em 0 0.4em 0.3em;
+}
+.phone {
+  padding: 0.5em 0.3em 0.5em 2.5em;
+  background: #2266aa url('/Mobility/resources/images/icons/phone.png') no-repeat 0.3em;
+  color: #ffffff;
+  background-size: 1.8em;
+}
+.email {
+  padding: 0.5em 0.3em;
+  margin: 1em;
+  color: black;
+  text-decoration: underline;
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/modules/photogallery/gallery.less"><style type="text/css" id="less:Mobility-resources-less-modules-photogallery-gallery">/* Photo Gallery CSS */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.photo-gallery {
+  display: flex;
+  justify-content: space-between;
+  flex-direction: row;
+  position: fixed;
+  width: 90%;
+  height: 60%;
+  left: 5%;
+  top: 10%;
+  z-index: 6000;
+}
+/* changes */
+.photo-gallery-thumbs {
+  display: flex;
+  flex-flow: column wrap;
+  justify-content: start;
+  height: 100%;
+}
+.photo-gallery-thumb {
+  object-fit: contain;
+  max-height: 80%;
+  max-width: 80%;
+  height: auto;
+  vertical-align: middle;
+}
+.photo-gallery-thumb-wrapper {
+  align-items: center;
+  display: flex;
+  height: 50%;
+  justify-content: center;
+  position: relative;
+  width: 50%;
+}
+.photo-gallery-thumb-container {
+  background: #ffffff;
+  display: flex;
+  flex-flow: row;
+  overflow: hidden;
+  text-align: center;
+  vertical-align: middle;
+  height: 90vh;
+}
+.photo-gallery-sheet {
+  display: flex;
+  flex-flow: column wrap;
+  justify-content: start;
+  height: 100%;
+}
+.photo-gallery-caption {
+  text-align: center;
+  z-index: 10000;
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  font-family: "Open Sans Condensed", sans-serif;
+  font-size: 1.3em;
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.7);
+  background: rgba(255, 255, 255, 0.7);
+}
+/* end changes */
+.photo-gallery-full {
+  z-index: 20000;
+  height: auto !important;
+  width: auto !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  position: fixed !important;
+  margin: 2em !important;
+  background: black;
+}
+.photo-gallery-cancel {
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5em;
+  background: #ffffff url("/Mobility/resources/images/icons/cancel.png") no-repeat 98% 50%;
+  position: fixed;
+  background-size: 2em;
+  border-bottom: solid 0.1em #555555;
+  z-index: 50000;
+  box-shadow: 0em 0.1em 1em 0.1em #555555;
+  opacity: 0.9;
+  text-align: center;
+}
+/* // ------ GALLERY CONTROLS ------ // */
+.photo-gallery-btn {
+  width: 20%;
+  height: 100%;
+}
+.photo-gallery-btn.right {
+  background: url("/Mobility/resources/images/icons/albumright.png") 55% 50% no-repeat rgba(0, 0, 0, 0);
+  background-size: 2em 4em;
+}
+.photo-gallery-btn.left {
+  background: url("/Mobility/resources/images/icons/albumleft.png") 45% 50% no-repeat rgba(0, 0, 0, 0);
+  background-size: 2em 4em;
+}
+.photo-gallery-btn.right.disabled {
+  background: url("/Mobility/resources/images/icons/albumdisabled.gif") no-repeat rgba(0, 0, 0, 0);
+}
+.photo-gallery-btn.left.disabled {
+  background: url("/Mobility/resources/images/icons/albumdisabled.gif") no-repeat rgba(0, 0, 0, 0);
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/schedule/schedFilter.less?v=1.0.0"><style type="text/css" id="less:Mobility-resources-less-core-schedule-schedFilter:less-v-1:0:0">/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.slideout-menu {
+  position: fixed;
+  top: 0;
+  /*left: -90%;*/
+
+  width: 100%;
+  height: 100%;
+  background: #222;
+  z-index: 5003;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  vertical-align: middle;
+}
+.slideout-menu .filter-label {
+  text-align: left;
+  padding: 0.5em 1.25rem 0;
+}
+.slideout-menu .filter-input {
+  border: 0;
+  border-radius: 0.2em;
+  margin: 0;
+  height: auto;
+  color: #222222;
+}
+.slideout-menu .filter-actions {
+  padding: 2em 0 0;
+}
+.slideout-menu h3 {
+  position: relative;
+  padding: 12px 10px;
+  color: #fff;
+  font-size: 1.2em;
+  font-weight: 400;
+  border-bottom: 4px solid #222;
+}
+.slideout-menu .slideout-menu-toggle {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  display: inline-block;
+  padding: 6px 9px 5px;
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  line-height: 1;
+  background: #222;
+  color: #999;
+  text-decoration: none;
+  vertical-align: top;
+}
+.slideout-menu .slideout-menu-toggle:hover {
+  color: #fff;
+}
+.slideout-menu ul {
+  list-style: none;
+  font-weight: 300;
+}
+.slideout-menu ul li a {
+  position: relative;
+  display: block;
+  padding: 10px;
+  color: #999;
+  text-decoration: none;
+}
+.slideout-menu ul li label {
+  position: relative;
+  display: block;
+  padding: 10px;
+  color: #999;
+  text-decoration: none;
+}
+.slideout-menu ul li a:hover {
+  background: #000;
+  color: #fff;
+}
+.slideout-menu ul li a i {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  opacity: .5;
+}
+/* .slideout-menu ul li button {
+	position: relative;
+	display: block;
+	padding: 10px;
+	text-decoration: none;
+	width: 100%;
+} */
+/* .slideout-menu ul li input {
+	margin: -0.1em 0 0 0;
+	background-color: @gwx_uiblue;
+	border: 0;
+	color: @gwx_white;
+	font-size: 110%;
+	border-bottom: solid .1em #084B66;
+    border-right: solid .1em #084B66;
+    border-top: solid .1em #269ff0;
+    border-left: solid .1em #269ff0;
+	cursor: pointer;
+	padding: 0.25em 0.3em;
+} */
+.slideout-menu ul li label {
+  display: block;
+  padding-left: 15px;
+  text-indent: -15px;
+}
+.header {
+  padding: 15px;
+}
+.header .slideout-menu-toggle {
+  text-decoration: none;
+}
+.header .slideout-menu-toggle:hover {
+  color: #fff;
+}
+.header .slideout-menu-toggle i {
+  vertical-align: top;
+  margin: 5px 3px 0 0;
+}
+.content {
+  width: 60%;
+  margin: 50px auto;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.75);
+}
+.content h1 {
+  font-weight: 400;
+  text-transform: uppercase;
+  margin: 0;
+}
+.content h2 {
+  font-weight: 400;
+  text-transform: uppercase;
+  color: #fff;
+  margin: 0 0 20px;
+}
+.filter-cancel {
+  width: 100%;
+  height: 5em;
+  background: #222222 url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 50%;
+  background-size: 2em;
+  z-index: 50000;
+  opacity: 0.9;
+  text-align: center;
+}
+.slideout-menu #clearFilterBtn,
+.clearFilterBtn {
+  margin: 1% 2%;
+  width: 46%;
+  height: 3em;
+  background: #2266aa url('/Mobility/resources/images/icons/cancel.png') no-repeat 0.5em 50%;
+  background-size: 2.5em;
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #174777 solid;
+}
+.slideout-menu #filterBtn {
+  margin: 1% 2%;
+  width: 46%;
+  height: 3em;
+  background: #2266aa url('/Mobility/resources/images/filter-128-white.png') no-repeat 0.5em 50%;
+  background-size: 2.5em;
+  text-align: left;
+  padding-left: 3.7em;
+  border-bottom: 0.1em #174777 solid;
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/oos/oos.less"><style type="text/css" id="less:Mobility-resources-less-core-oos-oos">/**
+* OOS entry styling.
+*/
+#oossubmitted {
+  font-size: 1rem;
+  border: 1px solid #999;
+  /* min-height: 20px; */
+
+}
+#submitoosbtn {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/report/report.less?v=1.0.1"><style type="text/css" id="less:Mobility-resources-less-core-report-report:less-v-1:0:1">.report-title {
+  padding-bottom: .5rem;
+  font-size: larger;
+}
+.report-table {
+  border: 1px solid #383838;
+  font-size: x-small;
+  text-align: left;
+}
+.report-header {
+  color: #084b88;
+  font-weight: bold;
+  background-color: #999999;
+  border: 1px solid #383838;
+  padding: .1rem;
+  text-align: left;
+}
+.report-data {
+  color: #000000;
+  text-align: left;
+  border: 1px solid #383838;
+  background-color: #ffffff;
+}
+</style>
+<link rel="stylesheet/less" type="text/css" href="/Mobility/resources/less/core/purchaseOrders/purchaseOrders.less?v=1.0.1"><style type="text/css" id="less:Mobility-resources-less-core-purchaseOrders-purchaseOrders:less-v-1:0:1">/* PurchaseOrders CSS */
+/* Variables / Assets. (to import) */
+/* animations
+  @-webkit-keyframes wobble {
+    0% {-webkit-transform: rotate(-7deg);}
+    50% {-webkit-transform: rotate(7deg);}
+    100% {-webkit-transform: rotate(-7deg);}
+  }
+    
+  @-moz-keyframes wobble {
+    0% {-moz-transform: rotate(-7deg);}
+    50% {-moz-transform: rotate(7deg);}
+    100% {-moz-transform: rotate(-7deg);}
+  }
+    
+  @-ms-keyframes wobble {
+    0% {-ms-transform: rotate(-7deg);}
+    50% {-ms-transform: rotate(7deg);}
+    100% {-ms-transform: rotate(-7deg);}
+  }
+  end animations */
+.pos-header {
+  display: flex;
+  flex-direction: row;
+}
+.pos-header .pos-header-description {
+  flex-grow: 1;
+}
+.pos-header .pos-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.pos-label {
+  font-weight: 700;
+}
+.pos-value-light {
+  color: #cccccc;
+}
+.pos-value-dark {
+  color: #555555;
+}
+.cancel {
+  width: 2em;
+  height: 2em;
+  background: transparent url('/Mobility/resources/images/icons/cancel.png') no-repeat 98% 50%;
+  background-size: 2em;
+  opacity: 0.9;
+  text-align: center;
+}
+.pos-search {
+  display: flex;
+  border: 0.0625rem solid #2266aa;
+  background-color: #cccccc;
+  padding: 1.25rem;
+  margin: 0 0 1.25rem;
+}
+.pos-navigation .slideout-menu {
+  overflow: scroll !important;
+}
+.pos-navigation .editIcon {
+  display: block;
+  width: 1em;
+  height: 1em;
+  background: url('/Mobility/resources/images/icons/edit-white.png') no-repeat top left;
+  background-size: 1em;
+  cursor: pointer;
+}
+.poslist {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  color: #222222;
+  font-weight: 400;
+}
+.poslist .clearFilter {
+  margin: 1% 2%;
+  height: 2em;
+  background: #2266aa url('/Mobility/resources/images/icons/cancel.png') no-repeat 0.5em 50%;
+  background-size: 1.5em;
+  text-align: left;
+  padding-left: 2.2em;
+  border-bottom: 0.1em #174777 solid;
+  font-size: 5rem;
+  width: 96%;
+}
+.poslist .pos-itemContainer {
+  padding: 0.625rem;
+  color: #222222;
+  border-collapse: collapse;
+}
+.poslist .pos-itemContainer .pos-item {
+  border: 10px solid #2266aa;
+  background-color: white;
+  vertical-align: top;
+}
+.poslist .pos-itemContainer .pos-divider {
+  display: block;
+  padding: 10px;
+}
+.poslist .pos-number {
+  white-space: nowrap;
+  padding: 10px;
+}
+.poslist .pos-info {
+  padding: 10px;
+}
+.poslist .pos-violations,
+.poslist .pos-violations .pos-label,
+.poslist .pos-violations .pos-value-dark {
+  color: #77ddff;
+}
+.vio-create-container {
+  display: flex;
+  flex-direction: column;
+  padding: 0 2.5rem;
+  gap: 0.625rem;
+}
+.vio-create-container .vio-form-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1.25rem;
+  gap: 2.5rem;
+}
+.vio-create-container .vio-form-container .vio-item-container {
+  margin: 10px 0;
+}
+.vio-create-container .vio-form-container .vio-item-container:not(:last-child) {
+  padding-bottom: 25px;
+  border-bottom: 0.125rem solid #777777;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-header div {
+  font-size: 80%;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container {
+  display: flex;
+  flex-direction: row;
+  gap: 0.625rem;
+  justify-content: space-between;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .vio-field-select {
+  flex-grow: 1;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .vio-field-select select {
+  width: 100%;
+  margin: 1% 0;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .quantity-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .quantity-container input[type="number"]::-webkit-inner-spin-button,
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .quantity-container input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .quantity-container input[type="number"] {
+  -moz-appearance: textfield;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .quantity-container input {
+  max-width: 85px;
+  border: 0;
+  border-radius: 0.1em;
+  max-height: 72px;
+  margin: 0;
+  color: #222222;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-field-select-container .vio-delete-button {
+  display: none;
+  margin: 0.625rem 0;
+  font-size: 50%;
+  color: #222222;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-description-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-description-container .vio-field-description {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  background-color: #777777;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-description-container .vio-field-description p {
+  margin: 0 0 0 2%;
+  color: #ffffff;
+  letter-spacing: 0;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-description-container .vio-field-description textarea {
+  border: 0;
+  width: 96%;
+  margin: 2%;
+  height: 7.5rem;
+  box-shadow: 0.2em 0.3em 0.2em #cccccc inset;
+  /* Change placeholder color */
+
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-description-container .vio-field-description textarea.required::placeholder {
+  /* Most modern browsers support this */
+
+  color: #B32B2B;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-description-container .vio-field-description textarea.required:-ms-input-placeholder {
+  /* Internet Explorer 10-11 */
+
+  color: #B32B2B;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-description-container .vio-field-description textarea.required::-ms-input-placeholder {
+  /* Microsoft Edge */
+
+  color: #B32B2B;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-upload-photo {
+  padding-left: 1em;
+  padding-right: 1em;
+}
+.vio-create-container .vio-form-container .vio-item-container .vio-upload-photo .mooupload_listview {
+  display: none;
+}
+.vio-create-container .vio-submit-button {
+  position: sticky;
+  bottom: 0;
+  background-color: #222222;
+}
+.vio-create-container .vio-submit-button .mobilebutton {
+  margin: 1% 0;
+  width: 100%;
+}
+.vio-create-container .vio-submit-button .mobilebutton.btn-disabled {
+  background-color: #555555 !important;
+  cursor: not-allowed;
+}
+.violist {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.violist .vio-create .vio-create-btn {
+  display: flex;
+  width: auto;
+  padding: 15px;
+  border: 0;
+  font-size: 100%;
+  color: #222222;
+  border-radius: 0.2em;
+}
+.violist .vio-item-container .vio-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  background-image: url('/Mobility/resources/images/core/highlightblue.gif'), url('/Mobility/resources/images/icons/collapse.png');
+  background-size: 100% 50%, 1em 1em;
+  background-position-x: 100%, 100%;
+  background-repeat: repeat-x, no-repeat;
+  background-color: #4477cc;
+  color: #ffffff;
+  padding: 25px 1.5rem 25px 0;
+  margin: 0;
+  height: auto !important;
+  gap: 25px;
+}
+.violist .vio-item-container .vio-item.event-open {
+  background-position-y: 100%, 0;
+}
+.violist .vio-item-container .vio-item.event-closed {
+  background: #555555 url('/Mobility/resources/images/core/highlightgray.png') repeat-x;
+  background-size: 100% 50%;
+  color: #aaa;
+}
+.violist .vio-item-container .vio-item .violation-name {
+  display: flex;
+}
+.violist .vio-item-container .vio-item .violation-name .checkbox-container input[type="checkbox"] + label span {
+  width: 1em;
+  height: 1em;
+  margin: 0.625rem;
+  background-size: 1em;
+  background-color: #222222;
+}
+.violist .vio-item-container .vio-item .quantity-container {
+  text-align: right;
+  white-space: nowrap;
+}
+.violist .vio-item-container .viocontent {
+  margin-top: -22px;
+  background-color: #2266aa;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container .vio-stamps {
+  display: flex;
+  flex-direction: column;
+  font-size: 60%;
+  padding-left: 0.5rem;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container .vio-actions {
+  gap: 0;
+  text-align: right;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container .vio-actions .generic-btn {
+  color: #ffffff;
+  border: 0;
+  width: 4em;
+  height: 4em;
+  font-family: 'Open Sans Condensed', sans-serif;
+  padding: 2.4em 0 0 0;
+  vertical-align: top;
+  font-size: 110%;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container .vio-actions .edit-btn {
+  background: url('/Mobility/resources/images/icons/survey.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container .vio-actions .photo-btn {
+  background: url('/Mobility/resources/images/icons/photo.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container .vio-actions .attach-photo-btn {
+  background: url('/Mobility/resources/images/icons/attach.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  width: 6.3em;
+}
+.violist .vio-item-container .viocontent .vio-stamps-actions-container .vio-actions .view-photo-btn {
+  background: url('/Mobility/resources/images/icons/photo.png') no-repeat 50% 10%;
+  background-size: 2.3em;
+  width: 6.3em;
+}
+.violist .vio-item-container .viocontent .event-details {
+  margin: 30px;
+  padding: 20px;
+  background-color: #ffffff;
+  color: #555555;
+}
+.violist .vio-item-container .viocontent .event-details .description-title {
+  font-weight: 700;
+  color: #2266aa;
+}
+.violist .vio-item-container .viocontent .event-details .description-text {
+  font-size: 80%;
+  padding-left: 20px;
+  word-break: break-word;
+}
+.violist .vio-actions {
+  display: flex;
+  gap: 20px;
+  flex-direction: row;
+}
+.violist .vio-actions .vio-action-btn {
+  margin: 0.625rem 0;
+  width: auto;
+  padding: 15px;
+  font-size: 100%;
+  border: 0;
+  border-radius: 0.2em;
+  color: #222222;
+}
+.violist .vio-actions .vio-action-btn:disabled {
+  background-color: #555555;
+  cursor: not-allowed;
+}
+.filter-violations {
+  display: flex;
+  justify-content: space-evenly;
+  margin-top: 1em;
+}
+</style>
+
+<!-- css includes -->
+
+<!-- js includes -->
+<script src="/Mobility/resources/js/JQuery/jquery-3.6.4.min.js"></script>
+<script src="/Mobility/resources/js/select2/select2.min.js"></script>
+<script type="text/javascript">
+  //no conflict jquery
+  jQuery.noConflict();
+</script>
+
+<script src="/Mobility/resources/js/less/less.js"></script>
+
+<script src="/Mobility/resources/js/mootools/core/mootools-core.js"></script>
+<script src="/Mobility/resources/js/mootools/core/mootools-more.js"></script>
+<!-- <script src="/Mobility/resources/js/JQuery/jquery-1.11.3.min.js" type="text/javascript"></script>
+<script src="/Mobility/resources/js/JQuery/jquery.mobile-1.4.5/jquery.mobile-1.4.5.min.js"></script> -->
+
+<script src="/Mobility/resources/js/mootools/core/prototypes/moo-request.js"></script>
+
+<script src="/Mobility/resources/js/mootools/modules/dialog/moodialog/MooDialog-All.js"></script>
+
+<script src="/Mobility/resources/js/mootools/modules/menuslide/GWXMenu.js"></script>
+<script src="/Mobility/resources/js/mootools/modules/browser/GWXBrowser.js"></script>
+<script src="/Mobility/resources/js/mootools/modules/access/GWXAccess.js?v=1.1.1"></script>
+
+<script src="/Mobility/resources/js/app/orientation.js"></script>
+
+<!-- Hammer Time -->
+<script src="/Mobility/resources/js/util/hammer/hammer.js"></script>
+
+<!-- script src="/Mobility/resources/js/mootools/modules/history/mootools.history.js"></script-->
+<!-- script src="/Mobility/resources/js/util/BackDetect/backfix.min.js"></script-->
+
+<!-- GWX js modules -->
+<script src="/Mobility/resources/js/mootools/util/GWXOverlay.js"></script>
+<script src="/Mobility/resources/js/mootools/util/GWXLog.js"></script>
+<script src="/Mobility/resources/js/mootools/util/GWXProc.js"></script>
+<script src="/Mobility/resources/js/mootools/util/GWXSelector.js"></script>
+<script src="/Mobility/resources/js/mootools/util/GWXGroup.js"></script>
+<script src="/Mobility/resources/js/mootools/util/GWXLocation.js"></script>
+
+<script src="/Mobility/resources/js/mootools/modules/toast/GWXToast.js"></script>
+<script src="/Mobility/resources/js/mootools/modules/dialog/GWXDialog.js"></script>
+<script src="/Mobility/resources/js/mootools/modules/mooswipe/MooSwipe.js"></script>
+
+<!-- Mixpanel -->
+
+
+<script src="/Mobility/resources/js/app/mixpanel.js?v=1.0.1" data-token="null"></script>
+
+
+
+
+<script> 
+	/* var jQ = jQuery.noConflict();
+	jQ.mobile.loading().hide(); */
+</script>
+</head>
+
+<!-- Body -->
+<body class="pagination-above-elements">
+	<!-- Full container div -->
+	<div id="container" onorientationchange="updateOrientation()" style="font-size: 30px;">
+
+		<div id="dummy" class="dummy"></div>
+
+		<!-- Content -->
+		<div class="main-content resize">
+
+
+			<!-- header div -->
+			<div class="pageheader">
+				<img src="/Mobility/resources/images/core/globalworx.png" id="globalhead" style="width: 882px;">
+				<div id="topmenu">
+
+					<span id="globalworxletters"> <img src="/Mobility/resources/images/core/globalworx.png">
+					</span>
+				
+				</div>
+			</div>
+
+
+			<!--   FLOATING CONTROLS  z-index 1001    -->
+			<span id="menubutton"></span> <span class="logoutcontainer"> <input class="logoutbutton" value=" " type="button" onclick="mpLogoutEvent();new GWXAccess.Logout({prompt: true});">
+			</span>
+	
+	<!-- Div containing main content -->
+	<div>
+
+
+
+<script>
+	var _errMsg = "This issue has already been accepted.";
+	var _defEvent = "42-8885251-031320261426";
+	var _popAccept = "null";
+	var _tier = "3";
+	var _remoteAccept = "true";
+	let raSiteId = "101264";
+	let vendorId = "102441";
+	
+	// Server-side vendor view detection - check both tier and remote_accept
+	var _isVendorView = (_tier === "3" && _remoteAccept === "true");
+	
+	// Export the detection function globally
+	window.isVendorScheduleView = function() {
+		return _isVendorView;
+	};
+	
+	console.log('index.jsp: Vendor view detection initialized - _tier =', _tier, '_remoteAccept =', _remoteAccept, '_isVendorView =', _isVendorView);
+</script>
+
+<!-- Include schedule scripts -->
+
+<script src="/Mobility/resources/js/mootools/modules/mooupload/MooUpload.js"></script>
+<script src="/Mobility/resources/js/mootools/modules/photogallery/GWXPhotoGallery.js"></script>
+<script src="/Mobility/resources/js/mootools/modules/schedule/GWXSchedList.js?v=1.3.20"></script>
+<script src="/Mobility/resources/js/mootools/modules/schedule/GWXSchedFilter.js?v=1.0.2"></script>
+<script src="/Mobility/resources/js/mootools/modules/signature/GWXSignature.js"></script>
+
+<!-- Pagination imports - MUST come before schedlist.js -->
+<script src="/Mobility/resources/js/mootools/modules/schedule/GWXVendorPaginationManager.js?v=1.0.0"></script>
+<script src="/Mobility/resources/js/app/schedule/vendorPaginationIntegration.js?v=1.0.1"></script>
+
+<script src="/Mobility/resources/js/app/schedule/schedlist.js?v=1.2.9"></script>
+<script src="/Mobility/resources/js/app/schedule/menuSlide.js"></script>
+
+<!-- Badge Printer -->
+<script src="/Mobility/resources/js/util/moment.js"></script>
+<script src="/Mobility/resources/js/util/epos/epos-2.17.0.js"></script>
+<script src="/Mobility/resources/js/util/badge_printer.js?v=0.1.4"></script>
+
+<!-- TODO: Replace this with an expandable/collapsable div... -->
+<div class="schedfilter hide" id="schedfilter">
+	<input type="hidden" name="start" id="start" value="03/13/2026">
+	<input type="hidden" name="end" id="end" value="03/13/2026">
+	<input type="hidden" name="days" id="days" value="1">
+	<input type="hidden" name="statusid" id="statusid" value="-1">
+	<input type="hidden" name="siOpen" id="siOpen" value="false">
+	<input type="hidden" name="siAccepted" id="siAccepted" value="false">
+	<input type="hidden" name="siCompleted" id="siCompleted" value="false">
+	<input type="hidden" name="siVerified" id="siVerified" value="false">
+	<input type="hidden" name="projid" id="projid" value="0">
+	<input type="hidden" name="vendorid" id="vendorid" value="0">
+	<input type="hidden" name="roleid" id="roleid" value="0">
+	<input type="hidden" name="bannerid" id="bannerid" value="0" class="vf-form-select">
+	<input type="hidden" name="siteSearch" id="siteSearch" value="">
+	<input type="hidden" name="selectAllStores" id="selectAllStores" value="false">
+	<!-- Page size is managed by PaginationConfig.DEFAULT_PAGE_SIZE in GWXVendorPaginationManager.js -->
+	<input type="hidden" name="pageSize" id="pageSize" value="25">
+	<input type="hidden" name="currentPage" id="currentPage" value="1">
+	<input type="date" name="start_dateinput" id="start_dateinput" value="03/13/2026" onchange="$('start').set('value',this.value)">
+	<input type="date" name="end_dateinput" id="end_dateinput" value="03/13/2026" onchange="$('end').set('value',this.value)">
+</div>
+
+<!-- Schedule navigation -->
+<!-- Schedule navigation -->
+
+<div class="sched-navigation" id="sched-navigation">
+  <!-- span id="menubutton"></span>
+    <span class="logoutcontainer resize">
+    <input class="logoutbutton resize" value=" " type="button" onclick="new GWXAccess.Logout({prompt: true});"/>
+    </span-->
+  <div id="sched-filter-wrapper" style="height: 5000px; z-index: 15000; margin: 0px; position: fixed; overflow: visible; width: 0px;">
+    <div class="slideout-menu" id="sched-filter-menu" style="width: 90%; margin: 0px 0px 0px -409px; overflow: hidden;">
+      <form onsubmit="return schedFilter.filter(this);" style="padding: 1em; overflow-y: scroll; z-index: 5005; height: 100%">
+        
+        <div class="filter-cancel" id="menu-toggle"></div>
+        <div class="vf-filter-form">
+          <div class="vf-form-description">Search includes store name, number, address, city, state and zip code.</div>
+          <div class="vf-form-description vf-note">(Note: add the "#" symbol to search by store number.)</div>
+          <div class="vf-form-group">
+            <input onclick="mpDefaultEvent('Schedule Menu', {
+                'action': 'input',
+                'element': 'siteSearch',
+                'value': this.value,
+              })" type="text" value="" class="vf-form-input" id="siteSearch" name="siteSearch" placeholder="Search stores...">
+          </div>
+
+          <div class="vf-form-group vf-checkbox-group">
+            <input type="checkbox" id="selectAllStores">
+            <label for="selectAllStores">Select all stores</label>
+          </div>
+
+          <div id="bannerSelect" class="vf-form-group">
+            <label for="bannerid" class="vf-form-label">Banner:</label>
+          <select id="bannerid" name="bannerid" data-role="none" class="mobileselect"><option value="0">All Banners</option><option value="101132" title="">Food Lion</option></select></div>
+
+          <div id="statusSelect" class="vf-form-group">
+            <label for="siStatus" class="vf-form-label">Service Issue Status:</label>
+            <select id="siStatus" name="siStatus" data-role="none" onclick="mpDefaultEvent('Schedule Menu', {
+                'action': 'input',
+                'element': 'siStatus',
+                'value': this.selectedOptions[0].text,
+              });" onchange="schedFilter.applyServiceIssueFilters(this.value);">
+              <option value="all" selected="">All Service Issues</option>
+              <option value="open">Open</option>
+              <option value="accepted">Accepted</option>
+              <option value="completed">Completed</option>
+              <option value="verified">Verified</option>
+            </select>
+          </div>
+
+          <div class="vf-form-group vf-buttons">
+            <input onclick="mpDefaultEvent('Schedule Menu', {
+                'action': 'submit',
+                'element': 'filterBtn',
+                'value': this.value,
+              })" type="submit" class="vf-form-button vf-primary" value="Accept">
+
+            <input type="submit" class="vf-form-button vf-secondary" onclick="schedFilter.clear(this.form);mpDefaultEvent('Schedule Menu', {
+                'action': 'submit',
+                'element': 'clearFilterBtn',
+                'value': 'Clear'
+              })" value="Clear">
+          </div>
+        </div>
+          <script>
+              document.querySelector('.vf-filter-form #selectAllStores').addEventListener('change', function() {
+                  const isChecked = this.checked;
+                  schedFilter.toggleVendorFilterFields(isChecked);
+
+                  if (isChecked) {
+                      document.querySelector('.vf-filter-form #siteSearch').value = '';
+                      document.querySelector('#statusSelect select').selectedIndex = 0;
+
+                      const bannerSelect = document.querySelector('#bannerSelect select');
+                      if (bannerSelect) {
+                          bannerSelect.selectedIndex = 0;
+                      }
+                  }
+              });
+
+              // Initialize on page load
+              document.addEventListener('DOMContentLoaded', function() {
+
+                  const checkbox = document.querySelector('.vf-filter-form #selectAllStores');
+                  if (checkbox && checkbox.checked) {
+                      toggleVendorFilterFields(true);
+                  } else {
+                      schedFilter.toggleVendorFilterFields(false);
+                  }
+              });
+          </script>
+        
+      </form>
+    </div>
+  </div>
+  <!--  Create a hidden div for a pop-out menu for further selecting filters. -->
+  <div>
+    
+    <div style="position: absolute; float: left; margin: 1em 0 0 0.5em">
+      <a href="#" class="slideout-menu-toggle">
+        <input type="button" class="nav-button resize" value="" id="filter-toggle">
+      </a>
+    </div>
+    
+    <table class="resize">
+      <tbody><tr>
+        <td style="width: 30%">
+          <input onfocusout="mpDefaultEvent('Schedule Menu', {
+                'action': 'input',
+                'element': 'back-day',
+                'value': 'back',
+              })" type="button" class="nav-button resize" value="" id="back-day">
+        </td>
+        <td style="width: 40%">
+          <div class="date-display">
+            <div id="date-display">03/13/2026</div>
+            
+          </div>
+        </td>
+        <td style="width: 30%">
+          <input onfocusout="mpDefaultEvent('Schedule Menu', {
+                'action': 'button',
+                'element': 'forward-day',
+                'value': 'forward',
+              })" type="button" class="nav-button resize" value="" id="forward-day">
+        </td>
+      </tr>
+    </tbody></table>
+  </div>
+
+  <!--
+    <div>
+        <h2 class="unschedule"  onClick="window.location.href='go.mbl?action=schedule.list.View'">
+            Unschedule &nbsp; Store &nbsp; Visit
+        </h2>
+
+    </div>
+    -->
+</div>
+
+
+<!-- Main content -->
+<div id="schedlist" style="padding-bottom: 6rem;">
+<div>
+	<div id="csidiv" class="csiprompt hide"><div class="event-detail"><form name="csiform" method="post"><table><tbody><tr><td><div style="padding: 1em; position: relative;"><div id="csi-close-button" class="hide" style="position: absolute; top: 10px; right: 10px; z-index: 1000;"><input class="mobilebutton" type="button" value="X" style="width: 30px; height: 30px; font-size: 18px; padding: 0;" onclick="schedList.cancelCSI(this.form);" title="Close"></div><table><tbody><tr><td style="width:100%; text-align: center" colspan="3">You have (<b><span id="csipromptcount"></span></b>) pending Service Alerts!</td></tr><tr><td style="width:100%;padding-bottom: 1em;font-size: 120%; " colspan="3" id="csi-resolution-question">Will this be resolved during your store visit today?<input type="hidden" name="csiid" value=""><input type="hidden" name="csieventid" value=""><input type="hidden" name="csieventmode" value=""></td></tr><tr id="csi-buttons-row"><td style="width:48%;"><input class="csi-prompt-confirm mobilebutton" type="button" value="Yes" onclick="schedList.completeCSI(this.form);"></td><td style="width:4%;">&nbsp;</td><td style="width:48%;"><input class="csi-prompt-cancel mobilebutton" type="button" value="No" onclick="schedList.cancelCSI(this.form);"></td></tr></tbody></table></div></td></tr><tr><td class="event-detail-label">Date/Time Created:&nbsp;</td></tr><tr><td class="event-detail-data" id="csidatetime"></td></tr><tr><td class="event-detail-label">Site:&nbsp;</td></tr><tr><td class="event-detail-data" id="csisite"></td></tr><tr><td class="event-detail-label">Issue Type:&nbsp;</td></tr><tr><td class="event-detail-data" id="csitype"></td></tr><tr><td class="event-detail-label">Description:&nbsp;</td></tr><tr><td class="event-detail-data" id="csireason"></td></tr><tr><td class="event-detail-label">Notes:&nbsp;</td></tr><tr><td class="event-detail-data" id="csinotes"></td></tr><tr><td class="event-detail-label">Comments:&nbsp;</td></tr><tr><td class="event-detail-data" id="csicomments"></td></tr><tr><td><label class="comment-div-label" id="comment-div-label" "=""> </label><textarea class="unscheduled-div-text" id="csinewcomments" name="csinewcomments" placeholder="Please add additional comments if applicable."></textarea></td></tr></tbody></table></form></div></div><div id="42-8885251-031320261426" class="schedlist"><h2 class="event-active serviceissue event-open" id="h2-42-8885251-031320261426" style="min-height: 100px; padding-top: 23px; margin-left: 0px; margin-right: 0px;"><span class="status-symbol" style="width: 16px; padding-bottom: 23px; margin-top: -22px; margin-right: 9px;"></span><div class="event-info"><div class="event-title-container"><span class="tier">Food Lion #1322 - Herndon</span><span class="schedule-role">Service Issue</span></div><span class="status"><span class="statusName">Active</span><span class="datetime"> 03/13/2026 02:26 PM EST</span></span></div></h2><div class="schedcontent" style="margin-left: 0px; margin-right: 0px; padding-top: 0px; border-top: none; padding-bottom: 0px; border-bottom: none; overflow: hidden;"><form method="post" enctype="multipart/form-data" id="form-42-8885251-031320261426"><input type="hidden" name="id" value="42-8885251-031320261426"><input type="hidden" name="surveyref" value="woid~8885251::eventdate~03/13/2026::empid~317687::ukey~317687::exdate~03/13/2026"><input type="hidden" name="rolesurvey" value="null"><input type="hidden" name="baseClass" id="baseClass" value="active serviceissue"><input type="hidden" name="unscheduledCheck" id="unscheduledCheck" value="118101264"><input type="hidden" name="statusCheck" id="statusCheck" value="1"><input type="hidden" name="bypass_checkout" id="bypass_checkout" value="0"><input type="hidden" value="0" name="groupEvent"><input type="hidden" value="14:26" name="startTime"><input type="hidden" value="03/13/2026" name="startDate"><input type="hidden" name="surveyUrl" value="http://p1.logicdepot.com/surveysp1/run/PortalStart.cfm?skey=0&amp;CustKey=slotid&amp;CustKeyValue=888525103/13/2026&amp;surveyref=woid~8885251::eventdate~03/13/2026::empid~317687::ukey~317687::exdate~03/13/2026&amp;SiteInfo=name%7EFood+Lion%3A%3Aaddr%7E3059+Centerville+Rd%3A%3Acity%7EHerndon%3A%3Astate%7EVA%3A%3Acountry%7E1%3A%3Azip%7E20171%3A%3Aextradata%7Ena%3A%3Anumber%7E1322&amp;SiteLabel=Food+Lion+%231322%2C+3059+Centerville+Rd%2C+Herndon%2C+VA+20171&amp;siteid=101264&amp;ReportingRole=118&amp;vendorid=102441"><div class="eventcontrols"><div class="eventcontrols-row eventcontrols-row-duration"><span class="duration">02:26 PM EST - 02:27 PM EST</span></div><div class="eventcontrols-row eventcontrols-row-buttons"><input type="button" onclick="schedList.checkout(this.form, this);mpDefaultEvent('Schedule Tablet', {'action': 'click', 'element': 'button', 'value': 'Complete Here'});" value="Complete Here" class="timelog-btn"><input type="button" onclick="schedList.openImageMenu(this.form);mpDefaultEvent('Schedule Tablet', {'action': 'click', 'element': 'button', 'value': 'Photos'});" value="Photos" class="photo-btn"><div class="image-options hide"><div class="image-options-cancel"></div><table style="width: 100%"><tbody><tr><td style="width: 50%; text-align: center; margin-right: auto; margin-left: auto"><input type="button" class="attach-photo-btn" onclick="javascript:schedList.attachPhotos('filecontrol-42-8885251-031320261426');" value="Attach Photos"></td><td style="width: 50%; text-align: center; margin-right: auto; margin-left: auto"><input type="button" class="view-photo-btn disabled" onclick="javascript:schedList.viewPhotoGallery('42-8885251-031320261426');" value="View Photos (0)"></td></tr></tbody></table></div></div></div><div class="event-address" onclick="schedList.mapIt('3059 Centerville Rd  Herndon, VA 20171');"><img id="gpsimage" src="/Mobility/resources/images/icons/gps.png">3059 Centerville Rd <br>Herndon, VA 20171</div><div class="event-detail"><table><tbody><tr><td><a style="text-decoration:none;" href="tel:703-904-0420"><div class="phone">703-904-0420</div></a></td></tr><tr><td class="event-detail-label">Alert Type:&nbsp;</td></tr><tr><td class="event-detail-data">Excessive out of stocks</td></tr><tr><td class="event-detail-label">Distributed By:&nbsp;</td></tr><tr><td class="event-detail-data">WISE FOODS INC - FL - (687)</td></tr><tr><td class="event-detail-label">Role:&nbsp;</td></tr><tr><td class="event-detail-data">Service Issue</td></tr><tr><td class="event-detail-label">Store:&nbsp;</td></tr><tr><td class="event-detail-data">Food Lion #1322 - Herndon</td></tr><tr><td class="event-detail-label">Vendor:&nbsp;</td></tr><tr><td class="event-detail-data">WISE FOODS INC - FL - (687)</td></tr><tr><td class="event-detail-label">Created By:&nbsp;</td></tr><tr><td class="event-detail-data">Al-Nammari, Ziad</td></tr><tr><td class="event-detail-label">Reason:&nbsp;</td></tr><tr><td class="event-detail-data">Ad items: 3 <br>Non Ad items: 2 <br>Total items: 5 <br>Location: Shelf/In aisle</td></tr><input type="hidden" name="notes" id="notes-42-8885251-031320261426" value="Excessive out of stocks. 5 oos,I didnt get service/delivery this week 
+ An email was sent to Salomon Bemaras 2 (salobemaras@gmail.com) to inform them of this issue [03/13/2026 02:26 PM EST].  (03/13/2026 02:26 PM EST) GlobalWorx called Salomon Bemaras 2 and left a voicemail.  An email was sent to Mario Toigo (mario.toigo@wisesnacks.com) to inform them of this issue [03/13/2026 03:00 PM EST].  (03/13/2026 03:00 PM EST) GlobalWorx called Mario Toigo and left a voicemail.  This issue was accepted on 03/14/2026 11:31 PM EST. This service issue is expected to be resolved within 48 hours."><tr><td class="event-detail-label">Notes:&nbsp;</td></tr><tr><td class="event-detail-data">Excessive out of stocks. 5 oos,I didnt get service/delivery this week <br> An email was sent to Salomon Bemaras 2 (salobemaras@gmail.com) to inform them of this issue [03/13/2026 02:26 PM EST].  (03/13/2026 02:26 PM EST) GlobalWorx called Salomon Bemaras 2 and left a voicemail.  An email was sent to Mario Toigo (mario.toigo@wisesnacks.com) to inform them of this issue [03/13/2026 03:00 PM EST].  (03/13/2026 03:00 PM EST) GlobalWorx called Mario Toigo and left a voicemail.  This issue was accepted on 03/14/2026 11:31 PM EST. This service issue is expected to be resolved within 48 hours.</td></tr><tr><td class="event-detail-label">Comments:&nbsp;</td></tr><tr><td class="event-detail-data"><div id="event-detail-div"></div><input type="button" class="comment-button " value="Comment" id="comment-button" onclick="schedList.comment(this.form)"></td></tr></tbody></table></div><div class="eventcontrols"><input type="button" onclick="schedList.checkout(this.form, this);mpDefaultEvent('Schedule Tablet', {'action': 'click', 'element': 'button', 'value': 'Complete Here'});" value="Complete Here" class="timelog-btn"></div><div class="comment-div hide" id="comment-div"><table><tbody><tr><td><label class="comment-div-label" id="comment-div-label"> Enter Comments: </label><textarea class="comment-div-text" id="comment-div-text" placeholder="Please Enter Your Comments."></textarea></td></tr><tr><td style="padding: 1%"><input type="button" class="comment-div-save mobilebutton" id="comment-div-save" value="Save Comments" onclick="schedList.saveComment(this.form,null);"></td></tr><tr><td><input type="button" class="comment-div-cancel mobilebutton" id="comment-div-cancel" onclick="schedList.cancelComment(this.form)"></td></tr></tbody></table></div><div class="group-checkout-div hide" id="group-checkout-div"><table><tbody><tr><td><div class="group-checkout-members" id="group-checkout-members"></div></td></tr><tr><td><input class="group-checkout-div-submit" id="group-checkout-div-submit mobilebutton" value="Submit Times" onclick="schedList.checkoutGroupTrigger(this.form)"><input class="group-checkout-div-cancel" id="group-checkout-div-cancel mobilebutton" onclick="schedList.cancelGroupCheckout(this.form)"></td></tr></tbody></table></div><div id="filecontrol-42-8885251-031320261426" class="half hide"><div class="mooupload_btncontainer"><div class="mooupload_messagebtncontainer"><p class="mooupload_onephotomessage" id="filecontrol-42-8885251-031320261426_onephotomessage" style="float: right;">Maximum photo limit (3) per alert. After submitting your issue, please wait for processing to complete before navigating away.</p><input type="button" id="filecontrol-42-8885251-031320261426_btnCancel" class="cancelfileupld" style="float: left;"><input type="button" id="filecontrol-42-8885251-031320261426_btnAddfile" class="addfile" value="Upload Photos"></div><div id="filecontrol-42-8885251-031320261426_progresscont" class="progresscont"><div id="filecontrol-42-8885251-031320261426_progressbar" class="mooupload_on mooupload_progressbar" style="width: 100%;">0%</div></div></div><input id="filecontrol-42-8885251-031320261426_tbxFile0" name="filecontrol-42-8885251-031320261426_tbxFile0" type="file" size="1" accept="image/*,.pdf,.csv,.xlsx,.docx" style="position: absolute; top: 0px; left: 0px; border: 0px; visibility: hidden;"><div id="filecontrol-42-8885251-031320261426_listView" class="mooupload_listview"><ul><li class="header"><div class="optionsel">Sel.</div><div class="filename">UPLOADS</div><div class="filesize">Filesize</div><div class="result">Status</div></li></ul></div></div></form></div></div><div id="42-8885268-031320261428" class="schedlist"><h2 class="event-active serviceissue" id="h2-42-8885268-031320261428" style="min-height: 100px; padding-top: 23px; margin-left: 0px; margin-right: 0px;"><span class="status-symbol" style="width: 16px; padding-bottom: 23px; margin-top: -22px; margin-right: 9px;"></span><div class="event-info"><div class="event-title-container"><span class="tier">Food Lion #1322 - Herndon</span><span class="schedule-role">Service Issue</span></div><span class="status"><span class="statusName">Active</span><span class="datetime"> 03/13/2026 02:28 PM EST</span></span></div></h2><div class="schedcontent" style="margin-left: 0px; margin-right: 0px; padding-top: 0px; border-top: none; padding-bottom: 0px; border-bottom: none; overflow: hidden; height: 0px;"><form method="post" enctype="multipart/form-data" id="form-42-8885268-031320261428"><input type="hidden" name="id" value="42-8885268-031320261428"><input type="hidden" name="surveyref" value="woid~8885268::eventdate~03/13/2026::empid~317687::ukey~317687::exdate~03/13/2026"><input type="hidden" name="rolesurvey" value="null"><input type="hidden" name="baseClass" id="baseClass" value="active serviceissue"><input type="hidden" name="unscheduledCheck" id="unscheduledCheck" value="118101264"><input type="hidden" name="statusCheck" id="statusCheck" value="1"><input type="hidden" name="bypass_checkout" id="bypass_checkout" value="0"><input type="hidden" value="0" name="groupEvent"><input type="hidden" value="14:28" name="startTime"><input type="hidden" value="03/13/2026" name="startDate"><input type="hidden" name="surveyUrl" value="http://p1.logicdepot.com/surveysp1/run/PortalStart.cfm?skey=0&amp;CustKey=slotid&amp;CustKeyValue=888526803/13/2026&amp;surveyref=woid~8885268::eventdate~03/13/2026::empid~317687::ukey~317687::exdate~03/13/2026&amp;SiteInfo=name%7EFood+Lion%3A%3Aaddr%7E3059+Centerville+Rd%3A%3Acity%7EHerndon%3A%3Astate%7EVA%3A%3Acountry%7E1%3A%3Azip%7E20171%3A%3Aextradata%7Ena%3A%3Anumber%7E1322&amp;SiteLabel=Food+Lion+%231322%2C+3059+Centerville+Rd%2C+Herndon%2C+VA+20171&amp;siteid=101264&amp;ReportingRole=118&amp;vendorid=102441"><div class="eventcontrols"><div class="eventcontrols-row eventcontrols-row-duration"><span class="duration">02:28 PM EST - 02:29 PM EST</span></div><div class="eventcontrols-row eventcontrols-row-buttons"><input type="button" onclick="schedList.checkout(this.form, this);mpDefaultEvent('Schedule Tablet', {'action': 'click', 'element': 'button', 'value': 'Complete Here'});" value="Complete Here" class="timelog-btn"><input type="button" onclick="schedList.openImageMenu(this.form);mpDefaultEvent('Schedule Tablet', {'action': 'click', 'element': 'button', 'value': 'Photos'});" value="Photos" class="photo-btn"><div class="image-options hide"><div class="image-options-cancel"></div><table style="width: 100%"><tbody><tr><td style="width: 50%; text-align: center; margin-right: auto; margin-left: auto"><input type="button" class="attach-photo-btn" onclick="javascript:schedList.attachPhotos('filecontrol-42-8885268-031320261428');" value="Attach Photos"></td><td style="width: 50%; text-align: center; margin-right: auto; margin-left: auto"><input type="button" class="view-photo-btn disabled" onclick="javascript:schedList.viewPhotoGallery('42-8885268-031320261428');" value="View Photos (0)"></td></tr></tbody></table></div></div></div><div class="event-address" onclick="schedList.mapIt('3059 Centerville Rd  Herndon, VA 20171');"><img id="gpsimage" src="/Mobility/resources/images/icons/gps.png">3059 Centerville Rd <br>Herndon, VA 20171</div><div class="event-detail"><table><tbody><tr><td><a style="text-decoration:none;" href="tel:703-904-0420"><div class="phone">703-904-0420</div></a></td></tr><tr><td class="event-detail-label">Alert Type:&nbsp;</td></tr><tr><td class="event-detail-data">Merchandising service</td></tr><tr><td class="event-detail-label">Distributed By:&nbsp;</td></tr><tr><td class="event-detail-data">WISE FOODS INC - FL - (687)</td></tr><tr><td class="event-detail-label">Role:&nbsp;</td></tr><tr><td class="event-detail-data">Service Issue</td></tr><tr><td class="event-detail-label">Store:&nbsp;</td></tr><tr><td class="event-detail-data">Food Lion #1322 - Herndon</td></tr><tr><td class="event-detail-label">Vendor:&nbsp;</td></tr><tr><td class="event-detail-data">WISE FOODS INC - FL - (687)</td></tr><tr><td class="event-detail-label">Created By:&nbsp;</td></tr><tr><td class="event-detail-data">Al-Nammari, Ziad</td></tr><tr><td class="event-detail-label">Reason:&nbsp;</td></tr><tr><td class="event-detail-data">No service <br>Location: Shelf/In aisle, Off shelf displays/End caps <br>Store stocked: No</td></tr><input type="hidden" name="notes" id="notes-42-8885268-031320261428" value="Merchandising service. I didnt get service delivery this week  An email was sent to Salomon Bemaras (salobemaras@gmail.com) to inform them of this issue [03/13/2026 02:28 PM EST].  (03/13/2026 02:28 PM EST) GlobalWorx called Salomon Bemaras and left a voicemail.  An email was sent to Mario Toigo (mario.toigo@wisesnacks.com) to inform them of this issue [03/13/2026 03:00 PM EST].  (03/13/2026 03:01 PM EST) GlobalWorx called Mario Toigo and left a voicemail.  This issue was accepted on 03/14/2026 11:31 PM EST. This service issue is expected to be resolved within 48 hours."><tr><td class="event-detail-label">Notes:&nbsp;</td></tr><tr><td class="event-detail-data">Merchandising service. I didnt get service delivery this week  An email was sent to Salomon Bemaras (salobemaras@gmail.com) to inform them of this issue [03/13/2026 02:28 PM EST].  (03/13/2026 02:28 PM EST) GlobalWorx called Salomon Bemaras and left a voicemail.  An email was sent to Mario Toigo (mario.toigo@wisesnacks.com) to inform them of this issue [03/13/2026 03:00 PM EST].  (03/13/2026 03:01 PM EST) GlobalWorx called Mario Toigo and left a voicemail.  This issue was accepted on 03/14/2026 11:31 PM EST. This service issue is expected to be resolved within 48 hours.</td></tr><tr><td class="event-detail-label">Comments:&nbsp;</td></tr><tr><td class="event-detail-data"><div id="event-detail-div"></div><input type="button" class="comment-button " value="Comment" id="comment-button" onclick="schedList.comment(this.form)"></td></tr></tbody></table></div><div class="eventcontrols"><input type="button" onclick="schedList.checkout(this.form, this);mpDefaultEvent('Schedule Tablet', {'action': 'click', 'element': 'button', 'value': 'Complete Here'});" value="Complete Here" class="timelog-btn"></div><div class="comment-div hide" id="comment-div"><table><tbody><tr><td><label class="comment-div-label" id="comment-div-label"> Enter Comments: </label><textarea class="comment-div-text" id="comment-div-text" placeholder="Please Enter Your Comments."></textarea></td></tr><tr><td style="padding: 1%"><input type="button" class="comment-div-save mobilebutton" id="comment-div-save" value="Save Comments" onclick="schedList.saveComment(this.form,null);"></td></tr><tr><td><input type="button" class="comment-div-cancel mobilebutton" id="comment-div-cancel" onclick="schedList.cancelComment(this.form)"></td></tr></tbody></table></div><div class="group-checkout-div hide" id="group-checkout-div"><table><tbody><tr><td><div class="group-checkout-members" id="group-checkout-members"></div></td></tr><tr><td><input class="group-checkout-div-submit" id="group-checkout-div-submit mobilebutton" value="Submit Times" onclick="schedList.checkoutGroupTrigger(this.form)"><input class="group-checkout-div-cancel" id="group-checkout-div-cancel mobilebutton" onclick="schedList.cancelGroupCheckout(this.form)"></td></tr></tbody></table></div><div id="filecontrol-42-8885268-031320261428" class="half hide"><div class="mooupload_btncontainer"><div class="mooupload_messagebtncontainer"><p class="mooupload_onephotomessage" id="filecontrol-42-8885268-031320261428_onephotomessage" style="float: right;">Maximum photo limit (3) per alert. After submitting your issue, please wait for processing to complete before navigating away.</p><input type="button" id="filecontrol-42-8885268-031320261428_btnCancel" class="cancelfileupld" style="float: left;"><input type="button" id="filecontrol-42-8885268-031320261428_btnAddfile" class="addfile" value="Upload Photos"></div><div id="filecontrol-42-8885268-031320261428_progresscont" class="progresscont"><div id="filecontrol-42-8885268-031320261428_progressbar" class="mooupload_on mooupload_progressbar" style="width: 100%;">0%</div></div></div><input id="filecontrol-42-8885268-031320261428_tbxFile0" name="filecontrol-42-8885268-031320261428_tbxFile0" type="file" size="1" accept="image/*,.pdf,.csv,.xlsx,.docx" style="position: absolute; top: 0px; left: 0px; border: 0px; visibility: hidden;"><div id="filecontrol-42-8885268-031320261428_listView" class="mooupload_listview"><ul><li class="header"><div class="optionsel">Sel.</div><div class="filename">UPLOADS</div><div class="filesize">Filesize</div><div class="result">Status</div></li></ul></div></div></form></div></div><pagination currentpage="1" currentpagesize="25" totalitems="2" totalpages="1" offset="0" hasprevious="false" hasnext="false"></pagination>
+
+</div></div>
+
+<!-- Pagination Controls - Fixed at bottom -->
+<div id="paginationControls" class="pagination-controls hidden vendor-pagination-active position-above-elements" style="display: none;">
+	<button id="prevPageBtn" class="page-nav-btn">&lt;</button>
+	<div id="pageNumbers" class="page-numbers"></div>
+	<button id="nextPageBtn" class="page-nav-btn">&gt;</button>
+</div>
+
+<div id="loadButtonDiv" class="service-issues">
+	<button id="viewAllIssuesButton" class="view-all">Search All Stores</button>
+</div>
+
+<!-- Include broadcast notification component -->
+<!-- This is a component that will be used to display a broadcast notification. -->
+
+<!-- Include scripts -->
+<script src="/Mobility/resources/js/app/message/broadcastNotification.js?v=0.0.1"></script>
+
+<div class="broadcastNotification hide" id="broadcastNotification">
+    <div class="broadcastNotificationContent">
+        <div class="broadcastIcon"></div>
+        <div class="broadcastNotificationMessage">You have <span>new messages</span> from this store.</div>
+    </div>
+    <div class="broadcastNotificationButtons">
+        <button class="mobilebutton broadcastNotificationButton dismiss" onclick="broadcastNotification.dismiss();">Dismiss</button>
+        <button class="mobilebutton broadcastNotificationButton" onclick="broadcastNotification.view();">View</button>
+    </div>
+</div>
+
+
+<!-- Include default footer -->
+<!-- Default footer -->
+				<!-- close container div -->
+				</div>
+				
+			<!-- close main content div-->
+			</div>
+			
+		<!-- Close main container div -->
+		</div><div id="overlay" class="overlay-new" style="position: fixed; left: 0px; top: 0px; opacity: 0; height: 2720px;"></div>
+		
+	<!-- Close up shop -->
+	
+
+
+<div class="GWXToastContainer"></div></body></html>
