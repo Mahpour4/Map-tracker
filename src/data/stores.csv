@@ -77,7 +77,7 @@ FLW01206,01206,Food Lion 1206,32 N DUPONT HWY,SELBYVILLE,DE,19975,206,Route 210 
 FLW01211,01211,Food Lion 1211,1216 Nanticoke RD,SALISBURY,MD,21801,206,Route 210 Driver,Eastern Shore Maryland,SALISBURY,SALISBURY,38.3693629,-75.6151373,2026-03-21,2026-03-21,No
 FLW01268,FLW01268,Food Lion 1268,232 Tilghman Road,SALISBURY,MD,21804,206,Route 206 Driver,Eastern Shore Maryland,SALISBURY,SALISBURY,38.3676672,-75.5490973,2026-03-19,2026-03-19,No
 FLW01294,01294,Food Lion,951 N Dupont blvd,Milford,DE,19963,206,Route 206 Driver,Delaware,Milford,Milford,38.9317434,-75.432596,2026-03-20,2026-03-20,No
-FLW01297,FLW01297,Food Lion 1297,3344 Hayman Dr,Federalsburg,MD,21632,210,Route 210 Driver,Eastern Shore Maryland,Federalsburg,Federalsburg,38.6987967,-75.78726,2026-03-19,2026-03-19,No
+FLW01297,FLW01297,Food Lion 1297,3344 Hayman Dr,Federalsburg,MD,21632,210,Route 210 Driver,Eastern Shore Maryland,Federalsburg,Federalsburg,38.6987967,-75.78726,2026-03-19,2026-03-25,No
 FLW01313,FLW01313,Food Lion 1313,300 THOMPSON CREEK MALL,Stevensville,MD,21666,210,Route 210 Driver,Eastern Shore Maryland,Stevensville,Stevensville,38.9756668,-76.3145597,2026-03-21,2026-03-21,No
 FLW01369,01369,Food Lion 1369,501 W Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Dover,Dover,39.4516822,-75.723283,2026-03-20,2026-03-23,No
 FLW01385,01385,Food Lion,1030 FOREST AVE,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1582,-75.5244,2026-03-18,2026-02-11,No
@@ -97,7 +97,7 @@ FLW02688,02688,Food Lion 2688,1 JACKSONVILLE RD,Crisfield,MD,21817,206,Route 210
 FLW00397,FLW00397,Food Lion 397,9936 STEPHEN DECATUR HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.335623,-75.111881,2026-03-21,2026-03-21,No
 FLW00490,00490,Food Lion 490,25102 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.7012511,-75.7148439,2026-03-17,2026-03-23,No
 FLW00658,FLW00658,Food Lion 658,10138 OLD OCEAN CITY BLVD,BERLIN,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,BERLIN,BERLIN,38.333511,-75.2112983,2026-03-19,2026-03-21,No
-FLW00698,FLW00698,Food Lion 698,840 S 5th ST,Denton,MD,21629,210,Route 210 Driver,Eastern Shore Maryland,Denton,Denton,38.8872555,-75.8286115,2026-03-19,2026-03-21,No
+FLW00698,FLW00698,Food Lion 698,840 S 5th ST,Denton,MD,21629,210,Route 210 Driver,Eastern Shore Maryland,Denton,Denton,38.8872555,-75.8286115,2026-03-19,2026-03-25,No
 FLW00800,00800,Food Lion 800,817 Snow Hill Rd,Salisbury,MD,21804,206,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.350872,-75.5837487,2026-03-18,2026-03-24,No
 FLW00875,00875,Food Lion 875,28544 DUPONT BLVD,Millsboro,DE,19966,206,Route 206 Driver,Delaware,Millsboro,Millsboro,38.5814001,-75.2935716,2026-03-20,2026-03-20,No
 FLW00879,00879,Food Lion 879,38650 Sussex Hwy Unit 1,Delmar,DE,19940,210,Route 210 Driver,Delaware,Delmar,Delmar,38.4565,-75.5773,2026-03-17,2026-03-24,No
@@ -134,8 +134,8 @@ WGW00042,WGW00042,Wegmans 42,8297 STONEWALL SHOPS SQUARE,GAINESVILLE,VA,20155,20
 WGW00044,WGW00044,Wegmans 44,101 CROSSTRAIL BLVD SE,LEESBURG,VA,20175,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.1157,-77.5636,2025-05-07,,Yes
 SRW00563,SRW00563,ShopRite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.5201387,-76.5601869,2025-09-12,2025-09-12,Yes
 SRW00567,00567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,204,Route 204 Driver,Baltimore County,Unassigned,Unassigned,39.3723579,-76.5640499,2026-03-16,2026-03-16,No
-FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-03-18,2026-03-18,No
-FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-03-18,2026-03-18,No
+FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-03-18,2026-03-25,No
+FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-03-18,2026-03-25,No
 FLW00663,FLW00663,Food Lion Store 663,96 Somerset Blvd,Charles Town,WV,25414,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.289,-77.86,2026-03-19,2026-03-19,No
 FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.6263,-78.2271,2026-03-16,2026-03-16,No
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-03-17,2026-03-24,No
