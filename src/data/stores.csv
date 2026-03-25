@@ -239,7 +239,7 @@ CASH0303,CASH0303,Os Supermart,900 Poplar Rd,Baltimore,MD,21216,203,Route 203 Dr
 CASH0304,CASH0304,Park Lane Tobacco Grocery,300 Wylie,Baltimore,MD,21215,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3418164,-76.6655923,2026-02-24,2026-03-19,No
 CASH0305,CASH0305,Parks Food Market,538 N Arlington Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2954226,-76.6358754,2026-03-05,2026-03-23,No
 CASH0309,CASH0309,Pen Mart 1800 Pennsylvani,1800 Pennsylvania,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3042566,-76.6358783,2026-02-27,2026-03-09,No
-CASH0315,CASH0315,Potomac Grocery,1201 N Potomac,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3051441,-76.5753729,2026-03-05,2026-03-18,No
+CASH0315,CASH0315,Potomac Grocery,1201 N Potomac,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3051441,-76.5753729,2026-03-05,2026-03-25,No
 CASH0327,CASH0327,Ravens Grocery Store,1523 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3025129,-76.632996,2026-02-13,2026-03-11,No
 CASH0335,CASH0335,Rosemont Brothers,2955 Brighton St,Baltimore,MD,21216,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3050214,-76.6671497,2026-03-03,2026-01-29,No
 CASH0336,CASH0336,Rosemount Brothers Deli,2955 Brighton St,Baltimore,MD,21216,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3050214,-76.6671497,2025-10-02,2025-10-02,Yes
@@ -687,7 +687,7 @@ WGW00143,WGW00143,WEGMANS 143,41 RIDGE SQ NW,WASHINGTON,DC,20016,200,Route 200 D
 WMW00044,WMW00044,WEIS MARKETS 044,8115 Richie Hwy,Pasadena,MD,21122,200,Route 200 Driver,Unassigned,Unassigned,Unassigned,39.107561467228244,-76.57438858409427,,,Yes
 WMW00238,WMW00238,WEIS MARKETS 238,400 ENTERPRISE CIR,MARTINSBURG,WV,25405,200,Route 200 Driver,Eastern Panhandle WV,Martinsburg,Martinsburg,39.4449922,-77.9903268,,2025-03-28,Yes
 WMW00279,WMW00279,WEIS MARKETS 279,750 PRINCE FREDERICK BLVD PRINCE,FREDERICK,MD,20678-3141,200,Route 200 Driver,Frederick County,Frederick County,Frederick County,38.5530153,-76.5971227,,2025-03-25,Yes
-WMW00084,WMW00084,Weis Market 084,7200 HOLABIRD AVE,DUNDALK,MD,21222,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2733619,-76.5169318,2026-03-16,2026-03-16,No
+WMW00084,WMW00084,Weis Market 084,7200 HOLABIRD AVE,DUNDALK,MD,21222,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2733619,-76.5169318,2026-03-16,2026-03-25,No
 CASH0517,CASH0517,Carrol Fuel Edmonson,2801 Edmondson Ave,Baltimore,MD,21223,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2945727,-76.6631192,2026-02-24,2026-02-02,No
 HF000002,HF000002,Harvest Fare Store 2,5708 Wabash Avenue,Baltimore,MD,21215,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3445225,-76.6956206,2026-02-24,2026-02-17,No
 CASH0447,CASH0447,Countryside Market,27215 Nanticoke Rd,Salisbury,MD,21801,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Lower Shore,38.37082069734976,-75.60584759530016,2024-09-23,,Yes
