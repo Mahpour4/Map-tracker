@@ -33,12 +33,17 @@
     "contacts": {}
   },
   "14438240445": {
-    "savedAt": "2026-03-13T03:29:12.380Z",
+    "savedAt": "2026-03-25T18:03:25.310Z",
     "orderGroupId": "120363421548982417@g.us",
     "routeGroupMap": {},
     "routeGroupNames": {},
     "adminConfig": {
-      "groupId": "120363403953599614@g.us",
+      "groups": [
+        {
+          "id": "120363403953599614@g.us",
+          "routes": []
+        }
+      ],
       "phones": []
     },
     "contacts": {}
