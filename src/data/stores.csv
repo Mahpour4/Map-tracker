@@ -82,7 +82,7 @@ FLW01313,FLW01313,Food Lion 1313,300 THOMPSON CREEK MALL,Stevensville,MD,21666,2
 FLW01369,01369,Food Lion 1369,501 W Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Dover,Dover,39.4516822,-75.723283,2026-03-20,2026-03-23,No
 FLW01385,01385,Food Lion,1030 FOREST AVE,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1582,-75.5244,2026-03-18,2026-02-11,No
 FLW01419,01419,Food Lion,250 GATEWAY SOUTH BLVD,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.1228365,-75.4985452,2026-03-18,2026-03-18,No
-FLW01426,01426,Food Lion 1426,215 STADIUM ST,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Dover,Dover,39.2801631,-75.5909896,2026-03-20,2026-03-20,No
+FLW01426,01426,Food Lion 1426,215 STADIUM ST,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Dover,Dover,39.2801631,-75.5909896,2026-03-20,2026-03-26,No
 FLW01458,01458,Food Lion 1458,30214 SUSSEX HWY UNIT 5,Laurel,DE,19956,210,Route 210 Driver,Delaware,Laurel,Laurel,38.5562,-75.5713,2026-03-17,2026-03-24,No
 FLW01560,01560,Food Lion 1560,206 N Fruitland Blvd,Fruitland,MD,21826,206,Route 210 Driver,Eastern Shore Maryland,Fruitland,Fruitland,38.3244654,-75.6177442,2026-03-18,2026-03-24,No
 FLW02117,FLW02117,Food Lion 2117,31810 River Rd,Millington,MD,21651,210,Route 210 Driver,Eastern Shore Maryland,Millington,Millington,39.2649848,-75.8611169,2026-03-05,2026-03-25,No
@@ -94,7 +94,7 @@ FLW02521,FLW02521,Food Lion 2521,9537 Bridgeville Center Rd,Bridgeville,DE,19933
 FLW02561,02561,Food Lion 2561,110 BROADKILL RD,Milton,DE,19968,206,Route 206 Driver,Delaware,Milton,Milton,38.7901428,-75.3148388,2026-03-20,2026-03-20,No
 FLW02614,FLW02614,Food Lion 2614,11007 MANKLIN CREEK RD,Berlin,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,Berlin,Berlin,38.3226,-75.2177,2026-03-19,2026-03-19,No
 FLW02688,02688,Food Lion 2688,1 JACKSONVILLE RD,Crisfield,MD,21817,206,Route 210 Driver,Eastern Shore Maryland,Crisfield,Crisfield,37.9919984,-75.8445847,2026-03-17,2026-03-24,No
-FLW00397,FLW00397,Food Lion 397,9936 STEPHEN DECATUR HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.335623,-75.111881,2026-03-21,2026-03-21,No
+FLW00397,FLW00397,Food Lion 397,9936 STEPHEN DECATUR HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.335623,-75.111881,2026-03-21,2026-03-26,No
 FLW00490,00490,Food Lion 490,25102 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.7012511,-75.7148439,2026-03-17,2026-03-23,No
 FLW00658,FLW00658,Food Lion 658,10138 OLD OCEAN CITY BLVD,BERLIN,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,BERLIN,BERLIN,38.333511,-75.2112983,2026-03-19,2026-03-21,No
 FLW00698,FLW00698,Food Lion 698,840 S 5th ST,Denton,MD,21629,210,Route 210 Driver,Eastern Shore Maryland,Denton,Denton,38.8872555,-75.8286115,2026-03-19,2026-03-25,No
@@ -382,7 +382,7 @@ KFW02754,KFW02754,KEY FOOD 02754,1205 W PRATT STREET,BALTIMORE,MD,21223,200,Rout
 CASH0009,CASH0009,A Grocery Store,1527 Pennsylvania Ave,Baltimore,MD,21217,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3025444,-76.6331096,,,Yes
 CASH0024,CASH0024,Always Grocery,1115 Reisterstown Rd,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.373853,-76.7222627,,,Yes
 CASH0028,CASH0028,Arpan Shrestha,4501 Falls Rd,Baltimore,MD,21209,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3436392,-76.6401184,,,Yes
-CASH0029,CASH0029,Artesanias Mi Casa,3305 Annapolis Rd,Baltimore,MD,21230,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2502164,-76.6393691,,2026-03-25,No
+CASH0029,CASH0029,Artesanias Mi Casa,3305 Annapolis Rd,Baltimore,MD,21230,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2502164,-76.6393691,,2026-03-26,No
 CASH0031,CASH0031,Avondale Mini Mart,505 N Avondale Rd,Dundalk,MD,21222,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2398717,-76.5070195,,,Yes
 CASH0033,CASH0033,Aziz,1419 East Baltimore,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.4265071,-76.5669053,,,Yes
 CASH0035,CASH0035,Baniya Grocery,2800 Huntington Ave,Baltimore,MD,21211,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3284,-76.637,,,Yes
