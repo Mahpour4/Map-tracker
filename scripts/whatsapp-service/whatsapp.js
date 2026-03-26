@@ -164,12 +164,6 @@ function initialize() {
         '--disable-setuid-sandbox',
         '--disable-gpu',
         '--disable-dev-shm-usage',
-        '--disable-extensions',
-        '--no-first-run',
-        '--disable-background-networking',
-        '--disable-default-apps',
-        '--disable-sync',
-        '--mute-audio',
       ],
       protocolTimeout: 300000, // 5 min — needed on low-RAM VMs
       ...(executablePath ? { executablePath } : {}),
