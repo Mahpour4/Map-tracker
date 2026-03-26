@@ -46,6 +46,8 @@ export default function WhatsAppSettings() {
   const [adminGroups, setAdminGroupsState] = useState([]); // [{ id, routes, destination }]
   const [adminPhones, setAdminPhones]     = useState([]);
   const [newPhone, setNewPhone]           = useState('');
+  const [syncingOracle, setSyncingOracle] = useState(false);
+  const [oracleSyncResult, setOracleSyncResult] = useState(null); // { groups, phones } | { error }
   const [addingGroup, setAddingGroup]     = useState(false);
   const [newGroupId, setNewGroupId]       = useState('');
 
@@ -323,6 +325,20 @@ export default function WhatsAppSettings() {
       const phone = connectedPhone || await getWhatsAppPhone();
       if (phone) await pushToGitHub(phone, bundleConfig({ adminPhones: next })).catch(() => {});
     } catch { /* best effort */ }
+  }
+
+  async function handleSyncToOracle() {
+    setSyncingOracle(true);
+    setOracleSyncResult(null);
+    try {
+      await saveAdminConfig(adminGroups, adminPhones);
+      const verified = await getAdminConfig();
+      setOracleSyncResult(verified);
+    } catch (err) {
+      setOracleSyncResult({ error: err.message });
+    } finally {
+      setSyncingOracle(false);
+    }
   }
 
   async function runTestQuery() {
@@ -724,10 +740,66 @@ export default function WhatsAppSettings() {
               </div>
             </div>
 
-            <SaveBtn tab="admin" label="Save Admin Config" onClick={() => saveTab('admin', async () => {
-              await saveAdminConfig(adminGroups, adminPhones);
-              return { adminGroups, adminPhones };
-            })} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <SaveBtn tab="admin" label="Save Admin Config" onClick={() => saveTab('admin', async () => {
+                await saveAdminConfig(adminGroups, adminPhones);
+                return { adminGroups, adminPhones };
+              })} />
+              <button
+                className="was-btn-secondary"
+                onClick={handleSyncToOracle}
+                disabled={syncingOracle}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {syncingOracle ? '⏳ Syncing...' : '☁ Sync to Oracle & Verify'}
+              </button>
+            </div>
+
+            {/* Oracle sync result panel */}
+            {oracleSyncResult && (
+              <div style={{
+                marginTop: 10, padding: '12px 14px', borderRadius: 8,
+                background: oracleSyncResult.error ? '#fef2f2' : '#f0fdf4',
+                border: `1px solid ${oracleSyncResult.error ? '#fca5a5' : '#86efac'}`,
+                fontSize: '0.8rem',
+              }}>
+                {oracleSyncResult.error ? (
+                  <span style={{ color: '#dc2626' }}>✗ Oracle sync failed: {oracleSyncResult.error}</span>
+                ) : (
+                  <>
+                    <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 8 }}>
+                      ✓ Oracle confirmed — {oracleSyncResult.groups?.length || 0} group(s) saved
+                    </div>
+                    {(oracleSyncResult.groups || []).map(g => {
+                      const gName = groups.find(x => x.id === g.id)?.name || g.id;
+                      return (
+                        <div key={g.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #bbf7d0' }}>
+                          <div style={{ fontWeight: 600, color: '#166534', marginBottom: 3 }}>{gName}</div>
+                          <div style={{ color: '#4b7a5b' }}>
+                            Routes: {g.routes?.length > 0 ? g.routes.join(', ') : <em>All routes</em>}
+                          </div>
+                          {g.routeDestinations && Object.keys(g.routeDestinations).length > 0 && (
+                            <div style={{ marginTop: 4 }}>
+                              {Object.entries(g.routeDestinations).map(([r, d]) => (
+                                <div key={r} style={{ color: '#166534' }}>
+                                  Route {r}: {d.name} ({d.lat}, {d.lng})
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {g.destination?.name && (
+                            <div style={{ color: '#166534' }}>Destination: {g.destination.name}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div style={{ color: '#4b7a5b' }}>
+                      Phones: {oracleSyncResult.phones?.length > 0 ? oracleSyncResult.phones.join(', ') : <em>All members allowed</em>}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             {localStorage.getItem('motive_api_key') && (
               <p className="was-hint-sm" style={{ marginTop: 8, color: '#22c55e' }}>
                 Motive API key will be synced to bot on save (for truck ETA command)
