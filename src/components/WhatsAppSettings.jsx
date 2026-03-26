@@ -645,6 +645,25 @@ export default function WhatsAppSettings() {
                               </div>
                             );
                           })}
+                          {/* Fallback destination for routes not explicitly listed */}
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 2, paddingTop: 4, borderTop: '1px dashed #e5e7eb' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9ca3af', minWidth: 28 }}>↩</span>
+                            <input className="was-input" style={{ width: 120, fontSize: '0.76rem', padding: '2px 5px' }}
+                              placeholder="Fallback (other routes)" value={ag.destination?.name || ''}
+                              onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                                i !== idx ? g : { ...g, destination: { ...g.destination, name: e.target.value } }
+                              ))} />
+                            <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
+                              placeholder="Lat" value={ag.destination?.lat || ''}
+                              onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                                i !== idx ? g : { ...g, destination: { ...g.destination, lat: parseFloat(e.target.value) || e.target.value } }
+                              ))} />
+                            <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
+                              placeholder="Lng" value={ag.destination?.lng || ''}
+                              onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                                i !== idx ? g : { ...g, destination: { ...g.destination, lng: parseFloat(e.target.value) || e.target.value } }
+                              ))} />
+                          </div>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
