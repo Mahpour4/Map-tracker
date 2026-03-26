@@ -3,7 +3,7 @@ name: Deploy to Oracle Cloud
 on:
   push:
     branches:
-      - claude/lookup-license-plate-YCOwf
+      - claude/map-stores-zones-zcvTK
 
 jobs:
   deploy:
@@ -19,6 +19,6 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             cd ~/Map-tracker
-            git pull origin claude/lookup-license-plate-YCOwf
+            git pull origin claude/map-stores-zones-zcvTK
             pm2 restart whatsapp-bot
             echo "✅ Deploy complete — $(date)"
