@@ -419,23 +419,37 @@ function handleHelp() {
 
 // ── Truck ETA handler ─────────────────────────────────────────────────────────
 
+// Named destination overrides — type keyword to override route's default
+const DEST_KEYWORDS = {
+  'salisbury':  { name: 'Salisbury, MD',  lat: 38.3607, lng: -75.5994 },
+  'woodbridge': { name: 'Woodbridge, VA', lat: 38.6582, lng: -77.2497 },
+};
+
+// Hardcoded fallbacks when group has no destination configured
+const ROUTE_DEST_FALLBACKS = {
+  '206': { name: 'Salisbury, MD',  lat: 38.3607, lng: -75.5994 },
+  '209': { name: 'Woodbridge, VA', lat: 38.6582, lng: -77.2497 },
+  '210': { name: 'Salisbury, MD',  lat: 38.3607, lng: -75.5994 },
+  '211': { name: 'Salisbury, MD',  lat: 38.3607, lng: -75.5994 },
+};
+
 async function handleTruck(args, groupConfig) {
-  const routeNum = (args || '').trim().replace(/^rt?\.?\s*/i, '');
-  if (!routeNum) return '❓ Usage: *truck [route number]*\nExample: truck 211';
+  const parts = (args || '').trim().split(/\s+/);
+  const routeNum = (parts[0] || '').replace(/^rt?\.?\s*/i, '');
+  const destOverrideKey = parts.slice(1).join(' ').toLowerCase().trim();
+
+  if (!routeNum) return '❓ Usage: *truck [route] [destination?]*\nExamples: truck 211 | truck 211 woodbridge | truck 211 salisbury';
 
   if (!FLEET[routeNum]) return `❌ No vehicle assigned to Route ${routeNum}`;
 
   const apiKey = groupConfig?.motiveApiKey;
   if (!apiKey) return '⚠️ Motive API key not configured. Ask admin to set it up.';
 
-  // Per-route destination → group-level default → hardcoded fallbacks
-  const ROUTE_DEST_FALLBACKS = {
-    '206': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
-    '209': { name: 'Woodbridge, VA', lat: 38.6582, lng: -77.2497 },
-    '210': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
-    '211': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
-  };
-  const dest = groupConfig?.routeDestinations?.[routeNum] || groupConfig?.destination || ROUTE_DEST_FALLBACKS[routeNum];
+  // Destination priority: inline keyword > per-route config > group default > hardcoded fallback
+  const dest = DEST_KEYWORDS[destOverrideKey]
+    || groupConfig?.routeDestinations?.[routeNum]
+    || groupConfig?.destination
+    || ROUTE_DEST_FALLBACKS[routeNum];
 
   try {
     const result = await getRouteETA(apiKey, routeNum, dest?.lat, dest?.lng);
@@ -553,7 +567,7 @@ async function processQuery(text, routeFilter, groupConfig) {
     if (routeFilter) {
       if (cmd === 'alerts' || cmd === 'alert' || cmd === 'a') return handleAlerts(args, routeFilter);
       if (cmd === 'truck' || cmd === 'eta' || cmd === 't') return await handleTruck(args, groupConfig);
-      if (cmd === 'help' || cmd === '?') return `*📱 Map Tracker — Commands*\n\n*alerts* — This week's open alerts\n*alerts all* — All open alerts\n*alerts today* — Today's alerts\n\n*truck [route #]* — Truck location & ETA\n  Example: truck 211`;
+      if (cmd === 'help' || cmd === '?') return `*📱 Map Tracker — Commands*\n\n*alerts* — This week's open alerts\n*alerts all* — All open alerts\n*alerts today* — Today's alerts\n\n*truck [route #]* — Truck location & ETA to default destination\n*truck [route #] [city]* — Override destination\n  Examples: truck 211 | truck 211 woodbridge | truck 211 salisbury`;
       return `ℹ️ This group supports: *alerts* and *truck*\n\nType *help* for options.`;
     }
 
