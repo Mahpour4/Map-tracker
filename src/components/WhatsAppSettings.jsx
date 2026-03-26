@@ -20,6 +20,22 @@ const ROUTE_DESTINATION_DEFAULTS = {
   '210': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
 };
 
+// Fill in any missing route destinations from defaults (used on load)
+function applyDestinationDefaults(groups) {
+  return groups.map(g => {
+    if (!g.routes || g.routes.length === 0) return g;
+    let rd = g.routeDestinations || {};
+    let changed = false;
+    g.routes.forEach(r => {
+      if (ROUTE_DESTINATION_DEFAULTS[r] && !rd[r]?.name) {
+        rd = { ...rd, [r]: ROUTE_DESTINATION_DEFAULTS[r] };
+        changed = true;
+      }
+    });
+    return changed ? { ...g, routeDestinations: rd } : g;
+  });
+}
+
 export default function WhatsAppSettings() {
   // Connection
   const [status, setStatus]         = useState('offline');
@@ -151,7 +167,7 @@ export default function WhatsAppSettings() {
     }
     // Admin config
     if (cfg.adminConfig) {
-      const groups = cfg.adminConfig.groups || (cfg.adminConfig.groupId ? [{ id: cfg.adminConfig.groupId, routes: [] }] : []);
+      const groups = applyDestinationDefaults(cfg.adminConfig.groups || (cfg.adminConfig.groupId ? [{ id: cfg.adminConfig.groupId, routes: [] }] : []));
       await saveAdminConfig(groups, cfg.adminConfig.phones || []).catch(() => {});
       setAdminGroupsState(groups);
       setAdminPhones(cfg.adminConfig.phones || []);
@@ -214,7 +230,9 @@ export default function WhatsAppSettings() {
     setOrderGroupIdState(gId || '');
     setContacts(contactData || {});
     // Multi-group format: server returns { groups: [...], phones: [...] }
-    const loadedGroups = adminCfg.groups || (adminCfg.groupId ? [{ id: adminCfg.groupId, routes: [] }] : []);
+    const loadedGroups = applyDestinationDefaults(
+      adminCfg.groups || (adminCfg.groupId ? [{ id: adminCfg.groupId, routes: [] }] : [])
+    );
     setAdminGroupsState(loadedGroups);
     setAdminPhones(adminCfg.phones || []);
     return s;
@@ -631,38 +649,28 @@ export default function WhatsAppSettings() {
                               return { ...g, routeDestinations: { ...g.routeDestinations, [r]: { ...(g.routeDestinations?.[r] || {}), [field]: val } } };
                             }));
                             return (
-                              <div key={r} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              <div key={r} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#2563eb', minWidth: 28 }}>{r}</span>
-                                <input className="was-input" style={{ width: 120, fontSize: '0.76rem', padding: '2px 5px' }}
-                                  placeholder="Destination name" value={rd.name || ''}
+                                <input className="was-input" style={{ flex: 1, fontSize: '0.78rem', padding: '3px 6px' }}
+                                  placeholder="City, State (e.g. Salisbury, MD)" value={rd.name || ''}
                                   onChange={e => setRD('name', e.target.value)} />
-                                <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
-                                  placeholder="Lat" value={rd.lat || ''}
-                                  onChange={e => setRD('lat', parseFloat(e.target.value) || e.target.value)} />
-                                <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
-                                  placeholder="Lng" value={rd.lng || ''}
-                                  onChange={e => setRD('lng', parseFloat(e.target.value) || e.target.value)} />
+                                {rd.lat && rd.lng
+                                  ? <span style={{ fontSize: '0.68rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{rd.lat}, {rd.lng}</span>
+                                  : <span style={{ fontSize: '0.68rem', color: '#f59e0b' }}>no coords</span>}
                               </div>
                             );
                           })}
                           {/* Fallback destination for routes not explicitly listed */}
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 2, paddingTop: 4, borderTop: '1px dashed #e5e7eb' }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, paddingTop: 4, borderTop: '1px dashed #e5e7eb' }}>
                             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9ca3af', minWidth: 28 }}>↩</span>
-                            <input className="was-input" style={{ width: 120, fontSize: '0.76rem', padding: '2px 5px' }}
-                              placeholder="Fallback (other routes)" value={ag.destination?.name || ''}
+                            <input className="was-input" style={{ flex: 1, fontSize: '0.78rem', padding: '3px 6px' }}
+                              placeholder="Fallback for other routes (optional)" value={ag.destination?.name || ''}
                               onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
                                 i !== idx ? g : { ...g, destination: { ...g.destination, name: e.target.value } }
                               ))} />
-                            <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
-                              placeholder="Lat" value={ag.destination?.lat || ''}
-                              onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
-                                i !== idx ? g : { ...g, destination: { ...g.destination, lat: parseFloat(e.target.value) || e.target.value } }
-                              ))} />
-                            <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
-                              placeholder="Lng" value={ag.destination?.lng || ''}
-                              onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
-                                i !== idx ? g : { ...g, destination: { ...g.destination, lng: parseFloat(e.target.value) || e.target.value } }
-                              ))} />
+                            {ag.destination?.lat && ag.destination?.lng
+                              ? <span style={{ fontSize: '0.68rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{ag.destination.lat}, {ag.destination.lng}</span>
+                              : null}
                           </div>
                         </div>
                       ) : (
