@@ -25,6 +25,12 @@ token/
 # Local disk cache (written by WhatsApp service, outside src/ to avoid Vite HMR)
 local-data/
 
+# Debug screenshots/HTML dumps from GW automation
+scripts/whatsapp-service/gw-debug/
+
+# Private keys
+private-key/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
