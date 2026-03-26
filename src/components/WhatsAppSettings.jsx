@@ -13,6 +13,13 @@ import { fetchWaConfigJson, saveWaConfigJson } from '../services/githubService';
 const ALERT_ROUTES = ['198','199','200','201','203','204','206','207','208','209','210','211'];
 const LOCAL_WA_CONFIG_KEY = phone => `waConfig_${phone}`;
 
+// Default destinations pre-populated when specific routes are selected
+const ROUTE_DESTINATION_DEFAULTS = {
+  '206': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
+  '209': { name: 'Woodbridge, VA', lat: 38.6582, lng: -77.2497 },
+  '210': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
+};
+
 export default function WhatsAppSettings() {
   // Connection
   const [status, setStatus]         = useState('offline');
@@ -577,7 +584,17 @@ export default function WhatsAppSettings() {
                                 setAdminGroupsState(prev => prev.map((g, i) => {
                                   if (i !== idx) return g;
                                   const routes = g.routes || [];
-                                  return { ...g, routes: active ? routes.filter(x => x !== r) : [...routes, r].sort() };
+                                  if (active) {
+                                    return { ...g, routes: routes.filter(x => x !== r) };
+                                  }
+                                  const newRoutes = [...routes, r].sort();
+                                  // Pre-fill destination default if not already set
+                                  const def = ROUTE_DESTINATION_DEFAULTS[r];
+                                  const existing = g.routeDestinations?.[r];
+                                  const routeDestinations = (def && !existing?.name)
+                                    ? { ...g.routeDestinations, [r]: def }
+                                    : g.routeDestinations;
+                                  return { ...g, routes: newRoutes, routeDestinations };
                                 }));
                               }}
                             >
@@ -587,37 +604,52 @@ export default function WhatsAppSettings() {
                         })}
                         <span style={{ fontSize: '0.7rem', color: '#9ca3af', marginLeft: 4 }}>(empty = all)</span>
                       </div>
-                      {/* Destination */}
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Destination:</span>
-                        <input
-                          className="was-input"
-                          style={{ width: 130, fontSize: '0.78rem', padding: '3px 6px' }}
-                          placeholder="e.g. Salisbury, MD"
-                          value={ag.destination?.name || ''}
-                          onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
-                            i !== idx ? g : { ...g, destination: { ...g.destination, name: e.target.value, lat: g.destination?.lat || '', lng: g.destination?.lng || '' } }
-                          ))}
-                        />
-                        <input
-                          className="was-input"
-                          style={{ width: 70, fontSize: '0.78rem', padding: '3px 6px' }}
-                          placeholder="Lat"
-                          value={ag.destination?.lat || ''}
-                          onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
-                            i !== idx ? g : { ...g, destination: { ...g.destination, lat: parseFloat(e.target.value) || e.target.value } }
-                          ))}
-                        />
-                        <input
-                          className="was-input"
-                          style={{ width: 70, fontSize: '0.78rem', padding: '3px 6px' }}
-                          placeholder="Lng"
-                          value={ag.destination?.lng || ''}
-                          onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
-                            i !== idx ? g : { ...g, destination: { ...g.destination, lng: parseFloat(e.target.value) || e.target.value } }
-                          ))}
-                        />
-                      </div>
+                      {/* Destinations — per-route when routes selected, shared default otherwise */}
+                      {(ag.routes && ag.routes.length > 0) ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>Destinations (per route):</span>
+                          {ag.routes.map(r => {
+                            const rd = ag.routeDestinations?.[r] || {};
+                            const setRD = (field, val) => setAdminGroupsState(prev => prev.map((g, i) => {
+                              if (i !== idx) return g;
+                              return { ...g, routeDestinations: { ...g.routeDestinations, [r]: { ...(g.routeDestinations?.[r] || {}), [field]: val } } };
+                            }));
+                            return (
+                              <div key={r} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#2563eb', minWidth: 28 }}>{r}</span>
+                                <input className="was-input" style={{ width: 120, fontSize: '0.76rem', padding: '2px 5px' }}
+                                  placeholder="Destination name" value={rd.name || ''}
+                                  onChange={e => setRD('name', e.target.value)} />
+                                <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
+                                  placeholder="Lat" value={rd.lat || ''}
+                                  onChange={e => setRD('lat', parseFloat(e.target.value) || e.target.value)} />
+                                <input className="was-input" style={{ width: 62, fontSize: '0.76rem', padding: '2px 5px' }}
+                                  placeholder="Lng" value={rd.lng || ''}
+                                  onChange={e => setRD('lng', parseFloat(e.target.value) || e.target.value)} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Destination:</span>
+                          <input className="was-input" style={{ width: 130, fontSize: '0.78rem', padding: '3px 6px' }}
+                            placeholder="e.g. Salisbury, MD" value={ag.destination?.name || ''}
+                            onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                              i !== idx ? g : { ...g, destination: { ...g.destination, name: e.target.value, lat: g.destination?.lat || '', lng: g.destination?.lng || '' } }
+                            ))} />
+                          <input className="was-input" style={{ width: 70, fontSize: '0.78rem', padding: '3px 6px' }}
+                            placeholder="Lat" value={ag.destination?.lat || ''}
+                            onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                              i !== idx ? g : { ...g, destination: { ...g.destination, lat: parseFloat(e.target.value) || e.target.value } }
+                            ))} />
+                          <input className="was-input" style={{ width: 70, fontSize: '0.78rem', padding: '3px 6px' }}
+                            placeholder="Lng" value={ag.destination?.lng || ''}
+                            onChange={e => setAdminGroupsState(prev => prev.map((g, i) =>
+                              i !== idx ? g : { ...g, destination: { ...g.destination, lng: parseFloat(e.target.value) || e.target.value } }
+                            ))} />
+                        </div>
+                      )}
                     </div>
                     <button className="was-btn-danger" onClick={() => {
                       if (window.confirm(`Remove ${groupName} from admin bot?`))

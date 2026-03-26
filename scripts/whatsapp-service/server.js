@@ -399,11 +399,21 @@ app.post('/api/admin/deploy', (req, res) => {
   });
 });
 
-// Initialize WhatsApp client and start server
-whatsapp.initialize();
+// In GLOBALWORX_ONLY mode (local machine), skip WhatsApp client init entirely.
+// WhatsApp runs 24/7 on Oracle Cloud — initializing it locally would cause a
+// session conflict (two bots fighting over the same WhatsApp account).
+if (process.env.GLOBALWORX_ONLY !== 'true') {
+  whatsapp.initialize();
+}
 
 app.listen(PORT, () => {
-  console.log(`\n🌐 WhatsApp service running on http://localhost:${PORT}`);
-  console.log(`   Status: http://localhost:${PORT}/api/whatsapp/status`);
-  console.log(`   Groups: http://localhost:${PORT}/api/whatsapp/groups\n`);
+  if (process.env.GLOBALWORX_ONLY === 'true') {
+    console.log(`\n🌐 GlobalWorx local service running on http://localhost:${PORT}`);
+    console.log(`   WhatsApp: disabled (running on Oracle Cloud)`);
+    console.log(`   GlobalWorx automation: ready\n`);
+  } else {
+    console.log(`\n🌐 WhatsApp service running on http://localhost:${PORT}`);
+    console.log(`   Status: http://localhost:${PORT}/api/whatsapp/status`);
+    console.log(`   Groups: http://localhost:${PORT}/api/whatsapp/groups\n`);
+  }
 });

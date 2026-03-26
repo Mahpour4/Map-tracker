@@ -410,6 +410,9 @@ function handleHelp() {
     '  → Truck location & ETA',
     '  Example: truck 211',
     '',
+    '*sales* (or *fl*)',
+    '  → Food Lion visit progress today / this week',
+    '',
     '*help* — Show this menu',
   ].join('\n');
 }
@@ -425,7 +428,8 @@ async function handleTruck(args, groupConfig) {
   const apiKey = groupConfig?.motiveApiKey;
   if (!apiKey) return '⚠️ Motive API key not configured. Ask admin to set it up.';
 
-  const dest = groupConfig?.destination;
+  // Per-route destination takes priority over group-level default
+  const dest = groupConfig?.routeDestinations?.[routeNum] || groupConfig?.destination;
 
   try {
     const result = await getRouteETA(apiKey, routeNum, dest?.lat, dest?.lng);
@@ -458,6 +462,72 @@ async function handleTruck(args, groupConfig) {
   }
 }
 
+function handleSales(args) {
+  const stores = loadStores();
+  const visits = loadVisitHistory();
+
+  const fl = stores.filter(s => (s['Store Name'] || '').toLowerCase().includes('food lion'));
+  const total = fl.length;
+
+  const now = new Date();
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const todayStr = fmt(now);
+  const yest = new Date(now); yest.setDate(now.getDate()-1);
+  const yesterdayStr = fmt(yest);
+  const weekStart = new Date(now); weekStart.setDate(now.getDate()-7);
+  const weekStartStr = fmt(weekStart);
+
+  const hitDate = (s, dates, weekCheck) => {
+    const sale  = (s['Last Sale']    || s.LastSale    || '').split('T')[0].split(' ')[0];
+    const visit = (s['Last Visited'] || s.LastVisited || '').split('T')[0].split(' ')[0];
+    // Also check visitHistory
+    const id  = s['ID'] || s.ID || '';
+    const num = s['Store Number'] || s.StoreNumber || '';
+    const vh  = visits[id] || visits[num] || [];
+    const lastVH = vh.length > 0 ? ([...vh].sort((a,b)=>String(b.date||b).localeCompare(String(a.date||a)))[0]) : null;
+    const vhDate = lastVH ? (lastVH.date || lastVH).toString().split('T')[0] : null;
+
+    if (dates) {
+      for (const d of [sale, visit, vhDate]) {
+        if (d && dates.has(d)) return true;
+      }
+    }
+    if (weekCheck) {
+      for (const d of [sale, visit, vhDate]) {
+        if (d && d >= weekStartStr && d <= todayStr) return true;
+      }
+    }
+    return false;
+  };
+
+  const todayCount = fl.filter(s => hitDate(s, new Set([todayStr]), false)).length;
+  const yesterdayCount = fl.filter(s => hitDate(s, new Set([yesterdayStr]), false)).length;
+  const weekCount = fl.filter(s => hitDate(s, null, true)).length;
+
+  const bar = (n, t) => {
+    const pct = Math.round((n / t) * 10);
+    return '█'.repeat(pct) + '░'.repeat(10 - pct) + ` ${n}/${t}`;
+  };
+
+  const todayPct  = Math.round((todayCount / total) * 100);
+  const weekPct   = Math.round((weekCount  / total) * 100);
+
+  return [
+    `🏪 *Food Lion Sales Activity*`,
+    ``,
+    `📅 *Today*`,
+    `${bar(todayCount, total)} (${todayPct}%)`,
+    ``,
+    `📅 *Yesterday*`,
+    `${bar(yesterdayCount, total)} (${Math.round((yesterdayCount/total)*100)}%)`,
+    ``,
+    `📅 *This Week*`,
+    `${bar(weekCount, total)} (${weekPct}%)`,
+    ``,
+    `Total FL stores: ${total}`,
+  ].join('\n');
+}
+
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 /**
@@ -486,6 +556,7 @@ async function processQuery(text, routeFilter, groupConfig) {
     if (cmd === 'alerts' || cmd === 'alert' || cmd === 'a') return handleAlerts(args, routeFilter);
     if (cmd === 'order' || cmd === 'orders')                return handleOrder(args);
     if (cmd === 'truck' || cmd === 'eta' || cmd === 't')    return await handleTruck(args, groupConfig);
+    if (cmd === 'sales' || cmd === 'fl')                    return handleSales(args);
     if (cmd === 'help' || cmd === '?')                      return handleHelp();
 
     // Fallback: if it looks like a store number, do store lookup

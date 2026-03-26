@@ -4,7 +4,15 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const BOT_URL = env.VITE_API_URL || 'http://localhost:3001'
+
+  // ORACLE CLOUD (always-on bot): WhatsApp client, local data, admin endpoints.
+  // Controlled by VITE_API_URL in .env → http://129.159.177.50:3001
+  const ORACLE_URL = env.VITE_API_URL || 'http://localhost:3001'
+
+  // LOCAL ONLY: GlobalWorx Puppeteer automation must run on the local machine
+  // because it controls a local Chrome browser to scrape the GlobalWorx web UI.
+  // Run start-globalworx.bat to start this service when needed.
+  const GLOBALWORX_URL = 'http://localhost:3001'
 
   return {
     plugins: [react()],
@@ -12,7 +20,7 @@ export default defineConfig(({ mode }) => {
       port: 5174,
       strictPort: true,
       proxy: {
-        // Proxy Motive API requests to bypass CORS
+        // Motive API — proxied to bypass CORS
         '/api/motive': {
           target: 'https://api.gomotive.com',
           changeOrigin: true,
@@ -30,11 +38,13 @@ export default defineConfig(({ mode }) => {
             });
           },
         },
-        '/api/whatsapp': { target: BOT_URL, changeOrigin: true },
-        '/api/globalworx': { target: BOT_URL, changeOrigin: true },
-        '/api/proxy-image': { target: BOT_URL, changeOrigin: true },
-        '/api/admin':      { target: BOT_URL, changeOrigin: true },
-        '/api/local':      { target: BOT_URL, changeOrigin: true },
+        // Oracle Cloud routes — WhatsApp bot runs 24/7 on the server
+        '/api/whatsapp':   { target: ORACLE_URL, changeOrigin: true },
+        '/api/proxy-image':{ target: ORACLE_URL, changeOrigin: true },
+        '/api/admin':      { target: ORACLE_URL, changeOrigin: true },
+        '/api/local':      { target: ORACLE_URL, changeOrigin: true },
+        // Local-only route — GlobalWorx Puppeteer requires local Chrome
+        '/api/globalworx': { target: GLOBALWORX_URL, changeOrigin: true },
       },
     },
   }

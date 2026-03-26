@@ -450,6 +450,25 @@ export default function MapView() {
     return result;
   }, [stores, searchTerm, filterRegion, filterType, filterRoute, hideCash, hideChain, visitMode, legendFilter, hiddenTiers, salesDayFilter, todayStr, yesterdayStr, thisWeekRange]);
 
+  // Food Lion visit counts for Sales Activity legend badges
+  const flCounts = useMemo(() => {
+    const fl = stores.filter(s => s.type === 'food-lion');
+    const total = fl.length;
+    const hit = (s, dates, week) => {
+      const sale = s.lastSaleDate ? s.lastSaleDate.split('T')[0].split(' ')[0] : null;
+      const visit = s.lastVisited ? s.lastVisited.split('T')[0].split(' ')[0] : null;
+      if (dates && ((sale && dates.has(sale)) || (visit && dates.has(visit)))) return true;
+      if (week && ((sale && sale >= thisWeekRange.start && sale <= thisWeekRange.end) ||
+                   (visit && visit >= thisWeekRange.start && visit <= thisWeekRange.end))) return true;
+      return false;
+    };
+    return {
+      today:     { visited: fl.filter(s => hit(s, new Set([todayStr]), false)).length,     total },
+      yesterday: { visited: fl.filter(s => hit(s, new Set([yesterdayStr]), false)).length, total },
+      'this-week': { visited: fl.filter(s => hit(s, null, true)).length,                  total },
+    };
+  }, [stores, todayStr, yesterdayStr, thisWeekRange]);
+
   // Sort zones alphabetically and assign numbers (matching sidebar)
   const numberedZones = useMemo(() => {
     const sorted = [...zones].sort((a, b) => a.name.localeCompare(b.name));
@@ -1054,6 +1073,7 @@ export default function MapView() {
               const isActive = salesDayFilter.has(day);
               const label = day === 'today' ? 'Today' : day === 'yesterday' ? 'Yesterday' : 'This Week';
               const dotColor = day === 'today' ? '#22c55e' : day === 'yesterday' ? '#3b82f6' : '#8b5cf6';
+              const counts = flCounts[day];
               return (
                 <label
                   key={day}
@@ -1071,6 +1091,9 @@ export default function MapView() {
                   />
                   <span className="legend-dot" style={{ background: dotColor }} />
                   <span>{label}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: counts.visited === counts.total ? '#22c55e' : '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                    {counts.visited}/{counts.total}
+                  </span>
                 </label>
               );
             })}
