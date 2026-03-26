@@ -385,7 +385,7 @@ app.post('/api/whatsapp/admin-query', async (req, res) => {
 app.post('/api/admin/deploy', (req, res) => {
   const { exec } = require('child_process');
   const REPO = '/home/ubuntu/Map-tracker';
-  const BRANCH = 'claude/lookup-license-plate-YCOwf';
+  const BRANCH = 'claude/map-stores-zones-zcvTK';
   const cmd = `git -C ${REPO} pull origin ${BRANCH} && pm2 restart whatsapp-bot`;
 
   exec(cmd, { timeout: 60000 }, (err, stdout, stderr) => {
