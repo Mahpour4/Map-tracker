@@ -18,6 +18,7 @@ const ROUTE_DESTINATION_DEFAULTS = {
   '206': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
   '209': { name: 'Woodbridge, VA', lat: 38.6582, lng: -77.2497 },
   '210': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
+  '211': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
 };
 
 // Fill in any missing route destinations from defaults (used on load)

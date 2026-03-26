@@ -428,8 +428,14 @@ async function handleTruck(args, groupConfig) {
   const apiKey = groupConfig?.motiveApiKey;
   if (!apiKey) return '⚠️ Motive API key not configured. Ask admin to set it up.';
 
-  // Per-route destination takes priority over group-level default
-  const dest = groupConfig?.routeDestinations?.[routeNum] || groupConfig?.destination;
+  // Per-route destination → group-level default → hardcoded fallbacks
+  const ROUTE_DEST_FALLBACKS = {
+    '206': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
+    '209': { name: 'Woodbridge, VA', lat: 38.6582, lng: -77.2497 },
+    '210': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
+    '211': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
+  };
+  const dest = groupConfig?.routeDestinations?.[routeNum] || groupConfig?.destination || ROUTE_DEST_FALLBACKS[routeNum];
 
   try {
     const result = await getRouteETA(apiKey, routeNum, dest?.lat, dest?.lng);
