@@ -162,34 +162,13 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-9041612","19d24c248c432809","FLW00807","807","Food Lion","Berkeley Springs","WISE FOODS","ADUSA","201","2026-03-25","","","","03/25/2026 07:30 AM","Excessive out of stocks","Excessive out of stocks.","Rosensteel, Nathan"
 "ADUSA-9041519","19d24aaa86c8fd9c","FLW01184","1184","Food Lion","Waldorf","WISE FOODS","ADUSA","207","2026-03-25","","","","03/25/2026 07:04 AM","On shelf out of date","On shelf out of date. Need thes taken out and credit given","Phillips, Mary"
 "ADUSA-9041347","19d2477f8a968184","FLW01268","1268","Food Lion","Salisbury","WISE FOODS","ADUSA","206","2026-03-25","","","","03/25/2026 06:08 AM","Excessive out of stocks","Excessive out of stocks.","Roscoe, Anthony"
-"ADUSA-9043230","19d258fc873b6f8e","FLW01363","1363","Food Lion","North East","WISE FOODS","ADUSA","214","2026-03-25","ALLEN, casey","On shelf out of date","Unit counts: 12","03/25/2026 11:14 AM","On shelf out of date","On shelf out of date.","ALLEN, casey"
-"ADUSA-9044709","19d262df55057949","FLW02566","2566","Food Lion","Laurel","WISE FOODS","ADUSA","207","2026-03-25","Randall, Michael","Excessive out of stocks","Ad items: 5 
-Non Ad items: 0 
-Total items: 5 
-Location: Shelf/In aisle","03/25/2026 02:07 PM","Excessive out of stocks","Excessive out of stocks. Store needs service","Randall, Michael"
-"ADUSA-9044599","19d262768da08b7f","FLW02611","2611","Food Lion","Woodbine","WISE FOODS","ADUSA","204","2026-03-25","Willet, Kimberly","On shelf out of date","Unit counts: 7","03/25/2026 02:00 PM","On shelf out of date","On shelf out of date.","Willet, Kimberly"
-"ADUSA-9044328","19d260d9b9994ada","FLW02501","2501","Food Lion","Scaggsville","WISE FOODS","ADUSA","207","2026-03-25","Boothe, Andrew","Excessive out of stocks","Ad items: 7 
-Non Ad items: 0 
-Total items: 7 
-Location: Shelf/In aisle","03/25/2026 01:31 PM","Excessive out of stocks","Excessive out of stocks.","Boothe, Andrew"
-"ADUSA-9043997","19d25eed72a6680e","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-25","Valentin, Ashley","Excessive out of stocks","Ad items: 5 
-Non Ad items: 1 
-Total items: 6 
-Location: Shelf/In aisle, Off Shelf Displays/End Caps","03/25/2026 12:58 PM","Excessive out of stocks","Excessive out of stocks.","Valentin, Ashley"
-"ADUSA-9043388","19d25a6ca4064d38","FLW01319","1319","Food Lion","Charlotte Hall","WISE FOODS","ADUSA","207","2026-03-25","Gaines, Aliyah","Excessive out of stocks","Ad items: 6 
-Non Ad items: 0 
-Total items: 6 
-Location: Shelf/In aisle","03/25/2026 11:39 AM","Excessive out of stocks","Excessive out of stocks.","Gaines, Aliyah"
-"ADUSA-9046458","19d2a16995d53c8f","FLW01547","1547","Food Lion","Edgewood","WISE FOODS","ADUSA","214","2026-03-26","Tress, Anthony","Excessive out of stocks","Ad items: 4 
-Non Ad items: 0 
-Total items: 4 
-Location: Shelf/In aisle","03/26/2026 08:20 AM","Excessive out of stocks","Excessive out of stocks.","Tress, Anthony"
-"ADUSA-9045517","19d29a813baa28f2","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-26","Hudgins, Steven","Excessive out of stocks","Ad items: 1 
-Non Ad items: 0 
-Total items: 1 
-Location: Shelf/In aisle","03/26/2026 06:19 AM","Excessive out of stocks","Excessive out of stocks. Oos","Hudgins, Steven"
-"ADUSA-9045473","19d2997df75cbb6c","FLW01319","1319","Food Lion","Charlotte Hall","WISE FOODS","ADUSA","207","2026-03-26","Gaines, Aliyah","Excessive out of stocks","Ad items: 6 
-Non Ad items: 0 
-Total items: 6 
-Location: Shelf/In aisle","03/26/2026 06:01 AM","Excessive out of stocks","Excessive out of stocks.","Gaines, Aliyah"
-"ADUSA-9046950","19d2a4703dc315f1","FLW02193","2193","Food Lion","Finksburg","WISE FOODS","ADUSA","204","2026-03-26","Wagner, Joshua","On shelf out of date","Unit counts: 5","03/26/2026 09:13 AM","On shelf out of date","On shelf out of date.","Wagner, Joshua"
+"ADUSA-9043230","19d258fc873b6f8e","FLW01363","1363","Food Lion","North East","WISE FOODS","ADUSA","214","2026-03-25","","","","03/25/2026 11:14 AM","On shelf out of date","On shelf out of date.","ALLEN, casey"
+"ADUSA-9044709","19d262df55057949","FLW02566","2566","Food Lion","Laurel","WISE FOODS","ADUSA","207","2026-03-25","","","","03/25/2026 02:07 PM","Excessive out of stocks","Excessive out of stocks. Store needs service","Randall, Michael"
+"ADUSA-9044599","19d262768da08b7f","FLW02611","2611","Food Lion","Woodbine","WISE FOODS","ADUSA","204","2026-03-25","","","","03/25/2026 02:00 PM","On shelf out of date","On shelf out of date.","Willet, Kimberly"
+"ADUSA-9044328","19d260d9b9994ada","FLW02501","2501","Food Lion","Scaggsville","WISE FOODS","ADUSA","207","2026-03-25","","","","03/25/2026 01:31 PM","Excessive out of stocks","Excessive out of stocks.","Boothe, Andrew"
+"ADUSA-9043997","19d25eed72a6680e","FLW00738","738","Food Lion","Bealeton","WISE FOODS","ADUSA","209","2026-03-25","","","","03/25/2026 12:58 PM","Excessive out of stocks","Excessive out of stocks.","Valentin, Ashley"
+"ADUSA-9043388","19d25a6ca4064d38","FLW01319","1319","Food Lion","Charlotte Hall","WISE FOODS","ADUSA","207","2026-03-25","","","","03/25/2026 11:39 AM","Excessive out of stocks","Excessive out of stocks.","Gaines, Aliyah"
+"ADUSA-9046458","19d2a16995d53c8f","FLW01547","1547","Food Lion","Edgewood","WISE FOODS","ADUSA","214","2026-03-26","","","","03/26/2026 08:20 AM","Excessive out of stocks","Excessive out of stocks.","Tress, Anthony"
+"ADUSA-9045517","19d29a813baa28f2","FLW02559","2559","Food Lion","Glen Burnie","WISE FOODS","ADUSA","204","2026-03-26","","","","03/26/2026 06:19 AM","Excessive out of stocks","Excessive out of stocks. Oos","Hudgins, Steven"
+"ADUSA-9045473","19d2997df75cbb6c","FLW01319","1319","Food Lion","Charlotte Hall","WISE FOODS","ADUSA","207","2026-03-26","","","","03/26/2026 06:01 AM","Excessive out of stocks","Excessive out of stocks.","Gaines, Aliyah"
+"ADUSA-9046950","19d2a4703dc315f1","FLW02193","2193","Food Lion","Finksburg","WISE FOODS","ADUSA","204","2026-03-26","","","","03/26/2026 09:13 AM","On shelf out of date","On shelf out of date.","Wagner, Joshua"
