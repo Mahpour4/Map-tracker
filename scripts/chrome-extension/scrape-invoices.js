@@ -12,9 +12,17 @@
 
   const K = 'invoice-scraper-data';
   const STORES_KEY = 'invoice-scraper-stores';
+  const PAGE_LIMIT_KEY = 'invoice-scraper-page-limit';
   const DELAY_SEARCH = 2500;  // ms to wait after triggering a search
   const DELAY_PAGE = 2000;    // ms to wait after clicking Next Page
   const STOP_KEY = 'invoice-scraper-stop';
+
+  // Read page limit (0 = unlimited)
+  let PAGE_LIMIT = 0;
+  try {
+    const raw = localStorage.getItem(PAGE_LIMIT_KEY);
+    if (raw) { PAGE_LIMIT = parseInt(raw, 10) || 0; localStorage.removeItem(PAGE_LIMIT_KEY); }
+  } catch (e) {}
 
   // Skip non-content frames
   const frameUrl = window.location.href || '';
@@ -300,10 +308,12 @@
     return new Promise((resolve) => {
       const allInvoices = [];
       const seenDocs = new Set();
+      let pagesScraped = 0;
 
       function scrapePage() {
         const pageData = scrapeCurrentPage();
         let newCount = 0;
+        pagesScraped++;
 
         for (const inv of pageData) {
           const key = inv.docNum || `${inv.storeId}-${inv.docDate}-${inv.amount}`;
@@ -315,6 +325,13 @@
         }
 
         console.log('[Invoice Scraper] Page scraped:', pageData.length, 'rows,', newCount, 'new');
+
+        // Stop if page limit reached
+        if (PAGE_LIMIT > 0 && pagesScraped >= PAGE_LIMIT) {
+          console.log('[Invoice Scraper] Page limit reached:', PAGE_LIMIT);
+          resolve(allInvoices);
+          return;
+        }
 
         // Check for Next page — continue as long as Next button is enabled
         const nextBtn = findNextButton();
@@ -425,7 +442,9 @@
 
   // ── Legacy single-page mode ────────────────────────────────────────────────
 
+  let _legacyPageCount = 0;
   function runLegacy() {
+    _legacyPageCount++;
     let pageData = scrapeCurrentPage();
 
     if (pageData.length === 0) {
@@ -461,9 +480,10 @@
     // Check for Next Page button
     setTimeout(() => {
       const nextBtn = findNextButton();
+      const limitHit = PAGE_LIMIT > 0 && _legacyPageCount >= PAGE_LIMIT;
       if (newRows.length === 0 && accumulated.length > 0) {
         // No new rows — we've exhausted this search
-      } else if (nextBtn) {
+      } else if (nextBtn && !limitHit) {
         toast(
           `Page ${currentPage}: auto-clicking Next...<br>Total so far: <b>${accumulated.length}</b>`,
           '#3b82f6', true

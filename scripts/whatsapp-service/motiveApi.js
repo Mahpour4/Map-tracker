@@ -1,5 +1,5 @@
 /**
- * Server-side Motive API client + OSRM routing for truck ETA.
+ * Server-side Motive API client + straight-line ETA for truck command.
  */
 const https = require('https');
 
@@ -35,7 +35,7 @@ function httpsGet(url, headers = {}) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Request timeout')); });
+    req.setTimeout(25000, () => { req.destroy(); reject(new Error('Request timeout')); });
   });
 }
 
@@ -81,27 +81,32 @@ async function fetchVehicleLocations(apiKey) {
   return all;
 }
 
-// ── OSRM routing (free, no API key) ──────────────────────────────────────────
-
-async function getOsrmRoute(fromLat, fromLng, toLat, toLng) {
-  // OSRM expects lng,lat order
-  const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`;
-  const json = await httpsGet(url);
-  if (!json.routes || json.routes.length === 0) return null;
-  const route = json.routes[0];
-  return {
-    distanceMeters: route.distance,   // meters
-    distanceMiles: (route.distance / 1609.34).toFixed(1),
-    durationSeconds: route.duration,  // seconds
-    durationText: formatDuration(route.duration),
-  };
-}
-
 function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
   if (h === 0) return `${m}min`;
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+// ── Straight-line distance + ETA estimate ─────────────────────────────────────
+
+function haversineMiles(lat1, lng1, lat2, lng2) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function straightLineRoute(fromLat, fromLng, toLat, toLng) {
+  const miles = haversineMiles(fromLat, fromLng, toLat, toLng);
+  // Estimate drive time at avg 35 mph (urban/suburban)
+  const seconds = (miles / 35) * 3600;
+  return {
+    distanceMiles: miles.toFixed(1),
+    durationText: formatDuration(seconds),
+    isStraightLine: true,
+  };
 }
 
 // ── Main entry: get route truck ETA ──────────────────────────────────────────
@@ -116,12 +121,9 @@ async function getRouteETA(apiKey, routeNumber, destLat, destLng) {
   if (!vehicle) return { error: `Vehicle for Route ${routeNumber} not found in Motive` };
   if (vehicle.lat == null || vehicle.lng == null) return { error: 'Vehicle location unavailable' };
 
-  let route = null;
-  try {
-    route = await getOsrmRoute(vehicle.lat, vehicle.lng, destLat, destLng);
-  } catch (e) {
-    console.error('[MotiveApi] OSRM error:', e.message);
-  }
+  const route = (destLat != null && destLng != null)
+    ? straightLineRoute(vehicle.lat, vehicle.lng, destLat, destLng)
+    : null;
 
   return {
     routeNumber,

@@ -1178,7 +1178,7 @@ export function AppProvider({ children }) {
   // Manual override for errored alerts — user picks: accepted, done, or completed
   const manualOverrideAlert = useCallback(async (refNumber, action) => {
     const alert = state.alerts.find(a => a.refNumber === refNumber);
-    if (!alert) return;
+    if (!alert) throw new Error(`Alert ${refNumber} not found in state`);
     const emailId = alert.emailId;
 
     // Remove Error label from Gmail first

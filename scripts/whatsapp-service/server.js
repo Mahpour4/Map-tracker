@@ -370,11 +370,33 @@ app.post('/api/whatsapp/admin-query', async (req, res) => {
   const { query } = req.body;
   if (!query) return res.status(400).json({ error: 'query is required' });
   try {
-    const reply = await adminChat.processQuery(query);
+    // Pass the saved admin config so truck ETA (and other commands) can use the Motive API key
+    const savedCfg = whatsapp.getAdminConfig();
+    const groupConfig = { motiveApiKey: savedCfg.motiveApiKey || null, destination: null, routes: null };
+    const reply = await adminChat.processQuery(query, null, groupConfig);
     res.json({ reply });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── Deploy endpoint ───────────────────────────────────────────────────────────
+
+app.post('/api/admin/deploy', (req, res) => {
+  const { exec } = require('child_process');
+  const REPO = '/home/ubuntu/Map-tracker';
+  const BRANCH = 'claude/lookup-license-plate-YCOwf';
+  const cmd = `git -C ${REPO} pull origin ${BRANCH} && pm2 restart whatsapp-bot`;
+
+  exec(cmd, { timeout: 60000 }, (err, stdout, stderr) => {
+    const output = [stdout, stderr].filter(Boolean).join('\n').trim();
+    if (err) {
+      console.error('[Deploy] Failed:', err.message, '\n', output);
+      return res.status(500).json({ success: false, output: output || err.message });
+    }
+    console.log('[Deploy] Success:\n', output);
+    res.json({ success: true, output });
+  });
 });
 
 // Initialize WhatsApp client and start server

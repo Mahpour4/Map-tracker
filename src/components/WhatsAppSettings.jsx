@@ -6,7 +6,7 @@ import {
   getAdminConfig, saveAdminConfig, testAdminQuery,
   saveRouteGroupMap,
   disconnectWhatsApp, reconnectWhatsApp, restartWhatsAppServer,
-  getWhatsAppPhone,
+  getWhatsAppPhone, deployToServer,
 } from '../services/whatsappService';
 import { fetchWaConfigJson, saveWaConfigJson } from '../services/githubService';
 
@@ -24,6 +24,8 @@ export default function WhatsAppSettings() {
   const [disconnecting, setDisconnecting]     = useState(false);
   const [reconnecting, setReconnecting]       = useState(false);
   const [restarting, setRestarting]           = useState(false);
+  const [deploying, setDeploying]             = useState(false);
+  const [deployResult, setDeployResult]       = useState(null); // { success, output } | null
 
   // Order group
   const [orderGroupId, setOrderGroupIdState] = useState('');
@@ -269,6 +271,19 @@ export default function WhatsAppSettings() {
     setTimeout(() => { clearInterval(poll); setRestarting(false); }, 30000);
   }
 
+  async function handleDeploy() {
+    setDeploying(true);
+    setDeployResult(null);
+    try {
+      const result = await deployToServer();
+      setDeployResult({ success: true, output: result.output || 'Deploy complete.' });
+    } catch (err) {
+      setDeployResult({ success: false, output: err.message });
+    } finally {
+      setDeploying(false);
+    }
+  }
+
   function handleRouteGroup(routeNum, groupId) {
     const groupName = groups.find(g => g.id === groupId)?.name || '';
     saveRouteGroupMap(routeNum, groupId, groupName);
@@ -280,11 +295,27 @@ export default function WhatsAppSettings() {
     });
   }
 
-  function addPhone() {
+  async function addPhone() {
     const p = newPhone.replace(/\D/g, '');
     if (!p || adminPhones.includes(p)) return;
-    setAdminPhones(prev => [...prev, p]);
+    const next = [...adminPhones, p];
+    setAdminPhones(next);
     setNewPhone('');
+    try {
+      await saveAdminConfig(adminGroups, next);
+      const phone = connectedPhone || await getWhatsAppPhone();
+      if (phone) await pushToGitHub(phone, bundleConfig({ adminPhones: next })).catch(() => {});
+    } catch { /* best effort */ }
+  }
+
+  async function removePhone(p) {
+    const next = adminPhones.filter(x => x !== p);
+    setAdminPhones(next);
+    try {
+      await saveAdminConfig(adminGroups, next);
+      const phone = connectedPhone || await getWhatsAppPhone();
+      if (phone) await pushToGitHub(phone, bundleConfig({ adminPhones: next })).catch(() => {});
+    } catch { /* best effort */ }
   }
 
   async function runTestQuery() {
@@ -431,6 +462,29 @@ export default function WhatsAppSettings() {
                 ))}
               </div>
             )}
+
+            {/* ── Deploy Section ── */}
+            <div className="was-deploy-section">
+              <h3 className="was-sub-title">Deploy Bot Update</h3>
+              <p className="was-hint">Pull latest code from GitHub and restart the bot on the server.</p>
+              <button
+                className="was-btn-deploy"
+                onClick={handleDeploy}
+                disabled={deploying}
+              >
+                {deploying ? '⏳ Deploying...' : '🚀 Deploy to Server'}
+              </button>
+              {deployResult && (
+                <div className={`was-deploy-result ${deployResult.success ? 'success' : 'error'}`}>
+                  <div className="was-deploy-result-status">
+                    {deployResult.success ? '✓ Deploy successful' : '✗ Deploy failed'}
+                  </div>
+                  {deployResult.output && (
+                    <pre className="was-deploy-output">{deployResult.output}</pre>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -601,18 +655,35 @@ export default function WhatsAppSettings() {
             <div className="was-admin-phones">
               <label className="was-label">Authorized Phone Numbers</label>
               <p className="was-hint-sm">Leave empty to allow all group members to query.</p>
-              <div className="was-phone-list">
-                {adminPhones.map(p => (
-                  <div key={p} className="was-phone-chip">
-                    <span>{p}</span>
-                    <button onClick={() => setAdminPhones(prev => prev.filter(x => x !== p))}>×</button>
-                  </div>
-                ))}
-              </div>
+              {adminPhones.length > 0 && (
+                <table className="was-phones-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Phone Number</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminPhones.map((p, i) => (
+                      <tr key={p}>
+                        <td className="was-phones-index">{i + 1}</td>
+                        <td className="was-phones-number">{p}</td>
+                        <td>
+                          <button className="was-phones-remove" onClick={() => removePhone(p)} title="Remove">×</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {adminPhones.length === 0 && (
+                <p className="was-hint-sm" style={{ fontStyle: 'italic' }}>No numbers added — all group members can query.</p>
+              )}
               <div className="was-add-phone-row">
                 <input
                   className="was-input"
-                  placeholder="+1 555 123 4567"
+                  placeholder="Phone number (digits)"
                   value={newPhone}
                   onChange={e => setNewPhone(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') addPhone(); }}

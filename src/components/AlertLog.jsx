@@ -2817,21 +2817,34 @@ export default function AlertLog() {
                                           className="al-gw-detail-btn"
                                         >Open Acceptance Form</a>
                                       )}
-                                      {a.globalworxError && (
+                                      {!a.globalworxCompleted && (
                                         <div className="al-error-resolve-panel">
-                                          <span className="al-error-resolve-label">Resolve as:</span>
-                                          <select
-                                            className="al-error-dropdown al-error-dropdown-detail"
-                                            value=""
+                                          <span className="al-error-resolve-label">{a.globalworxError ? 'Resolve as:' : 'Set status:'}</span>
+                                          {!a.globalworxAccepted && (
+                                            <button
+                                              className="al-gw-detail-btn al-gw-accept-btn"
+                                              disabled={overriding === a.refNumber}
+                                              onClick={e => { e.stopPropagation(); handleManualOverride(a.refNumber, 'accepted'); }}
+                                            >
+                                              {overriding === a.refNumber ? 'Saving...' : '✓ Mark Accepted'}
+                                            </button>
+                                          )}
+                                          {!a.globalworxDone && (
+                                            <button
+                                              className="al-gw-detail-btn"
+                                              disabled={overriding === a.refNumber}
+                                              onClick={e => { e.stopPropagation(); handleManualOverride(a.refNumber, 'done'); }}
+                                            >
+                                              {overriding === a.refNumber ? 'Saving...' : 'Mark Done'}
+                                            </button>
+                                          )}
+                                          <button
+                                            className="al-gw-detail-btn"
                                             disabled={overriding === a.refNumber}
-                                            onClick={e => e.stopPropagation()}
-                                            onChange={e => { if (e.target.value) handleManualOverride(a.refNumber, e.target.value); }}
+                                            onClick={e => { e.stopPropagation(); handleManualOverride(a.refNumber, 'completed'); }}
                                           >
-                                            <option value="">{overriding === a.refNumber ? 'Resolving...' : 'Select...'}</option>
-                                            <option value="accepted">Accepted</option>
-                                            <option value="done">Done</option>
-                                            <option value="completed">Completed</option>
-                                          </select>
+                                            {overriding === a.refNumber ? 'Saving...' : 'Mark Completed'}
+                                          </button>
                                         </div>
                                       )}
 

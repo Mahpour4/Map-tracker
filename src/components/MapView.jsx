@@ -86,12 +86,14 @@ function getRecencyTier(lastVisited) {
   return recencyTiers[recencyTiers.length - 1];
 }
 
-function createStoreIcon(type, isSelected, visitMode, lastVisited, activePulseTiers, missed) {
-  const baseColor = missed
-    ? '#ef4444'
-    : visitMode
-      ? getRecencyTier(lastVisited).color
-      : (typeColors[type] || typeColors.other);
+function createStoreIcon(type, isSelected, visitMode, lastVisited, activePulseTiers, missed, dormant) {
+  const baseColor = dormant
+    ? '#9ca3af'
+    : missed
+      ? '#ef4444'
+      : visitMode
+        ? getRecencyTier(lastVisited).color
+        : (typeColors[type] || typeColors.other);
   const size = isSelected ? 14 : 10;
   const border = isSelected ? '3px solid #1e3a5f' : '2px solid #000';
   const blinkClass = isSelected ? 'marker-blink' : '';
@@ -234,6 +236,7 @@ export default function MapView() {
   const [waSending, setWaSending] = useState(null); // store.id while sending
   const [waSent, setWaSent] = useState(null); // store.id after sent
   const [waSentTo, setWaSentTo] = useState(null); // group name after sent
+  const [alertPreview, setAlertPreview] = useState(null); // { store, alertData, groupId, groupName, alert }
 
   // Check WhatsApp status on mount
   const waStatusRef = useRef('offline');
@@ -619,7 +622,10 @@ export default function MapView() {
   // Send alert to route's WhatsApp group
   const sendStoreAlert = useCallback(async (store) => {
     const storeAlerts = getStoreAlerts(store.id);
-    if (storeAlerts.length === 0) return;
+    if (storeAlerts.length === 0) {
+      copyStoreAlert(store);
+      return;
+    }
     const routeNum = store.routeNumber;
     const groupMap = JSON.parse(localStorage.getItem('wa_route_group_map') || '{}');
     const groupId = groupMap[routeNum];
@@ -673,6 +679,63 @@ export default function MapView() {
     }
   }, [getStoreAlerts, copyStoreAlert, alertImages, loadAlertImage]);
 
+  // Build alert preview data and show confirmation modal
+  const previewAlert = useCallback((store) => {
+    const storeAlerts = getStoreAlerts(store.id);
+    const routeNum = store.routeNumber;
+    const groupMap = JSON.parse(localStorage.getItem('wa_route_group_map') || '{}');
+    const groupId = groupMap[routeNum];
+    if (!groupId || storeAlerts.length === 0) {
+      copyStoreAlert(store);
+      return;
+    }
+    const nameMap = JSON.parse(localStorage.getItem('wa_route_group_names') || '{}');
+    const groupName = nameMap[routeNum] || `Route ${routeNum} group`;
+    const alert = storeAlerts[0];
+    const sale = store.lastSaleDate ? formatDate(store.lastSaleDate).split(' (')[0] : null;
+    const visit = store.lastVisited ? formatDate(store.lastVisited).split(' (')[0] : null;
+    const lastService = [sale ? `Sale: ${sale}` : null, visit ? `Visit: ${visit}` : null].filter(Boolean).join(' / ') || 'Never';
+    const alertData = {
+      route: routeNum || 'N/A',
+      type: alert.vendor || 'Alert',
+      store: `${store.name} #${store.id}`,
+      message: `${store.city} — Last Service: ${lastService}`,
+      timestamp: alert.dateReceived || new Date().toISOString().split('T')[0],
+    };
+    setAlertPreview({ store, alertData, groupId, groupName, alert });
+  }, [getStoreAlerts, copyStoreAlert]);
+
+  // Confirm and send the previewed alert
+  const confirmSendAlert = useCallback(async () => {
+    if (!alertPreview) return;
+    const { store, alertData, groupId, alert } = alertPreview;
+    setAlertPreview(null);
+    setWaSending(store.id);
+    try {
+      let sentWithImage = false;
+      if (alert.emailId) {
+        try {
+          let img = alertImages[alert.emailId];
+          if (!img?.dataUri) img = await loadAlertImage(alert.emailId);
+          if (img?.dataUri && !img.error) {
+            await sendWhatsAppAlertWithImage(groupId, alertData, img.dataUri, img.mimeType || 'image/jpeg');
+            sentWithImage = true;
+          }
+        } catch (_) {}
+      }
+      if (!sentWithImage) await sendWhatsAppAlert(groupId, alertData);
+      const nameMap = JSON.parse(localStorage.getItem('wa_route_group_names') || '{}');
+      const groupName = nameMap[store.routeNumber] || `Route ${store.routeNumber} group`;
+      setWaSent(store.id);
+      setWaSentTo(groupName);
+      setTimeout(() => { setWaSent(null); setWaSentTo(null); }, 3500);
+    } catch (e) {
+      copyStoreAlert(store);
+    } finally {
+      setWaSending(null);
+    }
+  }, [alertPreview, alertImages, loadAlertImage, copyStoreAlert]);
+
   const openPopupEdit = useCallback((storeId) => {
     setPopupEditId(storeId);
     setPopupEditDate(new Date().toISOString().split('T')[0]);
@@ -692,6 +755,41 @@ export default function MapView() {
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      {/* Alert send confirmation modal */}
+      {alertPreview && (
+        <div className="map-alert-preview-overlay" onClick={() => setAlertPreview(null)}>
+          <div className="map-alert-preview-modal" onClick={e => e.stopPropagation()}>
+            <div className="map-alert-preview-header">
+              <span>Send Alert</span>
+              <button className="map-alert-preview-close" onClick={() => setAlertPreview(null)}>×</button>
+            </div>
+            <div className="map-alert-preview-to">
+              To: <strong>{alertPreview.groupName}</strong>
+            </div>
+            <div className="map-alert-preview-msg">
+              <div className="map-alert-preview-row map-alert-preview-title">🚨 Map Tracker Alert</div>
+              <div className="map-alert-preview-row"><span className="map-alert-preview-label">Route:</span> {alertPreview.alertData.route}</div>
+              <div className="map-alert-preview-row"><span className="map-alert-preview-label">Type:</span> {alertPreview.alertData.type}</div>
+              <div className="map-alert-preview-row"><span className="map-alert-preview-label">Store:</span> {alertPreview.alertData.store}</div>
+              <div className="map-alert-preview-row"><span className="map-alert-preview-label">Message:</span> {alertPreview.alertData.message}</div>
+              <div className="map-alert-preview-row"><span className="map-alert-preview-label">Date:</span> {alertPreview.alertData.timestamp}</div>
+              {alertPreview.alert.emailId && alertImages[alertPreview.alert.emailId]?.dataUri && (
+                <div className="map-alert-preview-row map-alert-preview-img-note">📎 Alert image will be attached</div>
+              )}
+            </div>
+            <div className="map-alert-preview-actions">
+              <button className="map-alert-preview-cancel" onClick={() => setAlertPreview(null)}>Cancel</button>
+              <button
+                className="map-alert-preview-send"
+                onClick={confirmSendAlert}
+                disabled={waSending === alertPreview.store.id}
+              >
+                {waSending === alertPreview.store.id ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {hasActiveFilters && (
         <button className="map-clear-btn" onClick={resetAll}>
           Clear Filters &amp; Reset
@@ -1090,7 +1188,7 @@ export default function MapView() {
         <Marker
           key={store.id}
           position={[store.lat, store.lng]}
-          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store), pulseTiers, store._missedThisWeek)}
+          icon={createStoreIcon(store.type, selectedStore === store.id, visitMode, getLatestDate(store), pulseTiers, store._missedThisWeek, store.dormant === 'Yes')}
           eventHandlers={{
             click: () => {
               if (selectedStore === store.id) {
@@ -1168,11 +1266,11 @@ export default function MapView() {
               <div className="popup-actions">
                 <button
                   className="btn btn-xs store-alert-btn"
-                  onClick={() => sendStoreAlert(store)}
+                  onClick={() => previewAlert(store)}
                   disabled={waSending === store.id}
                   title="Send alert to route's WhatsApp group"
                 >
-                  {waSent === store.id ? `Sent to ${waSentTo}` : waSending === store.id ? 'Sending...' : 'Alert'}
+                  {waSent === store.id ? `✓ Sent to ${waSentTo}` : waSending === store.id ? 'Sending...' : copiedPopupId === store.id ? '✓ Copied!' : 'Alert'}
                 </button>
                 {store.routeNumber && store.routeNumber !== '0' ? (
                   <button
@@ -1197,6 +1295,13 @@ export default function MapView() {
                     ))}
                   </select>
                 )}
+                <button
+                  className={`btn btn-xs ${store.dormant === 'Yes' ? 'btn-dormant-active' : 'btn-dormant'}`}
+                  onClick={() => updateStore({ id: store.id, dormant: store.dormant === 'Yes' ? 'No' : 'Yes' })}
+                  title={store.dormant === 'Yes' ? 'Mark store as active' : 'Mark store as dormant'}
+                >
+                  {store.dormant === 'Yes' ? 'Activate' : 'Dormant'}
+                </button>
               </div>
             </div>
           </Popup>

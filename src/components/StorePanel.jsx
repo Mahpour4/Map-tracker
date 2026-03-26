@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { sendWhatsAppAlert } from '../services/whatsappService';
 
 const STORE_TYPES = [
   'food-lion', 'shoppers', 'shoprite', 'wegmans', 'walmart', 'giant-martins',
@@ -56,8 +57,27 @@ function StoreCard({ store, index, routes, scrollRef }) {
   const [editingVisit, setEditingVisit] = useState(false);
   const [visitDate, setVisitDate] = useState('');
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState('info');
+  const [waSending, setWaSending] = useState(false);
+  const [waSent, setWaSent] = useState(false);
   const visitDateRef = useRef(null);
   const cardRef = useRef(null);
+
+  // Active alerts for this store (not done/completed, and visit hasn't resolved them)
+  const storeAlerts = useMemo(() => {
+    if (!state.alerts || state.alerts.length === 0) return [];
+    return state.alerts.filter(a => {
+      if (a.storeId !== store.id) return false;
+      if (a.globalworxCompleted || a.globalworxDone) return false;
+      if (!a.dateReceived) return false;
+      const lastVisited = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop() || null;
+      if (!lastVisited) return true;
+      const visitDate = lastVisited.split('T')[0].split(' ')[0];
+      return visitDate < a.dateReceived;
+    });
+  }, [state.alerts, store.id, store.lastSaleDate, store.lastVisited]);
+
+  const hasActiveAlerts = storeAlerts.length > 0;
 
   // Auto-scroll into view when selected externally
   useEffect(() => {
@@ -65,6 +85,11 @@ function StoreCard({ store, index, routes, scrollRef }) {
       cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [isSelected]);
+
+  // Switch back to info tab when alerts resolve
+  useEffect(() => {
+    if (!hasActiveAlerts && activeTab === 'alerts') setActiveTab('info');
+  }, [hasActiveAlerts, activeTab]);
 
   const zone = state.zones.find((z) => z.id === store.zoneId);
 
@@ -78,6 +103,35 @@ function StoreCard({ store, index, routes, scrollRef }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const sendAlertToWhatsApp = async (e) => {
+    e.stopPropagation();
+    const routeNum = store.routeNumber;
+    const groupMap = JSON.parse(localStorage.getItem('wa_route_group_map') || '{}');
+    const groupId = groupMap[routeNum];
+    if (!groupId) { copyAlert(e); return; }
+    const alert = storeAlerts[0];
+    const sale = store.lastSaleDate ? formatDate(store.lastSaleDate) : null;
+    const visit = store.lastVisited ? formatDate(store.lastVisited) : null;
+    const lastService = [sale ? `Sale: ${sale}` : null, visit ? `Visit: ${visit}` : null].filter(Boolean).join(' / ') || 'Never';
+    const alertData = {
+      route: routeNum || 'N/A',
+      type: alert.vendor || 'Alert',
+      store: `${store.name} #${store.id}`,
+      message: `${store.city} — Last Service: ${lastService}`,
+      timestamp: alert.dateReceived || new Date().toISOString().split('T')[0],
+    };
+    setWaSending(true);
+    try {
+      await sendWhatsAppAlert(groupId, alertData);
+      setWaSent(true);
+      setTimeout(() => setWaSent(false), 3000);
+    } catch (_) {
+      copyAlert(e);
+    } finally {
+      setWaSending(false);
+    }
   };
 
   const openVisitEdit = (e) => {
@@ -109,69 +163,100 @@ function StoreCard({ store, index, routes, scrollRef }) {
     <div
       ref={cardRef}
       className={`store-card ${isSelected ? 'selected' : ''}`}
-      onClick={() => {
-        selectStore(store.id);
-      }}
+      onClick={() => { selectStore(store.id); }}
     >
       <div className="store-card-header">
         <h4><span className="store-index">{index}.</span> {store.name}</h4>
-        <span
-          className="store-type-badge"
-          style={{ background: tc.bg, color: tc.text }}
-        >
+        <span className="store-type-badge" style={{ background: tc.bg, color: tc.text }}>
           {typeLabels[store.type] || store.type}
         </span>
       </div>
 
-      <p className="store-address">
-        {store.address}, {store.city}, {store.state} {store.zip}
-      </p>
-
-      <div className="store-meta-row">
-        {store.storeNumber && (
-          <span className="meta-tag">#{store.storeNumber}</span>
-        )}
-        {store.routeNumber && store.routeNumber !== '0' && (
-          <span className="meta-tag">Route {store.routeNumber}</span>
-        )}
-        {store.driver && (
-          <span className="meta-tag">{store.driver}</span>
-        )}
-      </div>
-
-      <div className="store-zone-info">
-        {zone && zone.name !== 'Unassigned' ? (
-          <span className="zone-badge" style={{ borderColor: zone.color, color: zone.color }}>
-            {zone.name}
-          </span>
-        ) : (
-          <span className="zone-badge unassigned">Unassigned</span>
-        )}
-        <span
-          className="last-visited last-visited-clickable"
-          onClick={openVisitEdit}
-          title="Click to edit visit date"
-        >
-          {store.lastSaleDate ? `Sale: ${formatDate(store.lastSaleDate)}` : ''}
-          {store.lastSaleDate && store.lastVisited ? ' / ' : ''}
-          {store.lastVisited ? `Visit: ${formatDate(store.lastVisited)}` : ''}
-          {!store.lastSaleDate && !store.lastVisited ? 'No date' : ''}
-        </span>
-      </div>
-      {editingVisit && (
-        <div className="store-visit-edit" onClick={(e) => e.stopPropagation()}>
-          <input
-            ref={visitDateRef}
-            type="date"
-            className="store-visit-date-input"
-            value={visitDate}
-            onChange={(e) => setVisitDate(e.target.value)}
-          />
-          <button className="store-visit-save-btn" onClick={saveVisit} disabled={!visitDate}>Save</button>
-          <button className="store-visit-cancel-btn" onClick={cancelVisitEdit}>&times;</button>
+      {/* Tabs — only show when there are active alerts */}
+      {hasActiveAlerts && (
+        <div className="store-card-tabs" onClick={(e) => e.stopPropagation()}>
+          <button
+            className={`store-card-tab${activeTab === 'info' ? ' active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setActiveTab('info'); }}
+          >
+            Info
+            {hasActiveAlerts && <span className="store-alert-tab-badge">{storeAlerts.length}</span>}
+          </button>
+          <button
+            className={`store-card-tab store-card-tab-alert${activeTab === 'alerts' ? ' active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setActiveTab('alerts'); }}
+          >
+            Alert{storeAlerts.length > 1 ? 's' : ''}
+            <span className="store-alert-tab-badge">{storeAlerts.length}</span>
+          </button>
         </div>
       )}
 
+      {/* Info tab content */}
+      {activeTab === 'info' && (
+        <>
+          <p className="store-address">
+            {store.address}, {store.city}, {store.state} {store.zip}
+          </p>
+
+          <div className="store-meta-row">
+            {store.storeNumber && <span className="meta-tag">#{store.storeNumber}</span>}
+            {store.routeNumber && store.routeNumber !== '0' && <span className="meta-tag">Route {store.routeNumber}</span>}
+            {store.driver && <span className="meta-tag">{store.driver}</span>}
+          </div>
+
+          <div className="store-zone-info">
+            {zone && zone.name !== 'Unassigned' ? (
+              <span className="zone-badge" style={{ borderColor: zone.color, color: zone.color }}>{zone.name}</span>
+            ) : (
+              <span className="zone-badge unassigned">Unassigned</span>
+            )}
+            <span className="last-visited last-visited-clickable" onClick={openVisitEdit} title="Click to edit visit date">
+              {store.lastSaleDate ? `Sale: ${formatDate(store.lastSaleDate)}` : ''}
+              {store.lastSaleDate && store.lastVisited ? ' / ' : ''}
+              {store.lastVisited ? `Visit: ${formatDate(store.lastVisited)}` : ''}
+              {!store.lastSaleDate && !store.lastVisited ? 'No date' : ''}
+            </span>
+          </div>
+          {editingVisit && (
+            <div className="store-visit-edit" onClick={(e) => e.stopPropagation()}>
+              <input ref={visitDateRef} type="date" className="store-visit-date-input" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} />
+              <button className="store-visit-save-btn" onClick={saveVisit} disabled={!visitDate}>Save</button>
+              <button className="store-visit-cancel-btn" onClick={cancelVisitEdit}>&times;</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Alerts tab content */}
+      {activeTab === 'alerts' && hasActiveAlerts && (
+        <div className="store-alerts-tab" onClick={(e) => e.stopPropagation()}>
+          {storeAlerts.map((alert, i) => (
+            <div key={alert.refNumber || alert.emailId || i} className="store-alert-item">
+              <div className="store-alert-item-row">
+                <span className="store-alert-item-type">{alert.vendor || 'Alert'}</span>
+                <span className="store-alert-item-date">{alert.dateReceived || '—'}</span>
+              </div>
+              {alert.refNumber && <div className="store-alert-item-ref">Ref #{alert.refNumber}</div>}
+              <div className="store-alert-item-gw">
+                GW: <span className={alert.globalworxAccepted ? 'store-alert-gw-yes' : 'store-alert-gw-no'}>
+                  {alert.globalworxAccepted ? '✓ Accepted' : 'Not accepted'}
+                </span>
+              </div>
+            </div>
+          ))}
+          <button
+            className="btn btn-sm store-alert-wa-send-btn"
+            onClick={sendAlertToWhatsApp}
+            disabled={waSending}
+          >
+            {waSent ? '✓ Sent!' : waSending ? 'Sending...' : '📱 Send to WhatsApp'}
+          </button>
+        </div>
+      )}
+
+      {/* Actions — only show on info tab */}
+      {activeTab === 'info' && (
       <div className="store-card-actions">
         <button
           className="btn btn-sm store-alert-btn"
@@ -208,6 +293,16 @@ function StoreCard({ store, index, routes, scrollRef }) {
           </button>
         )}
         <button
+          className={`btn btn-sm ${store.dormant === 'Yes' ? 'btn-dormant-active' : 'btn-dormant'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateStore({ id: store.id, dormant: store.dormant === 'Yes' ? 'No' : 'Yes' });
+          }}
+          title={store.dormant === 'Yes' ? 'Mark store as active' : 'Mark store as dormant'}
+        >
+          {store.dormant === 'Yes' ? 'Activate' : 'Dormant'}
+        </button>
+        <button
           className="btn btn-sm btn-danger"
           onClick={(e) => {
             e.stopPropagation();
@@ -222,6 +317,7 @@ function StoreCard({ store, index, routes, scrollRef }) {
           Remove
         </button>
       </div>
+      )}
     </div>
   );
 }

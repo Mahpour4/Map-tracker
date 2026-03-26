@@ -1,5 +1,7 @@
-import { useState, Component, useEffect, useRef } from 'react';
+import { useState, Component, useEffect, useRef, useCallback } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { signInWithGoogle, isGmailConnected } from './services/gmailAlertService';
+import { authenticate, isSignedIn } from './services/googleSheetsService';
 import { version } from '../package.json';
 import TokenVault from './components/TokenVault';
 import Sidebar from './components/Sidebar';
@@ -126,7 +128,7 @@ function getActiveGroup(page) {
 
 function AppContent() {
   useGlobalErrorLogging();
-  const { state, setPage, bulkRecordVisits, bulkImportStores } = useApp();
+  const { state, setPage, bulkRecordVisits, bulkImportStores, fetchGmailAlerts } = useApp();
   const page = state.currentPage;
 
   // Global extension import listener — runs on all pages, not just DataImport
@@ -179,8 +181,11 @@ function AppContent() {
   const [vaultOpen, setVaultOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 1200);
   const [openGroup, setOpenGroup] = useState(() => getActiveGroup(state.currentPage));
+  const [loginDropOpen, setLoginDropOpen] = useState(false);
+  const [loginMsg, setLoginMsg] = useState(null);
   const navRef = useRef(null);
   const layoutRef = useRef(null);
+  const loginDropRef = useRef(null);
 
   // Auto-collapse sidebar when window shrinks below 1200px
   useEffect(() => {
@@ -213,6 +218,50 @@ function AppContent() {
     return () => document.removeEventListener('mousedown', onOutside);
   }, [openGroup]);
 
+  // Close login dropdown when clicking outside
+  useEffect(() => {
+    if (!loginDropOpen) return;
+    const onOutside = (e) => {
+      if (loginDropRef.current && !loginDropRef.current.contains(e.target)) setLoginDropOpen(false);
+    };
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [loginDropOpen]);
+
+  const showLoginMsg = (text, type = 'ok') => {
+    setLoginMsg({ text, type });
+    setTimeout(() => setLoginMsg(null), 3000);
+  };
+
+  const handleGmailSignIn = useCallback(async () => {
+    try {
+      await signInWithGoogle();
+      showLoginMsg('Gmail connected');
+    } catch (e) {
+      showLoginMsg('Gmail sign-in failed', 'err');
+    }
+  }, []);
+
+  const handleSheetsSignIn = useCallback(async () => {
+    try {
+      await authenticate();
+      showLoginMsg('Google Sheets connected');
+    } catch (e) {
+      showLoginMsg('Sheets sign-in failed', 'err');
+    }
+  }, []);
+
+  const handleFetchEmails = useCallback(async () => {
+    setLoginDropOpen(false);
+    try {
+      if (!isGmailConnected()) await signInWithGoogle();
+      await fetchGmailAlerts();
+      showLoginMsg('Emails fetched');
+    } catch (e) {
+      showLoginMsg('Fetch failed', 'err');
+    }
+  }, [fetchGmailAlerts]);
+
   const nav = (target) => {
     setPage(target);
     setMenuOpen(false);
@@ -234,6 +283,55 @@ function AppContent() {
                 <polygon points="3 11 22 2 13 21 11 13 3 11" />
               </svg>
             </button>
+            {/* Quick Login dropdown */}
+            <div className="quick-login-wrap" ref={loginDropRef}>
+              <button
+                className="quick-login-trigger"
+                onClick={() => setLoginDropOpen(o => !o)}
+                title="Quick sign-in"
+                aria-label="Quick sign-in"
+              >
+                <svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true" width="8" height="8">
+                  <polygon points="1 3 5 7 9 3" />
+                </svg>
+              </button>
+              {loginDropOpen && (
+                <div className="quick-login-dropdown">
+                  <div className="quick-login-label">Sign In</div>
+                  <button
+                    className="quick-login-item"
+                    onClick={() => { handleGmailSignIn(); setLoginDropOpen(false); }}
+                  >
+                    <span className="quick-login-dot" style={{ background: '#ea4335' }} />
+                    Gmail {isGmailConnected() ? '✓' : ''}
+                  </button>
+                  <button
+                    className="quick-login-item"
+                    onClick={() => { handleSheetsSignIn(); setLoginDropOpen(false); }}
+                  >
+                    <span className="quick-login-dot" style={{ background: '#34a853' }} />
+                    Google Sheets {isSignedIn() ? '✓' : ''}
+                  </button>
+                  <button
+                    className="quick-login-item"
+                    onClick={() => { nav('fleet'); setLoginDropOpen(false); }}
+                  >
+                    <span className="quick-login-dot" style={{ background: '#f59e0b' }} />
+                    Motive (Fleet)
+                  </button>
+                  <div className="quick-login-divider" />
+                  <button className="quick-login-item quick-login-fetch" onClick={handleFetchEmails}>
+                    <span className="quick-login-dot" style={{ background: '#3b82f6' }} />
+                    Fetch Emails
+                  </button>
+                </div>
+              )}
+              {loginMsg && (
+                <div className={`quick-login-toast ${loginMsg.type === 'err' ? 'err' : ''}`}>
+                  {loginMsg.text}
+                </div>
+              )}
+            </div>
             <span className="page-nav-brand-name">Map Tracker</span>
           </div>
 

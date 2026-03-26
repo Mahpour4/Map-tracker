@@ -62,6 +62,21 @@ function renderTab() {
   html += `<button id="importBtn" class="btn ${tab.btnClass}">${tab.btnText}</button>`;
   if (tab.extra) {
     html += `<button id="extraBtn" class="btn ${tab.extra.btnClass}">${tab.extra.btnText}</button>`;
+    html += `<div class="page-limit-row">
+      <label class="page-limit-label">Pages:</label>
+      <select id="pageLimitSelect" class="page-limit-select">
+        <option value="0">All pages</option>
+        <option value="1">1 page</option>
+        <option value="2">2 pages</option>
+        <option value="3">3 pages</option>
+        <option value="5">5 pages</option>
+        <option value="10">10 pages</option>
+        <option value="15">15 pages</option>
+        <option value="20">20 pages</option>
+        <option value="30">30 pages</option>
+      </select>
+      <span class="page-limit-hint">per store</span>
+    </div>`;
   }
   html += `<div id="routePicker" style="display:none"></div>`;
   html += `</div>`;
@@ -195,7 +210,10 @@ function handleExtraImport(extra) {
 function launchExtraScraper(extra, storeList) {
   const btn = document.getElementById('extraBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Scraping...'; }
-  addLog('Running ' + extra.key + ' scraper...', 'info');
+
+  const pageLimit = parseInt(document.getElementById('pageLimitSelect')?.value || '0', 10);
+  const limitLabel = pageLimit > 0 ? ` (max ${pageLimit} page${pageLimit !== 1 ? 's' : ''}/store)` : '';
+  addLog('Running ' + extra.key + ' scraper' + limitLabel + '...', 'info');
   showStopButton();
 
   const doInject = () => {
@@ -210,27 +228,35 @@ function launchExtraScraper(extra, storeList) {
     );
   };
 
-  if (storeList && storeList.length > 0) {
+  const setConfigAndInject = (stores) => {
     chrome.scripting.executeScript(
       {
         target: { tabId: currentTabId, allFrames: true },
         world: 'MAIN',
-        func: (stores) => {
-          try { localStorage.setItem('invoice-scraper-stores', JSON.stringify(stores)); } catch (e) {}
+        func: (storeData, limit) => {
+          try {
+            if (storeData) localStorage.setItem('invoice-scraper-stores', JSON.stringify(storeData));
+            if (limit > 0) localStorage.setItem('invoice-scraper-page-limit', String(limit));
+            else localStorage.removeItem('invoice-scraper-page-limit');
+          } catch (e) {}
         },
-        args: [storeList],
+        args: [stores || null, pageLimit],
       },
       () => {
         if (chrome.runtime.lastError) {
-          addLog('Error setting store list: ' + chrome.runtime.lastError.message, 'error');
+          addLog('Error setting config: ' + chrome.runtime.lastError.message, 'error');
           if (btn) { btn.disabled = false; btn.textContent = extra.btnText; }
           return;
         }
         doInject();
       }
     );
+  };
+
+  if (storeList && storeList.length > 0) {
+    setConfigAndInject(storeList);
   } else {
-    doInject();
+    setConfigAndInject(null);
   }
 }
 

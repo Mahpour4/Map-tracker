@@ -254,3 +254,13 @@ export function saveRouteGroupMap(routeNumber, groupId, groupName) {
     localStorage.setItem('wa_route_group_names', JSON.stringify(nameMap));
   } catch {}
 }
+
+export async function deployToServer() {
+  const res = await fetch('/api/admin/deploy', { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json(); // { success, output }
+}
+

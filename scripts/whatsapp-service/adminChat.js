@@ -340,13 +340,11 @@ function handleAlerts(args, routeFilter) {
 
   Object.entries(byRoute)
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-    .slice(0, 8)
     .forEach(([route, list]) => {
       lines.push(`\nRoute ${route} (${list.length}):`);
-      list.slice(0, 3).forEach(a =>
+      list.forEach(a =>
         lines.push(`  • ${a.StoreName} #${a.StoreNumber}${a.City ? ' (' + a.City + ')' : ''} — ${a.IssueType || a.GwAlertType || 'Alert'} (${fmtDate(a.DateReceived)})`)
       );
-      if (list.length > 3) lines.push(`  ... +${list.length - 3} more`);
     });
 
   return lines.join('\n');
@@ -445,8 +443,8 @@ async function handleTruck(args, groupConfig) {
     if (dest && result.route) {
       lines.push('');
       lines.push(`🏁 Destination: ${dest.name}`);
-      lines.push(`📏 Distance: ${result.route.distanceMiles} mi`);
-      lines.push(`⏱️ ETA: ~${result.route.durationText}`);
+      lines.push(`📏 Distance: ${result.route.distanceMiles} mi${result.route.isStraightLine ? ' (straight-line est.)' : ''}`);
+      lines.push(`⏱️ ETA: ~${result.route.durationText}${result.route.isStraightLine ? ' (est.)' : ''}`);
     } else if (dest && !result.route) {
       lines.push('');
       lines.push(`🏁 Destination: ${dest.name}`);
