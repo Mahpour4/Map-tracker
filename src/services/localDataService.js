@@ -1,7 +1,5 @@
 // Local disk persistence via the WhatsApp service (port 3001)
-// Falls back gracefully when the service is not running.
-
-const LOCAL_API = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/local`;
+const LOCAL_API = `${import.meta.env.VITE_API_URL}/api/local`;
 
 export async function loadLocalData(key) {
   try {
