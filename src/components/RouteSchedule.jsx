@@ -234,7 +234,7 @@ export default function RouteSchedule() {
   const routeStores = useMemo(() => {
     if (!selectedRoute) return [];
     return stores
-      .filter(s => s.routeNumber === selectedRoute)
+      .filter(s => s.routeNumber === selectedRoute && s.dormant !== 'Yes')
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [stores, selectedRoute]);
 

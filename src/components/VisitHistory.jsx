@@ -321,7 +321,7 @@ export default function VisitHistory() {
   const allStoreData = useMemo(() => {
     const today = localDateStr();
     return stores
-      .filter(s => s.routeNumber && s.routeNumber !== '0')
+      .filter(s => s.routeNumber && s.routeNumber !== '0' && s.dormant !== 'Yes')
       .map(s => {
         const vhDates = state.visitHistory[s.id] || [];
         const dates = new Set(vhDates);
