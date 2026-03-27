@@ -13,6 +13,12 @@ import { fetchWaConfigJson, saveWaConfigJson } from '../services/githubService';
 const ALERT_ROUTES = ['198','199','200','201','203','204','206','207','208','209','210','211'];
 const LOCAL_WA_CONFIG_KEY = phone => `waConfig_${phone}`;
 
+// Known destinations available in the dropdown
+const KNOWN_DESTINATIONS = [
+  { name: 'Salisbury, MD',  lat: 38.3607, lng: -75.5994 },
+  { name: 'Woodbridge, VA', lat: 38.6582, lng: -77.2497 },
+];
+
 // Default destinations pre-populated when specific routes are selected
 const ROUTE_DESTINATION_DEFAULTS = {
   '206': { name: 'Salisbury, MD', lat: 38.3607, lng: -75.5994 },
@@ -642,7 +648,7 @@ export default function WhatsAppSettings() {
                       {/* Destinations — per-route when routes selected, shared default otherwise */}
                       {(ag.routes && ag.routes.length > 0) ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>Destinations (per route):</span>
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>Truck delivery destinations:</span>
                           {ag.routes.map(r => {
                             const rd = ag.routeDestinations?.[r] || {};
                             const setRD = (field, val) => setAdminGroupsState(prev => prev.map((g, i) => {
@@ -651,10 +657,23 @@ export default function WhatsAppSettings() {
                             }));
                             return (
                               <div key={r} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#2563eb', minWidth: 28 }}>{r}</span>
-                                <input className="was-input" style={{ flex: 1, fontSize: '0.78rem', padding: '3px 6px' }}
-                                  placeholder="City, State (e.g. Salisbury, MD)" value={rd.name || ''}
-                                  onChange={e => setRD('name', e.target.value)} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#2563eb', minWidth: 50 }}>Truck {r}</span>
+                                <select className="was-select" style={{ flex: 1, fontSize: '0.78rem', padding: '3px 6px' }}
+                                  value={rd.name || ''}
+                                  onChange={e => {
+                                    const dest = KNOWN_DESTINATIONS.find(d => d.name === e.target.value);
+                                    if (dest) {
+                                      setAdminGroupsState(prev => prev.map((g, i) => {
+                                        if (i !== idx) return g;
+                                        return { ...g, routeDestinations: { ...g.routeDestinations, [r]: dest } };
+                                      }));
+                                    }
+                                  }}>
+                                  <option value="">— Select destination —</option>
+                                  {KNOWN_DESTINATIONS.map(d => (
+                                    <option key={d.name} value={d.name}>{d.name}</option>
+                                  ))}
+                                </select>
                                 {rd.lat && rd.lng
                                   ? <span style={{ fontSize: '0.68rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{rd.lat}, {rd.lng}</span>
                                   : <span style={{ fontSize: '0.68rem', color: '#f59e0b' }}>no coords</span>}

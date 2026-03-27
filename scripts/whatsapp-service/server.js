@@ -44,6 +44,46 @@ app.post('/api/local/:key', (req, res) => {
   }
 });
 
+// ── Alert image cache ─────────────────────────────────────────────────────────
+const ALERT_IMG_DIR = path.join(DATA_DIR, 'alert-images');
+
+// Save alert image: POST /api/alert-image/:refNumber  { dataUri, mimeType }
+app.post('/api/alert-image/:refNumber', (req, res) => {
+  try {
+    const { dataUri, mimeType } = req.body;
+    if (!dataUri) return res.status(400).json({ error: 'dataUri required' });
+    const ref = req.params.refNumber.replace(/[^A-Za-z0-9-]/g, '');
+    if (!ref) return res.status(400).json({ error: 'invalid refNumber' });
+    fs.mkdirSync(ALERT_IMG_DIR, { recursive: true });
+    // Strip data URI prefix
+    const base64 = dataUri.includes(',') ? dataUri.split(',')[1] : dataUri;
+    const ext = (mimeType || 'image/jpeg').split('/')[1] || 'jpg';
+    const filePath = path.join(ALERT_IMG_DIR, `${ref}.${ext}`);
+    fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+    res.json({ success: true, path: filePath });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get alert image: GET /api/alert-image/:refNumber
+app.get('/api/alert-image/:refNumber', (req, res) => {
+  try {
+    const ref = req.params.refNumber.replace(/[^A-Za-z0-9-]/g, '');
+    const exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    for (const ext of exts) {
+      const filePath = path.join(ALERT_IMG_DIR, `${ref}.${ext}`);
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', `image/${ext === 'jpg' ? 'jpeg' : ext}`);
+        return res.send(fs.readFileSync(filePath));
+      }
+    }
+    res.status(404).json({ error: 'not found' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Health check / status
 app.get('/api/whatsapp/status', (req, res) => {
   res.json(whatsapp.getStatus());

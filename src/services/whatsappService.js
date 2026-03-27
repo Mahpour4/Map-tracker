@@ -255,6 +255,17 @@ export function saveRouteGroupMap(routeNumber, groupId, groupName) {
   } catch {}
 }
 
+// Save alert image to local server cache (for bot to send when replying to alerts)
+export async function saveAlertImage(refNumber, dataUri, mimeType) {
+  try {
+    await fetch(`/api/alert-image/${encodeURIComponent(refNumber)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataUri, mimeType: mimeType || 'image/jpeg' }),
+    });
+  } catch { /* best effort */ }
+}
+
 export async function deployToServer() {
   const res = await fetch('/api/admin/deploy', { method: 'POST' });
   if (!res.ok) {

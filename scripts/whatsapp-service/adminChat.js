@@ -63,6 +63,21 @@ function loadOrders()       {
       || [];
 }
 function loadSchedules()    { return readJson(path.join(DATA_DIR, 'schedules.json')) || {}; }
+function loadWarehouses()   { return readJson(path.join(DATA_DIR, 'warehouses.json')) || []; }
+
+function loadAlertImage(refNumber) {
+  const dir = path.join(LOCAL_DIR, 'alert-images');
+  for (const ext of ['jpg', 'jpeg', 'png', 'gif', 'webp']) {
+    const fp = path.join(dir, `${refNumber}.${ext}`);
+    try {
+      if (fs.existsSync(fp)) {
+        const data = fs.readFileSync(fp);
+        return { base64: data.toString('base64'), mimeType: ext === 'jpg' ? 'image/jpeg' : `image/${ext}` };
+      }
+    } catch { }
+  }
+  return null;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -338,16 +353,29 @@ function handleAlerts(args, routeFilter) {
     byRoute[r].push(a);
   });
 
+  // Collect images for open alerts (cached on disk by the app when blasting)
+  const images = [];
   Object.entries(byRoute)
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
     .forEach(([route, list]) => {
       lines.push(`\nRoute ${route} (${list.length}):`);
-      list.forEach(a =>
-        lines.push(`  • ${a.StoreName} #${a.StoreNumber}${a.City ? ' (' + a.City + ')' : ''} — ${a.IssueType || a.GwAlertType || 'Alert'} (${fmtDate(a.DateReceived)})`)
-      );
+      list.forEach(a => {
+        const alertLine = `  • ${a.StoreName} #${a.StoreNumber}${a.City ? ' (' + a.City + ')' : ''} — ${a.IssueType || a.GwAlertType || 'Alert'} (${fmtDate(a.DateReceived)})`;
+        lines.push(alertLine);
+        // Try to attach cached image
+        const img = loadAlertImage(a.RefNumber);
+        if (img) {
+          images.push({
+            base64: img.base64,
+            mimeType: img.mimeType,
+            caption: `${a.StoreName} #${a.StoreNumber} — ${a.RefNumber}`,
+          });
+        }
+      });
     });
 
-  return lines.join('\n');
+  const text = lines.join('\n');
+  return images.length > 0 ? { text, images } : text;
 }
 
 function handleOrder(args) {
@@ -406,9 +434,13 @@ function handleHelp() {
     '  → Latest order for a route',
     '  Example: order 206',
     '',
-    '*truck [route number]*',
-    '  → Truck location & ETA',
+    '*truck [truck number]*',
+    '  → Truck location & ETA to delivery destination',
     '  Example: truck 211',
+    '',
+    '*truck eta [truck number]*',
+    '  → Truck ETA back to warehouse',
+    '  Example: truck eta 211 | truck eta 209 salisbury',
     '',
     '*sales* (or *fl*)',
     '  → Food Lion visit progress today / this week',
@@ -438,9 +470,9 @@ async function handleTruck(args, groupConfig) {
   const routeNum = (parts[0] || '').replace(/^rt?\.?\s*/i, '');
   const destOverrideKey = parts.slice(1).join(' ').toLowerCase().trim();
 
-  if (!routeNum) return '❓ Usage: *truck [route] [destination?]*\nExamples: truck 211 | truck 211 woodbridge | truck 211 salisbury';
+  if (!routeNum) return '❓ Usage: *truck [truck#] [destination?]*\nExamples: truck 211 | truck 211 woodbridge | truck 211 salisbury';
 
-  if (!FLEET[routeNum]) return `❌ No vehicle assigned to Route ${routeNum}`;
+  if (!FLEET[routeNum]) return `❌ No vehicle assigned to Truck ${routeNum}`;
 
   const apiKey = groupConfig?.motiveApiKey;
   if (!apiKey) return '⚠️ Motive API key not configured. Ask admin to set it up.';
@@ -456,7 +488,7 @@ async function handleTruck(args, groupConfig) {
     if (result.error) return `⚠️ ${result.error}`;
 
     const lines = [
-      `🚚 *Route ${routeNum} — ${result.model}*`,
+      `🚚 *Truck ${routeNum} — ${result.model}*`,
       `📍 Currently: ${result.description || 'Unknown'}`,
     ];
 
@@ -478,6 +510,69 @@ async function handleTruck(args, groupConfig) {
     return lines.join('\n');
   } catch (err) {
     console.error('[AdminChat] Truck ETA error:', err.message);
+    return `⚠️ Error fetching truck location: ${err.message}`;
+  }
+}
+
+// ── Warehouse ETA handler ─────────────────────────────────────────────────────
+
+async function handleWarehouse(args, groupConfig) {
+  const parts = (args || '').trim().split(/\s+/);
+  const routeNum = (parts[0] || '').replace(/^rt?\.?\s*/i, '');
+  // Optional filter: "wh 211 salisbury" or "wh 211 main" etc.
+  const filter = parts.slice(1).join(' ').toLowerCase().trim();
+
+  if (!routeNum) return '❓ Usage: *wh [truck#]*\nExamples: wh 211 | wh 209';
+
+  if (!FLEET[routeNum]) return `❌ No vehicle assigned to Truck ${routeNum}`;
+
+  const apiKey = groupConfig?.motiveApiKey;
+  if (!apiKey) return '⚠️ Motive API key not configured.';
+
+  const warehouses = loadWarehouses();
+  if (!warehouses.length) return '⚠️ No warehouses configured.';
+
+  // Filter warehouses if a keyword was given
+  const targets = filter
+    ? warehouses.filter(w => w.name.toLowerCase().includes(filter) || w.id.toLowerCase().includes(filter))
+    : warehouses;
+  if (!targets.length) return `❌ No warehouse matching "${filter}"`;
+
+  try {
+    // Fetch truck location once, then calculate route to each warehouse
+    const result = await getRouteETA(apiKey, routeNum, targets[0].lat, targets[0].lng);
+    if (result.error) return `⚠️ ${result.error}`;
+
+    const lines = [
+      `🚚 *Truck ${routeNum} — ${result.model}*`,
+      `📍 Currently: ${result.description || 'Unknown'}`,
+    ];
+    if (result.driverName) lines.push(`👤 Driver: ${result.driverName}`);
+    if (result.speed != null) lines.push(`🚗 Speed: ${Math.round(result.speed)} mph`);
+    lines.push('');
+    lines.push('🏭 *Warehouse ETAs:*');
+
+    // Calculate route to each warehouse (first one already fetched above)
+    for (const wh of targets) {
+      let route = null;
+      if (wh.id === targets[0].id) {
+        route = result.route;
+      } else {
+        try {
+          const whResult = await getRouteETA(apiKey, routeNum, wh.lat, wh.lng);
+          route = whResult.route;
+        } catch { }
+      }
+      if (route) {
+        lines.push(`  📦 ${wh.name}: ${route.distanceMiles} mi — ~${route.durationText}`);
+      } else {
+        lines.push(`  📦 ${wh.name}: routing unavailable`);
+      }
+    }
+
+    return lines.join('\n');
+  } catch (err) {
+    console.error('[AdminChat] Warehouse ETA error:', err.message);
     return `⚠️ Error fetching truck location: ${err.message}`;
   }
 }
@@ -566,16 +661,24 @@ async function processQuery(text, routeFilter, groupConfig) {
     // Groups with route restrictions can only use alerts + truck
     if (routeFilter) {
       if (cmd === 'alerts' || cmd === 'alert' || cmd === 'a') return handleAlerts(args, routeFilter);
-      if (cmd === 'truck' || cmd === 'eta' || cmd === 't') return await handleTruck(args, groupConfig);
-      if (cmd === 'help' || cmd === '?') return `*📱 Map Tracker — Commands*\n\n*alerts* — This week's open alerts\n*alerts all* — All open alerts\n*alerts today* — Today's alerts\n\n*truck [route #]* — Truck location & ETA to default destination\n*truck [route #] [city]* — Override destination\n  Examples: truck 211 | truck 211 woodbridge | truck 211 salisbury`;
-      return `ℹ️ This group supports: *alerts* and *truck*\n\nType *help* for options.`;
+      if (cmd === 'truck' || cmd === 't') {
+        if (/^eta\b/i.test(args)) return await handleWarehouse(args.replace(/^eta\s*/i, '').trim(), groupConfig);
+        return await handleTruck(args, groupConfig);
+      }
+      if (cmd === 'wh' || cmd === 'warehouse' || cmd === 'home') return await handleWarehouse(args, groupConfig);
+      if (cmd === 'help' || cmd === '?') return `*📱 Map Tracker — Commands*\n\n*alerts* — This week's open alerts\n*alerts all* — All open alerts\n*alerts today* — Today's alerts\n\n*truck [route #]* — Truck location & ETA to delivery destination\n*truck eta [route #]* — Truck ETA back to warehouse\n  Examples: truck 211 | truck eta 211`;
+      return `ℹ️ This group supports: *alerts*, *truck*, and *wh*\n\n*alerts* — open alerts for this group's routes\n*truck [truck#]* — truck location & ETA to delivery destination\n*wh [truck#]* — truck ETA back to warehouse\n  Example: truck 211 | wh 211`;
     }
 
     if (cmd === 'store' || cmd === 'st')                    return handleStore(args);
     if (cmd === 'route' || cmd === 'rt' || cmd === 'r')     return handleRoute(args);
     if (cmd === 'alerts' || cmd === 'alert' || cmd === 'a') return handleAlerts(args, routeFilter);
     if (cmd === 'order' || cmd === 'orders')                return handleOrder(args);
-    if (cmd === 'truck' || cmd === 'eta' || cmd === 't')    return await handleTruck(args, groupConfig);
+    if (cmd === 'truck' || cmd === 't') {
+      if (/^eta\b/i.test(args)) return await handleWarehouse(args.replace(/^eta\s*/i, '').trim(), groupConfig);
+      return await handleTruck(args, groupConfig);
+    }
+    if (cmd === 'wh' || cmd === 'warehouse' || cmd === 'home') return await handleWarehouse(args, groupConfig);
     if (cmd === 'sales' || cmd === 'fl')                    return handleSales(args);
     if (cmd === 'help' || cmd === '?')                      return handleHelp();
 

@@ -6,7 +6,7 @@ import { fetchAlertImage, isGmailConnected, signInWithGoogle } from '../services
 import { scrapeAlertDetails as gwScrapeDetails, checkAlertStatus as gwCheckStatus } from '../services/globalworxService';
 import { labelAlertsCompleted } from '../services/gmailAlertService';
 import { fetchCardTransactions, fetchVehicles } from '../services/motiveService';
-import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport, sendAlertBlast, getAlertResponses, getBlastSentRefs } from '../services/whatsappService';
+import { getWhatsAppStatus, getWhatsAppGroups, sendWhatsAppAlert, sendWhatsAppReport, sendAlertBlast, getAlertResponses, getBlastSentRefs, saveAlertImage } from '../services/whatsappService';
 import { computeDriverScore, getScheduleAdherence, getStatusCounts, getLatestDate, getDaysSinceVisit, getWeeklyTrend } from '../utils/driverMetrics';
 import { fetchBlastSentRefsJson, saveBlastSentRefsJson, getToken } from '../services/githubService';
 import savedBlastSentRefs from '../data/blastSentRefs.json';
@@ -791,6 +791,10 @@ export default function AlertLog() {
           }
         }
         alertsWithImages.push({ ...a, imageBase64: imageBase64 || '', mimeType });
+        // Cache image on server so the WhatsApp bot can send it via the alerts command
+        if (imageBase64 && a.refNumber) {
+          saveAlertImage(a.refNumber, imageBase64, mimeType).catch(() => {});
+        }
       }
 
       // Step 2: Group alerts by store (storeNumber + storeName)

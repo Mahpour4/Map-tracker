@@ -289,8 +289,25 @@ function initialize() {
               const reply = await adminChat.processQuery(queryText, routeFilter, groupConfig);
               // Small delay so it feels natural
               await new Promise(r => setTimeout(r, 600));
-              await client.sendMessage(msg.from, reply);
-              console.log(`[AdminChat] Replied: "${reply.substring(0, 60)}"`);
+              // reply may be a plain string or { text, images: [{base64, mimeType, caption}] }
+              if (reply && typeof reply === 'object' && reply.text) {
+                await client.sendMessage(msg.from, reply.text);
+                if (reply.images && reply.images.length > 0) {
+                  for (const img of reply.images) {
+                    try {
+                      const media = new MessageMedia(img.mimeType, img.base64, img.caption || 'Alert');
+                      await client.sendMessage(msg.from, media, { caption: img.caption || '' });
+                      await new Promise(r => setTimeout(r, 800));
+                    } catch (imgErr) {
+                      console.error('[AdminChat] Image send error:', imgErr.message);
+                    }
+                  }
+                }
+                console.log(`[AdminChat] Replied with ${reply.images?.length || 0} image(s)`);
+              } else {
+                await client.sendMessage(msg.from, reply);
+                console.log(`[AdminChat] Replied: "${String(reply).substring(0, 60)}"`);
+              }
             } catch (qErr) {
               console.error('[AdminChat] Reply error:', qErr.message);
             }
