@@ -277,8 +277,9 @@ function initialize() {
 
         // Only process if bot was @mentioned
         if (mentionsBot) {
-          const contact = await msg.getContact();
-          const phone   = contact.number || msg.author || msg.from;
+          // Extract phone from msg.author (avoids slow msg.getContact() Chromium call)
+          const rawAuthor = msg.author || msg.from || '';
+          const phone = rawAuthor.replace('@c.us', '').replace('@s.whatsapp.net', '');
           // Check if sender is authorized
           const isAuth  = adminPhones.length === 0 || adminPhones.includes(phone) || adminPhones.some(p => phone.endsWith(p.replace(/\D/g, '').slice(-10)));
           if (isAuth && queryText && !queryText.startsWith('_BOT_')) {
@@ -287,8 +288,6 @@ function initialize() {
               const routeFilter = getGroupRoutes(msg.from);
               const groupConfig = getGroupConfig(msg.from);
               const reply = await adminChat.processQuery(queryText, routeFilter, groupConfig);
-              // Small delay so it feels natural
-              await new Promise(r => setTimeout(r, 600));
               // reply may be a plain string or { text, images: [{base64, mimeType, caption}] }
               if (reply && typeof reply === 'object' && reply.text) {
                 await client.sendMessage(msg.from, reply.text);

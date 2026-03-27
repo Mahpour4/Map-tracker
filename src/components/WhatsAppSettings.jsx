@@ -6,7 +6,7 @@ import {
   getAdminConfig, saveAdminConfig, testAdminQuery,
   saveRouteGroupMap,
   disconnectWhatsApp, reconnectWhatsApp, restartWhatsAppServer,
-  getWhatsAppPhone, deployToServer,
+  getWhatsAppPhone,
 } from '../services/whatsappService';
 import { fetchWaConfigJson, saveWaConfigJson } from '../services/githubService';
 
@@ -54,9 +54,6 @@ export default function WhatsAppSettings() {
   const [disconnecting, setDisconnecting]     = useState(false);
   const [reconnecting, setReconnecting]       = useState(false);
   const [restarting, setRestarting]           = useState(false);
-  const [deploying, setDeploying]             = useState(false);
-  const [deployResult, setDeployResult]       = useState(null); // { success, output } | null
-
   // Order group
   const [orderGroupId, setOrderGroupIdState] = useState('');
 
@@ -305,19 +302,6 @@ export default function WhatsAppSettings() {
     setTimeout(() => { clearInterval(poll); setRestarting(false); }, 30000);
   }
 
-  async function handleDeploy() {
-    setDeploying(true);
-    setDeployResult(null);
-    try {
-      const result = await deployToServer();
-      setDeployResult({ success: true, output: result.output || 'Deploy complete.' });
-    } catch (err) {
-      setDeployResult({ success: false, output: err.message });
-    } finally {
-      setDeploying(false);
-    }
-  }
-
   function handleRouteGroup(routeNum, groupId) {
     const groupName = groups.find(g => g.id === groupId)?.name || '';
     saveRouteGroupMap(routeNum, groupId, groupName);
@@ -511,28 +495,6 @@ export default function WhatsAppSettings() {
               </div>
             )}
 
-            {/* ── Deploy Section ── */}
-            <div className="was-deploy-section">
-              <h3 className="was-sub-title">Deploy Bot Update</h3>
-              <p className="was-hint">Pull latest code from GitHub and restart the bot on the server.</p>
-              <button
-                className="was-btn-deploy"
-                onClick={handleDeploy}
-                disabled={deploying}
-              >
-                {deploying ? '⏳ Deploying...' : '🚀 Deploy to Server'}
-              </button>
-              {deployResult && (
-                <div className={`was-deploy-result ${deployResult.success ? 'success' : 'error'}`}>
-                  <div className="was-deploy-result-status">
-                    {deployResult.success ? '✓ Deploy successful' : '✗ Deploy failed'}
-                  </div>
-                  {deployResult.output && (
-                    <pre className="was-deploy-output">{deployResult.output}</pre>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         )}
 
