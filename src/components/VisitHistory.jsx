@@ -240,6 +240,7 @@ export default function VisitHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editDate, setEditDate] = useState('');
+  const [editByRoute, setEditByRoute] = useState('');
   const [selectedCalDay, setSelectedCalDay] = useState(null); // { date, gpsStops, visitedStores }
   const [editPos, setEditPos] = useState(null);
   const [expandedStore, setExpandedStore] = useState(null);
@@ -262,14 +263,16 @@ export default function VisitHistory() {
 
   const openEdit = useCallback((storeId, e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setEditPos({ top: rect.bottom + 4, left: rect.right - 200 });
+    setEditPos({ top: rect.bottom + 4, left: rect.right - 220 });
     setEditingId(storeId);
     setEditDate(localDateStr());
-  }, []);
+    setEditByRoute(selectedRoute || '');
+  }, [selectedRoute]);
 
   const closeEdit = useCallback(() => {
     setEditingId(null);
     setEditDate('');
+    setEditByRoute('');
     setEditPos(null);
   }, []);
 
@@ -277,9 +280,9 @@ export default function VisitHistory() {
     if (!editDate) return;
     const ymd = toYMD(editDate);
     if (!ymd) return;
-    recordVisit(storeId, ymd);
+    recordVisit(storeId, ymd, editByRoute || undefined);
     closeEdit();
-  }, [editDate, recordVisit, closeEdit]);
+  }, [editDate, editByRoute, recordVisit, closeEdit]);
 
   const [quickAdded, setQuickAdded] = useState(null);
   const handleQuickAdd = useCallback((storeId) => {
@@ -323,7 +326,8 @@ export default function VisitHistory() {
     return stores
       .filter(s => s.routeNumber && s.routeNumber !== '0' && s.dormant !== 'Yes')
       .map(s => {
-        const vhDates = state.visitHistory[s.id] || [];
+        const vhRaw = state.visitHistory[s.id] || [];
+        const vhDates = vhRaw.map(e => typeof e === 'string' ? e : e.date);
         const dates = new Set(vhDates);
         // Only use store-level dates as fallback when no visit history exists
         if (vhDates.length === 0) {
@@ -376,7 +380,7 @@ export default function VisitHistory() {
       const store = stores.find(s => s.id === storeId);
       if (!store) return;
       // Enrich with visit history for accurate status
-      const vhDates = (state.visitHistory[storeId] || []).filter(Boolean).sort();
+      const vhDates = (state.visitHistory[storeId] || []).map(e => typeof e === 'string' ? e : e.date).filter(Boolean).sort();
       const bestVisited = vhDates.length > 0 ? vhDates[vhDates.length - 1] : store.lastVisited;
       const enrichedStore = { ...store, lastVisited: bestVisited || store.lastVisited };
       const statusInfo = getAlertStatus(a, enrichedStore);
@@ -1029,7 +1033,7 @@ export default function VisitHistory() {
 
             // Collect visit days + which stores per day for this route
             const visitDays = new Set();
-            const visitsByDay = {}; // date → [storeName]
+            const visitsByDay = {}; // date → [{ name, by }]
             const routeStoreIds = new Set(stores.filter(s => String(s.routeNumber) === String(selectedRoute)).map(s => s.id));
             const storeNameById = {};
             stores.forEach(s => { storeNameById[s.id] = s.name || s.storeName || s.id; });
@@ -1037,9 +1041,10 @@ export default function VisitHistory() {
               if (!routeStoreIds.has(storeId)) return;
               (Array.isArray(dates) ? dates : []).forEach(d => {
                 const ds = typeof d === 'string' ? d : d.date;
+                const by = typeof d === 'string' ? null : d.by || null;
                 visitDays.add(ds);
                 if (!visitsByDay[ds]) visitsByDay[ds] = [];
-                visitsByDay[ds].push(storeNameById[storeId] || storeId);
+                visitsByDay[ds].push({ name: storeNameById[storeId] || storeId, by });
               });
             });
 
@@ -1134,9 +1139,12 @@ export default function VisitHistory() {
                       {selectedCalDay.visitedStores.length > 0 && (
                         <div className="vh-rc-detail-col">
                           <div className="vh-rc-detail-col-title visit">Visits Recorded ({selectedCalDay.visitedStores.length})</div>
-                          {selectedCalDay.visitedStores.map((name, i) => (
+                          {selectedCalDay.visitedStores.map((v, i) => (
                             <div key={i} className="vh-rc-detail-stop">
-                              <span className="vh-rc-detail-stop-name">{name}</span>
+                              <span className="vh-rc-detail-stop-name">{typeof v === 'string' ? v : v.name}</span>
+                              {typeof v !== 'string' && v.by && (
+                                <span className="vh-rc-detail-by">Truck {v.by}</span>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1161,6 +1169,12 @@ export default function VisitHistory() {
             <div className="vh-edit-label">Add visit for: <strong>{stores.find(s => s.id === editingId)?.name || editingId}</strong></div>
             <div className="vh-edit-row">
               <input ref={editDateRef} type="date" className="vh-edit-date" value={editDate} onChange={e => setEditDate(e.target.value)} />
+              <select className="vh-edit-by" value={editByRoute} onChange={e => setEditByRoute(e.target.value)} title="Which truck made this visit?">
+                <option value="">Route {stores.find(s => s.id === editingId)?.routeNumber || '?'} (default)</option>
+                {routes.filter(r => r !== (stores.find(s => s.id === editingId)?.routeNumber)).map(r => (
+                  <option key={r} value={r}>Truck {r}</option>
+                ))}
+              </select>
               <button className="vh-edit-save" onClick={() => handleAddVisit(editingId)} disabled={!editDate}>Save</button>
               <button className="vh-edit-cancel" onClick={closeEdit}>Cancel</button>
             </div>

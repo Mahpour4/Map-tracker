@@ -2863,6 +2863,8 @@ textarea {
 .vh-edit-save:disabled { opacity: 0.4; cursor: not-allowed; }
 .vh-edit-cancel { background: none; color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
 .vh-edit-cancel:hover { background: #fef2f2; color: #ef4444; }
+.vh-edit-by { padding: 6px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--bg); color: var(--text); }
+.vh-rc-detail-by { font-size: 10px; font-weight: 700; color: #8b5cf6; background: #ede9fe; border-radius: 4px; padding: 1px 5px; margin-left: 6px; white-space: nowrap; }
 
 /* Route Work Calendar */
 .vh-route-calendar { margin: 24px 0 8px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; }
@@ -9387,8 +9389,17 @@ textarea {
 
 /* ============ Driver Dashboard ============ */
 .dd-page {
-  padding: 24px;
+  padding: 24px 32px;
   max-width: 1100px;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.dd-caption {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 16px 0;
+  line-height: 1.5;
 }
 .dd-header {
   display: flex;

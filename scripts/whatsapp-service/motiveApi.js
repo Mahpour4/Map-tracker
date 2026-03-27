@@ -39,9 +39,16 @@ function httpsGet(url, headers = {}) {
   });
 }
 
+// ── Location cache (60s TTL per API key) ──────────────────────────────────────
+
+const locationCache = {}; // apiKey → { ts, data }
+const CACHE_TTL_MS = 60 * 1000;
+
 // ── Motive API ────────────────────────────────────────────────────────────────
 
 async function fetchVehicleLocations(apiKey) {
+  const cached = locationCache[apiKey];
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
   const all = [];
   let page = 1;
   while (true) {
@@ -78,6 +85,7 @@ async function fetchVehicleLocations(apiKey) {
     if (!json.pagination || page >= (json.pagination.total_pages || 1)) break;
     page++;
   }
+  locationCache[apiKey] = { ts: Date.now(), data: all };
   return all;
 }
 

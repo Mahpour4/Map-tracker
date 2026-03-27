@@ -63,6 +63,7 @@ export default function AlertPanel() {
       // Include visitHistory for most up-to-date last visit date
       const storeId = a.storeId || store?.id;
       const vhDates = (visitHistory && storeId ? (visitHistory[storeId] || []) : [])
+        .map(e => (typeof e === 'string' ? e : e.date))
         .filter(Boolean).map(d => d.split('T')[0]);
       const newestVH = vhDates.length > 0 ? vhDates.sort().pop() : null;
       const storeLastVisited = store?.lastVisited ? store.lastVisited.split('T')[0].split(' ')[0] : null;

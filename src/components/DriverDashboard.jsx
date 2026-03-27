@@ -87,7 +87,7 @@ export default function DriverDashboard() {
         scheduledDate,
         isFuture,
         stops: stops.map(stop => {
-          const visits = visitHistory[stop.storeId] || [];
+          const visits = (visitHistory[stop.storeId] || []).map(e => typeof e === 'string' ? e : e.date);
           const weekEnd = getDayDate(weekOf, 'friday');
           const visitedExact = visits.includes(scheduledDate);
           const visitedSameWeek = !visitedExact && visits.some(v => v >= weekOf && v <= weekEnd);
@@ -151,6 +151,7 @@ export default function DriverDashboard() {
   if (!selectedRoute) {
     return (
       <div className="dd-page">
+        <p className="dd-caption">Tracks driver performance by route — scores schedule adherence, store coverage, alert response, and efficiency. Select a route to see today's stop progress, weekly compliance, and visit trends.</p>
         <div className="dd-header">
           <h2>Driver Dashboard</h2>
           <select className="dd-route-select" value="" onChange={e => setSelectedRoute(e.target.value)}>
@@ -168,6 +169,7 @@ export default function DriverDashboard() {
 
   return (
     <div className="dd-page">
+      <p className="dd-caption">Tracks driver performance by route — scores schedule adherence, store coverage, alert response, and efficiency. Select a route to see today's stop progress, weekly compliance, and visit trends.</p>
       {/* Header */}
       <div className="dd-header">
         <h2>Driver Dashboard</h2>

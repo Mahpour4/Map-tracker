@@ -662,11 +662,11 @@ async function processQuery(text, routeFilter, groupConfig) {
     if (routeFilter) {
       if (cmd === 'alerts' || cmd === 'alert' || cmd === 'a') return handleAlerts(args, routeFilter);
       if (cmd === 'truck' || cmd === 't') {
-        if (/^eta\b/i.test(args)) return await handleWarehouse(args.replace(/^eta\s*/i, '').trim(), groupConfig);
+        if (/^eta\b/i.test(args) || /\beta$/i.test(args)) return await handleWarehouse(args.replace(/^eta\s*/i, '').replace(/\s*eta$/i, '').trim(), groupConfig);
         return await handleTruck(args, groupConfig);
       }
       if (cmd === 'wh' || cmd === 'warehouse' || cmd === 'home') return await handleWarehouse(args, groupConfig);
-      if (cmd === 'help' || cmd === '?') return `*📱 Map Tracker — Commands*\n\n*alerts* — This week's open alerts\n*alerts all* — All open alerts\n*alerts today* — Today's alerts\n\n*truck [route #]* — Truck location & ETA to delivery destination\n*truck eta [route #]* — Truck ETA back to warehouse\n  Examples: truck 211 | truck eta 211`;
+      if (cmd === 'help' || cmd === '?') return `*📱 Map Tracker — Commands*\n\n*alerts* — This week's open alerts\n*alerts all* — All open alerts\n*alerts today* — Today's alerts\n\n*truck [truck#]* — Truck location & ETA to delivery destination\n*truck [truck#] eta* — Truck ETA back to warehouse\n  Examples: truck 211 | truck 211 eta`;
       return `ℹ️ This group supports: *alerts*, *truck*, and *wh*\n\n*alerts* — open alerts for this group's routes\n*truck [truck#]* — truck location & ETA to delivery destination\n*wh [truck#]* — truck ETA back to warehouse\n  Example: truck 211 | wh 211`;
     }
 
@@ -675,7 +675,7 @@ async function processQuery(text, routeFilter, groupConfig) {
     if (cmd === 'alerts' || cmd === 'alert' || cmd === 'a') return handleAlerts(args, routeFilter);
     if (cmd === 'order' || cmd === 'orders')                return handleOrder(args);
     if (cmd === 'truck' || cmd === 't') {
-      if (/^eta\b/i.test(args)) return await handleWarehouse(args.replace(/^eta\s*/i, '').trim(), groupConfig);
+      if (/^eta\b/i.test(args) || /\beta$/i.test(args)) return await handleWarehouse(args.replace(/^eta\s*/i, '').replace(/\s*eta$/i, '').trim(), groupConfig);
       return await handleTruck(args, groupConfig);
     }
     if (cmd === 'wh' || cmd === 'warehouse' || cmd === 'home') return await handleWarehouse(args, groupConfig);

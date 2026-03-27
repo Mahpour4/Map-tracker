@@ -520,8 +520,9 @@ export default function MapView() {
     // Show when visitMode is on OR a specific route is selected OR a legend tier is active
     if (!visitMode && filterRoute === 'all' && !hasStaleFilter) return [];
     const source = hasStaleFilter
-      ? filteredStores
+      ? filteredStores.filter(s => s.dormant !== 'Yes')
       : filteredStores.filter((s) => {
+          if (s.dormant === 'Yes') return false;
           const d = getDaysSinceVisit(getLatestDate(s));
           return d !== null && d > 7;
         });
@@ -565,6 +566,7 @@ export default function MapView() {
     }
     if (hideCash) base = base.filter(s => s.type !== 'other');
     if (hideChain) base = base.filter(s => s.type === 'other' || s.type === 'military');
+    base = base.filter(s => s.dormant !== 'Yes');
     base.forEach(s => {
       const route = s.routeNumber && s.routeNumber !== '0' ? s.routeNumber : 'Unassigned';
       if (!byRoute[route]) byRoute[route] = { total: 0, visited: 0 };

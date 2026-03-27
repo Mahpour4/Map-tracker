@@ -6,6 +6,17 @@ export const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 export const DAY_OFFSETS = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
 const DAY_NAMES = ['', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
+// ── Visit history helpers ──────────────────────────────────────────────────────
+// visitHistory entries can be plain strings "YYYY-MM-DD" (old) or { date, by } (new)
+
+export function vhDate(entry) {
+  return typeof entry === 'string' ? entry : entry?.date || '';
+}
+
+export function vhBy(entry) {
+  return typeof entry === 'string' ? null : entry?.by || null;
+}
+
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
 export function localDateStr(d = new Date()) {
@@ -105,7 +116,7 @@ export function getScheduleAdherence(schedules, route, visitHistoryMap, weekOf) 
       total++;
       const scheduledDate = getDayDate(targetWeek, day);
       const weekEnd = getDayDate(targetWeek, 'friday');
-      const visits = visitHistoryMap[item.storeId] || [];
+      const visits = (visitHistoryMap[item.storeId] || []).map(vhDate);
 
       if (visits.includes(scheduledDate)) {
         exact++;

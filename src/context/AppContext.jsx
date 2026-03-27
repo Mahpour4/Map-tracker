@@ -328,11 +328,17 @@ function reducer(state, action) {
       return { ...state, visitHistory: loadedVH, stores: reconciledStores };
     }
     case 'RECORD_VISIT': {
-      const { storeId, date } = action.payload;
+      const { storeId, date, by } = action.payload;
       const existing = state.visitHistory[storeId] || [];
-      if (existing.includes(date)) return state;
-      const updated = [...existing, date].sort();
-      const newest = updated[updated.length - 1];
+      const entry = by ? { date, by } : date;
+      const alreadyExists = existing.some(e => (typeof e === 'string' ? e : e.date) === date);
+      if (alreadyExists) return state;
+      const updated = [...existing, entry].sort((a, b) => {
+        const da = typeof a === 'string' ? a : a.date;
+        const db = typeof b === 'string' ? b : b.date;
+        return da < db ? -1 : da > db ? 1 : 0;
+      });
+      const newest = (() => { const last = updated[updated.length - 1]; return typeof last === 'string' ? last : last.date; })();
       return {
         ...state,
         visitHistory: { ...state.visitHistory, [storeId]: updated },
@@ -345,12 +351,18 @@ function reducer(state, action) {
       const entries = action.payload;
       let newVH = { ...state.visitHistory };
       let newStores = state.stores;
-      entries.forEach(({ storeId, date }) => {
+      entries.forEach(({ storeId, date, by }) => {
         const existing = newVH[storeId] || [];
-        if (!existing.includes(date)) {
-          const updated = [...existing, date].sort();
+        const alreadyExists = existing.some(e => (typeof e === 'string' ? e : e.date) === date);
+        if (!alreadyExists) {
+          const entry = by ? { date, by } : date;
+          const updated = [...existing, entry].sort((a, b) => {
+            const da = typeof a === 'string' ? a : a.date;
+            const db = typeof b === 'string' ? b : b.date;
+            return da < db ? -1 : da > db ? 1 : 0;
+          });
           newVH = { ...newVH, [storeId]: updated };
-          const newest = updated[updated.length - 1];
+          const newest = (() => { const last = updated[updated.length - 1]; return typeof last === 'string' ? last : last.date; })();
           newStores = newStores.map(s =>
             s.id === storeId && (!s.lastVisited || newest > s.lastVisited)
               ? { ...s, lastVisited: newest }
@@ -1774,7 +1786,7 @@ export function AppProvider({ children }) {
       []
     ),
     recordVisit: useCallback(
-      (storeId, date) => dispatch({ type: 'RECORD_VISIT', payload: { storeId, date } }),
+      (storeId, date, by) => dispatch({ type: 'RECORD_VISIT', payload: { storeId, date, by } }),
       []
     ),
     bulkRecordVisits: useCallback(

@@ -401,6 +401,7 @@ export function processStoresFromCsv(csvText) {
         subTerritory: row['Sub-Territory'] || 'Unassigned',
         lastSaleDate: row['Last Sale'] || null,
         lastVisited: row['Last Visited'] || null,
+        dormant: row['Dormant'] === 'Yes' ? 'Yes' : 'No',
         type: detectStoreType(row['Store Name'], row.ID),
         zoneId: null,
         subZoneId: null,
@@ -430,7 +431,10 @@ export function processStoresFromCsv(csvText) {
 const CSV_HEADER = 'ID,Store Number,Store Name,Address,City,State,Zip Code,Route Number,Driver,Region,Territory,Sub-Territory,Latitude,Longitude,Last Sale,Last Visited,Dormant';
 
 function isDormantForCsv(store) {
-  // Use the most recent of lastSaleDate or lastVisited
+  // Respect explicit dormant flag set by the user
+  if (store.dormant === 'Yes') return true;
+  if (store.dormant === 'No') return false;
+  // Fallback: time-based calculation if no explicit flag
   const latest = [store.lastSaleDate, store.lastVisited].filter(Boolean).sort().pop();
   if (!latest) return true;
   const raw = latest.split('T')[0];

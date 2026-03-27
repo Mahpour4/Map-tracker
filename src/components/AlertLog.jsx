@@ -229,6 +229,7 @@ export default function AlertLog() {
       // Get the most recent visit date from visitHistory (more up-to-date than store.lastVisited)
       const storeId = a.storeId || store?.id;
       const vhDates = (visitHistory && storeId ? (visitHistory[storeId] || []) : [])
+        .map(e => (typeof e === 'string' ? e : e.date))
         .filter(Boolean)
         .map(d => d.split('T')[0]);
       const newestVisitFromHistory = vhDates.length > 0 ? vhDates.sort().pop() : null;
@@ -2570,6 +2571,7 @@ export default function AlertLog() {
 
                         // Visit/sale context from CSV + visitHistory
                         const storeVisits = (visitHistory && a.store?.id ? (visitHistory[a.store.id] || []) : [])
+                          .map(e => (typeof e === 'string' ? e : e.date))
                           .filter(Boolean)
                           .map(d => d.split('T')[0])
                           .sort((x, y) => y.localeCompare(x)); // newest first
