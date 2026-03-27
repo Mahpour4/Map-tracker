@@ -12,7 +12,7 @@ echo ═════════════════════════
 echo.
 
 echo [STEP 1] SSHing into Oracle and deploying...
-ssh ubuntu@129.159.177.50 "cd /home/ubuntu/Map-tracker && git stash && git pull origin claude/map-stores-zones-zcvTK && pm2 restart whatsapp-bot && echo DEPLOY_OK"
+ssh -i "%~dp0private-key\ssh-key-2026-03-25.key" ubuntu@129.159.177.50 "cd /home/ubuntu/Map-tracker && git stash && git pull origin claude/map-stores-zones-zcvTK && pm2 restart whatsapp-bot && echo DEPLOY_OK"
 
 if errorlevel 1 (
     echo.

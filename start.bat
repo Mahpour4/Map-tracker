@@ -37,6 +37,13 @@ if %ERRORLEVEL% == 0 (
 )
 echo.
 
+:: Kill any existing process on port 3001 before starting
+echo Checking for existing process on port 3001...
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":3001" ^| findstr "LISTENING"') do (
+    echo   [INFO] Killing stale PID %%a on port 3001...
+    taskkill /F /PID %%a >nul 2>&1
+)
+
 :: Start the GlobalWorx local service in a separate window (WhatsApp disabled — runs on Oracle)
 set GLOBALWORX_ONLY=true
 start "GlobalWorx Local Service" cmd /k "cd scripts\whatsapp-service && node server.js"
