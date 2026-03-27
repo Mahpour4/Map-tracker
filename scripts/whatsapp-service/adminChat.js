@@ -467,8 +467,10 @@ const ROUTE_DEST_FALLBACKS = {
 
 async function handleTruck(args, groupConfig) {
   const parts = (args || '').trim().split(/\s+/);
-  const routeNum = (parts[0] || '').replace(/^rt?\.?\s*/i, '');
-  const destOverrideKey = parts.slice(1).join(' ').toLowerCase().trim();
+  const firstPart = (parts[0] || '').replace(/^rt?\.?\s*/i, '');
+  // Default to truck 211 — dedicated delivery truck for all routes
+  const routeNum = firstPart || '211';
+  const destOverrideKey = (firstPart ? parts.slice(1) : parts).join(' ').toLowerCase().trim();
 
   if (!routeNum) return '❓ Usage: *truck [truck#] [destination?]*\nExamples: truck 211 | truck 211 woodbridge | truck 211 salisbury';
 
@@ -518,9 +520,11 @@ async function handleTruck(args, groupConfig) {
 
 async function handleWarehouse(args, groupConfig) {
   const parts = (args || '').trim().split(/\s+/);
-  const routeNum = (parts[0] || '').replace(/^rt?\.?\s*/i, '');
+  const firstPart = (parts[0] || '').replace(/^rt?\.?\s*/i, '');
+  // Default to truck 211 — dedicated delivery truck for all routes
+  const routeNum = firstPart || '211';
   // Optional filter: "wh 211 salisbury" or "wh 211 main" etc.
-  const filter = parts.slice(1).join(' ').toLowerCase().trim();
+  const filter = (firstPart ? parts.slice(1) : parts).join(' ').toLowerCase().trim();
 
   if (!routeNum) return '❓ Usage: *wh [truck#]*\nExamples: wh 211 | wh 209';
 
@@ -528,6 +532,27 @@ async function handleWarehouse(args, groupConfig) {
 
   const apiKey = groupConfig?.motiveApiKey;
   if (!apiKey) return '⚠️ Motive API key not configured.';
+
+  // If no explicit filter, use group's configured destination (e.g. Woodbridge vs Salisbury)
+  const groupDest = !filter && groupConfig?.destination ? groupConfig.destination : null;
+  if (groupDest) {
+    // Show single ETA to the group's delivery destination
+    try {
+      const result = await getRouteETA(apiKey, routeNum, groupDest.lat, groupDest.lng);
+      if (result.error) return `⚠️ ${result.error}`;
+      const lines = [
+        `🚚 *Truck ${routeNum} — ${result.model}*`,
+        `📍 Currently: ${result.description || 'Unknown'}`,
+      ];
+      if (result.driverName) lines.push(`👤 Driver: ${result.driverName}`);
+      if (result.speed != null) lines.push(`🚗 Speed: ${Math.round(result.speed)} mph`);
+      if (result.route) lines.push(`\n📦 ETA to ${groupDest.name}: ${result.route.distanceMiles} mi — ~${result.route.durationText}`);
+      else lines.push(`\n📦 ETA to ${groupDest.name}: routing unavailable`);
+      return lines.join('\n');
+    } catch (err) {
+      return `⚠️ Error fetching truck location: ${err.message}`;
+    }
+  }
 
   const warehouses = loadWarehouses();
   if (!warehouses.length) return '⚠️ No warehouses configured.';
