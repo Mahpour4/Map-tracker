@@ -15,11 +15,13 @@ echo.
 
 :: ── STEP 1: Pull latest ───────────────────────
 echo [1/4] Pulling latest from GitHub...
+git stash
 git pull --rebase
 if errorlevel 1 (
     echo [ERROR] Pull failed. Resolve conflicts and re-run.
     pause & exit /b 1
 )
+git stash pop
 
 :: ── STEP 2: Stage + commit ────────────────────
 git add -A
