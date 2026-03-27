@@ -447,6 +447,7 @@ if (process.env.GLOBALWORX_ONLY !== 'true') {
 }
 
 app.listen(PORT, () => {
+  console.log(`[Server] Deploy endpoint: POST /api/admin/deploy ✓`);
   if (process.env.GLOBALWORX_ONLY === 'true') {
     console.log(`\n🌐 GlobalWorx local service running on http://localhost:${PORT}`);
     console.log(`   WhatsApp: disabled (running on Oracle Cloud)`);
