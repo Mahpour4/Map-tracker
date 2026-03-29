@@ -2,6 +2,7 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const adminChat = require('./adminChat');
+const { startLocationPoller } = require('./motiveApi');
 
 let client = null;
 let status = 'disconnected'; // disconnected | qr-pending | connected
@@ -41,6 +42,7 @@ try {
   adminPhones  = cfg.phones  || [];
   botPhone     = cfg.botPhone || null;
   motiveApiKey = cfg.motiveApiKey || null;
+  if (motiveApiKey) startLocationPoller(motiveApiKey);
 } catch { }
 
 function saveAdminConfig() {
@@ -68,6 +70,7 @@ function getAdminConfig() {
 }
 function setMotiveApiKey(key) {
   motiveApiKey = key || null;
+  if (motiveApiKey) startLocationPoller(motiveApiKey);
   saveAdminConfig();
 }
 function getGroupConfig(groupId) {

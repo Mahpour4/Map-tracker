@@ -147,4 +147,14 @@ async function getRouteETA(apiKey, routeNumber, destLat, destLng) {
   };
 }
 
-module.exports = { getRouteETA, FLEET };
+// ── Background cache warmer ───────────────────────────────────────────────────
+// Call this once on startup with the API key so the first truck query is instant
+
+function startLocationPoller(apiKey) {
+  if (!apiKey) return;
+  const refresh = () => fetchVehicleLocations(apiKey).catch(() => {});
+  refresh(); // warm immediately on startup
+  setInterval(refresh, 55 * 1000); // keep warm every 55s
+}
+
+module.exports = { getRouteETA, FLEET, startLocationPoller };
