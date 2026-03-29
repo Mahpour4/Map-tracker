@@ -186,4 +186,6 @@ RefNumber,EmailID,StoreID,StoreNumber,StoreName,City,Vendor,Company,RouteNumber,
 "ADUSA-9050455","19d2f2c2c996f4da","FLW01161","1161","Food Lion","Sterling","WISE FOODS","ADUSA","209","2026-03-27","","","","03/27/2026 08:01 AM","Excessive out of stocks","Excessive out of stocks. Missing sale items in the Wise set.","Kunkel, Robert"
 "ADUSA-9050267","19d2f1cea1e2c44d","FLW01261","1261","Food Lion","Woodbridge","WISE FOODS","ADUSA","209","2026-03-27","","","","03/27/2026 07:45 AM","Excessive out of stocks","Excessive out of stocks.","Steinback, Lisa"
 "ADUSA-9049917","19d2eea4c7456d3c","FLW01458","1458","Food Lion","Laurel","WISE FOODS","ADUSA","210","2026-03-27","","","","03/27/2026 06:49 AM","Excessive out of stocks","Excessive out of stocks.","Smack, Jessica"
-"ADUSA-9059353","19d3b21c4a33c5d2","FLW01414","1414","Food Lion","Upper Marlboro","WISE FOODS","ADUSA","207","2026-03-29","","","","03/29/2026 03:45 PM","Merchandising service","Merchandising service. Have not received service from wise in two days, order still sitting in back room","Clomax, Tiara"
+"ADUSA-9059353","19d3b21c4a33c5d2","FLW01414","1414","Food Lion","Upper Marlboro","WISE FOODS","ADUSA","207","2026-03-29","Clomax, Tiara","Merchandising service","No service 
+Location: Shelf/In aisle, Off shelf displays/End caps 
+Store stocked: No","03/29/2026 03:45 PM","Merchandising service","Merchandising service. Have not received service from wise in two days, order still sitting in back room","Clomax, Tiara"
