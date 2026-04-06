@@ -95,7 +95,7 @@ FLW02561,02561,Food Lion 2561,110 BROADKILL RD,Milton,DE,19968,206,Route 206 Dri
 FLW02614,FLW02614,Food Lion 2614,11007 MANKLIN CREEK RD,Berlin,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,Berlin,Berlin,38.3226,-75.2177,2026-04-02,2026-03-19,No
 FLW02688,02688,Food Lion 2688,1 JACKSONVILLE RD,Crisfield,MD,21817,206,Route 210 Driver,Eastern Shore Maryland,Crisfield,Crisfield,37.9919984,-75.8445847,2026-03-31,2026-03-31,No
 FLW00397,FLW00397,Food Lion 397,9936 STEPHEN DECATUR HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.335623,-75.111881,2026-04-02,2026-04-02,No
-FLW00490,00490,Food Lion 490,25102 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.7012511,-75.7148439,2026-03-23,2026-03-30,No
+FLW00490,00490,Food Lion 490,25102 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.7012511,-75.7148439,2026-03-23,2026-04-06,No
 FLW00658,FLW00658,Food Lion 658,10138 OLD OCEAN CITY BLVD,BERLIN,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,BERLIN,BERLIN,38.333511,-75.2112983,2026-04-02,2026-04-02,No
 FLW00698,FLW00698,Food Lion 698,840 S 5th ST,Denton,MD,21629,210,Route 210 Driver,Eastern Shore Maryland,Denton,Denton,38.8872555,-75.8286115,2026-04-03,2026-04-03,No
 FLW00800,00800,Food Lion 800,817 Snow Hill Rd,Salisbury,MD,21804,206,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.350872,-75.5837487,2026-03-31,2026-03-31,No
@@ -117,7 +117,7 @@ IND00103,IND00103,Linkwood Market,Linkwood,Linkwood,MD,21835,210,Route 210 Drive
 IND00104,IND00104,Montego Bay Supermarket,12903 COASTAL HWY,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4345355,-75.0542625,,,Yes
 RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,206,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,2026-03-25,2026-03-06,No
 FLW02522,FLW02522,Food Lion 2522,2466 CENTREVILLE RD,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.044,-76.0667,2026-04-04,2026-04-04,No
-FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,2026-03-30,2026-03-30,No
+FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,2026-03-30,2026-04-06,No
 WMW00272,WMW00272,Weis Market 272,24832 JOHN J WILLIAMS HWY,Millsboro,DE,19966,206,Route 210 Driver,Delaware,Millsboro,Millsboro,38.6369733,-75.1950002,2026-03-06,2026-04-03,No
 AMW02836,AMW02836,Acme 2836,236 E Glenwood Ave,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Smyrna,Smyrna,39.3051701,-75.6090861,2026-04-02,2026-04-02,No
 AMW00293,AMW00293,Acme 293,9507 COASTAL HWY,Ocean City,MD,21842,206,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4104309,-75.0582964,2026-03-13,2026-03-26,No
@@ -274,7 +274,7 @@ CASH3017,CASH3017,Woo Family Mart,2419 Reisterstown Rd,Baltimore,MD,21217,204,Ro
 CASH3034,CASH3034,Super Convenience & PH,3020 Liberty Heights Ave,Baltimore,MD,21215,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3229089,-76.6668343,,2026-02-11,No
 MISC0204,MISC0204,Misc Cash 204,,Baltimore,MD,,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2908816,-76.610759,2026-04-02,2026-02-12,No
 WAW01741,WAW01741,Walmart 1741,939 N Dupont Blvd,Milford,DE,19963,206,Route 210 Driver,Delaware,Milford,Milford,38.9292648,-75.435143,2026-04-01,2026-04-01,No
-WAW05039,WAW05039,Walmart 5039,263 Walmart Dr,Camden,DE,19934,210,Route 210 Driver,Delaware,Camden,Camden,39.1134,-75.5417,2026-04-02,2026-03-31,No
+WAW05039,WAW05039,Walmart 5039,263 Walmart Dr,Camden,DE,19934,210,Route 210 Driver,Delaware,Camden,Camden,39.1134,-75.5417,2026-04-02,2026-04-06,No
 CASH0007,CASH0007,7 Star W North,3201 W North Ave,Baltimore,MD,,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3085577,-76.6712446,2026-04-02,2026-02-10,No
 CASH0022,CASH0022,Allfay Mini Market,1201 E Preston St,Baltimore,MD,21202,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3049262,-76.6016685,2026-02-26,2026-02-10,No
 CASH0174,CASH0174,Gomez K&S Grocery Stores,1301 N Luzerne Ave,Baltimore,MD,,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3059958,-76.5810832,2026-02-10,2026-02-10,No
