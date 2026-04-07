@@ -7,7 +7,7 @@ SFW02383,02383,Shoppers 2383,10501 Martin Luther King Jr. Hwy,Bowie,MD,20720,207
 SFW02650,SFW02650,Shoppers 2650,4720 CHERRY HILL RD,COLLEGE PARK,MD,20740,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,39.0166845,-76.9323964,,2025-09-16,Yes
 WGW00007,WGW00007,Wegmans 07,45131 COLUMBIA PLACE,STERLING,VA,20166,,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.0069806,-77.4407079,,2025-09-17 13:05:57,Yes
 SFW07540,SFW07540,Shoppers 7540,5457 BALTIMORE NATIONAL PIKE,BALTIMORE,MD,21229,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2897973,-76.7184422,,,Yes
-FLW01668,01668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1305901,-76.5571402,2026-03-30,2026-04-06,No
+FLW01668,01668,Food Lion 1668,350 MOUNTAIN RD,PASADENA,MD,21122,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1305901,-76.5571402,2026-04-06,2026-04-06,No
 GBW00001,GBW00001,Geresbecks G-1,7931 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.135998,-76.585533,,2025-10-30 10:55:44,Yes
 WGW00053,WGW00053,Wegmans 53,21 Wegmans Blvd,Abingdon,MD,21009,214,Route 204 Driver,Harford County,Harford County,Harford County,39.4661496,-76.3094519,2026-01-09,2025-10-22 21:10:04,No
 FLW01547,FLW01547,Food Lion 1547,2250 HANSON RD,EDGEWOOD,MD,21040,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4282968,-76.2981246,2026-04-02,2026-03-19,No
@@ -69,10 +69,10 @@ GBW00002,GBW00002,Geresbecks Baltimore,2109 Eastern Blvd,Baltimore,MD,21220,204,
 FLW01653,FLW01653,Food Lion 1653,1565 HYDE PARK RD,ESSEX,MD,21221,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.2988149,-76.4370235,2026-04-02,2026-03-17,No
 RDW00096,RDW00096,Redners 96,7938 EASTERN AVE,BALTIMORE,MD,21224,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2965631,-76.507546,2026-03-23,2026-04-01,No
 WAW00098,WAW00098,Walmart Glen Burnie,6721 Chesapeake Center Dr,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1899534,-76.6059009,,2026-03-08,No
-FLW01543,01543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1273757,-76.6415943,2026-03-30,2026-03-17,No
+FLW01543,01543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1273757,-76.6415943,2026-04-06,2026-03-17,No
 FLW01153,01153,Food Lion 1153,12158 BRITTINGHAM LN,Princess Anne,MD,21853,206,Route 206 Driver,Eastern Shore Maryland,Princess Anne,Princess Anne,38.2160415,-75.7009628,2026-03-31,2026-04-06,No
 FLW01158,FLW01158,Food Lion 1158,6 WASHINGTON ST,Cambridge,MD,21613,210,Route 210 Driver,Eastern Shore Maryland,Cambridge,Cambridge,38.5597277,-76.0642697,2026-04-04,2026-04-04,No
-FLW01179,01179,Food Lion 1179,4092 LANKFORD HWY,Exmore,VA,23350,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.5216935,-75.8315606,2026-03-30,2026-04-06,No
+FLW01179,01179,Food Lion 1179,4092 LANKFORD HWY,Exmore,VA,23350,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.5216935,-75.8315606,2026-04-06,2026-04-06,No
 FLW01206,01206,Food Lion 1206,32 N DUPONT HWY,SELBYVILLE,DE,19975,206,Route 210 Driver,Delaware,SELBYVILLE,SELBYVILLE,38.4605,-75.221,2026-04-01,2026-03-11,No
 FLW01211,01211,Food Lion 1211,1216 Nanticoke RD,SALISBURY,MD,21801,206,Route 210 Driver,Eastern Shore Maryland,SALISBURY,SALISBURY,38.3693629,-75.6151373,2026-03-31,2026-03-31,No
 FLW01268,FLW01268,Food Lion 1268,232 Tilghman Road,SALISBURY,MD,21804,206,Route 206 Driver,Eastern Shore Maryland,SALISBURY,SALISBURY,38.3676672,-75.5490973,2026-04-02,2026-04-02,No
@@ -80,8 +80,8 @@ FLW01294,01294,Food Lion 1294,951 N Dupont blvd,Milford,DE,19963,206,Route 206 D
 FLW01297,FLW01297,Food Lion 1297,3344 Hayman Dr,Federalsburg,MD,21632,210,Route 210 Driver,Eastern Shore Maryland,Federalsburg,Federalsburg,38.6987967,-75.78726,2026-04-03,2026-04-03,No
 FLW01313,FLW01313,Food Lion 1313,300 THOMPSON CREEK MALL,Stevensville,MD,21666,210,Route 210 Driver,Eastern Shore Maryland,Stevensville,Stevensville,38.9756668,-76.3145597,2026-04-04,2026-04-04,No
 FLW01369,01369,Food Lion 1369,501 W Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Dover,Dover,39.4516822,-75.723283,2026-03-31,2026-03-31,No
-FLW01385,01385,Food Lion 1385,1030 FOREST AVE,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1582,-75.5244,2026-04-03,2026-02-11,No
-FLW01419,01419,Food Lion 1419,250 GATEWAY SOUTH BLVD,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.1228365,-75.4985452,2026-04-02,2026-04-06,No
+FLW01385,01385,Food Lion 1385,1030 FOREST AVE,Dover,DE,19904,210,Route 210 Driver,Delaware,Dover,Dover,39.1582,-75.5244,2026-04-06,2026-02-11,No
+FLW01419,01419,Food Lion 1419,250 GATEWAY SOUTH BLVD,Dover,DE,19901,210,Route 210 Driver,Delaware,Dover,Dover,39.1228365,-75.4985452,2026-04-06,2026-04-06,No
 FLW01426,01426,Food Lion 1426,215 STADIUM ST,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Dover,Dover,39.2801631,-75.5909896,2026-04-02,2026-04-02,No
 FLW01458,01458,Food Lion 1458,30214 SUSSEX HWY UNIT 5,Laurel,DE,19956,210,Route 210 Driver,Delaware,Laurel,Laurel,38.5562,-75.5713,2026-04-01,2026-04-04,No
 FLW01560,01560,Food Lion 1560,206 N Fruitland Blvd,Fruitland,MD,21826,206,Route 210 Driver,Eastern Shore Maryland,Fruitland,Fruitland,38.3244654,-75.6177442,2026-03-31,2026-03-31,No
@@ -89,13 +89,13 @@ FLW02117,FLW02117,Food Lion 2117,31810 River Rd,Millington,MD,21651,210,Route 21
 FLW02123,FLW02123,Food Lion 2123,37468 LION DR,Selbyville,DE,19975,206,Route 206 Driver,Delaware,Selbyville,Selbyville,38.4741288,-75.1062007,2026-04-03,2026-04-02,No
 FLW02224,02224,Food Lion 2224,22954 SUSSEX HWY,SEAFORD,DE,19973,210,Route 210 Driver,Delaware,SEAFORD,SEAFORD,38.6529282,-75.594538,2026-04-01,2026-04-04,No
 FLW00246,FLW00246,Food Lion 246,11801 COASTAL HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.42258,-75.0560709,2026-04-02,2026-04-03,No
-FLW02508,02508,Food Lion 2508,22485 Lankford Hwy,Cape Charles,VA,23310,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.2693824,-75.973054,2026-03-30,2026-04-06,No
+FLW02508,02508,Food Lion 2508,22485 Lankford Hwy,Cape Charles,VA,23310,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.2693824,-75.973054,2026-04-06,2026-04-06,No
 FLW02521,FLW02521,Food Lion 2521,9537 Bridgeville Center Rd,Bridgeville,DE,19933,210,Route 210 Driver,Delaware,Bridgeville,Bridgeville,38.7191431,-75.5851018,2026-04-03,2026-04-03,No
 FLW02561,02561,Food Lion 2561,110 BROADKILL RD,Milton,DE,19968,206,Route 206 Driver,Delaware,Milton,Milton,38.7901428,-75.3148388,2026-04-01,2026-04-01,No
 FLW02614,FLW02614,Food Lion 2614,11007 MANKLIN CREEK RD,Berlin,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,Berlin,Berlin,38.3226,-75.2177,2026-04-02,2026-03-19,No
-FLW02688,02688,Food Lion 2688,1 JACKSONVILLE RD,Crisfield,MD,21817,206,Route 210 Driver,Eastern Shore Maryland,Crisfield,Crisfield,37.9919984,-75.8445847,2026-03-31,2026-04-06,No
+FLW02688,02688,Food Lion 2688,1 JACKSONVILLE RD,Crisfield,MD,21817,206,Route 210 Driver,Eastern Shore Maryland,Crisfield,Crisfield,37.9919984,-75.8445847,2026-04-06,2026-04-06,No
 FLW00397,FLW00397,Food Lion 397,9936 STEPHEN DECATUR HWY,Ocean City,MD,21842,206,Route 206 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.335623,-75.111881,2026-04-02,2026-04-02,No
-FLW00490,00490,Food Lion 490,25102 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.7012511,-75.7148439,2026-03-23,2026-04-06,No
+FLW00490,00490,Food Lion 490,25102 Lankford Hwy,Onley,VA,23418,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.7012511,-75.7148439,2026-04-06,2026-04-06,No
 FLW00658,FLW00658,Food Lion 658,10138 OLD OCEAN CITY BLVD,BERLIN,MD,21811,206,Route 206 Driver,Eastern Shore Maryland,BERLIN,BERLIN,38.333511,-75.2112983,2026-04-02,2026-04-02,No
 FLW00698,FLW00698,Food Lion 698,840 S 5th ST,Denton,MD,21629,210,Route 210 Driver,Eastern Shore Maryland,Denton,Denton,38.8872555,-75.8286115,2026-04-03,2026-04-03,No
 FLW00800,00800,Food Lion 800,817 Snow Hill Rd,Salisbury,MD,21804,206,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.350872,-75.5837487,2026-03-31,2026-03-31,No
@@ -117,14 +117,14 @@ IND00103,IND00103,Linkwood Market,Linkwood,Linkwood,MD,21835,210,Route 210 Drive
 IND00104,IND00104,Montego Bay Supermarket,12903 COASTAL HWY,Ocean City,MD,21842,210,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4345355,-75.0542625,,,Yes
 RDW00018,RDW00018,Redners 18,515 College Park Dr,Georgetown,DE,19947,206,Route 210 Driver,Delaware,Georgetown,Georgetown,38.6904,-75.3857,2026-03-25,2026-03-06,No
 FLW02522,FLW02522,Food Lion 2522,2466 CENTREVILLE RD,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.044,-76.0667,2026-04-04,2026-04-04,No
-FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,2026-03-30,2026-04-06,No
+FLW02555,02555,Food Lion 2555,7013 Lankford Hwy,Oak Hall,VA,23416,206,Route 206 Driver,Eastern Shore Maryland,Salisbury,Salisbury,37.943641,-75.539129,2026-04-06,2026-04-06,No
 WMW00272,WMW00272,Weis Market 272,24832 JOHN J WILLIAMS HWY,Millsboro,DE,19966,206,Route 210 Driver,Delaware,Millsboro,Millsboro,38.6369733,-75.1950002,2026-03-06,2026-04-03,No
 AMW02836,AMW02836,Acme 2836,236 E Glenwood Ave,Smyrna,DE,19977,210,Route 210 Driver,Delaware,Smyrna,Smyrna,39.3051701,-75.6090861,2026-04-02,2026-04-02,No
 AMW00293,AMW00293,Acme 293,9507 COASTAL HWY,Ocean City,MD,21842,206,Route 210 Driver,Eastern Shore Maryland,Ocean City,Ocean City,38.4104309,-75.0582964,2026-03-13,2026-03-26,No
 AMW03816,AMW03816,Acme 3816,460 E Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Middletown,Middletown,39.4485146,-75.697669,2026-03-31,2026-03-31,No
 AMW03841,AMW03841,Acme 3841,210 Marlboro Ave,Easton,MD,21601,210,Route 210 Driver,Eastern Shore Maryland,Easton,Easton,38.7800982,-76.0834608,2026-03-27,2026-04-04,No
 RDW00049,RDW00049,Redners 49,17 WASHINGTON SQ,Chestertown,MD,21620,210,Route 210 Driver,Eastern Shore Maryland,Chestertown,Chestertown,39.2302921,-76.0704093,2026-03-27,2026-03-27,No
-RDW00058,RDW00058,Redners,2500 S DUPONT HWY,Camden,DE,19934,210,Route 210 Driver,Delaware,Camden,Camden,39.114359,-75.537088,2026-04-03,2026-04-02,No
+RDW00058,RDW00058,Redners,2500 S DUPONT HWY,Camden,DE,19934,210,Route 210 Driver,Delaware,Camden,Camden,39.114359,-75.537088,2026-04-06,2026-04-02,No
 AMW00820,AMW00820,Acme 820,611 RAILROAD AVE,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.04426146722824,-76.06968858409427,2026-03-27,2026-04-04,No
 AMW00821,AMW00821,Acme 821,711 Washington Ave,Chestertown,MD,21620,210,Route 210 Driver,Eastern Shore Maryland,Chestertown,Chestertown,39.2261872,-76.070325,,2026-03-27,No
 AMW00896,AMW00896,Acme 896,751 S SALISBURY BLVD,SALISBURY,MD,21801,206,Route 210 Driver,Eastern Shore Maryland,SALISBURY,SALISBURY,38.3548757,-75.5993307,2026-03-31,2026-03-31,No
@@ -169,22 +169,22 @@ WMW05105,WMW05105,Walmart 5105,10 Riverton Commons Dr,Front Royal,VA,22630,0,,Un
 IND00205,IND00205,Nothing Better LLC Cash,14882 Hardscrabble Rd,Seaford,DE,19973,206,Route 206 Driver,Delaware/Seaford,Seaford,Seaford,38.6192809,-75.4832676,2026-03-16,2026-03-20,No
 GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1588238,-76.5162013,,,Yes
 MISC0121,MISC0121,Salisbury Storage,2309 E Naylor Mill Rd,Salisbury,MD,21804,210,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4034658,-75.5624319,,2026-04-07,No
-CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-04-04,2026-04-06,No
+CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-04-06,2026-04-06,No
 CMW05235,05235,Comm Ft Belvoir 5235,6020 GORGAS RD,Fort Belvoir,VA,22060,209,Route 209 Driver,Northern Virginia,Fort Belvoir,Fort Belvoir,38.7194544,-77.145685,2026-04-04,2026-04-04,No
 CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-03-24,2026-04-06,No
 FLW00378,00378,Food Lion 0378,613 FROST AVE,Warrenton,VA,20186,209,Route 209 Driver,Northern Virginia,Warrenton,Warrenton,38.7177885,-77.8133782,2026-04-03,2026-04-03,No
 FLW00738,00738,Food Lion 0738,6358 VILLAGE CENTER DR,Bealeton,VA,22712,209,Route 209 Driver,Northern Virginia,Bealeton,Bealeton,38.5718,-77.7639,2026-04-03,2026-04-03,No
-FLW00943,00943,Food Lion 0943,7760 GUNSTON PLZ,Lorton,VA,22079,209,Route 209 Driver,Northern Virginia,Lorton,Lorton,38.7037447,-77.2094807,2026-03-27,2026-04-06,No
+FLW00943,00943,Food Lion 0943,7760 GUNSTON PLZ,Lorton,VA,22079,209,Route 209 Driver,Northern Virginia,Lorton,Lorton,38.7037447,-77.2094807,2026-04-06,2026-04-06,No
 FLW01161,01161,Food Lion 1161,46081 BRIARCROFT PLZ,Sterling,VA,20164,209,Route 209 Driver,Northern Virginia,Sterling,Sterling,38.9963255,-77.4063225,2026-03-23,2026-04-02,No
 FLW01185,01185,Food Lion 1185,720 S KING ST,Leesburg,VA,20175,209,Route 209 Driver,Northern Virginia,Leesburg,Leesburg,39.1048288,-77.5683365,2026-04-02,2026-04-02,No
 FLW01208,01208,Food Lion 1208,13490 DUMFRIES RD,Manassas,VA,20112,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.6598391,-77.4413949,2026-03-27,2026-03-27,No
 FLW01226,01226,Food Lion 1226,14641 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.6582,-77.2497,2026-03-27,2026-04-06,No
 FLW01249,01249,Food Lion 1249,5227 WATERWAY DR,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.5685,-77.3281,2026-04-01,2026-04-06,No
-FLW01261,01261,Food Lion 1261,13414 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.65846146722824,-77.25268858409427,2026-03-31,2026-04-06,No
+FLW01261,01261,Food Lion 1261,13414 JEFFERSON DAVIS HWY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.65846146722824,-77.25268858409427,2026-04-06,2026-04-06,No
 FLW01322,01322,Food Lion 1322,3059 CENTERVILLE RD,Herndon,VA,20171,209,Route 209 Driver,Northern Virginia,Herndon,Herndon,38.9696,-77.3861,2026-04-02,2026-02-16,No
 FLW01337,01337,Food Lion 1337,20789 GREAT FALLS PLZ,Sterling,VA,20165,209,Route 209 Driver,Northern Virginia,Sterling,Sterling,39.040721,-77.3580689,2026-04-02,2026-04-02,No
 FLW01383,01383,Food Lion 1383,9121 CENTERVILLE RD,Manassas,VA,20110,209,Route 209 Driver,Northern Virginia,Manassas,Manassas,38.75116146722824,-77.47828858409427,2026-04-03,2026-04-03,No
-FLW01471,01471,Food Lion 1471,17120 JEFFERSON DAVIS HWY,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.579892,-77.313254,2026-03-25,2026-04-06,No
+FLW01471,01471,Food Lion 1471,17120 JEFFERSON DAVIS HWY,Dumfries,VA,22026,209,Route 209 Driver,Northern Virginia,Dumfries,Dumfries,38.579892,-77.313254,2026-04-06,2026-04-06,No
 FLW01572,01572,Food Lion 1572,14630 MINNEVILLE RD,Dale City,VA,22193,209,Route 209 Driver,Northern Virginia,Dale City,Dale City,38.637,-77.3109,2026-04-01,2026-04-01,No
 FLW01588,01588,Food Lion 1588,4195 WINCHESTER RD,Marshall,VA,20115,209,Route 209 Driver,Northern Virginia,Marshall,Marshall,38.8640017,-77.8474504,2026-04-03,2026-04-03,No
 FLW02518,02518,Food Lion 2518,12420 DILLINGHAM SQ,Lake Ridge,VA,22192,209,Route 209 Driver,Northern Virginia,Lake Ridge,Lake Ridge,38.682,-77.2996,2026-04-01,2026-04-01,No
@@ -193,7 +193,7 @@ WGW00049,00049,Wegmans 049,7505 HILLTOP VILLAGE CTR DR,Alexandria,VA,22315,209,R
 WGW00055,00055,Wegmans 055,14801 DINING WAY,Woodbridge,VA,22191,209,Route 209 Driver,Northern Virginia,Woodbridge,Woodbridge,38.631162,-77.288755,2025-11-13,2025-11-13,Yes
 CASH0543,CASH0543,Marlton Spirits,9518 Crain Hwy,Upper Marlboro,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,2025-11-12,2025-11-12,Yes
 CMW05119,CMW05119,Comm Andrew AFB 5119,1684 STARKEY AVE,JB Andrews,MD,20762,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8108,-76.866,2026-04-04,2026-04-06,No
-CMW05222,CMW05222,Comm Ft Meade 5222,2786 MACARTHUR RD,Fort Meade,MD,20755,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1168421,-76.7390851,2026-04-03,2026-04-03,No
+CMW05222,CMW05222,Comm Ft Meade 5222,2786 MACARTHUR RD,Fort Meade,MD,20755,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1168421,-76.7390851,2026-04-06,2026-04-03,No
 CMW05241,CMW05241,Bolling commissary,185 Chappie James Blvd,Washington,DC,20032,207,Route 207 Driver,Washington DC,Washington DC,Washington DC,38.8485227,-77.0146433,2026-04-04,2026-03-21,No
 CMW5024,CMW5024,Comm Ft Patuxent 5024,22155 Cuddihy Rd,Patuxent River,MD,20670,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2856,-76.4283,2026-03-27,2026-03-21,No
 WAW01985,WAW01985,Walmart 1985,3549 Russett Green East,Laurel,MD,20724,207,Route 207 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.0986084,-76.8024718,2025-04-22,2025-04-22,Yes
@@ -208,7 +208,7 @@ WMW00108,WMW00108,Weis Markets 108,1102 S Queen St,Martinsburg,WV,25401,201,Rout
 WMW00172,WMW00172,Weis Markets 172,550 W Macphail Rd,Bel Air,MD,21014,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5231735,-76.3457186,2025-04-02,,Yes
 WMW00193,WMW00193,Weis Markets 193,943 Pulaski Hwy,Havre De Grace,MD,21078,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5481848,-76.1067638,2025-04-19,,Yes
 7EL00001,7EL00001,7-Eleven Hooks Lane,1801 Reisterstown Rd,Pikesville,MD,21208,203,Route 203 Driver,Baltimore County,Baltimore County,Baltimore County,39.3868036,-76.7353542,,2025-10-03,Yes
-BGW00025,BGW00025,B GREEN CASH & CARRY 25,1300 S MONROE ST & WASHINGTO,Baltimore,MD,21230,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2904,-76.6122,2026-04-02,2026-04-06,No
+BGW00025,BGW00025,B GREEN CASH & CARRY 25,1300 S MONROE ST & WASHINGTO,Baltimore,MD,21230,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2904,-76.6122,2026-04-06,2026-04-06,No
 CASH0003,CASH0003,50 Star Deli & Grocery,2300 E Monument St,Baltimore,MD,21205,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2988469,-76.5849466,2026-02-24,2026-04-03,No
 CASH0017,CASH0017,Aden Deli,2300 Orem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.31611,-76.647657,,2026-03-10,No
 CASH0020,CASH0020,Ali's Snack Shop,1737 West North Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3096851,-76.6461025,,2026-03-09,No
@@ -223,7 +223,7 @@ CASH0098,CASH0098,Dr Grocery Store,1100 N Sticker St,Baltimore,MD,,203,Route 203
 CASH0107,CASH0107,Edmondson Liquors & Food,2000 Edmondson Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.295259,-76.6492518,2026-03-05,2026-04-02,No
 CASH0137,CASH0137,Falls Deli And Grocery,4300 Falls Rd,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.341081,-76.6397795,2026-02-17,2026-02-24,No
 CASH0149,CASH0149,Five Brothers,801 North Glover St,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3003199,-76.5801042,2026-03-05,2026-04-06,No
-CASH0154,CASH0154,Food City Mart,1733 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3042716,-76.6351937,2026-03-30,2026-04-06,No
+CASH0154,CASH0154,Food City Mart,1733 Pennsylvania Ave,Baltimore,MD,21202,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3042716,-76.6351937,2026-04-06,2026-04-06,No
 CASH0162,CASH0162,Frederick Store,4110 Frederick Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2819023,-76.6836883,2026-03-04,2026-03-24,No
 CASH0170,CASH0170,Garrison Deli And Grocery,2109 Garrison Blvd,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3114491,-76.6748017,2026-03-17,2026-03-31,No
 CASH0195,CASH0195,Harlem Grocery Store,901 Harlem Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.296797,-76.633411,2026-02-27,2026-04-02,No
@@ -250,9 +250,9 @@ CASH0392,CASH0392,Torres Grocery,1832 Mosher St,Baltimore,MD,21217,203,Route 203
 CASH0403,CASH0403,West Carry Out,1837 Edmonton Ave,Baltimore,MD,,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.380842280793196,-76.68159880290699,2026-03-30,2026-01-15,No
 CASH0429,CASH0429,Jose R Grocery Mart,1701 W North Ave,Baltimore,MD,21217,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3097189,-76.6451191,2026-03-23,2026-03-23,No
 CASH0437,CASH0437,Jimmy D's Mart,5910 Radecke Ave,Baltimore,MD,21206,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3309623,-76.5321538,2026-03-10,2026-03-10,No
-CASH0504,CASH0504,Whitelock City Food Market,705 Whitelock St,Baltimore,MD,21217,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3146314,-76.630188,2026-03-25,2026-04-06,No
+CASH0504,CASH0504,Whitelock City Food Market,705 Whitelock St,Baltimore,MD,21217,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3146314,-76.630188,2026-04-06,2026-04-06,No
 CASH0546,CASH0546,Cherry Hill Mart,661 Cherry Hill rd,Baltimore,MD,21225,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2495515,-76.6231672,2026-04-02,2026-04-02,No
-CASH0547,CASH0547,6 Eleven Market,501 N Calhoun st,Baltimore,MD,21223,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.294237,-76.6396366,2026-03-30,2026-04-06,No
+CASH0547,CASH0547,6 Eleven Market,501 N Calhoun st,Baltimore,MD,21223,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.294237,-76.6396366,2026-04-06,2026-04-06,No
 CASH3025,CASH3025,Tiger Supermarket,2495 FREDERICK AVENUE,Baltimore,MD,21224,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2835535,-76.6558636,2026-03-16,2026-03-23,No
 CASH3033,CASH3033,Two Time Mini Mart,300 N Carey ST,Baltimore,MD,21223,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.2923738,-76.6385782,,2025-12-31,No
 FDW0072,FDW0072,FOOD DEPOT 72,2401 BELAIR RD,Baltimore,MD,21213,203,Route 203 Driver,Baltimore City,Baltimore City,Baltimore City,39.3179903,-76.5756068,,2026-03-27,Yes
@@ -343,7 +343,7 @@ CASH0528,CASH0528,Exxon Station,5913 York Rd,Baltimore,MD,21212,208,Route 208 Dr
 CASH0529,CASH0529,Highland Town Mini Mart,100 S. Conkling St,Baltimore,MD,21224,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.2908106,-76.5676339,,2025-08-27,Yes
 CASH0536,CASH0536,Luckies Store and Deli,7713 Baltimore Annapolis Blvd,Glen Burnie,MD,21060,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.1513,-76.594891,2026-03-17,2026-02-19,No
 CASH0544,CASH0544,Maple Lawn Market,8181 Maple Lawn Blvd,Fulton,MD,20759,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.1481397,-76.9064637,2025-11-10,2026-02-18,No
-MISC0207,MISC0207,Misc Cash 207,,,,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9517213,-76.8901594,2026-03-24,,No
+MISC0207,MISC0207,Misc Cash 207,,,,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9517213,-76.8901594,2026-04-06,,No
 WGW00056,00056,Wegmans 056,20600 SENECA MEADOWS PKWY,Germantown,MD,20876,207,Route 207 Driver,Montgomery County,Montgomery County,Montgomery County,39.1994609,-77.2565105,2025-12-06,2025-12-06,Yes
 CMW05217,05217,Comm Dover AFB 5217,268 GALAXY ST,Dover AFB,DE,19902,206,Route 206 Driver,Delaware,Dover,Dover,39.1582,-75.5244,,,Yes
 CMW05720,05720,Comm Aberdeen Navy 5720,3400 SPRINGFIELD ST,Aberdeen Proving Ground,MD,21005,200,Route 200 Driver,Harford County,Aberdeen,Aberdeen,39.5093,-76.1641,,,Yes
@@ -374,11 +374,11 @@ FLW01413,FLW01413,FOOD LION 1413,8635 WALTHER BLVD,NOTTINGHAM,MD,21236,204,Route
 FLW01423,FLW01423,FOOD LION 1423,2458 CHURCHVILLE RD,BEL AIR,MD,21015,214,Route 204 Driver,Harford County,Harford County,Harford County,39.5568664,-76.2718674,2026-04-03,2026-03-13,No
 FLW01465,FLW01465,FOOD LION 1465,1312 S MAIN ST STE 4,MOUNT AIRY,MD,21771,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.3763,-77.1548,2026-04-03,2026-03-11,No
 FLW02193,FLW02193,FOOD LION 2193,3000 GAMBER RD,FINKSBURG,MD,21048,204,Route 204 Driver,Carroll County,Carroll County,Carroll County,39.4941814,-76.8942659,2026-04-04,2026-04-04,No
-FLW02559,FLW02559,FOOD LION 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1997303,-76.6399835,2026-03-30,2026-04-06,No
+FLW02559,FLW02559,FOOD LION 2559,7069 BALTIMORE ANNAPOLIS BLVD,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1997303,-76.6399835,2026-04-06,2026-04-06,No
 FLW02560,FLW02560,FOOD LION 2560,7514 N POINT RD,EDGEMERE,MD,21219,204,Route 204 Driver,Baltimore County,Baltimore County,Baltimore County,39.2364809,-76.4408967,2026-04-01,2026-04-01,No
 CASH0522,CASH0522,One Stop Mini Mart,578 Old Town Mall,Baltimore,MD,21202,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2969014,-76.6030464,2026-03-30,2026-02-14,No
 CASH3000,CASH3000,Old Town Market,624 Aisquith St.,Baltimore,MD,21202,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2978622,-76.6020825,2026-03-30,2026-02-14,No
-KFW02754,KFW02754,KEY FOOD 02754,1205 W PRATT STREET,BALTIMORE,MD,21223,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.284449,-76.6353965,2026-03-25,2026-02-14,No
+KFW02754,KFW02754,KEY FOOD 02754,1205 W PRATT STREET,BALTIMORE,MD,21223,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.284449,-76.6353965,2026-04-06,2026-02-14,No
 CASH0009,CASH0009,A Grocery Store,1527 Pennsylvania Ave,Baltimore,MD,21217,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3025444,-76.6331096,,,Yes
 CASH0024,CASH0024,Always Grocery,1115 Reisterstown Rd,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.373853,-76.7222627,,,Yes
 CASH0028,CASH0028,Arpan Shrestha,4501 Falls Rd,Baltimore,MD,21209,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3436392,-76.6401184,,,Yes
@@ -449,7 +449,7 @@ CASH0135,CASH0135,Ez Mart,4123 Agusta Ave,Baltimore,MD,,200,Route 200 Driver,Bal
 CASH0140,CASH0140,Family Food Mart,5413 York Rd,Baltimore,MD,21212,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.356076,-76.6095775,,,Yes
 CASH0142,CASH0142,Family Jolly Grocery,1545 Payson St,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3064384,-76.6494118,2026-03-30,2026-01-16,No
 CASH0145,CASH0145,Fast Stop Shop,1023 E Lombard St,Baltimore,MD,21202,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2892251,-76.6021014,2026-03-17,,No
-CASH0146,CASH0146,Fayette Food Mart,1428 E Fayette,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.291031,-76.6547656,2026-03-26,,No
+CASH0146,CASH0146,Fayette Food Mart,1428 E Fayette,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.291031,-76.6547656,2026-04-06,,No
 CASH0150,CASH0150,Five Stars Market,3325 E Baltimore,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2922954,-76.5695668,,,Yes
 CASH0151,CASH0151,Food 2Go Grocery,1501 Baltimore St,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3125298,-76.6419689,,,Yes
 CASH0152,CASH0152,Food City,3300 Eastern Ave,Baltimore,MD,21224,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2866527,-76.569793,,,Yes
@@ -537,7 +537,7 @@ CASH0326,CASH0326,Rap City Convenience,1645 W North Ave,Baltimore,MD,,200,Route 
 CASH0331,CASH0331,Reyes Grocery,801 N Bentalou St,Baltimore,MD,21216,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2971575,-76.6532121,,,Yes
 CASH0333,CASH0333,Rfc Convenience,505 Avondale Rd,Dundalk,MD,21222,200,Route 200 Driver,Baltimore County,Baltimore County,Baltimore County,39.2398717,-76.5070195,,,Yes
 CASH0334,CASH0334,Rn5 Mart,600 N Highland Ave,Baltimore,MD,21205,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2983245,-76.5700128,,,Yes
-CASH0337,CASH0337,Rosina Gourmet,300 E Lombard,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2883546,-76.6104271,2026-03-05,,No
+CASH0337,CASH0337,Rosina Gourmet,300 E Lombard,Baltimore,MD,,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2883546,-76.6104271,2026-04-06,,No
 CASH0338,CASH0338,Rosina Gourmet Inc Downto,300 E Lombard St Lbby 103,Baltimore,MD,21202,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2981,-76.6055,,2026-01-21,No
 CASH0342,CASH0342,Royal Deli Grocery,4335 Belair,Baltimore,MD,21206,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.3289671,-76.5639708,,,Yes
 CASH0344,CASH0344,Russell Street Citgo Stat,1500 Russell St,Baltimore,MD,21230,200,Route 200 Driver,Baltimore City,Baltimore City,Baltimore City,39.2744212,-76.6277904,,,Yes
