@@ -24,7 +24,7 @@ IND00202,IND00202,Almonte Market,2332 E Hoffman St,Baltimore,MD,21213,204,Route 
 IND00203,IND00203,H&P,3859 Elmley Ave,Baltimore,MD,21213,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3177292,-76.5637471,,,Yes
 MTW06425,MTW06425,Giant Martin 116,24 Rising Sun Town Ctr,Rising Sun,MD,21911,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.697,-76.0629,2026-03-19,2026-03-19,No
 FLW01363,FLW01363,Food Lion 1363,2500 W Pulasky HWY,North East,MD,21901,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.6001,-75.9414,2026-04-03,2026-03-19,No
-FLW02630,02630,Food Lion 2630,5301 Pulasky HWY,Perryville,MD,21903,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.5601,-76.0714,2026-04-03,2026-03-19,No
+FLW02630,02630,Food Lion 2630,5301 Pulasky HWY,Perryville,MD,21903,214,Route 214 Driver,Cecil County,Cecil County,Cecil County,39.5601,-76.0714,2026-04-07,2026-03-19,No
 SRW00548,SRW00548,ShopRite 548,949 Beards Hill Rd,Aberdeen,MD,21001,214,Route 214 Driver,Harford County,Harford County,Harford County,39.5253041,-76.1812916,2026-03-19,2026-03-19,No
 SRW00551,SRW00551,ShopRite 551,1321 RIVERSIDE PKWY,Belcamp,MD,21017,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4800776,-76.2477325,2026-03-16,2025-03-27,No
 SRW00549,SRW00549,ShopRite 549,5 BEL AIR SOUTH PKWY,Bel Air,MD,21015,214,Route 214 Driver,Harford County,Harford County,Harford County,39.4931409,-76.3260095,2025-12-04,2025-12-04,Yes
@@ -64,9 +64,9 @@ WMW00278,00278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driv
 FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6231162,-76.9084658,2026-04-04,2026-04-06,No
 FLW02547,02547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6199195,-76.934075,2026-04-04,2026-04-04,No
 WGW00041,WGW00041,Wegmans 41,Ridge Square NW,Washington,DC,20016,200,Route 200 Driver,Washington DC,Washington DC,Washington DC,38.9404451,-77.077732,,,Yes
-FLW01405,01405,Food Lion 1405,1413 FUSELAGE AVE,MIDDLE RIVER,MD,21220,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3324547,-76.4458499,2026-03-26,2026-03-17,No
+FLW01405,01405,Food Lion 1405,1413 FUSELAGE AVE,MIDDLE RIVER,MD,21220,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3324547,-76.4458499,2026-04-07,2026-03-17,No
 GBW00002,GBW00002,Geresbecks Baltimore,2109 Eastern Blvd,Baltimore,MD,21220,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.3277067,-76.4407055,,,Yes
-FLW01653,FLW01653,Food Lion 1653,1565 HYDE PARK RD,ESSEX,MD,21221,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.2988149,-76.4370235,2026-04-02,2026-03-17,No
+FLW01653,FLW01653,Food Lion 1653,1565 HYDE PARK RD,ESSEX,MD,21221,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.2988149,-76.4370235,2026-04-07,2026-03-17,No
 RDW00096,RDW00096,Redners 96,7938 EASTERN AVE,BALTIMORE,MD,21224,204,Route 204 Driver,Baltimore City,Baltimore City,Baltimore City,39.2965631,-76.507546,2026-03-23,2026-04-01,No
 WAW00098,WAW00098,Walmart Glen Burnie,6721 Chesapeake Center Dr,Glen Burnie,MD,21060,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1899534,-76.6059009,,2026-03-08,No
 FLW01543,01543,Food Lion 1543,121 N CRAIN HWY,GLEN BURNIE,MD,21061,204,Route 204 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1273757,-76.6415943,2026-04-06,2026-03-17,No
@@ -124,7 +124,7 @@ AMW00293,AMW00293,Acme 293,9507 COASTAL HWY,Ocean City,MD,21842,206,Route 210 Dr
 AMW03816,AMW03816,Acme 3816,460 E Main St,Middletown,DE,19709,210,Route 210 Driver,Delaware,Middletown,Middletown,39.4485146,-75.697669,2026-03-31,2026-03-31,No
 AMW03841,AMW03841,Acme 3841,210 Marlboro Ave,Easton,MD,21601,210,Route 210 Driver,Eastern Shore Maryland,Easton,Easton,38.7800982,-76.0834608,2026-03-27,2026-04-04,No
 RDW00049,RDW00049,Redners 49,17 WASHINGTON SQ,Chestertown,MD,21620,210,Route 210 Driver,Eastern Shore Maryland,Chestertown,Chestertown,39.2302921,-76.0704093,2026-03-27,2026-03-27,No
-RDW00058,RDW00058,Redners,2500 S DUPONT HWY,Camden,DE,19934,210,Route 210 Driver,Delaware,Camden,Camden,39.114359,-75.537088,2026-04-06,2026-04-02,No
+RDW00058,RDW00058,Redners,2500 S DUPONT HWY,Camden,DE,19934,210,Route 210 Driver,Delaware,Camden,Camden,39.114359,-75.537088,2026-04-07,2026-04-02,No
 AMW00820,AMW00820,Acme 820,611 RAILROAD AVE,Centerville,MD,21617,210,Route 210 Driver,Eastern Shore Maryland,Centerville,Centerville,39.04426146722824,-76.06968858409427,2026-03-27,2026-04-04,No
 AMW00821,AMW00821,Acme 821,711 Washington Ave,Chestertown,MD,21620,210,Route 210 Driver,Eastern Shore Maryland,Chestertown,Chestertown,39.2261872,-76.070325,,2026-03-27,No
 AMW00896,AMW00896,Acme 896,751 S SALISBURY BLVD,SALISBURY,MD,21801,206,Route 210 Driver,Eastern Shore Maryland,SALISBURY,SALISBURY,38.3548757,-75.5993307,2026-03-31,2026-04-07,No
