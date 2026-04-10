@@ -135,7 +135,7 @@ WGW00044,WGW00044,Wegmans 44,101 CROSSTRAIL BLVD SE,LEESBURG,VA,20175,0,Wegmans 
 SRW00563,SRW00563,ShopRite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.5201387,-76.5601869,2025-09-12,2025-09-12,Yes
 SRW00567,00567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,204,Route 204 Driver,Baltimore County,Unassigned,Unassigned,39.3723579,-76.5640499,2026-04-07,2026-04-07,No
 FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-04-01,2026-04-01,No
-FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-04-01,2026-04-01,No
+FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-04-01,2026-04-10,No
 FLW00663,FLW00663,Food Lion Store 663,96 Somerset Blvd,Charles Town,WV,25414,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.289,-77.86,2026-04-09,2026-03-19,No
 FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.6263,-78.2271,2026-04-09,2026-04-09,No
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-04-09,2026-04-09,No
@@ -164,7 +164,7 @@ WGW0125,WGW0125,Wegmans WGW0125,10100 REISERSTOWN RD,OWINGS MILLS,MD,21117,201,R
 WMW00095,WMW00095,Walmart 95,Patrick Henry Way,Charles Town,WV,25414,0,,Unassigned,Unassigned,Unassigned,39.292652568574056,-77.85523987995825,,,Yes
 WMW01674,WMW01674,Walmart 1674,17850 Garland Groh Blvd,Hagerstown,MD,21740,0,,Unassigned,Unassigned,Unassigned,39.6581101,-77.7493658,,,Yes
 WMW01703,WMW01703,Walmart 1703,800 Foxcroft Ave,Martinsburg,WV,25401,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4516948,-77.9861551,,,Yes
-WMW03344,WMW03344,Walmart 3344,501 Walmart Dr,Winchester,VA,22603,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,39.1938856,-78.2055512,2026-04-07,2026-04-07,Yes
+WMW03344,WMW03344,Walmart 3344,501 Walmart Dr,Winchester,VA,22603,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,39.1938856,-78.2055512,2026-04-07,2026-04-10,Yes
 WMW05105,WMW05105,Walmart 5105,10 Riverton Commons Dr,Front Royal,VA,22630,0,,Unassigned,Unassigned,Unassigned,38.9601994,-78.187808,,,Yes
 IND00205,IND00205,Nothing Better LLC Cash,14882 Hardscrabble Rd,Seaford,DE,19973,206,Route 206 Driver,Delaware/Seaford,Seaford,Seaford,38.6192809,-75.4832676,2026-04-08,2026-03-20,No
 GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1588238,-76.5162013,,,Yes
