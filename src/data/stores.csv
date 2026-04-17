@@ -50,7 +50,7 @@ SFW00068,SFW00068,Shoppers Germantown,18066 Mateny Rd,Germantown,MD,20874,200,Ro
 FLW01661,FLW01661,Food Lion 1661,845 ROCKVILLE PIKE,Rockville,MD,20852,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.0761984,-77.1378639,2026-04-03,2026-04-10,No
 FLW01414,01414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,2026-04-08,2026-04-06,No
 WGW00040,00040,Wegmans 40,9001 McHugh Dr,Lanham,MD,20706,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9214562,-76.8506973,2025-09-16,2025-10-23,Yes
-WMW00276,00276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.6714743,-77.0087584,2026-03-11,2026-04-01,No
+WMW00276,00276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.6714743,-77.0087584,2026-03-11,2026-04-16,No
 FLW02566,02566,Food Lion 2566,12675 Laurel Bowie Rd,Laurel,MD,20708,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.0652685,-76.8365901,2026-04-08,2026-04-08,No
 FLW01662,01662,Food Lion 1662,410 SANDY SPRINGS RD,Laurel,MD,20707,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.102952568574054,-76.84353987995824,2026-04-09,2026-03-21,No
 SFW00079,SFW00079,Shoppers Forestville,5820 Silver Hill Rd,Forestville,MD,20747,200,Route 200 Driver,Prince George's County,Prince George's County,Prince George's County,38.8548251,-76.9065032,2026-04-09,,No
@@ -59,9 +59,9 @@ WAW05129,05129,Walmart 5129,6210 Annapolis Rd,Landover Hills,MD,20784,207,Route 
 SFW02618,02618,Shoppers Food Whse 2618,7790 RIVERDALE RD,Hyattsville,MD,20784,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9559,-76.9453,2025-09-30,2025-09-30,Yes
 FLW00656,00656,Food Lion 656,40955 MERCHANT LN,LEONARDTOWN,MD,20650,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.2909,-76.6356,2026-03-27,2026-03-13,No
 FLW01319,01319,Food Lion 1319,30290 MOUNT WOLF RD,CHARLOTTE HALL,MD,20622,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.4999463,-76.7715778,2026-04-04,2026-04-04,No
-FLW01316,01316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.631106,-77.0720882,2026-04-09,2026-03-28,No
+FLW01316,01316,Food Lion 1316,2960 MARSHALL HALL RD,BRYANS ROAD,MD,20616,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.631106,-77.0720882,2026-04-09,2026-04-16,No
 WMW00278,00278,Weis Market 278,100 Drury Dr,La Plata,MD,20646,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.547702,-76.9827263,2025-11-13,2025-11-19,Yes
-FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6231162,-76.9084658,2026-04-04,2026-04-06,No
+FLW01184,01184,Food Lion 1184,3200 OLD WASHINGTON RD,WALDORF,MD,20602,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6231162,-76.9084658,2026-04-04,2026-04-16,No
 FLW02547,02547,Food Lion 2547,191 ST PATRICKS DR,WALDORF,MD,20603,207,Route 207 Driver,Southern Maryland,Southern Maryland,Southern Maryland,38.6199195,-76.934075,2026-04-07,2026-04-04,No
 WGW00041,WGW00041,Wegmans 41,Ridge Square NW,Washington,DC,20016,200,Route 200 Driver,Washington DC,Washington DC,Washington DC,38.9404451,-77.077732,,,Yes
 FLW01405,01405,Food Lion 1405,1413 FUSELAGE AVE,MIDDLE RIVER,MD,21220,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.3324547,-76.4458499,2026-04-07,2026-03-17,No
@@ -134,8 +134,8 @@ WGW00042,WGW00042,Wegmans 42,8297 STONEWALL SHOPS SQUARE,GAINESVILLE,VA,20155,20
 WGW00044,WGW00044,Wegmans 44,101 CROSSTRAIL BLVD SE,LEESBURG,VA,20175,0,Wegmans Route Driver,Unassigned,Unassigned,Unassigned,39.1157,-77.5636,2025-05-07,,Yes
 SRW00563,SRW00563,ShopRite 563,14330 JARRETTSVILLE PIKE,PHOENIX,MD,21131,214,Route 214 Driver,Baltimore County,Baltimore County,Baltimore County,39.5201387,-76.5601869,2025-09-12,2025-09-12,Yes
 SRW00567,00567,Shop Rite 567,2401 CLEANLEIGH DR,PARKVILLE,MD,21234,204,Route 204 Driver,Baltimore County,Unassigned,Unassigned,39.3723579,-76.5640499,2026-04-07,2026-04-16,No
-FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-04-01,2026-04-01,No
-FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-04-01,2026-04-10,No
+FLW00331,FLW00331,Food Lion Store 331,1029 S Main St,Woodstock,VA,22664,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.8684272,-78.5167577,2026-04-01,2026-04-16,No
+FLW00550,FLW00550,Food Lion Store 550,794 Shopping Center Rd,Strasburg,VA,22657,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,38.9977631,-78.3498516,2026-04-01,2026-04-16,No
 FLW00663,FLW00663,Food Lion Store 663,96 Somerset Blvd,Charles Town,WV,25414,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.289,-77.86,2026-04-09,2026-03-19,No
 FLW00807,FLW00807,Food Lion Store 807,70 Morgan Square Unit 1,Berkeley,WV,25411,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.6263,-78.2271,2026-04-09,2026-04-09,No
 FLW00871,FLW00871,Food Lion Store 871,85 Maddex Square Dr,Shepherdstown,WV,25443,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4359485,-77.8209525,2026-04-09,2026-04-09,No
@@ -164,7 +164,7 @@ WGW0125,WGW0125,Wegmans WGW0125,10100 REISERSTOWN RD,OWINGS MILLS,MD,21117,201,R
 WMW00095,WMW00095,Walmart 95,Patrick Henry Way,Charles Town,WV,25414,0,,Unassigned,Unassigned,Unassigned,39.292652568574056,-77.85523987995825,,,Yes
 WMW01674,WMW01674,Walmart 1674,17850 Garland Groh Blvd,Hagerstown,MD,21740,0,,Unassigned,Unassigned,Unassigned,39.6581101,-77.7493658,,,Yes
 WMW01703,WMW01703,Walmart 1703,800 Foxcroft Ave,Martinsburg,WV,25401,201,Route 201 Driver,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,West Virginia Eastern Panhandle,39.4516948,-77.9861551,,,Yes
-WMW03344,WMW03344,Walmart 3344,501 Walmart Dr,Winchester,VA,22603,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,39.1938856,-78.2055512,2026-04-07,2026-04-10,Yes
+WMW03344,WMW03344,Walmart 3344,501 Walmart Dr,Winchester,VA,22603,201,Route 201 Driver,Virginia Northern,Virginia Northern,Virginia Northern,39.1938856,-78.2055512,2026-04-07,2026-04-16,Yes
 WMW05105,WMW05105,Walmart 5105,10 Riverton Commons Dr,Front Royal,VA,22630,0,,Unassigned,Unassigned,Unassigned,38.9601994,-78.187808,,,Yes
 IND00205,IND00205,Nothing Better LLC Cash,14882 Hardscrabble Rd,Seaford,DE,19973,206,Route 206 Driver,Delaware/Seaford,Seaford,Seaford,38.6192809,-75.4832676,2026-04-08,2026-03-20,No
 GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,200,Route 200 Driver,Anne Arundel County,Anne Arundel County,Anne Arundel County,39.1588238,-76.5162013,,,Yes
