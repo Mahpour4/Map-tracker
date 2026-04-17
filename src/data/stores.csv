@@ -48,7 +48,7 @@ FLW02501,02501,Food Lion 2501,8300 ICE CRYSTAL DR,Scaggsville,MD,20723,207,Route
 WMW00287,WMW00287,Weis 287,6551 Waterloo Rd,Elkridge,MD,21075,200,Route 200 Driver,Howard County,Howard County,Howard County,39.1914184,-76.7927454,,,Yes
 SFW00068,SFW00068,Shoppers Germantown,18066 Mateny Rd,Germantown,MD,20874,200,Route 200 Driver,Montgomery County,Montgomery County,Montgomery County,39.148022,-77.2728831,,,Yes
 FLW01661,FLW01661,Food Lion 1661,845 ROCKVILLE PIKE,Rockville,MD,20852,208,Route 208 Driver,Baltimore City,Baltimore City,Baltimore City,39.0761984,-77.1378639,2026-04-03,2026-04-10,No
-FLW01414,01414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,2026-04-08,2026-04-06,No
+FLW01414,01414,Food Lion 1414,9500 CRAIN HWY,UPPER MARLBORO,MD,20772,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.8275958,-76.7336008,2026-04-08,2026-04-15,No
 WGW00040,00040,Wegmans 40,9001 McHugh Dr,Lanham,MD,20706,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.9214562,-76.8506973,2025-09-16,2025-10-23,Yes
 WMW00276,00276,Weis 276,15789 Livingston Rd,Accokeek,MD,20607,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,38.6714743,-77.0087584,2026-03-11,2026-04-16,No
 FLW02566,02566,Food Lion 2566,12675 Laurel Bowie Rd,Laurel,MD,20708,207,Route 207 Driver,Prince George's County,Prince George's County,Prince George's County,39.0652685,-76.8365901,2026-04-08,2026-04-08,No
@@ -171,7 +171,7 @@ GBW00003,GBW00003,Geresbecks Pasadena,8489 Fort Smallwood Rd,Pasadena,MD,21122,2
 MISC0121,MISC0121,Salisbury Storage,2309 E Naylor Mill Rd,Salisbury,MD,21804,210,Route 210 Driver,Eastern Shore Maryland,Salisbury,Salisbury,38.4034658,-75.5624319,,2026-04-10,No
 CMW05018,05018,Comm Ft Myer 5018,523 CARPENTER RD,Fort Myer,VA,22211,209,Route 209 Driver,Northern Virginia,Fort Myer,Fort Myer,38.8693056,-77.0764621,2026-04-06,2026-04-07,No
 CMW05235,05235,Comm Ft Belvoir 5235,6020 GORGAS RD,Fort Belvoir,VA,22060,209,Route 209 Driver,Northern Virginia,Fort Belvoir,Fort Belvoir,38.7194544,-77.145685,2026-04-04,2026-04-04,No
-CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-03-24,2026-04-06,No
+CMW05237,05237,Comm Quantico 5237,3400 RUSSELL RD,Quantico,VA,22134,209,Route 209 Driver,Northern Virginia,Quantico,Quantico,38.5111159,-77.3142726,2026-03-24,2026-04-15,No
 FLW00378,00378,Food Lion 0378,613 FROST AVE,Warrenton,VA,20186,209,Route 209 Driver,Northern Virginia,Warrenton,Warrenton,38.7177885,-77.8133782,2026-04-03,2026-04-03,No
 FLW00738,00738,Food Lion 0738,6358 VILLAGE CENTER DR,Bealeton,VA,22712,209,Route 209 Driver,Northern Virginia,Bealeton,Bealeton,38.5718,-77.7639,2026-04-03,2026-04-10,No
 FLW00943,00943,Food Lion 0943,7760 GUNSTON PLZ,Lorton,VA,22079,209,Route 209 Driver,Northern Virginia,Lorton,Lorton,38.7037447,-77.2094807,2026-04-06,2026-04-10,No
